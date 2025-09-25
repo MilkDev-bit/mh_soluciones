@@ -1,0 +1,110 @@
+.stats-card {
+  display: flex;
+  align-items: center;
+  background-color: $widget-background-color;
+  padding: 1.5rem;
+  border-radius: $border-radius;
+  box-shadow: $shadow-sm;
+  gap: 1.5rem;
+  border-left: 5px solid;
+
+  .card-icon {
+    font-size: 2rem;
+    padding: 0.8rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card-content {
+    .card-title {
+      font-size: 0.9rem;
+      color: $text-color-secondary;
+      margin-bottom: 0.25rem;
+    }
+    .card-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: $text-color;
+    }
+  }
+
+  &.color-orange {
+    border-color: $primary-color;
+    .card-icon { color: $primary-color; background-color: color.adjust($primary-color, $alpha: -0.8); }
+  }
+  &.color-blue {
+    border-color: $info;
+    .card-icon { color: $info; background-color: color.adjust($info, $alpha: -0.8); }
+  }
+  &.color-green {
+    border-color: $success;
+    .card-icon { color: $success; background-color: color.adjust($success, $alpha: -0.8); }
+  }
+  &.color-purple {
+    border-color: #6f42c1;
+    .card-icon { color: #6f42c1; background-color: color.adjust(#6f42c1, $alpha: -0.8); }
+  }
+  &.color-red {
+    border-color: $danger;
+    .card-icon { color: $danger; background-color: color.adjust($danger, $alpha: -0.8); }
+  }
+}
+
+.dashboard-widget {
+  background-color: $widget-background-color;
+  padding: 1.5rem;
+  border-radius: $border-radius;
+  box-shadow: $shadow-sm;
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: $text-color;
+  }
+}
+
+.widget-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li a {
+    text-decoration: none;
+  }
+
+  .widget-list-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 0.5rem;
+    border-radius: $border-radius;
+    transition: $transition-base;
+
+    &:hover {
+      background-color: $background-color;
+    }
+
+    .item-icon {
+      font-size: 1.3rem;
+      color: $primary-color;
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+
+      .item-title {
+        font-weight: 500;
+        color: $text-color;
+      }
+
+      .item-details {
+        font-size: 0.85rem;
+        color: $text-color-secondary;
+      }
+    }
+  }
+}

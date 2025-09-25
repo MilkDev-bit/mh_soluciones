@@ -1,0 +1,285 @@
+import os
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from ipware import get_client_ip
+from rest_framework import status, viewsets, generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.core.cache import cache
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import MultiPartParser, FormParser
+from django_otp import devices_for_user
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+from django.shortcuts import redirect
+from django.urls import reverse
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
+
+from ..models import GoogleApiCredentials, CustomUser, LoginActivity
+from .permissions import IsSuperAdmin
+from .serializers import (
+    LoginSerializer, 
+    PasswordChangeSerializer,
+    TwoFactorSerializer, 
+    UserCreateSerializer,
+    UserSerializer
+)
+
+User = get_user_model()
+
+if settings.DEBUG:
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('first_name', 'last_name')
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        return UserSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [permissions.IsAuthenticated]
+        else:
+            self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+        return super().get_permissions()
+    
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        return Response({'message': 'Usuario desactivado correctamente.'}, status=status.HTTP_200_OK)
+
+class UserProfileAPIView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_object(self):
+        return self.request.user
+
+
+class LoginAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        
+        client_ip, _ = get_client_ip(request)
+        
+        user.last_login = timezone.now()
+        user.last_login_ip = client_ip
+        user.save(update_fields=['last_login', 'last_login_ip'])
+        LoginActivity.objects.create(user=user, ip_address=client_ip, successful=True, user_agent=request.META.get('HTTP_USER_AGENT', ''))
+
+        if user.requires_2fa:
+            device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+            if device:
+                return Response({'message': 'Verification code required.', 'requires_2fa': True, 'user_pk': user.pk}, status=status.HTTP_200_OK)
+
+        refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user, context={'request': request}).data
+        return Response({'refresh': str(refresh), 'access': str(refresh.access_token), 'user': user_data}, status=status.HTTP_200_OK)
+
+
+class TwoFactorVerifyAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    serializer_class = TwoFactorSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        
+        client_ip, _ = get_client_ip(request)
+        user.last_login = timezone.now()
+        user.last_login_ip = client_ip
+        user.save(update_fields=['last_login', 'last_login_ip'])
+        LoginActivity.objects.create(
+            user=user, 
+            ip_address=client_ip, 
+            successful=True, 
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user, context={'request': request}).data
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordChangeAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = PasswordChangeSerializer
+    
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({"message": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
+
+
+class TwoFactorSetupView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        for device in devices_for_user(user):
+            device.delete()
+        
+        device = TOTPDevice.objects.create(user=user, name='default', confirmed=False)
+        provisioning_uri = device.config_url
+        
+        return Response({
+            'provisioning_uri': provisioning_uri,
+            'device_pk': device.pk
+        }, status=status.HTTP_200_OK)
+
+
+class TwoFactorConfirmView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        token = request.data.get('otp_token')
+        device_pk = request.data.get('device_pk')
+
+        if not all([token, device_pk]):
+            return Response({'error': 'Faltan parámetros requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            device = TOTPDevice.objects.get(pk=device_pk, user=user, confirmed=False)
+        except TOTPDevice.DoesNotExist:
+            return Response({'error': 'Dispositivo 2FA inválido o ya confirmado.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if device.verify_token(token):
+            device.confirmed = True
+            device.save()
+            user.requires_2fa = True
+            user.save(update_fields=['requires_2fa'])
+            return Response({'message': '2FA configurado exitosamente.'}, status=status.HTTP_200_OK)
+        
+        return Response({'error': 'El código de verificación es inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_user_view(request):
+    serializer = UserSerializer(request.user, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_user_from_session(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
+
+class ClientListView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CustomUser.objects.filter(is_active=True, role='CLIENT')
+    
+
+class GoogleAuthRedirectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+        flow = Flow.from_client_config(
+            client_config={
+                "web": {
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "project_id": "mhsoluciones",
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uris": [redirect_uri]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/drive', 'openid'],
+            redirect_uri=redirect_uri
+        )
+        authorization_url, state = flow.authorization_url(
+            access_type='offline', prompt='consent', include_granted_scopes='true'
+        )
+        
+        cache.set(state, request.user.id, timeout=300)
+        
+        return Response({'authorization_url': authorization_url})
+
+
+class GoogleAuthCallbackView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        state = request.GET.get('state')
+        
+        user_id = cache.get(state)
+
+        if not user_id:
+            return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
+
+        redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+        flow = Flow.from_client_config(
+            client_config={
+                "web": {
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "project_id": "mhsoluciones",
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uris": [redirect_uri],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/drive', 'openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
+            state=state,
+            redirect_uri=redirect_uri
+        )
+        
+        full_url = request.build_absolute_uri()
+        flow.fetch_token(authorization_response=full_url)
+        
+        credentials = flow.credentials
+
+        GoogleApiCredentials.objects.update_or_create(
+            user=user,
+            defaults={
+                'access_token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'token_uri': credentials.token_uri,
+                'client_id': credentials.client_id,
+                'client_secret': credentials.client_secret,
+                'scopes': ' '.join(credentials.scopes),
+            }
+        )
+
+        return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
+
+
+class GoogleConnectionStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        is_connected = GoogleApiCredentials.objects.filter(user=request.user).exists()
+        return Response({'is_connected': is_connected})

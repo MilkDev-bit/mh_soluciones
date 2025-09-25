@@ -1,0 +1,37 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: $neutral-900;
+  }
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: $widget-background-color;
+  border-radius: 20px;
+  border: 1px dashed $neutral-300;
+  
+  h2 {
+    font-size: 1.5rem;
+    color: $neutral-800;
+    font-weight: 700;
+  }
+  p {
+    color: $neutral-500;
+    max-width: 400px;
+    margin: 0.5rem auto 0;
+  }
+}

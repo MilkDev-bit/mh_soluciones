@@ -1,0 +1,244 @@
+.add-member-modal {
+  .error-message {
+    @include flex-center;
+    gap: $space-2;
+    padding: $space-4;
+    background: $error-50;
+    color: $error;
+    border-radius: $rounded-xl;
+    margin-bottom: $space-6;
+    border: 2px solid $error-100;
+    font-weight: 500;
+    
+    svg {
+      flex-shrink: 0;
+      font-size: $text-lg;
+    }
+  }
+
+  .modal-content {
+    .modal-description {
+      @include flex-center;
+      gap: $space-3;
+      margin-bottom: $space-6;
+      padding: $space-4;
+      background: $primary-50;
+      border-radius: $rounded-xl;
+      border: 2px solid $primary-100;
+
+      svg {
+        color: $primary-600;
+        font-size: $text-xl;
+        flex-shrink: 0;
+      }
+
+      p {
+        margin: 0;
+        color: $primary-800;
+        font-size: $text-base;
+        font-weight: 500;
+      }
+    }
+
+    .member-form {
+      .form-group {
+        margin-bottom: $space-6;
+
+        .form-label {
+          display: block;
+          margin-bottom: $space-3;
+          font-weight: 700;
+          color: $neutral-800;
+          font-size: $text-base;
+        }
+
+        .loading-users {
+          @include flex-center;
+          gap: $space-3;
+          padding: $space-8;
+          justify-content: center;
+          color: $neutral-500;
+
+          .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid $neutral-200;
+            border-top: 3px solid $primary-500;
+            border-radius: $rounded-full;
+            animation: spin 1s linear infinite;
+          }
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: $space-12 $space-4;
+          color: $neutral-400;
+
+          svg {
+            font-size: 3rem;
+            margin-bottom: $space-4;
+            opacity: 0.6;
+          }
+
+          p {
+            margin: 0;
+            font-size: $text-base;
+            font-weight: 500;
+          }
+        }
+
+        .users-list {
+          display: grid;
+          gap: $space-3;
+          max-height: 350px;
+          overflow-y: auto;
+          padding: $space-1;
+          border-radius: $rounded-xl;
+          
+          &::-webkit-scrollbar {
+            width: 6px;
+          }
+          
+          &::-webkit-scrollbar-thumb {
+            background: $neutral-300;
+            border-radius: $rounded-full;
+          }
+
+          .user-item {
+            @include flex-center;
+            gap: $space-4;
+            padding: $space-4;
+            border: 2px solid $neutral-200;
+            border-radius: $rounded-xl;
+            cursor: pointer;
+            transition: all $transition-fast;
+            background: $neutral-0;
+
+            &:hover {
+              border-color: $primary-300;
+              background: $primary-25;
+              transform: translateY(-1px);
+            }
+
+            &.selected {
+              border-color: $primary-500;
+              background: $primary-50;
+              box-shadow: 0 0 0 4px rgba($primary-500, 0.1);
+
+              .user-avatar .selection-indicator {
+                background: $primary-500;
+                color: $neutral-0;
+                transform: scale(1);
+              }
+            }
+
+            .user-avatar {
+              position: relative;
+              flex-shrink: 0;
+
+              img {
+                width: 48px;
+                height: 48px;
+                border-radius: $rounded-xl;
+                object-fit: cover;
+                border: 2px solid $neutral-200;
+              }
+
+              .selection-indicator {
+                position: absolute;
+                bottom: -4px;
+                right: -4px;
+                width: 22px;
+                height: 22px;
+                border-radius: $rounded-full;
+                background: $neutral-200;
+                border: 2px solid $neutral-0;
+                @include flex-center;
+                transition: all $transition-fast;
+                transform: scale(0.8);
+
+                svg {
+                  width: 12px;
+                  height: 12px;
+                }
+              }
+            }
+
+            .user-info {
+              flex: 1;
+              min-width: 0;
+
+              .user-name {
+                margin: 0 0 $space-1 0;
+                font-size: $text-base;
+                font-weight: 600;
+                color: $neutral-800;
+                @include text-truncate;
+              }
+
+              .user-username {
+                margin: 0;
+                font-size: $text-sm;
+                color: $neutral-500;
+                font-weight: 500;
+              }
+            }
+          }
+        }
+      }
+
+      .selected-count {
+        text-align: center;
+        padding: $space-4;
+        background: $primary-50;
+        border-radius: $rounded-xl;
+        color: $primary-800;
+        font-size: $text-base;
+        font-weight: 600;
+        margin-bottom: $space-6;
+        border: 2px solid $primary-100;
+      }
+
+      .modal-actions {
+        @include flex-center;
+        gap: $space-4;
+        justify-content: flex-end;
+
+        @include mobile-only {
+          flex-direction: column;
+          
+          .btn {
+            width: 100%;
+          }
+        }
+
+        .btn {
+          min-width: 140px;
+          @include flex-center;
+          gap: $space-2;
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
+          &.btn-primary {
+            &:disabled {
+              background: $neutral-300;
+              border-color: $neutral-300;
+            }
+          }
+        }
+
+        .loading-spinner-small {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 2px solid $neutral-0;
+          border-radius: $rounded-full;
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+  }
+}

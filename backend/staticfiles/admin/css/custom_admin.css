@@ -1,0 +1,21 @@
+.selector-available select option,
+.selector-chosen select option {
+    color: #333 !important; 
+    background-color: #fff !important; 
+    padding: 5px 8px !important;
+}
+
+.selector-available select option:hover,
+.selector-chosen select option:hover {
+    background-color: #FF6B35 !important;
+    color: #fff !important;
+}
+
+.selector .selector-available select,
+.selector .selector-chosen select {
+    width: 100% !important;
+}
+
+.main-footer .float-right {
+    display: none !important;
+}

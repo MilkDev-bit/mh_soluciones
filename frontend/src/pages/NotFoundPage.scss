@@ -1,0 +1,27 @@
+.not-found-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100vh;
+  background-color: $neutral-100;
+  color: $neutral-900;
+
+  .not-found-content {
+    h1 {
+      font-size: 10rem;
+      font-weight: 700;
+      color: $primary-500;
+      line-height: 1;
+    }
+    h2 {
+      font-size: 2rem;
+      margin-top: -1rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      color: $neutral-500;
+      margin-bottom: 2rem;
+    }
+  }
+}

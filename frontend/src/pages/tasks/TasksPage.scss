@@ -1,0 +1,335 @@
+@import '../../assets/styles/variables';
+
+.tasks-page {
+  padding: $spacing-6;
+  max-width: $max-width-7xl;
+  margin: 0 auto;
+  animation: fadeInUp 0.6s ease-out;
+  
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-4;
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-3;
+  }
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-6;
+  flex-wrap: wrap;
+  gap: $spacing-4;
+  
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: $neutral-900;
+    background: linear-gradient(135deg, $primary-600 0%, $secondary-600 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+    
+    @media (max-width: $breakpoint-md) {
+      font-size: 1.75rem;
+    }
+    
+    @media (max-width: $breakpoint-sm) {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .btn {
+    flex-shrink: 0;
+    
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-4;
+  background: $neutral-50;
+  border-radius: $border-radius-lg;
+  margin-bottom: $spacing-6;
+  flex-wrap: wrap;
+  
+  @media (max-width: $breakpoint-sm) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: $spacing-3;
+  }
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  
+  label {
+    font-weight: 500;
+    color: $neutral-700;
+    white-space: nowrap;
+  }
+  
+  .form-select {
+    min-width: 200px;
+    
+    @media (max-width: $breakpoint-sm) {
+      min-width: 100%;
+    }
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.tasks-list-container {
+  background: $background-light;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-md;
+}
+
+.task-list-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  padding: $spacing-4;
+  border-bottom: 1px solid $neutral-200;
+  transition: all $transition;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background: $neutral-50;
+    transform: translateX(4px);
+  }
+  
+  .task-status-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    
+    &.status-completed {
+      color: $success;
+    }
+    
+    &.status-pending {
+      color: $neutral-400;
+    }
+    
+    &.status-in_progress {
+      color: $primary-500;
+    }
+    
+    &.status-for_review {
+      color: $warning;
+    }
+  }
+  
+  .task-list-info {
+    flex: 1;
+    
+    .task-title {
+      font-weight: 600;
+      color: $neutral-900;
+      margin-bottom: $spacing-1;
+      line-height: 1.4;
+    }
+    
+    .task-project-name {
+      font-size: 0.875rem;
+      color: $neutral-600;
+    }
+    
+    .task-documents-badge {
+      display: flex;
+      align-items: center;
+      gap: $spacing-1;
+      font-size: 0.75rem;
+      color: $neutral-500;
+      margin-top: $spacing-1;
+      
+      svg {
+        font-size: 0.75rem;
+      }
+    }
+  }
+  
+  .task-list-details {
+    display: flex;
+    align-items: center;
+    gap: $spacing-4;
+    flex-shrink: 0;
+    
+    .task-due-date {
+      font-size: 0.875rem;
+      color: $neutral-600;
+      white-space: nowrap;
+    }
+    
+    .task-assignee-avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid $neutral-200;
+    }
+  }
+}
+
+.empty-list-message {
+  text-align: center;
+  padding: $spacing-12 $spacing-6;
+  
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $neutral-700;
+    margin-bottom: $spacing-2;
+  }
+  
+  p {
+    color: $neutral-600;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.task-list-item {
+  opacity: 0;
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@for $i from 1 through 20 {
+  .tasks-list-container > :nth-child(#{$i}) {
+    animation-delay: #{$i * 0.05}s;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .tasks-page {
+    background: $background-dark;
+  }
+  
+  .page-header h1 {
+    background: linear-gradient(135deg, $primary-400 0%, $secondary-400 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .filters-bar {
+    background: $neutral-800;
+    
+    label {
+      color: $neutral-300;
+    }
+  }
+  
+  .tasks-list-container {
+    background: $neutral-900;
+    border-color: $neutral-700;
+  }
+  
+  .task-list-item {
+    border-bottom-color: $neutral-700;
+    
+    &:hover {
+      background: $neutral-800;
+    }
+    
+    .task-list-info {
+      .task-title {
+        color: $neutral-100;
+      }
+      
+      .task-project-name {
+        color: $neutral-400;
+      }
+      
+      .task-documents-badge {
+        color: $neutral-500;
+      }
+    }
+    
+    .task-list-details {
+      .task-due-date {
+        color: $neutral-400;
+      }
+    }
+  }
+  
+  .empty-list-message {
+    h2 {
+      color: $neutral-200;
+    }
+    
+    p {
+      color: $neutral-400;
+    }
+  }
+}
+
+.task-list-item:focus-visible {
+  outline: 2px solid $primary-500;
+  outline-offset: -2px;
+}
+
+@media (max-width: $breakpoint-md) {
+  .task-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-2;
+    
+    .task-list-details {
+      width: 100%;
+      justify-content: space-between;
+      margin-top: $spacing-2;
+      padding-top: $spacing-2;
+      border-top: 1px solid $neutral-200;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .task-list-item {
+    padding: $spacing-3;
+    
+    .task-list-details {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-2;
+    }
+  }
+  
+  .empty-list-message {
+    padding: $spacing-8 $spacing-4;
+  }
+}

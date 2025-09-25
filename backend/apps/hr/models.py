@@ -1,0 +1,84 @@
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+from apps.core.models import TimeStampedModel
+
+class EmployeeDocument(TimeStampedModel):
+    """
+    Modelo para almacenar los documentos del expediente de un empleado.
+    """
+    class DocumentType(models.TextChoices):
+        CV = 'CV', _('Currículum Vitae')
+        ID = 'ID', _('Identificación Oficial')
+        CONTRACT = 'CONTRACT', _('Contrato')
+        CERTIFICATION = 'CERTIFICATION', _('Certificación')
+        OTHER = 'OTHER', _('Otro')
+
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='employee_documents',
+        verbose_name=_("Empleado")
+    )
+    document_type = models.CharField(
+        max_length=20,
+        choices=DocumentType.choices,
+        verbose_name=_("Tipo de Documento")
+    )
+    title = models.CharField(
+        max_length=255,
+        verbose_name=_("Título del Documento")
+    )
+    file = models.FileField(
+        upload_to='hr_documents/%Y/%m/',
+        verbose_name=_("Archivo")
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_hr_documents',
+        verbose_name=_("Subido por (RH)")
+    )
+
+    class Meta:
+        verbose_name = _("Documento de Empleado")
+        verbose_name_plural = _("Documentos de Empleados")
+        ordering = ['employee', '-created_at']
+
+    def __str__(self):
+        return f"{self.get_document_type_display()} - {self.employee.get_full_name()}"
+
+class PerformanceReview(TimeStampedModel):
+    """
+    Modelo para registrar las evaluaciones de desempeño de los empleados.
+    """
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='performance_reviews',
+        verbose_name=_("Empleado Evaluado")
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='conducted_reviews',
+        verbose_name=_("Evaluador")
+    )
+    review_date = models.DateField(verbose_name=_("Fecha de Evaluación"))
+    overall_rating = models.PositiveSmallIntegerField(
+        verbose_name=_("Calificación General (1-5)"),
+        help_text=_("Calificación del 1 (necesita mejorar) al 5 (excelente).")
+    )
+    strengths = models.TextField(verbose_name=_("Fortalezas"))
+    areas_for_improvement = models.TextField(verbose_name=_("Áreas de Mejora"))
+    comments = models.TextField(blank=True, verbose_name=_("Comentarios Adicionales"))
+
+    class Meta:
+        verbose_name = _("Evaluación de Desempeño")
+        verbose_name_plural = _("Evaluaciones de Desempeño")
+        ordering = ['employee', '-review_date']
+
+    def __str__(self):
+        return f"Evaluación de {self.employee.get_full_name()} el {self.review_date}"

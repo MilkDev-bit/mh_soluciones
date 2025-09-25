@@ -1,0 +1,720 @@
+@import '../../assets/styles/variables';
+
+.project-detail-page {
+  padding: $spacing-6;
+  max-width: $max-width-7xl;
+  margin: 0 auto;
+  animation: fadeInUp 0.6s ease-out;
+  
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-4;
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-3;
+  }
+}
+
+.page-header {
+  margin-bottom: $spacing-8;
+  
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: $spacing-1 $spacing-3;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: $border-radius-full;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: $spacing-3;
+    
+    &.status-planning {
+      background: rgba($info, 0.15);
+      color: $info;
+    }
+    
+    &.status-in_progress {
+      background: rgba($primary-500, 0.15);
+      color: $primary-600;
+    }
+    
+    &.status-completed {
+      background: rgba($success, 0.15);
+      color: $success;
+    }
+    
+    &.status-on_hold {
+      background: rgba($warning, 0.15);
+      color: $warning;
+    }
+  }
+  
+  .project-title-detail {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: $neutral-900;
+    margin: 0 0 $spacing-2;
+    line-height: 1.2;
+    
+    @media (max-width: $breakpoint-md) {
+      font-size: 2rem;
+    }
+    
+    @media (max-width: $breakpoint-sm) {
+      font-size: 1.75rem;
+    }
+  }
+  
+  .project-description-detail {
+    font-size: 1.125rem;
+    color: $neutral-600;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0;
+    
+    @media (max-width: $breakpoint-sm) {
+      font-size: 1rem;
+    }
+  }
+  
+  .page-header-actions {
+    margin-top: $spacing-4;
+    display: flex;
+    gap: $spacing-3;
+    flex-wrap: wrap;
+  }
+}
+
+.project-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $spacing-6;
+  
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: 1fr 320px;
+  }
+}
+
+.main-column,
+.sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-6;
+}
+
+.glass-card {
+  background: $background-light;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  padding: $spacing-6;
+  box-shadow: $shadow-md;
+  transition: all $transition;
+  
+  &:hover {
+    box-shadow: $shadow-lg;
+  }
+  
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-4;
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-4;
+  padding-bottom: $spacing-3;
+  border-bottom: 1px solid $neutral-200;
+  
+  h2, h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: $neutral-900;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+  
+  .btn-sm {
+    flex-shrink: 0;
+  }
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  padding: $spacing-3;
+  border-radius: $border-radius;
+  transition: all $transition;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  
+  &:hover {
+    background: $neutral-100;
+    transform: translateX(4px);
+  }
+  
+  .task-status-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    
+    &.status-completed {
+      color: $success;
+    }
+    
+    &.status-pending {
+      color: $neutral-400;
+    }
+    
+    &.status-in_progress {
+      color: $primary-500;
+    }
+    
+    &.status-for_review {
+      color: $warning;
+    }
+  }
+  
+  .task-info {
+    flex: 1;
+    
+    .task-title {
+      font-weight: 500;
+      color: $neutral-900;
+      margin-bottom: $spacing-1;
+    }
+    
+    .task-due-date {
+      font-size: 0.875rem;
+      color: $neutral-600;
+    }
+  }
+  
+  .task-right-section {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+  
+  .task-assignee-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid $neutral-200;
+  }
+  
+  .task-documents-badge {
+    display: flex;
+    align-items: center;
+    gap: $spacing-1;
+    font-size: 0.75rem;
+    color: $neutral-500;
+    background: $neutral-100;
+    padding: $spacing-1 $spacing-2;
+    border-radius: $border-radius-full;
+    
+    svg {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  
+  .member-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid $neutral-200;
+    flex-shrink: 0;
+  }
+  
+  .member-info {
+    flex: 1;
+    
+    .member-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: $neutral-900;
+      margin-bottom: $spacing-1;
+    }
+    
+    .member-role {
+      font-size: 0.875rem;
+      color: $neutral-600;
+      text-transform: capitalize;
+    }
+  }
+  
+  .btn-danger {
+    opacity: 0;
+    transition: opacity $transition;
+  }
+  
+  &:hover .btn-danger {
+    opacity: 1;
+  }
+}
+
+.comment-form,
+.submission-form {
+  margin-top: $spacing-4;
+  padding-top: $spacing-4;
+  border-top: 1px solid $neutral-200;
+  
+  h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $neutral-900;
+    margin-bottom: $spacing-3;
+  }
+  
+  textarea {
+    width: 100%;
+    padding: $spacing-3;
+    border: 1px solid $neutral-300;
+    border-radius: $border-radius;
+    background: $neutral-50;
+    font-family: $font-sans;
+    resize: vertical;
+    min-height: 80px;
+    transition: all $transition;
+    
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+  }
+  
+  input[type="url"],
+  input[type="file"] {
+    width: 100%;
+    padding: $spacing-3;
+    border: 1px solid $neutral-300;
+    border-radius: $border-radius;
+    background: $neutral-50;
+    font-family: $font-sans;
+    transition: all $transition;
+    
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+  }
+  
+  .btn {
+    margin-top: $spacing-3;
+  }
+}
+
+.comment-list,
+.submissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  margin-bottom: $spacing-4;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: $spacing-2;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $neutral-300;
+    border-radius: $border-radius-full;
+    
+    &:hover {
+      background: $neutral-400;
+    }
+  }
+}
+
+.comment-item,
+.submission-item {
+  display: flex;
+  gap: $spacing-3;
+  padding: $spacing-3;
+  background: $neutral-50;
+  border-radius: $border-radius;
+  border-left: 3px solid $primary-500;
+  
+  .comment-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  
+  .comment-content,
+  .submission-content {
+    flex: 1;
+    
+    .comment-header,
+    .submission-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: $spacing-2;
+      
+      strong {
+        font-weight: 600;
+        color: $neutral-900;
+      }
+      
+      span {
+        font-size: 0.875rem;
+        color: $neutral-500;
+      }
+    }
+    
+    p {
+      margin: 0;
+      color: $neutral-700;
+      line-height: 1.5;
+    }
+  }
+  
+  .comment-actions,
+  .submission-actions {
+    display: flex;
+    gap: $spacing-2;
+    opacity: 0;
+    transition: opacity $transition;
+    
+    button {
+      padding: $spacing-1;
+      border-radius: $border-radius;
+      color: $neutral-600;
+      transition: all $transition;
+      
+      &:hover {
+        background: $neutral-200;
+        color: $neutral-900;
+      }
+    }
+  }
+  
+  &:hover {
+    .comment-actions,
+    .submission-actions {
+      opacity: 1;
+    }
+  }
+}
+
+.empty-list-message {
+  text-align: center;
+  padding: $spacing-8 $spacing-4;
+  color: $neutral-500;
+  
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: $neutral-700;
+    margin-bottom: $spacing-2;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .project-detail-page {
+    background: $background-dark;
+  }
+  
+  .page-header {
+    .project-title-detail {
+      color: $neutral-100;
+    }
+    
+    .project-description-detail {
+      color: $neutral-400;
+    }
+  }
+  
+  .glass-card {
+    background: $neutral-900;
+    border-color: $neutral-700;
+    
+    .section-header {
+      border-bottom-color: $neutral-700;
+      
+      h2, h3 {
+        color: $neutral-100;
+      }
+    }
+  }
+  
+  .task-item {
+    &:hover {
+      background: $neutral-800;
+    }
+    
+    .task-info {
+      .task-title {
+        color: $neutral-100;
+      }
+      
+      .task-due-date {
+        color: $neutral-400;
+      }
+    }
+    
+    .task-documents-badge {
+      background: $neutral-800;
+      color: $neutral-400;
+    }
+  }
+  
+  .member-item {
+    .member-info {
+      .member-name {
+        color: $neutral-100;
+      }
+      
+      .member-role {
+        color: $neutral-400;
+      }
+    }
+  }
+  
+  .comment-form,
+  .submission-form {
+    border-top-color: $neutral-700;
+    
+    h4 {
+      color: $neutral-100;
+    }
+    
+    textarea,
+    input[type="url"],
+    input[type="file"] {
+      background: $neutral-800;
+      border-color: $neutral-600;
+      color: $neutral-100;
+      
+      &:focus {
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.2);
+      }
+    }
+  }
+  
+  .comment-item,
+  .submission-item {
+    background: $neutral-800;
+    
+    .comment-content,
+    .submission-content {
+      .comment-header,
+      .submission-header {
+        strong {
+          color: $neutral-100;
+        }
+      }
+      
+      p {
+        color: $neutral-300;
+      }
+    }
+    
+    .comment-actions,
+    .submission-actions {
+      button {
+        color: $neutral-400;
+        
+        &:hover {
+          background: $neutral-700;
+          color: $neutral-100;
+        }
+      }
+    }
+  }
+  
+  .empty-list-message {
+    color: $neutral-400;
+    
+    h2 {
+      color: $neutral-200;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .page-header {
+    .page-header-actions {
+      flex-direction: column;
+      
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+  
+  .project-layout-grid {
+    gap: $spacing-4;
+  }
+  
+  .task-item {
+    padding: $spacing-2;
+    
+    .task-right-section {
+      flex-direction: column;
+      gap: $spacing-1;
+    }
+  }
+  
+  .comment-item,
+  .submission-item {
+    flex-direction: column;
+    text-align: center;
+    
+    .comment-actions,
+    .submission-actions {
+      justify-content: center;
+      opacity: 1;
+      margin-top: $spacing-2;
+    }
+  }
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+}
+
+.event-item {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-3;
+  padding: $spacing-3;
+  background: $neutral-50;
+  border-radius: $border-radius;
+  border-left: 3px solid;
+  position: relative;
+  transition: all $transition;
+  
+  &:hover {
+    transform: translateX(2px);
+    box-shadow: $shadow-sm;
+  }
+  
+  .event-color-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: $spacing-2;
+  }
+  
+  .event-content {
+    flex: 1;
+    
+    .event-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: $neutral-900;
+      margin: 0 0 $spacing-1;
+      line-height: 1.3;
+    }
+    
+    .event-date {
+      font-size: 0.8rem;
+      color: $neutral-600;
+      margin: 0 0 $spacing-1;
+      font-weight: 500;
+    }
+    
+    .event-description {
+      font-size: 0.8rem;
+      color: $neutral-700;
+      margin: 0;
+      line-height: 1.4;
+
+      @include line-clamp(2);
+    }
+  }
+}
+
+.no-events-message {
+  text-align: center;
+  padding: $spacing-4;
+  color: $neutral-500;
+  font-style: italic;
+  margin: 0;
+}
+
+@media (max-width: $breakpoint-sm) {
+  .event-item {
+    flex-direction: column;
+    text-align: center;
+    
+    .event-color-indicator {
+      align-self: center;
+      margin-top: 0;
+      margin-bottom: $spacing-2;
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .event-item {
+    background: $neutral-800;
+    
+    .event-content {
+      .event-title {
+        color: $neutral-100;
+      }
+      
+      .event-date {
+        color: $neutral-400;
+      }
+      
+      .event-description {
+        color: $neutral-300;
+      }
+    }
+  }
+  
+  .no-events-message {
+    color: $neutral-400;
+  }
+}

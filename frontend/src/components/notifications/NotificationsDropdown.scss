@@ -1,0 +1,202 @@
+.notifications-dropdown {
+  position: relative;
+  
+  .notifications-button {
+    position: relative;
+    background: none;
+    border: none;
+    padding: $spacing-2;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    color: $neutral-500;
+    transition: all $transition-fast;
+    
+    &:hover {
+      background: $neutral-100;
+      color: $neutral-700;
+    }
+    
+    &.active {
+      background: $neutral-200;
+      color: $neutral-700;
+    }
+    
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .notification-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: $error;
+      color: $white;
+      border-radius: $border-radius-full;
+      min-width: 18px;
+      height: 18px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+  }
+  
+  .notifications-panel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 400px;
+    background: $white;
+    border: 1px solid $neutral-200;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-xl;
+    z-index: $z-dropdown;
+    margin-top: $spacing-2;
+    
+    .notifications-header {
+      padding: $spacing-4;
+      border-bottom: 1px solid $neutral-200;
+      @include flex-between;
+      
+      h3 {
+        margin: 0;
+        font-size: $text-base;
+        font-weight: 600;
+        color: $neutral-900;
+      }
+      
+      .mark-all-read {
+        background: none;
+        border: none;
+        color: $secondary-500;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: $spacing-1;
+        
+        &:hover {
+          color: $secondary-600;
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+    
+    .notifications-list {
+      max-height: 400px;
+      overflow-y: auto;
+      
+      .loading, .empty-state {
+        padding: $spacing-8;
+        text-align: center;
+        color: $neutral-500;
+        
+        svg {
+          width: 48px;
+          height: 48px;
+          margin-bottom: $spacing-4;
+          opacity: 0.5;
+        }
+      }
+      
+      .notification-item {
+        display: flex;
+        padding: $spacing-3 $spacing-4;
+        border-bottom: 1px solid $neutral-100;
+        cursor: pointer;
+        transition: background $transition-fast;
+        position: relative;
+        
+        &:hover {
+          background: $background-gray;
+        }
+        
+        &.unread {
+          background: $secondary-50;
+          
+          &:hover {
+            background: $secondary-100;
+          }
+        }
+        
+        .notification-icon {
+          margin-right: $spacing-3;
+          margin-top: 2px;
+          
+          svg {
+            width: 16px;
+            height: 16px;
+            
+            &.icon-task { color: $success; }
+            &.icon-project { color: $warning; }
+            &.icon-info { color: $info; }
+          }
+        }
+        
+        .notification-content {
+          flex: 1;
+          
+          .notification-title {
+            font-weight: 600;
+            color: $neutral-900;
+            margin-bottom: 4px;
+            font-size: 14px;
+          }
+          
+          .notification-message {
+            color: $neutral-500;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+          }
+          
+          .notification-time {
+            color: $neutral-400;
+            font-size: 11px;
+          }
+        }
+        
+        .unread-dot {
+          width: 8px;
+          height: 8px;
+          background: $secondary-500;
+          border-radius: $border-radius-full;
+          margin-left: $spacing-2;
+          margin-top: $spacing-2;
+        }
+      }
+    }
+    
+    .notifications-footer {
+      padding: $spacing-3 $spacing-4;
+      border-top: 1px solid $neutral-200;
+      text-align: center;
+      
+      .view-all {
+        background: none;
+        border: none;
+        color: $secondary-500;
+        font-size: 13px;
+        cursor: pointer;
+        
+        &:hover {
+          color: $secondary-600;
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+}
+
+@include mobile-only {
+  .notifications-dropdown .notifications-panel {
+    width: 320px;
+    right: -50px;
+  }
+}
