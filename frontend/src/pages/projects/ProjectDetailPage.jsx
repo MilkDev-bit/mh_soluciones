@@ -625,23 +625,6 @@ const ProjectDetailPage = () => {
       </Helmet>
 
       {isModalOpen && (
-        <Modal title="Qr" onClose={() => setIsModalOpen(false)}>
-          <TaskForm
-            onCancel={() => setIsModalOpen(false)}
-            onTaskSaved={handleQrCreated}
-            project={project}
-            projectMembers={
-              project.members?.map((member) => ({
-                id: member?.user?.id || member?.id,
-                first_name: member?.user?.first_name || member?.first_name,
-                last_name: member?.user?.last_name || member?.last_name
-              })) || []
-            }
-          />
-        </Modal>
-      )}
-
-      {isModalOpen && (
         <Modal title="Nueva Tarea" onClose={() => setIsModalOpen(false)}>
           <TaskForm
             onCancel={() => setIsModalOpen(false)}
