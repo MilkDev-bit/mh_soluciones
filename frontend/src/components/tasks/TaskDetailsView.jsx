@@ -15,7 +15,7 @@ import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/d
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
-  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar
+  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw
 } from 'react-icons/fi';
 import './TaskDetailsView.scss';
 
@@ -77,7 +77,6 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     } catch (error) {
       console.error('Error loading task comments:', error);
       setTaskComments([]);
-      fetchProjectData();
     }
   };
   
@@ -90,7 +89,6 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       console.error('Error loading documents:', error);
       toast.error('Error al cargar los documentos');
       setDocuments([]);
-      fetchProjectData();
     }
   };
 
@@ -145,10 +143,11 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       setSubmissionNotes('');
 
       await loadDocuments();
-      onDocumentUpload?.();
+      if (typeof onDocumentUpload === 'function') {
+        onDocumentUpload();
+      }
 
       setTimeout(() => setUploadProgress(0), 1000);
-      fetchProjectData();
     } catch (error) {
       console.error('Error al subir archivo:', error);
       toast.error(error.response?.data?.message || '❌ Error al subir el archivo');
@@ -178,7 +177,6 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       setSubmissions(prev => [...prev, newSubmission]);
       submissionReset();
       toast.success('Entrega añadida con éxito');
-      fetchProjectData();
       await fetchSubmissions();
     } catch (error) {
       toast.error('No se pudo añadir la entrega.');
@@ -196,9 +194,12 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       const taskData = { ...editedTask };
       const updatedTask = await updateTask(task.id, taskData);
       toast.success('✅ Tarea actualizada correctamente');
-      fetchProjectData();
+      
+      if (typeof onTaskUpdated === 'function') {
+        onTaskUpdated(updatedTask);
+      }
+      
       setIsEditing(false);
-      onTaskUpdated?.(updatedTask);
     } catch (error) {
       console.error('Error al actualizar tarea:', error);
       toast.error(error.response?.data?.message || '❌ Error al actualizar la tarea');
@@ -216,9 +217,12 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     try {
       await deleteTask(task.id);
       toast.success('✅ Tarea eliminada correctamente');
-      onTaskDeleted?.(task.id);
+      
+      if (typeof onTaskDeleted === 'function') {
+        onTaskDeleted(task.id);
+      }
+      
       onClose();
-      fetchProjectData();
     } catch (error) {
       console.error('Error al eliminar tarea:', error);
       toast.error(error.response?.data?.message || '❌ Error al eliminar la tarea');
@@ -236,9 +240,8 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     try {
       await addTaskComment(task.id, { comment: data.comment });
       toast.success('Comentario añadido correctamente');
-      fetchProjectData();
-      commentReset();
       await loadTaskComments();
+      commentReset();
     } catch (error) {
       toast.error('No se pudo añadir el comentario.');
       console.error("Error al añadir comentario:", error);
@@ -289,7 +292,11 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     try {
       const updatedTaskData = await updateTask(task.id, { status: 'COMPLETED' });
       toast.success('¡Tarea completada!');
-      onTaskUpdated?.(updatedTaskData);
+      
+      if (typeof onTaskUpdated === 'function') {
+        onTaskUpdated(updatedTaskData);
+      }
+      
       onClose();
     } catch (error) {
       toast.error('No se pudo actualizar la tarea.');
@@ -308,7 +315,11 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     try {
         const updatedTaskData = await updateTask(task.id, { status: 'IN_PROGRESS' });
         toast.success('✅ Tarea devuelta para corrección.');
-        onTaskUpdated?.(updatedTaskData);
+        
+        if (typeof onTaskUpdated === 'function') {
+          onTaskUpdated(updatedTaskData);
+        }
+        
     } catch (error) {
         toast.error('❌ No se pudo reasignar la tarea.');
         console.error("Error al reasignar la tarea:", error);
@@ -332,6 +343,11 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       console.error('Error al formatear fecha:', error);
       return 'Fecha desconocida';
     }
+  };
+
+  const handleRefreshData = async () => {
+    await Promise.all([loadTaskComments(), fetchSubmissions(), loadDocuments()]);
+    toast.success('Datos actualizados');
   };
 
   return (
@@ -403,6 +419,10 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
           )}
 
           <div className="header-actions">
+            <button className="btn btn-icon btn-secondary" onClick={handleRefreshData} title="Actualizar datos">
+              <FiRefreshCw size={18} />
+            </button>
+
             {canCompleteTask && !isEditing && (
               <div className="action-group">
                 {task?.status !== 'COMPLETED' && (
