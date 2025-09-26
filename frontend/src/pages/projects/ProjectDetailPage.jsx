@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -377,7 +377,10 @@ const ProjectDetailPage = () => {
 
     try {
       setLoading(true);
-      const [projectData, userData] = await Promise.all([getProjectById(projectId), getCurrentUserFromSession()]);
+      const [projectData, userData] = await Promise.all([
+        getProjectById(projectId), 
+        getCurrentUserFromSession()
+      ]);
 
       if (userData?.role === 'STUDENT') {
         const isMember = (projectData?.members || []).some(
@@ -396,7 +399,11 @@ const ProjectDetailPage = () => {
       setProject({ ...projectData, members: safeMembers });
       setCurrentUser(userData);
 
-      const tasksData = await getTasks(projectId);
+      const [tasksData, eventsData] = await Promise.all([
+        getTasks(projectId),
+        getEventsByProject(projectId)
+      ]);
+
       const rawTasks = Array.isArray(tasksData?.results) ? tasksData.results : Array.isArray(tasksData) ? tasksData : [];
       let safeTasks = (rawTasks || []).filter(Boolean);
       if (userData?.role === 'STUDENT') {
@@ -413,6 +420,7 @@ const ProjectDetailPage = () => {
           return { taskId: task.id, documents: [] };
         }
       });
+      
       const documentsResults = await Promise.all(documentsPromises);
       const documentsMap = {};
       documentsResults.forEach((r) => {
@@ -420,7 +428,17 @@ const ProjectDetailPage = () => {
       });
       setTaskDocuments(documentsMap);
 
-      await fetchProjectEvents();
+      const eventList = eventsData?.results || eventsData || [];
+      const currentDate = new Date();
+      const upcomingEvents = eventList
+        .filter((event) => {
+          if (!event?.start_time) return false;
+          const eventDate = parseISO(event.start_time);
+          return !isAfter(currentDate, eventDate);
+        })
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      setProjectEvents(upcomingEvents.slice(0, 3));
+
     } catch (error) {
       console.error('Error fetching project data:', error);
       toast.error('No se pudo cargar la información del proyecto.');
@@ -429,7 +447,7 @@ const ProjectDetailPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [projectId, fetchProjectEvents]);
+  }, [projectId]);
 
   useEffect(() => {
     fetchProjectData();
@@ -444,7 +462,6 @@ const ProjectDetailPage = () => {
       await deleteProject(projectId);
       toast.success('Proyecto eliminado correctamente.');
       navigate('/projects');
-      fetchProjectData();
     } catch (error) {
       console.error('Error deleting project:', error);
       const errorMessage = error.response?.data?.error || 'No se pudo eliminar el proyecto. Puede que tenga tareas o datos asociados.';
@@ -460,7 +477,6 @@ const ProjectDetailPage = () => {
         comments: (prev?.comments || []).map((c) => (c.id === commentId ? updatedComment : c))
       }));
       toast.success('Comentario actualizado.');
-      fetchProjectData();
     } catch (error) {
       console.error('Error updating comment:', error);
       toast.error('No se pudo actualizar el comentario.');
@@ -475,7 +491,6 @@ const ProjectDetailPage = () => {
         comments: (prev?.comments || []).filter((c) => c.id !== commentId)
       }));
       toast.success('Comentario eliminado.');
-      fetchProjectData();
     } catch (error) {
       console.error('Error deleting comment:', error);
       toast.error('No se pudo eliminar el comentario.');
@@ -490,7 +505,6 @@ const ProjectDetailPage = () => {
         submissions: (prev?.submissions || []).map((s) => (s.id === submissionId ? updatedSubmission : s))
       }));
       toast.success('Entrega actualizada correctamente.');
-      fetchProjectData();
     } catch (error) {
       console.error('Error updating submission:', error?.response?.data || error);
       toast.error('No se pudo actualizar la entrega.');
@@ -505,7 +519,6 @@ const ProjectDetailPage = () => {
         submissions: (prev?.submissions || []).filter((s) => s.id !== submissionId)
       }));
       toast.success('Entrega eliminada correctamente.');
-      fetchProjectData();
     } catch (error) {
       console.error('Error deleting submission:', error);
       toast.error('No se pudo eliminar la entrega.');
@@ -528,7 +541,6 @@ const ProjectDetailPage = () => {
     setProject((prev) => ({ ...prev, ...updatedProject }));
     setIsEditModalOpen(false);
     toast.success('Proyecto actualizado correctamente.');
-    fetchProjectData();
   };
 
   const handleAddMember = () => setIsAddMemberModalOpen(true);
@@ -546,7 +558,6 @@ const ProjectDetailPage = () => {
       setProject((prev) => ({ ...prev, comments: [...(prev?.comments || []), newCommentWithUser] }));
       commentReset();
       toast.success('Comentario añadido');
-      fetchProjectData();
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('No se pudo añadir el comentario.');
@@ -570,7 +581,6 @@ const ProjectDetailPage = () => {
       setProject((prev) => ({ ...prev, submissions: [...(prev?.submissions || []), newSubmissionWithUser] }));
       submissionReset();
       toast.success('Entrega añadida con éxito');
-      fetchProjectData();
     } catch (error) {
       console.error('Error adding submission:', error);
       toast.error('No se pudo añadir la entrega.');

@@ -160,7 +160,8 @@
   margin-bottom: $spacing-5;
   flex: 1;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 3;  line-clamp: 3;
+  
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -292,7 +293,8 @@
   
   .page-header h1 {
     background: linear-gradient(135deg, $primary-400 0%, $secondary-400 100%);
-    -webkit-background-clip: text;
+    -webkit-background-clip: text;    background-clip: text;
+    
     -webkit-text-fill-color: transparent;
   }
   

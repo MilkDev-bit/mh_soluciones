@@ -27,7 +27,7 @@ const TasksPage = () => {
   const [taskDocuments, setTaskDocuments] = useState({});
 
   useEffect(() => {
-    const fetchData = async () => {
+      const fetchData = async () => {
       try {
         setLoading(true);
         const [userData, tasksData, projectsData] = await Promise.all([
@@ -73,6 +73,7 @@ const TasksPage = () => {
           documentsMap[result.taskId] = result.documents;
         });
         setTaskDocuments(documentsMap);
+        
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('No se pudieron cargar los datos.');
