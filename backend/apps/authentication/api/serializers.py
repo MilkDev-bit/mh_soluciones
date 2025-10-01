@@ -22,24 +22,22 @@ class UserSerializer(serializers.ModelSerializer):
         """
         Genera la URL absoluta para la imagen de perfil.
         """
+        request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
-            base_url = "http://localhost:8000"
-            return f"{base_url}{obj.profile_picture.url}"
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            return obj.profile_picture.url
         return None
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """
-    Serializador específico para ACTUALIZAR el perfil del usuario,
-    permitiendo la escritura de la imagen de perfil.
+    Serializador específico para ACTUALIZAR el perfil del usuario.
     """
     class Meta:
         model = CustomUser
         fields = ('first_name', 'last_name', 'email', 'profile_picture')
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    """
-    Serializador para crear nuevos usuarios desde el panel de administración.
-    """
     class Meta:
         model = CustomUser
         fields = (
@@ -56,9 +54,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """
-    Serializador para el inicio de sesión de usuario (login).
-    """
     username = serializers.CharField(label="Username", write_only=True)
     password = serializers.CharField(
         label="Password",
@@ -88,9 +83,6 @@ class LoginSerializer(serializers.Serializer):
 
 
 class TwoFactorSerializer(serializers.Serializer):
-    """
-    Serializador para verificar el código de 2FA.
-    """
     user_pk = serializers.IntegerField(write_only=True)
     otp_token = serializers.CharField(
         label="OTP Token",
