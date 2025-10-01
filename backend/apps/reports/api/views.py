@@ -1,17 +1,23 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, IntegerField
 from django.utils import timezone
+from datetime import timedelta
 
 from apps.projects.models import Project
 from apps.tasks.models import Task
 from apps.authentication.models import CustomUser
-from .serializers import SearchResultSerializer
+from .serializers import (
+    SearchResultSerializer, 
+    ProjectStatusSerializer, 
+    TaskSummarySerializer, 
+    UserActivitySerializer
+)
 
 class DashboardDataAPIView(APIView):
     """
-    Vista de API que devuelve datos agregados para el dashboard principal.
+    Vista de API que devuelve datos agregados y robustos para el dashboard principal.
     Los datos se personalizan según el rol del usuario que realiza la petición.
     """
     permission_classes = [IsAuthenticated]
@@ -20,45 +26,76 @@ class DashboardDataAPIView(APIView):
         user = request.user
         data = {}
 
-        if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
-            data = self._get_admin_dashboard_data()
-        elif user.role in ['DIRECTOR', 'PROFESSOR']:
-            data = self._get_manager_dashboard_data(user)
-        elif user.role == 'STUDENT':
-            data = self._get_student_dashboard_data(user)
-        elif user.role == 'CLIENT':
-            data = self._get_client_dashboard_data(user)
+        role_map = {
+            'SUPERADMIN': self._get_admin_dashboard_data,
+            'ADMIN': self._get_admin_dashboard_data,
+            'CEO': self._get_admin_dashboard_data,
+            'RH': self._get_admin_dashboard_data,
+            'DIRECTOR': self._get_manager_dashboard_data,
+            'PROFESSOR': self._get_manager_dashboard_data,
+            'STUDENT': self._get_student_dashboard_data,
+            'CLIENT': self._get_client_dashboard_data,
+        }
+
+        dashboard_function = role_map.get(user.role)
+        if dashboard_function:
+            data = dashboard_function(user)
         
         return Response(data)
 
-    def _get_admin_dashboard_data(self):
-        """Genera datos para los roles de alta gerencia."""
+    def _get_admin_dashboard_data(self, user):
+        """Genera datos para los roles de alta gerencia (Admins, CEO, RH)."""
+        
         total_projects = Project.objects.count()
         active_users = CustomUser.objects.filter(is_active=True).exclude(role='CLIENT').count()
         completed_tasks_month = Task.objects.filter(
-            status='COMPLETED',
+            status=Task.TaskStatus.COMPLETED,
             updated_at__month=timezone.now().month
         ).count()
+        projects_in_progress = Project.objects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
+
+        project_status_distribution = Project.objects.values('status').annotate(
+            count=Count('id')
+        ).order_by('status')
+
+        recent_tasks = Task.objects.order_by('-created_at')[:5]
         
+        recent_projects = Project.objects.order_by('-created_at')[:5]
+
         return {
-            'total_projects': total_projects,
-            'active_users': active_users,
-            'completed_tasks_this_month': completed_tasks_month,
-            'projects_in_progress': Project.objects.filter(status='IN_PROGRESS').count(),
+            'kpis': {
+                'total_projects': total_projects,
+                'active_users': active_users,
+                'completed_tasks_this_month': completed_tasks_month,
+                'projects_in_progress': projects_in_progress,
+            },
+            'charts': {
+                'project_status_distribution': list(project_status_distribution),
+            },
+            'recent_activity': {
+                'tasks': TaskSummarySerializer(recent_tasks, many=True).data,
+                'projects': ProjectStatusSerializer(recent_projects, many=True).data,
+            }
         }
 
     def _get_manager_dashboard_data(self, user):
         """Genera datos para Directores y Profesores."""
         user_projects = Project.objects.filter(members=user)
         team_members_ids = user_projects.values_list('members__id', flat=True).distinct()
-
         tasks = Task.objects.filter(project__in=user_projects)
         
         return {
-            'my_projects_count': user_projects.count(),
-            'team_members_count': len(team_members_ids),
-            'team_pending_tasks': tasks.filter(status='PENDING').count(),
-            'team_completed_tasks': tasks.filter(status='COMPLETED').count(),
+            'kpis': {
+                'my_projects_count': user_projects.count(),
+                'team_members_count': len(team_members_ids),
+                'team_pending_tasks': tasks.filter(status=Task.TaskStatus.PENDING).count(),
+                'team_completed_tasks': tasks.filter(status=Task.TaskStatus.COMPLETED).count(),
+            },
+            'projects_summary': ProjectStatusSerializer(user_projects[:10], many=True).data,
+            'upcoming_deadlines': TaskSummarySerializer(
+                tasks.filter(due_date__gte=timezone.now(), due_date__lte=timezone.now() + timedelta(days=7)).order_by('due_date'),
+                many=True
+            ).data,
         }
 
     def _get_student_dashboard_data(self, user):
@@ -66,35 +103,33 @@ class DashboardDataAPIView(APIView):
         my_tasks = Task.objects.filter(assigned_to=user)
         
         return {
-            'assigned_tasks': my_tasks.count(),
-            'pending_tasks': my_tasks.filter(status='PENDING').count(),
-            'completed_tasks': my_tasks.filter(status='COMPLETED').count(),
-            'overdue_tasks': my_tasks.filter(
-                due_date__lt=timezone.now().date(),
-                status__in=['PENDING', 'IN_PROGRESS']
-            ).count(),
+            'kpis': {
+                'assigned_tasks': my_tasks.count(),
+                'pending_tasks': my_tasks.filter(status=Task.TaskStatus.PENDING).count(),
+                'completed_tasks': my_tasks.filter(status=Task.TaskStatus.COMPLETED).count(),
+                'overdue_tasks': my_tasks.filter(
+                    due_date__lt=timezone.now().date(),
+                    status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]
+                ).count(),
+            },
+            'my_pending_tasks': TaskSummarySerializer(
+                my_tasks.filter(status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]).order_by('due_date')[:10],
+                many=True
+            ).data,
         }
     
     def _get_client_dashboard_data(self, user):
         """Genera datos para el rol de Cliente."""
         client_projects = Project.objects.filter(client=user)
         
-        project_data = []
-        for project in client_projects:
-            total_tasks = project.tasks.count()
-            completed_tasks = project.tasks.filter(status='COMPLETED').count()
-            progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
-            project_data.append({
-                'id': project.id,
-                'name': project.name,
-                'status': project.status,
-                'progress': round(progress)
-            })
-
         return {
-            'active_projects_count': client_projects.filter(status='IN_PROGRESS').count(),
-            'projects': project_data,
+            'kpis': {
+                'active_projects_count': client_projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count(),
+                'completed_projects_count': client_projects.filter(status=Project.ProjectStatus.COMPLETED).count(),
+            },
+            'projects_summary': ProjectStatusSerializer(client_projects, many=True).data,
         }
+
 
 class GlobalSearchAPIView(APIView):
     """
