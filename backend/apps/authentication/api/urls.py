@@ -22,7 +22,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginAPIView.as_view(), name='auth_login'),
     path('profile/', UserProfileAPIView.as_view(), name='auth_profile'),
-    path('change-password/', PasswordChangeAPIView.as_view(), name='auth_change_password'),
+    path('profile/change-password/', PasswordChangeAPIView.as_view(), name='auth_change_password'),
     path('2fa-setup/', TwoFactorSetupView.as_view(), name='auth_2fa_setup'),
     path('2fa-confirm/', TwoFactorConfirmView.as_view(), name='auth_2fa_confirm'),
     path('2fa-verify/', TwoFactorVerifyAPIView.as_view(), name='auth_2fa_verify'),

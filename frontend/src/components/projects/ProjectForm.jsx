@@ -1,14 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useEffect, useState, useRef } from 'react';
+import { useForm } from 'react-hook-form'; // Esta importación faltaba
 import toast from 'react-hot-toast';
 import { createProject, updateProject } from '../../services/projectService';
 import { getClients } from '../../services/userService'
 import '../../assets/styles/_buttons.scss';
+import './ProjectForm.scss';
 
 const ProjectForm = ({ project, onProjectSaved, onCancel }) => {
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm();
   const [clients, setClients] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
   const isEditMode = Boolean(project);
+
+  const clientValue = watch('client');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -30,8 +38,79 @@ const ProjectForm = ({ project, onProjectSaved, onCancel }) => {
       setValue('end_date', project.end_date);
       setValue('status', project.status);
       setValue('client', project.client?.id || project.client);
+      
+      if (project.client) {
+        const clientId = project.client?.id || project.client;
+        const client = clients.find(c => c.id.toString() === clientId.toString());
+        if (client) {
+          setSelectedClient(client);
+        }
+      }
     }
-  }, [project, isEditMode, setValue]);
+  }, [project, isEditMode, setValue, clients]);
+
+  useEffect(() => {
+    if (clientValue && clients.length > 0) {
+      const client = clients.find(c => c.id.toString() === clientValue.toString());
+      setSelectedClient(client || null);
+    } else {
+      setSelectedClient(null);
+    }
+  }, [clientValue, clients]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredClients = clients.filter(client => {
+    if (!searchTerm.trim()) return true;
+    
+    const fullName = `${client.first_name || ''} ${client.last_name || ''}`.toLowerCase();
+    const email = client.email ? client.email.toLowerCase() : '';
+    const searchLower = searchTerm.toLowerCase();
+    
+    return fullName.includes(searchLower) || email.includes(searchLower);
+  });
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSelectClient = (client) => {
+    setValue('client', client.id.toString(), { shouldValidate: true });
+    setSelectedClient(client);
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+  };
+
+  const handleRemoveSelection = () => {
+    setValue('client', '', { shouldValidate: true });
+    setSelectedClient(null);
+    setSearchTerm('');
+  };
+
+  const handleDropdownToggle = () => {
+    if (clients.length === 0) {
+      toast.error('No hay clientes disponibles');
+      return;
+    }
+    
+    setIsDropdownOpen(!isDropdownOpen);
+    if (!isDropdownOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  };
 
   const onSubmit = async (data) => {
     const payload = { ...data };
@@ -78,20 +157,85 @@ const ProjectForm = ({ project, onProjectSaved, onCancel }) => {
       </div>
       
       <div className="form-group">
-        <label htmlFor="client" className="form-label">Cliente</label>
-        <select 
-          id="client" 
-          className="form-select" 
+        <label htmlFor="client" className="form-label">Cliente *</label>
+        
+        <input
+          type="hidden"
           {...register('client', { required: 'El cliente es obligatorio' })}
-        >
-          <option value="">-- Selecciona un cliente --</option>
-          {clients.map(clientUser => (
-            <option key={clientUser.id} value={clientUser.id}>
-              {clientUser.first_name} {clientUser.last_name} ({clientUser.email})
-            </option>
-          ))}
-        </select>
-        {errors.client && <span className="error-message">{errors.client.message}</span>}
+        />
+        
+        <div className="custom-select" ref={dropdownRef}>
+          <div 
+            className={`select-trigger ${errors.client ? 'error' : ''}`}
+            onClick={handleDropdownToggle}
+          >
+            {selectedClient ? (
+              <div className="selected-item">
+                <span>
+                  {selectedClient.first_name} {selectedClient.last_name} 
+                  {selectedClient.email ? ` (${selectedClient.email})` : ''}
+                </span>
+                <button 
+                  type="button"
+                  className="clear-selection"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveSelection();
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <span className="placeholder">Seleccionar cliente...</span>
+            )}
+            <span className="dropdown-arrow">▼</span>
+          </div>
+          
+          {errors.client && <span className="error-message">{errors.client.message}</span>}
+          
+          {isDropdownOpen && (
+            <div className="dropdown-menu">
+              <div className="search-container">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Buscar cliente por nombre o email..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="search-input"
+                />
+              </div>
+              
+              <div className="dropdown-options">
+                {filteredClients.length > 0 ? (
+                  filteredClients.map(client => (
+                    <div
+                      key={client.id}
+                      className={`dropdown-option ${
+                        selectedClient?.id === client.id ? 'selected' : ''
+                      }`}
+                      onClick={() => handleSelectClient(client)}
+                    >
+                      <div className="client-info">
+                        <div className="client-name">
+                          {client.first_name} {client.last_name}
+                        </div>
+                        <div className="client-email">
+                          {client.email}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="dropdown-option disabled">
+                    {searchTerm ? 'No se encontraron clientes' : 'No hay clientes disponibles'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

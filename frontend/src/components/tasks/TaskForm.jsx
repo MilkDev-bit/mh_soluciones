@@ -1,22 +1,92 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { createTask, updateTask } from '../../services/taskService';
 import '../../assets/styles/_buttons.scss';
+import './TaskForm.scss';
 
 const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] }) => {
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
   const isEditMode = Boolean(task);
 
+  const assignedToValue = watch('assigned_to');
+
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode && task) {
       setValue('title', task.title);
       setValue('description', task.description);
       setValue('due_date', task.due_date);
       setValue('assigned_to', task.assigned_to?.id || '');
       setValue('status', task.status);
+      
+      if (task.assigned_to) {
+        setSelectedMember(task.assigned_to);
+      }
     }
   }, [task, isEditMode, setValue]);
+
+  useEffect(() => {
+    if (assignedToValue) {
+      const member = projectMembers.find(m => m.id.toString() === assignedToValue.toString());
+      setSelectedMember(member || null);
+    } else {
+      setSelectedMember(null);
+    }
+  }, [assignedToValue, projectMembers]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredMembers = projectMembers.filter(member => {
+    if (!searchTerm.trim()) return true;
+    
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.toLowerCase();
+    const email = member.email ? member.email.toLowerCase() : '';
+    const searchLower = searchTerm.toLowerCase();
+    
+    return fullName.includes(searchLower) || email.includes(searchLower);
+  });
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSelectMember = (member) => {
+    setValue('assigned_to', member.id.toString());
+    setSelectedMember(member);
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+  };
+
+  const handleRemoveSelection = () => {
+    setValue('assigned_to', '');
+    setSelectedMember(null);
+    setSearchTerm('');
+  };
+
+  const handleDropdownToggle = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+    if (!isDropdownOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -116,20 +186,77 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="assigned_to">Asignar a</label>
-          <select id="assigned_to" className="form-select" {...register('assigned_to')}>
-            <option value="">Sin asignar</option>
-            {Array.isArray(projectMembers) && projectMembers.length > 0 ? (
-              projectMembers.map(member => (
-                <option key={member.id} value={member.id}>
-                  {member.first_name} {member.last_name}
-                  {member.email ? ` (${member.email})` : ''}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>No hay miembros en este proyecto</option>
+          <label className="form-label">Asignar a</label>
+          
+          <input
+            type="hidden"
+            {...register('assigned_to')}
+          />
+          
+          <div className="custom-select" ref={dropdownRef}>
+            <div 
+              className="select-trigger"
+              onClick={handleDropdownToggle}
+            >
+              {selectedMember ? (
+                <div className="selected-member">
+                  <span>
+                    {selectedMember.first_name} {selectedMember.last_name}
+                    {selectedMember.email ? ` (${selectedMember.email})` : ''}
+                  </span>
+                  <button 
+                    type="button"
+                    className="clear-selection"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveSelection();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <span className="placeholder">Seleccionar miembro...</span>
+              )}
+              <span className="dropdown-arrow">▼</span>
+            </div>
+            
+            {isDropdownOpen && (
+              <div className="dropdown-menu">
+                <div className="search-container">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Buscar por nombre o email..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="search-input"
+                  />
+                </div>
+                
+                <div className="dropdown-options">
+                  {filteredMembers.length > 0 ? (
+                    filteredMembers.map(member => (
+                      <div
+                        key={member.id}
+                        className={`dropdown-option ${
+                          selectedMember?.id === member.id ? 'selected' : ''
+                        }`}
+                        onClick={() => handleSelectMember(member)}
+                      >
+                        {member.first_name} {member.last_name}
+                        {member.email ? ` (${member.email})` : ''}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="dropdown-option disabled">
+                      {searchTerm ? 'No se encontraron miembros' : 'No hay miembros disponibles'}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </select>
+          </div>
         </div>
       </div>
 

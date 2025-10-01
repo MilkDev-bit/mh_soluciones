@@ -412,11 +412,6 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
 
       <div className="task-header">
         <div className="header-content">
-          {isEditing ? (
-            <input type="text" value={editedTask.title} onChange={(e) => handleInputChange('title', e.target.value)} className="edit-title-input" placeholder="Título de la tarea" />
-          ) : (
-            <h2>{task?.title || 'Tarea sin título'}</h2>
-          )}
 
           <div className="header-actions">
             <button className="btn btn-icon btn-secondary" onClick={handleRefreshData} title="Actualizar datos">

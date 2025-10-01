@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
+import { ProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
 import { 
   FiGrid, 
@@ -16,23 +17,26 @@ import {
   FiPlus,
   FiFolder,
   FiAward,
-  FiFileText
+  FiFileText,
+  FiRefreshCw
 } from 'react-icons/fi';
 import './Sidebar.scss';
 
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
+  const { projectsUpdated, setProjectsUpdated } = useContext(ProjectContext); // Contexto para manejar actualizaciones
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    if (isMobileOpen || !isCollapsed) {
+    if (isMobileOpen || !isCollapsed || projectsUpdated) {
       fetchProjects();
     }
-  }, [isMobileOpen, isCollapsed]);
+  }, [isMobileOpen, isCollapsed, projectsUpdated]);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -46,13 +50,35 @@ const Sidebar = () => {
       const response = await getProjects();
       const projectsData = Array.isArray(response) ? response : (response.results || []);
       setProjects(projectsData);
+      
+      if (projectsUpdated && setProjectsUpdated) {
+        setProjectsUpdated(false);
+      }
     } catch (error) {
       console.error('Error loading projects:', error);
       setProjects([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const handleRefreshProjects = () => {
+    setRefreshing(true);
+    fetchProjects();
+  };
+
+  useEffect(() => {
+    const handleProjectsUpdate = () => {
+      fetchProjects();
+    };
+
+    window.addEventListener('projectsUpdated', handleProjectsUpdate);
+    
+    return () => {
+      window.removeEventListener('projectsUpdated', handleProjectsUpdate);
+    };
+  }, []);
 
   if (!user) {
     return null;
@@ -172,7 +198,19 @@ const Sidebar = () => {
             </div>
 
             <div className="menu-section">
-              <span className="menu-section-title">Salas de Trabajo</span>
+              <div className="section-header">
+                <span className="menu-section-title">Salas de Trabajo</span>
+                {!isCollapsed && (
+                  <button 
+                    className="refresh-projects-btn"
+                    onClick={handleRefreshProjects}
+                    disabled={refreshing}
+                    title="Actualizar proyectos"
+                  >
+                    <FiRefreshCw className={refreshing ? 'spinning' : ''} />
+                  </button>
+                )}
+              </div>
               <div className="menu-items">
                 {loading ? (
                   <div className="projects-loading">

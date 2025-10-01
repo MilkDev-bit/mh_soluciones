@@ -1,14 +1,24 @@
 Django==4.2.8
+
 djangorestframework==3.15.1
+drf-nested-routers==0.95.0
+
 django-cors-headers==4.3.1
+
 psycopg2-binary==2.9.9
+
 gunicorn==21.2.0
+
 python-decouple==3.8
 
 djangorestframework-simplejwt==5.3.1
+
 django-otp==1.2.1
+
 qrcode==7.4.2
+
 django-ipware==5.0.1
+
 bcrypt==4.1.2
 
 drf-yasg==1.21.7
@@ -23,10 +33,10 @@ google-auth-oauthlib==1.1.0
 Pillow==10.2.0
 
 whitenoise==6.6.0
+
 django-jazzmin==3.0.1
+
 gevent==23.9.1
-setuptools==69.0.3
-drf-nested-routers==0.95.0
 uvicorn[standard]==0.24.0
 channels==4.1.0
 channels-redis==4.1.0

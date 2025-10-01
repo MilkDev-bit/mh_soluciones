@@ -53,21 +53,25 @@ const ProfilePage = () => {
     }
   }, [user, profileReset]);
 
+
   const onPasswordSubmit = async (data) => {
     if (data.new_password !== data.confirm_password) {
       toast.error("Las nuevas contraseñas no coinciden.");
       return;
     }
     try {
-      await changePassword({
-        old_password: data.old_password,
-        new_password: data.new_password,
-      });
+      await changePassword(
+        data.old_password,
+        data.new_password,
+        data.confirm_password
+      );
       toast.success("¡Contraseña actualizada exitosamente!");
       setIsPwdModalOpen(false);
       pwdReset();
     } catch (error) {
-      toast.error(error.detail || error.error || "No se pudo cambiar la contraseña.");
+      const errorData = await error.json();
+      const errorDetail = errorData.old_password || errorData.new_password || errorData.confirm_password || "No se pudo cambiar la contraseña.";
+      toast.error(errorDetail[0] || errorDetail);
     }
   };
 
@@ -86,6 +90,7 @@ const ProfilePage = () => {
     fileInputRef.current?.click();
   };
 
+
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -94,7 +99,6 @@ const ProfilePage = () => {
       toast.error('Por favor, selecciona una imagen JPEG o PNG');
       return;
     }
-
     if (file.size > 2 * 1024 * 1024) {
       toast.error('La imagen debe ser menor a 2MB');
       return;
@@ -105,10 +109,18 @@ const ProfilePage = () => {
 
     const toastId = toast.loading('Subiendo imagen...');
     try {
-      const updatedUser = await updateProfile(formData);
-      updateUserContext(updatedUser);
+      await updateProfile(formData);
+
+      const { data: refreshedUser } = await api.get('auth/profile/');
+
+      console.log('Usuario refrescado después de la actualización:', refreshedUser);
+
+      updateUserContext(refreshedUser);
+
       toast.success('¡Foto de perfil actualizada!', { id: toastId });
-    } catch (error)      {
+      
+    } catch (error) {
+      console.error("Error al actualizar la foto de perfil:", error);
       toast.error('No se pudo subir la imagen.', { id: toastId });
     }
   };

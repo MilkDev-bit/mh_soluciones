@@ -5,7 +5,7 @@ from ..models import CustomUser
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializador para mostrar la información del usuario.
+    Serializador para MOSTRAR la información del usuario.
     """
     profile_picture = serializers.SerializerMethodField()
 
@@ -21,13 +21,20 @@ class UserSerializer(serializers.ModelSerializer):
     def get_profile_picture(self, obj):
         """
         Genera la URL absoluta para la imagen de perfil.
-        Esta es la corrección clave para que las imágenes funcionen en desarrollo.
         """
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
             base_url = "http://localhost:8000"
             return f"{base_url}{obj.profile_picture.url}"
         return None
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializador específico para ACTUALIZAR el perfil del usuario,
+    permitiendo la escritura de la imagen de perfil.
+    """
+    class Meta:
+        model = CustomUser
+        fields = ('first_name', 'last_name', 'email', 'profile_picture')
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """

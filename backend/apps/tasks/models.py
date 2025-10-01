@@ -116,6 +116,22 @@ class TaskSubmission(TimeStampedModel):
         verbose_name=_("¿Aprobada?")
     )
 
+    google_drive_file_id = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True,
+        verbose_name=_("ID de Archivo en Google Drive")
+    )
+    google_drive_link = models.URLField(
+        blank=True, 
+        null=True,
+        verbose_name=_("Enlace de Google Drive")
+    )
+    uploaded_to_drive = models.BooleanField(
+        default=False,
+        verbose_name=_("Subido a Google Drive")
+    )
+
     class Meta:
         verbose_name = _("Entrega de Tarea")
         verbose_name_plural = _("Entregas de Tareas")
@@ -123,6 +139,13 @@ class TaskSubmission(TimeStampedModel):
 
     def __str__(self):
         return f"Entrega de {self.submitted_by.username} para la tarea '{self.task.title}'"
+
+    def save(self, *args, **kwargs):
+        """Sobrescribir save para actualizar uploaded_to_drive"""
+        if self.google_drive_file_id and self.google_drive_link:
+            self.uploaded_to_drive = True
+        super().save(*args, **kwargs)
+
 
 class TaskComment(TimeStampedModel):
     """

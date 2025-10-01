@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
 import ProjectCard from '../../components/projects/ProjectCard';
 import Loading from '../../components/common/Loading';
@@ -11,6 +12,7 @@ import './ProjectsPage.scss';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
+  const { triggerProjectsUpdate } = useProjectContext();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,6 +41,8 @@ const ProjectsPage = () => {
       setProjects([savedProject, ...projects]);
       toast.success('¡Proyecto creado exitosamente!');
     }
+
+    triggerProjectsUpdate();
     setIsModalOpen(false);
     setEditingProject(null);
   };

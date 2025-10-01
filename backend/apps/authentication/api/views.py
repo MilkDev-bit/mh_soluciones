@@ -25,7 +25,8 @@ from .serializers import (
     PasswordChangeSerializer,
     TwoFactorSerializer, 
     UserCreateSerializer,
-    UserSerializer
+    UserSerializer,
+    UserUpdateSerializer
 )
 
 User = get_user_model()
@@ -56,11 +57,16 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class UserProfileAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = UserSerializer
     parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
         return self.request.user
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return UserUpdateSerializer
+        
+        return UserSerializer
 
 
 class LoginAPIView(APIView):
@@ -75,19 +81,49 @@ class LoginAPIView(APIView):
         
         client_ip, _ = get_client_ip(request)
         
+        if user.allowed_ips:
+            allowed_ips = [ip.strip() for ip in user.allowed_ips.split(',')]
+            if client_ip not in allowed_ips and client_ip != '127.0.0.1':
+                LoginActivity.objects.create(
+                    user=user, 
+                    ip_address=client_ip, 
+                    successful=False,
+                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                    reason='IP no autorizada'
+                )
+                return Response(
+                    {'error': 'Acceso no autorizado desde esta IP'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
         user.last_login = timezone.now()
         user.last_login_ip = client_ip
         user.save(update_fields=['last_login', 'last_login_ip'])
-        LoginActivity.objects.create(user=user, ip_address=client_ip, successful=True, user_agent=request.META.get('HTTP_USER_AGENT', ''))
+        
+        LoginActivity.objects.create(
+            user=user, 
+            ip_address=client_ip, 
+            successful=True, 
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
 
         if user.requires_2fa:
             device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
             if device:
-                return Response({'message': 'Verification code required.', 'requires_2fa': True, 'user_pk': user.pk}, status=status.HTTP_200_OK)
+                return Response({
+                    'message': 'Código de verificación requerido.', 
+                    'requires_2fa': True, 
+                    'user_pk': user.pk
+                }, status=status.HTTP_200_OK)
 
         refresh = RefreshToken.for_user(user)
         user_data = UserSerializer(user, context={'request': request}).data
-        return Response({'refresh': str(refresh), 'access': str(refresh.access_token), 'user': user_data}, status=status.HTTP_200_OK)
+        
+        return Response({
+            'refresh': str(refresh), 
+            'access': str(refresh.access_token), 
+            'user': user_data
+        }, status=status.HTTP_200_OK)
 
 
 class TwoFactorVerifyAPIView(APIView):

@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from apps.core.models import TimeStampedModel
 from apps.core.utils import get_document_upload_path
+from .services import GoogleDriveService
 
 class Document(TimeStampedModel):
     """
@@ -18,6 +19,11 @@ class Document(TimeStampedModel):
     class FolderType(models.TextChoices):
         OPERATIVO = 'OPERATIVO', _('Operativo')
         ADMINISTRATIVO = 'ADMINISTRATIVO', _('Administrativo')
+        DOCUMENTOS = 'DOCUMENTOS', _('Documentos')
+        IMAGENES = 'IMAGENES', _('Imágenes')
+        VIDEOS = 'VIDEOS', _('Videos')
+        ARCHIVOS = 'ARCHIVOS', _('Archivos')
+        OTROS = 'OTROS', _('Otros')
 
     folder_type = models.CharField(
         max_length=20,
@@ -36,13 +42,15 @@ class Document(TimeStampedModel):
         'projects.Project', 
         on_delete=models.CASCADE, 
         null=True, 
-        blank=True
+        blank=True,
+        related_name='documents'
     )
     task = models.ForeignKey(
         'tasks.Task', 
         on_delete=models.CASCADE, 
         null=True, 
-        blank=True
+        blank=True,
+        related_name='documents'
     )
     file = models.FileField(
         upload_to=get_document_upload_path,
@@ -57,6 +65,11 @@ class Document(TimeStampedModel):
         null=True,
         blank=True,
         verbose_name=_("Tamaño del Archivo (bytes)")
+    )
+    file_type = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Tipo de Archivo")
     )
     upload_status = models.CharField(
         max_length=20,
@@ -89,6 +102,67 @@ class Document(TimeStampedModel):
     def __str__(self):
         return self.name or self.file.name or "Documento sin nombre"
 
+    def get_file_extension(self):
+        """Obtiene la extensión del archivo"""
+        if self.file and self.file.name:
+            return os.path.splitext(self.file.name)[1].lower()
+        return ''
+
+    def _get_folder_type_for_drive(self):
+        """Mapea el tipo de carpeta para la estructura de Google Drive"""
+        folder_mapping = {
+            'OPERATIVO': 'Operativo',
+            'ADMINISTRATIVO': 'Administrativo',
+            'DOCUMENTOS': 'Documentos',
+            'IMAGENES': 'Imágenes',
+            'VIDEOS': 'Videos',
+            'ARCHIVOS': 'Archivos',
+            'OTROS': 'Otros',
+        }
+        return folder_mapping.get(self.folder_type, 'Documentos')
+
+    def _upload_to_google_drive(self):
+        """Sube el archivo a Google Drive"""
+        try:
+            if not self.uploaded_by:
+                print("❌ No hay usuario asignado para subir a Google Drive")
+                return False
+
+            if not self.file:
+                print("❌ No hay archivo para subir")
+                return False
+
+            self.upload_status = Document.UploadStatus.UPLOADING
+            self.save(update_fields=['upload_status'])
+
+            print(f"📤 Iniciando subida a Google Drive: {self.name}")
+
+            drive_service = GoogleDriveService(self.uploaded_by)
+            
+            result = drive_service.upload_document(self)
+            
+            if result:
+                self.drive_file_id = result.get('id')
+                self.drive_file_url = result.get('webViewLink')
+                self.upload_status = Document.UploadStatus.COMPLETE
+                
+                print(f"✅ Archivo subido exitosamente a Google Drive")
+                print(f"🔗 Enlace: {self.drive_file_url}")
+                print(f"🆔 ID: {self.drive_file_id}")
+                
+                return True
+            else:
+                self.upload_status = Document.UploadStatus.FAILED
+                print("❌ Falló la subida a Google Drive")
+                return False
+
+        except Exception as e:
+            self.upload_status = Document.UploadStatus.FAILED
+            print(f"❌ Error en la subida a Google Drive: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def save(self, *args, **kwargs):
         if self.file and not self.name:
             self.name = os.path.basename(self.file.name)
@@ -99,4 +173,66 @@ class Document(TimeStampedModel):
             except (ValueError, OSError):
                 self.file_size = 0
 
+        if self.file and not self.file_type:
+            try:
+                if hasattr(self.file, 'file') and hasattr(self.file.file, 'content_type'):
+                    self.file_type = self.file.file.content_type
+                else:
+                    self.file_type = 'application/octet-stream'
+            except (AttributeError, ValueError):
+                self.file_type = 'application/octet-stream'
+
+        is_new = not self.pk 
         super().save(*args, **kwargs)
+
+        if is_new and self.file and self.uploaded_by:
+            print(f"🔄 Nuevo documento detectado, iniciando subida a Google Drive...")
+            
+            import threading
+            import time
+            
+            def delayed_upload():
+                time.sleep(2)
+                self._upload_to_google_drive()
+                Document.objects.filter(pk=self.pk).update(
+                    upload_status=self.upload_status,
+                    drive_file_id=self.drive_file_id,
+                    drive_file_url=self.drive_file_url
+                )
+            
+            thread = threading.Thread(target=delayed_upload)
+            thread.daemon = True
+            thread.start()
+
+    def upload_to_drive(self):
+        """
+        Método para forzar la subida a Google Drive manualmente
+        """
+        return self._upload_to_google_drive()
+
+    def get_drive_status_display(self):
+        """Muestra el estado de subida a Drive de forma legible"""
+        status_map = {
+            'PENDING': '⏳ Pendiente',
+            'UPLOADING': '📤 Subiendo...',
+            'COMPLETE': '✅ En Drive',
+            'FAILED': '❌ Falló'
+        }
+        return status_map.get(self.upload_status, self.upload_status)
+
+    @property
+    def is_in_google_drive(self):
+        """Verifica si el archivo está en Google Drive"""
+        return self.upload_status == Document.UploadStatus.COMPLETE and bool(self.drive_file_id)
+
+    @property
+    def display_size(self):
+        """Muestra el tamaño del archivo en formato legible"""
+        if not self.file_size:
+            return "0 B"
+        
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if self.file_size < 1024.0:
+                return f"{self.file_size:.1f} {unit}"
+            self.file_size /= 1024.0
+        return f"{self.file_size:.1f} TB"

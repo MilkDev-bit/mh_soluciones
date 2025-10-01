@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext  } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -16,6 +16,7 @@ import {
 } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
+import { AuthContext } from '../../contexts/AuthContext';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';

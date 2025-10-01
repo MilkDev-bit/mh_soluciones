@@ -11,15 +11,37 @@ export const login = async (credentials) => {
   }
 };
 
-export const changePassword = async (passwords) => {
+
+
+export const changePassword = async (currentPassword, newPassword, confirmPassword) => {
   try {
-    const { data } = await api.post('auth/change-password/', passwords);
-    return data;
+    const token = localStorage.getItem('access_token');
+  
+    const response = await fetch(`http://localhost:8000/api/v1/auth/profile/change-password/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        old_password: currentPassword,       
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Error al cambiar la contraseña');
+    }
+
+    return await response.json();
   } catch (error) {
-    console.error("Error en el servicio de cambio de contraseña:", error.response.data);
-    throw error.response.data;
+    console.error('Error en el servicio de cambio de contraseña:', error);
+    throw error;
   }
 };
+
 
 export const setupTwoFactor = async () => {
   try {

@@ -27,7 +27,6 @@
   }
 }
 
-// 👇 SECCIÓN CORREGIDA: Se arregló el anidamiento y se limpiaron duplicados
 .header-content {
   display: flex;
   justify-content: space-between;
@@ -71,33 +70,100 @@
   }
 
   .header-actions {
-    display: flex;
-    gap: $spacing-3;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-items: center;
+  display: flex;
+  gap: $spacing-2;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  
+  min-height: 44px;
+  overflow: visible;
 
-    .action-group {
-      display: flex;
-      gap: $spacing-2;
-      flex-wrap: nowrap;
+  .action-group {
+    display: flex;
+    gap: $spacing-2;
+    flex-wrap: nowrap;
+    align-items: center;
+    
+    flex-shrink: 0;
+  }
+
+  .btn-icon {
+    padding: $spacing-2 $spacing-3;
+    border-radius: $border-radius;
+    transition: all $transition;
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 500;
+    
+    border: 1px solid transparent;
+    min-height: 36px;
+
+    &:hover {
+      background: $neutral-100;
+      transform: translateY(-1px);
     }
 
-    .btn-icon {
-      padding: $spacing-2 $spacing-3;
-      border-radius: $border-radius;
-      transition: all $transition;
-      display: flex;
-      align-items: center;
-      gap: $spacing-2;
-      white-space: nowrap;
+    &.btn-danger {
+      background: rgba($error, 0.1);
+      color: $error;
+      border-color: rgba($error, 0.2);
 
       &:hover {
-        background: $neutral-100;
+        background: rgba($error, 0.2);
+        color: darken($error, 10%);
+      }
+    }
+
+    &.btn-primary {
+      background: rgba($primary-500, 0.1);
+      color: $primary-600;
+      border-color: rgba($primary-500, 0.2);
+
+      &:hover {
+        background: rgba($primary-500, 0.2);
+        color: darken($primary-600, 10%);
+      }
+    }
+
+    &.btn-secondary {
+      background: $neutral-100;
+      color: $neutral-700;
+      border-color: $neutral-300;
+
+      &:hover {
+        background: $neutral-200;
+        color: $neutral-800;
+      }
+    }
+
+    &.btn-success {
+      background: rgba($success, 0.1);
+      color: $success;
+      border-color: rgba($success, 0.2);
+
+      &:hover {
+        background: rgba($success, 0.2);
+        color: darken($success, 10%);
+      }
+    }
+
+    &.btn-warning {
+      background: rgba($warning, 0.1);
+      color: $warning;
+      border-color: rgba($warning, 0.2);
+
+      &:hover {
+        background: rgba($warning, 0.2);
+        color: darken($warning, 10%);
       }
     }
   }
+}
 }
 
 .status-priority-badges {
@@ -750,12 +816,6 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  // ... (Tu código para el modo oscuro se mantiene igual, sin cambios necesarios)
-}
-
-
-// 👇 SECCIÓN CORREGIDA: Ajustes de responsividad mejorados
 @media (max-width: $breakpoint-md) {
   .task-header {
     .header-content {
@@ -769,7 +829,7 @@
 
       .header-actions {
         justify-content: center;
-        row-gap: $spacing-3; // Espacio vertical entre filas de botones
+        row-gap: $spacing-3;
       }
     }
   }
