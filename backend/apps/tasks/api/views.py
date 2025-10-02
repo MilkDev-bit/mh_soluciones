@@ -2,7 +2,12 @@ from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework.decorators import action
 from ..models import Task, TaskSubmission, TaskComment
+from django.db.models import F, Avg
+from rest_framework.response import Response
+from rest_framework.decorators import action
 from .serializers import (
     TaskSerializer,
     TaskDetailSerializer,
@@ -25,14 +30,24 @@ class TaskViewSet(viewsets.ModelViewSet):
         user = self.request.user
         base_queryset = Task.objects.none()
 
-        if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
-            base_queryset = Task.objects.all().select_related('project', 'assigned_to')
+        if self.action in ['list', 'retrieve'] and not self.request.query_params.get('include_completed'):
+            if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+                base_queryset = Task.objects.exclude(status='COMPLETED').select_related('project', 'assigned_to')
+            else:
+                base_queryset = Task.objects.filter(
+                    Q(project__members=user) |
+                    Q(assigned_to=user) |
+                    Q(created_by=user)
+                ).exclude(status='COMPLETED').distinct().select_related('project', 'assigned_to')
         else:
-            base_queryset = Task.objects.filter(
-                Q(project__members=user) |
-                Q(assigned_to=user) |
-                Q(created_by=user)
-            ).distinct().select_related('project', 'assigned_to')
+            if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+                base_queryset = Task.objects.all().select_related('project', 'assigned_to')
+            else:
+                base_queryset = Task.objects.filter(
+                    Q(project__members=user) |
+                    Q(assigned_to=user) |
+                    Q(created_by=user)
+                ).distinct().select_related('project', 'assigned_to')
 
         project_id = self.request.query_params.get('project', None)
         if project_id:
@@ -66,6 +81,47 @@ class TaskViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    @action(detail=False, methods=['get'], url_path='completed')
+    def completed_tasks(self, request):
+        """Endpoint específico para tareas completadas con estadísticas"""
+        queryset = self.get_queryset().filter(status='COMPLETED')
+        
+        project_id = request.query_params.get('project')
+        if project_id:
+            queryset = queryset.filter(project_id=project_id)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='completed/stats')
+    def completed_tasks_stats(self, request):
+        """Endpoint para estadísticas de tareas completadas"""
+        queryset = self.get_queryset().filter(status='COMPLETED')
+        
+        project_id = request.query_params.get('project')
+        if project_id:
+            queryset = queryset.filter(project_id=project_id)
+        
+        total = queryset.count()
+        on_time = queryset.filter(completed_at__lte=F('due_date')).count()
+        delayed = queryset.filter(completed_at__gt=F('due_date')).count()
+        
+        delayed_tasks = queryset.filter(completed_at__gt=F('due_date'))
+        avg_delay = delayed_tasks.aggregate(
+            avg_delay=Avg(F('completed_at') - F('due_date'))
+        )['avg_delay']
+        
+        avg_delay_days = avg_delay.days if avg_delay else 0
+        
+        return Response({
+            'total': total,
+            'on_time': on_time,
+            'delayed': delayed,
+            'average_delay_days': avg_delay_days,
+            'on_time_percentage': (on_time / total * 100) if total > 0 else 0,
+            'delayed_percentage': (delayed / total * 100) if total > 0 else 0
+        })
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
     """

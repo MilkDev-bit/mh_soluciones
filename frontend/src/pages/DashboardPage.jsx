@@ -23,7 +23,6 @@ const DashboardPage = () => {
         setError(null);
         console.log('Fetching dashboard data from /api/v1/reports/dashboard/...');
         
-        // Verifica que hay un token antes de hacer la petición
         const token = localStorage.getItem('access_token');
         if (!token) {
           throw new Error('No authentication token found');
@@ -59,7 +58,6 @@ const DashboardPage = () => {
     return `${greeting}, ${user.first_name || user.username}!`;
   };
 
-  // Datos de demostración para cuando hay error
   const getDemoDataByRole = () => {
     const baseDemoData = {
       kpis: {
@@ -101,7 +99,6 @@ const DashboardPage = () => {
     return <Loading />;
   }
 
-  // Usar datos reales si están disponibles, o datos demo si hay error
   const displayData = data || getDemoDataByRole();
 
   const AdminDashboard = () => (

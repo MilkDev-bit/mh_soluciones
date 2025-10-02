@@ -334,7 +334,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     if (/\.pdf$/i.test(filename)) return 'pdf';
     return 'other';
   };
- 
+
   const formatCreatedAt = () => {
     if (!task?.created_at) return 'Fecha desconocida';
     try {
@@ -342,6 +342,16 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     } catch (error) {
       console.error('Error al formatear fecha:', error);
       return 'Fecha desconocida';
+    }
+  };
+
+  const formatDueDate = () => {
+    if (!task?.due_date) return 'Sin fecha límite';
+    try {
+      return format(parseISO(task.due_date), "dd 'de' MMMM 'de' yyyy", { locale: es });
+    } catch (error) {
+      console.error('Error al formatear fecha límite:', error);
+      return 'Fecha inválida';
     }
   };
 

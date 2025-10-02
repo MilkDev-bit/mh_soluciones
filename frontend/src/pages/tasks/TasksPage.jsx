@@ -28,22 +28,27 @@ const TasksPage = () => {
 
   useEffect(() => {
       const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [userData, tasksData, projectsData] = await Promise.all([
-          getCurrentUserFromSession(),
-          getTasks(),
-          getProjects(),
-        ]);
+        try {
+          setLoading(true);
+          const [userData, tasksData, projectsData] = await Promise.all([
+            getCurrentUserFromSession(),
+            getTasks(),
+            getProjects(),
+          ]);
 
-        setUser(userData);
-        const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
-        
-        let filteredTasks = tasksList;
-        if (userData.role === 'STUDENT') {
-          filteredTasks = tasksList.filter(task => task.assigned_to?.id === userData.id);
-        }
-        
+          setUser(userData);
+          const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
+          
+          let filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
+
+          if (userData.role === 'STUDENT') {
+            filteredTasks = filteredTasks.filter(task => 
+              task.assigned_to?.id === userData.id
+            );
+          } else {
+            filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
+          }
+    
         setTasks(filteredTasks);
         
         let filteredProjects = Array.isArray(projectsData.results) ? projectsData.results : [];
@@ -74,7 +79,7 @@ const TasksPage = () => {
         });
         setTaskDocuments(documentsMap);
         
-      } catch (error) {
+          } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('No se pudieron cargar los datos.');
       } finally {
