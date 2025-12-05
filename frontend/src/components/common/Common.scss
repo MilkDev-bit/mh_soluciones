@@ -1,3 +1,5 @@
+@import '../../assets/styles/variables';
+
 // Screen reader only class for accessibility
 .sr-only {
   position: absolute;
@@ -23,9 +25,13 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--bg-primary);
     backdrop-filter: blur(4px);
     z-index: 9999;
+    
+    [data-theme="dark"] & {
+      background-color: rgba($neutral-900, 0.95);
+    }
   }
 
   .loading-content {
@@ -36,7 +42,7 @@
   }
 
   .loading-text {
-    color: $neutral-600;
+    color: var(--text-secondary);
     font-size: 0.875rem;
     font-weight: 500;
     margin: 0;
@@ -68,7 +74,7 @@
   }
 
   .loading-text {
-    color: $neutral-600;
+    color: var(--text-secondary);
     font-size: 0.875rem;
   }
 }
@@ -76,8 +82,8 @@
 .spinner {
   width: 50px;
   height: 50px;
-  border: 5px solid rgba(0, 0, 0, 0.1);
-  border-top-color: $primary-500;
+  border: 5px solid var(--border-color);
+  border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 
@@ -137,9 +143,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    $neutral-200 25%,
-    $neutral-100 50%,
-    $neutral-200 75%
+    var(--border-color) 25%,
+    var(--bg-tertiary) 50%,
+    var(--border-color) 75%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
@@ -159,15 +165,15 @@
 }
 
 .card-skeleton {
-  background: $neutral-0;
+  background: var(--bg-card);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: $shadow-sm;
+  box-shadow: var(--shadow-sm);
 }
 
 // Focus styles for accessibility
 *:focus-visible {
-  outline: 2px solid $primary-500;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -177,7 +183,7 @@
   top: -100%;
   left: 50%;
   transform: translateX(-50%);
-  background: $primary-500;
+  background: var(--accent-primary);
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 4px;
@@ -246,5 +252,61 @@
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s infinite;
     pointer-events: none;
+  }
+}
+
+// Card component with theme support
+.card {
+  background: var(--bg-card);
+  border-radius: $border-radius-lg;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: all $transition;
+  
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+// Responsive utility classes
+.hide-mobile {
+  @media (max-width: $breakpoint-md) {
+    display: none !important;
+  }
+}
+
+.hide-tablet {
+  @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg) {
+    display: none !important;
+  }
+}
+
+.hide-desktop {
+  @media (min-width: $breakpoint-lg) {
+    display: none !important;
+  }
+}
+
+.show-mobile {
+  display: none !important;
+  
+  @media (max-width: $breakpoint-md) {
+    display: block !important;
+  }
+}
+
+.show-tablet {
+  display: none !important;
+  
+  @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg) {
+    display: block !important;
+  }
+}
+
+.show-desktop {
+  display: none !important;
+  
+  @media (min-width: $breakpoint-lg) {
+    display: block !important;
   }
 }

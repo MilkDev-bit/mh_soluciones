@@ -23,7 +23,7 @@
   gap: $spacing-2;
   font-size: 0.875rem;
   font-weight: 600;
-  color: $neutral-700;
+  color: var(--text-secondary);
   margin-bottom: $spacing-1;
   
   &.required::after {
@@ -35,7 +35,7 @@
 
 .form-helper {
   font-size: 0.75rem;
-  color: $neutral-500;
+  color: var(--text-tertiary);
   margin-top: $spacing-1;
 }
 
@@ -44,26 +44,30 @@
 .form-textarea {
   width: 100%;
   padding: $spacing-3 $spacing-4;
-  border: 1px solid $neutral-300;
+  border: 1px solid var(--border-color);
   border-radius: $border-radius;
   font-family: $font-sans;
   font-size: 1rem;
-  background: $neutral-50;
+  background: var(--bg-input);
   transition: all $transition;
-  color: $neutral-800;
+  color: var(--text-primary);
   
   &::placeholder {
-    color: $neutral-500;
+    color: var(--text-muted);
   }
   
   &:focus {
     outline: none;
-    border-color: $primary-500;
+    border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    
+    [data-theme="dark"] & {
+      box-shadow: 0 0 0 3px rgba($primary-400, 0.2);
+    }
   }
   
   &:hover:not(:focus) {
-    border-color: $neutral-400;
+    border-color: var(--border-color-dark);
   }
   
   &.error {
@@ -77,8 +81,8 @@
   }
   
   &:disabled {
-    background-color: $neutral-100;
-    color: $neutral-500;
+    background-color: var(--bg-tertiary);
+    color: var(--text-muted);
     cursor: not-allowed;
   }
 }
@@ -102,13 +106,13 @@
 .form-radio {
   width: 1.25rem;
   height: 1.25rem;
-  border: 1px solid $neutral-300;
-  background: $neutral-50;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
   transition: all $transition;
   
   &:checked {
-    background-color: $primary-500;
-    border-color: $primary-500;
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
   }
   
   &:focus {
@@ -145,7 +149,7 @@
     left: $spacing-3;
     top: 50%;
     transform: translateY(-50%);
-    color: $neutral-500;
+    color: var(--text-muted);
     pointer-events: none;
   }
   
@@ -175,9 +179,9 @@
     display: flex;
     align-items: center;
     padding: $spacing-3 $spacing-4;
-    background: $neutral-100;
-    border: 1px solid $neutral-300;
-    color: $neutral-600;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
     font-size: 0.875rem;
     
     &:first-child {
@@ -199,7 +203,7 @@
   align-items: center;
   gap: $spacing-2;
   font-size: 0.875rem;
-  color: $error;
+  color: var(--error-text);
   margin-top: $spacing-1;
 }
 
@@ -208,7 +212,7 @@
   align-items: center;
   gap: $spacing-2;
   font-size: 0.875rem;
-  color: $success;
+  color: var(--success-text);
   margin-top: $spacing-1;
 }
 
@@ -218,7 +222,7 @@
   justify-content: flex-end;
   margin-top: $spacing-6;
   padding-top: $spacing-4;
-  border-top: 1px solid $neutral-200;
+  border-top: 1px solid var(--border-color);
 }
 
 .form-grid {
@@ -262,6 +266,19 @@
     .btn {
       width: 100%;
     }
+  }
+}
+
+@media (max-width: $breakpoint-xs) {
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: $spacing-2 $spacing-3;
+    font-size: 0.9375rem;
+  }
+  
+  .form-label {
+    font-size: 0.8125rem;
   }
 }
 

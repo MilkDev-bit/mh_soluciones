@@ -5,9 +5,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 import { AuthContext } from '../../contexts/AuthContext';
+import { ThemeContext } from '../../contexts/ThemeContext';
 import notificationService from '../../services/NotificationService';
 
-import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiBell, FiCheck, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiBell, FiCheck, FiCheckCircle, FiSun, FiMoon } from 'react-icons/fi';
 import './Header.scss';
 
 const pageTitles = {
@@ -31,6 +32,7 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useContext(AuthContext);
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -130,6 +132,15 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
         </div>
 
         <div className="header-right">
+          <button 
+            className="theme-toggle-btn icon-button" 
+            onClick={toggleTheme}
+            title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            aria-label={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          >
+            {isDarkMode ? <FiSun /> : <FiMoon />}
+          </button>
+
           <div className="notifications-dropdown">
             <button className="icon-button" onClick={() => { setIsNotificationsOpen(prev => !prev); setIsProfileOpen(false); }}>
               <FiBell />
