@@ -39,13 +39,16 @@ const Loading = ({
 
 /**
  * Button loading spinner for inline button loading states
+ * Note: The button text should be updated to indicate loading state for screen readers
+ * (e.g., "Guardando..." instead of "Guardar")
  */
-export const ButtonSpinner = () => (
-  <span className="button-spinner" aria-hidden="true">
-    <svg className="spinner-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+export const ButtonSpinner = ({ label = 'Cargando' }) => (
+  <span className="button-spinner" role="status">
+    <svg className="spinner-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle className="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
       <path className="spinner-head" d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
     </svg>
+    <span className="sr-only">{label}</span>
   </span>
 );
 

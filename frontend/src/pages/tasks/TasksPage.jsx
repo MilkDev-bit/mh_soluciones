@@ -47,14 +47,14 @@ const TasksPage = () => {
       setUser(userData);
       const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
       
+      // Filter out completed tasks first
       let filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
 
+      // For students, additionally filter to only show their assigned tasks
       if (userData.role === 'STUDENT') {
         filteredTasks = filteredTasks.filter(task => 
           task.assigned_to?.id === userData.id
         );
-      } else {
-        filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
       }
 
       setTasks(filteredTasks);
