@@ -29,8 +29,11 @@ export const uploadDocument = async (formData) => {
     const response = await api.post('/documents/', formData);
     return response.data;
   } catch (error) {
-    // Try alternative format if first attempt fails
-    if (error.response?.status === 400) {
+    // Try alternative format only if the error is specifically about 'task' field
+    const isTaskFieldError = error.response?.status === 400 && 
+      error.response?.data?.task !== undefined;
+    
+    if (isTaskFieldError) {
       const newFormData = new FormData();
       for (let [key, value] of formData.entries()) {
         if (key !== 'task') {
@@ -53,19 +56,15 @@ export const uploadDocument = async (formData) => {
   }
 };
 
+/**
+ * Returns a usable URL for a file path.
+ * Handles absolute URLs and relative media paths.
+ */
 export const getFileUrl = (filePath) => {
   if (!filePath) return null;
   
-  // If it's already a complete URL, return as-is
-  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-    return filePath;
-  }
-  
-  // For relative paths starting with /media/, use proxy
-  if (filePath.startsWith('/media/')) {
-    return filePath;
-  }
-  
+  // For any path (absolute URL or relative), return as-is
+  // The proxy configuration handles media paths
   return filePath;
 };
 
