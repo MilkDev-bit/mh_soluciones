@@ -11,11 +11,13 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-4;
-  z-index: $z-modal;
+
+  z-index: 9999 !important;
+
   animation: modalFadeIn 0.3s ease-out;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  
+
   @supports not (backdrop-filter: blur(8px)) {
     background: rgba($neutral-900, 0.9);
   }
@@ -25,6 +27,10 @@
   background: $background-light;
   border-radius: $border-radius-lg;
   box-shadow: $shadow-2xl;
+
+  z-index: 10000;
+  position: relative;
+
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
@@ -33,25 +39,11 @@
   animation: modalSlideIn 0.3s ease-out;
   border: 1px solid $neutral-200;
   overflow: hidden;
-  
-  &.modal-sm {
-    max-width: 400px;
-  }
-  
-  &.modal-lg {
-    max-width: 800px;
-  }
-  
-  &.modal-xl {
-    max-width: 1000px;
-  }
-  
-  &.modal-fullscreen {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 0;
-    margin: 0;
-  }
+
+  &.modal-sm { max-width: 400px; }
+  &.modal-lg { max-width: 800px; }
+  &.modal-xl { max-width: 1000px; }
+  &.modal-fullscreen { max-width: 100%; max-height: 100%; border-radius: 0; margin: 0; }
 }
 
 .modal-header {
@@ -61,6 +53,7 @@
   padding: $spacing-6;
   border-bottom: 1px solid $neutral-200;
   background: $neutral-50;
+  z-index: 10001;
   
   .modal-title {
     font-size: 1.5rem;

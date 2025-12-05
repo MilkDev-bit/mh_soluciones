@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX } from 'react-icons/fi';
 import './Modal.scss';
 
 const Modal = ({ title, children, onClose, size = 'medium' }) => {
   useEffect(() => {
     document.body.classList.add('modal-open');
-
     return () => {
       document.body.classList.remove('modal-open');
     };
@@ -18,24 +18,28 @@ const Modal = ({ title, children, onClose, size = 'medium' }) => {
     xlarge: 'modal-xlarge'
   };
 
-  return (
+  const modalContent = (
     <div className="modal-overlay" onClick={onClose}>
-      <div 
-        className={`modal-content ${sizeClasses[size]}`} 
+      <div
+        className={`modal-content ${sizeClasses[size]}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Cerrar modal">
+          <button
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label="Cerrar modal"
+          >
             <FiX />
           </button>
         </div>
-        <div className="modal-body">
-          {children}
-        </div>
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default Modal;

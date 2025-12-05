@@ -53,6 +53,13 @@ const ProfilePage = () => {
     }
   }, [user, profileReset]);
 
+  useEffect(() => {
+    if (isPwdModalOpen || is2FAModalOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+  }, [isPwdModalOpen, is2FAModalOpen]);
 
   const onPasswordSubmit = async (data) => {
     if (data.new_password !== data.confirm_password) {

@@ -73,7 +73,11 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: $spacing-8;
-  
+
+  @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg) {
+    grid-template-columns: 1.5fr 1fr;
+  }
+
   @media (min-width: $breakpoint-lg) {
     grid-template-columns: 2fr 1fr;
   }

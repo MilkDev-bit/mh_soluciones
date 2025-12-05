@@ -1,4 +1,3 @@
-// services/reportService.js
 import api from './api';
 
 export const getDashboardData = async () => {
@@ -6,7 +5,6 @@ export const getDashboardData = async () => {
     const response = await api.get('/reports/dashboard/');
     return response.data;
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
     throw error;
   }
 };
@@ -18,7 +16,6 @@ export const globalSearch = async (query) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Error performing global search:', error);
     throw error;
   }
 };

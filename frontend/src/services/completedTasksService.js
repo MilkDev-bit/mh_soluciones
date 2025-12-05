@@ -13,7 +13,6 @@ export const getCompletedTasks = async (projectId = null) => {
     const response = await api.get(url);
     return response.data;
   } catch (error) {
-    console.error('Error fetching completed tasks:', error);
     throw error;
   }
 };
@@ -23,7 +22,6 @@ export const getTaskCompletionStats = async (taskId) => {
     const response = await api.get(`/tasks/${taskId}/completion-stats/`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching task completion stats:', error);
     throw error;
   }
 };

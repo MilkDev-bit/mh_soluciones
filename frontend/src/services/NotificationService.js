@@ -2,199 +2,112 @@ import api from './api';
 
 class NotificationService {
   constructor() {
-    this.notificationPermission = null;
-    this.pushSubscription = null;
-    this.isSubscribed = false;
     this.socket = null;
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.pollingInterval = null;
+    this.isPolling = false;
+    this.notificationPermission = null;
+    this.websocketEnabled = false;
+  }
+
+  getWebSocketURL() {
+    const token = localStorage.getItem('access_token');
+    console.log('WebSocket token:', token ? 'Present' : 'Missing');
+    
+    if (token) {
+      return `wss://app.mhsolucionesempresariales.com/ws/notifications/?token=${encodeURIComponent(token)}`;
+    }
+    
+    return 'wss://app.mhsolucionesempresariales.com/ws/notifications/';
+  }
+
+  connectWebSocket(userId, onNewNotifications = null) {
+    if (!window.WebSocket) {
+      console.log('WebSocket no soportado, usando polling');
+      this.startPolling(userId, onNewNotifications);
+      return;
+    }
+  }
+
+  startPolling(userId, onNewNotifications = null) {
+    if (this.isPolling) return;
+    
+    this.isPolling = true;
+    console.log('Iniciando polling de notificaciones');
+
+    this.pollNotifications(onNewNotifications);
+
+    this.pollingInterval = setInterval(async () => {
+      await this.pollNotifications(onNewNotifications);
+    }, 30000);
+  }
+
+  async pollNotifications(onNewNotifications = null) {
+    try {
+      const unreadCount = await this.getUnreadCount();
+      if (unreadCount > 0 && onNewNotifications) {
+        onNewNotifications(unreadCount);
+      }
+    } catch (error) {
+      console.error('Error en polling de notificaciones:', error);
+    }
+  }
+
+  stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+      this.isPolling = false;
+      console.log('Polling de notificaciones detenido');
+    }
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
+    
+    this.stopPolling();
+    
+    this.websocketEnabled = false;
+    console.log('Servicio de notificaciones desconectado');
+  }
+
+  async showBrowserNotification(notificationData) {
+    if (!('Notification' in window)) return;
+    if (this.notificationPermission === null) {
+      this.notificationPermission = await Notification.requestPermission();
+    }
+    if (this.notificationPermission !== 'granted') return;
+
+    try {
+      const { title, message, id } = notificationData;
+      const notification = new Notification(title || 'Nueva notificación', {
+        body: message || 'Tienes una nueva notificación',
+        icon: '/logo192.png',
+        tag: `notification-${id}`,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+        this.markAsRead(id);
+      };
+
+      setTimeout(() => notification.close(), 5000);
+    } catch (error) {
+      console.error('Error mostrando notificación del navegador:', error);
+    }
   }
 
   async requestPermission() {
-    if (!('Notification' in window)) {
-      console.warn('Este navegador no soporta notificaciones');
-      return 'denied';
-    }
-
-    if (this.notificationPermission) {
-      return this.notificationPermission;
-    }
-
+    if (!('Notification' in window)) return 'denied';
     try {
       const permission = await Notification.requestPermission();
       this.notificationPermission = permission;
-      
-      if (permission === 'granted') {
-        await this.subscribeToPushNotifications();
-      }
-      
       return permission;
     } catch (error) {
-      console.error('Error al solicitar permisos:', error);
       return 'denied';
-    }
-  }
-
-  async subscribeToPushNotifications() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Push notifications no soportadas');
-      return null;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY)
-      });
-
-      this.pushSubscription = subscription;
-      this.isSubscribed = true;
-
-      await this.sendSubscriptionToBackend(subscription);
-      
-      return subscription;
-    } catch (error) {
-      console.error('Error al suscribirse a push notifications:', error);
-      return null;
-    }
-  }
-
-  urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-
-  async sendSubscriptionToBackend(subscription) {
-    try {
-      await api.post('/notifications/subscribe/', {
-        subscription: subscription
-      });
-    } catch (error) {
-      console.error('Error enviando suscripción al backend:', error);
-    }
-  }
-
-  connectWebSocket(userId) {
-    if (!userId) return;
-
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      console.error('No se encontró token de acceso para la conexión WebSocket.');
-      return;
-    }
-    
-    const backendUrl = import.meta.env.VITE_API_BASE_URL;
-    if (!backendUrl) {
-      console.error("La variable de entorno VITE_API_BASE_URL no está definida.");
-      return;
-    }
-
-    let wsUrl = backendUrl.replace(/^http/, 'ws') + '/ws/notifications/';
-    wsUrl += `?token=${token}`;
-    
-    console.log('Intentando conectar WebSocket a:', wsUrl);
-
-    try {
-      this.socket = new WebSocket(wsUrl);
-      
-      this.socket.onopen = () => {
-        console.log('WebSocket conectado para notificaciones');
-        this.reconnectAttempts = 0;
-      };
-
-      this.socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handleWebSocketMessage(data);
-        } catch (error) {
-          console.error('Error procesando mensaje WebSocket:', error);
-        }
-      };
-
-      this.socket.onclose = (event) => {
-        console.log('WebSocket desconectado:', event);
-        this.handleReconnection(userId);
-      };
-
-      this.socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-    } catch (error) {
-      console.error('Error conectando WebSocket:', error);
-    }
-  }
-
-  handleReconnection(userId) {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-      
-      setTimeout(() => {
-        this.reconnectAttempts++;
-        this.connectWebSocket(userId);
-      }, delay);
-    }
-  }
-
-  handleWebSocketMessage(data) {
-    switch (data.type) {
-      case 'new_notification':
-        this.showBrowserNotification(data.payload);
-        break;
-      case 'notification_read':
-        break;
-      default:
-        console.log('Mensaje WebSocket no manejado:', data);
-    }
-  }
-
-  showBrowserNotification(notificationData) {
-    if (this.notificationPermission !== 'granted') return;
-
-    const { title, message, notification_type, id } = notificationData;
-
-    const notification = new Notification(title, {
-      body: message,
-      icon: '/logo192.png',
-      badge: '/logo192.png',
-      tag: `notification-${id}`,
-      requireInteraction: true,
-      data: { notificationId: id }
-    });
-
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-      this.markAsRead(id);
-      this.handleNotificationClick(notificationData);
-    };
-
-    setTimeout(() => {
-      notification.close();
-    }, 10000);
-  }
-
-  handleNotificationClick(notification) {
-    switch (notification.notification_type) {
-      case 'TASK_ASSIGNED':
-        window.location.href = '/tasks';
-        break;
-      case 'PROJECT_UPDATE':
-        window.location.href = `/projects/${notification.content_object_id}`;
-        break;
-      default:
-        window.location.href = '/notifications';
     }
   }
 
@@ -203,20 +116,12 @@ class NotificationService {
       const response = await api.get('/notifications/', { params });
       return response.data;
     } catch (error) {
-      console.error('Error obteniendo notificaciones:', error);
       throw error;
     }
   }
 
   async markAsRead(notificationId) {
     try {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        this.socket.send(JSON.stringify({
-          type: 'mark_as_read',
-          notification_id: notificationId
-        }));
-      }
-
       await api.patch(`/notifications/${notificationId}/mark_as_read/`);
     } catch (error) {
       console.error('Error marcando notificación como leída:', error);
@@ -227,7 +132,6 @@ class NotificationService {
     try {
       await api.post('/notifications/mark_all_as_read/');
     } catch (error) {
-      console.error('Error marcando todas como leídas:', error);
       throw error;
     }
   }
@@ -237,15 +141,7 @@ class NotificationService {
       const response = await api.get('/notifications/unread_count/');
       return response.data.unread_count;
     } catch (error) {
-      console.error('Error obteniendo conteo de no leídas:', error);
       return 0;
-    }
-  }
-
-  disconnect() {
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
     }
   }
 
@@ -253,8 +149,12 @@ class NotificationService {
     return this.notificationPermission;
   }
 
-  isPushEnabled() {
-    return this.isSubscribed;
+  getConnectionStatus() {
+    return {
+      websocketEnabled: this.websocketEnabled,
+      isPolling: this.isPolling,
+      notificationPermission: this.notificationPermission
+    };
   }
 }
 

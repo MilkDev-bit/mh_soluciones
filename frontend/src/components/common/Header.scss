@@ -18,6 +18,10 @@
     padding: 0 $spacing-5;
   }
 
+  body.modal-open .main-header {
+    z-index: 0;
+  }
+
   &.scrolled {
     background: rgba($white, 0.98);
     backdrop-filter: blur(20px);

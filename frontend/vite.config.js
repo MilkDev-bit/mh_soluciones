@@ -33,5 +33,28 @@ export default defineConfig({
         limit: '40mb'
       }
     }
+  },
+
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,          
+        drop_debugger: true,        
+        pure_funcs: [
+          'console.log',
+          'console.debug', 
+          'console.info',
+          'console.warn'            
+        ]
+      }
+    },
+    rollupOptions: {
+      output: {
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
+    }
   }
 });
