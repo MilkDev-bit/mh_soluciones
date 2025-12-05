@@ -7,24 +7,25 @@
 // RESPONSIVE UTILITY CLASSES
 // ==========================================
 
-// Hide/Show utilities
-.hide-mobile {
+// Hide/Show utilities - Using attribute selectors for higher specificity
+// These utilities should be applied intentionally for layout control
+[class].hide-mobile {
   @media (max-width: $breakpoint-md) {
-    display: none !important;
+    display: none;
   }
 }
 
-.show-mobile-only {
-  display: none !important;
+[class].show-mobile-only {
+  display: none;
   
   @media (max-width: $breakpoint-md) {
-    display: block !important;
+    display: block;
   }
 }
 
-.hide-tablet {
+[class].hide-tablet {
   @media (max-width: $breakpoint-lg) {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -120,17 +121,11 @@
 // RESPONSIVE TYPOGRAPHY
 // ==========================================
 
-// Fluid typography mixin
-@mixin fluid-type($min-size, $max-size, $min-width: 320px, $max-width: 1200px) {
-  font-size: $min-size;
-  
-  @media (min-width: $min-width) {
-    font-size: calc(#{$min-size} + #{($max-size - $min-size) / ($max-width - $min-width)} * (100vw - #{$min-width}));
-  }
-  
-  @media (min-width: $max-width) {
-    font-size: $max-size;
-  }
+// Fluid typography using clamp() for better browser support
+@mixin fluid-type($min-size, $max-size) {
+  // Using clamp() for cleaner, more maintainable fluid typography
+  // Preferred size scales from min to max between 320px and 1200px viewport
+  font-size: clamp(#{$min-size}, calc(#{$min-size} + (#{$max-size} - #{$min-size}) * ((100vw - 320px) / (1200 - 320))), #{$max-size});
 }
 
 .text-responsive-xl {
@@ -409,19 +404,20 @@
 }
 
 // Larger input fields on mobile for easier touch
+// Using 16px font-size prevents zoom on iOS Safari
 @media (max-width: $breakpoint-md) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="search"],
-  input[type="date"],
-  input[type="time"],
-  select,
-  textarea {
-    font-size: 16px !important; // Prevents zoom on iOS
+  .form-responsive input[type="text"],
+  .form-responsive input[type="email"],
+  .form-responsive input[type="password"],
+  .form-responsive input[type="number"],
+  .form-responsive input[type="tel"],
+  .form-responsive input[type="url"],
+  .form-responsive input[type="search"],
+  .form-responsive input[type="date"],
+  .form-responsive input[type="time"],
+  .form-responsive select,
+  .form-responsive textarea {
+    font-size: 16px; // Prevents zoom on iOS
     min-height: 48px;
     padding: $spacing-3 $spacing-4;
   }
