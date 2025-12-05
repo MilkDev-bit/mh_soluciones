@@ -146,3 +146,12 @@ export const deleteProjectSubmission = async (projectId, submissionId) => {
     throw error.response?.data || new Error('Error al eliminar la entrega');
   }
 };
+
+export const getProjectProgressStats = async (projectId) => {
+  try {
+    const { data } = await api.get(`/projects/${projectId}/progress-stats/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener estadísticas del proyecto');
+  }
+};

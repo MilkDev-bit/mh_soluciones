@@ -1,0 +1,230 @@
+@import '../../assets/styles/variables';
+
+.project-progress-charts {
+  background: $background-light;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  padding: $spacing-6;
+  margin-bottom: $spacing-6;
+  
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-4;
+  }
+}
+
+.charts-header {
+  margin-bottom: $spacing-6;
+  
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $neutral-900;
+    margin: 0 0 $spacing-4 0;
+    
+    svg {
+      color: $primary-500;
+    }
+  }
+}
+
+.progress-summary {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-4;
+  background: linear-gradient(135deg, rgba($primary-500, 0.1) 0%, rgba($secondary-500, 0.1) 100%);
+  border-radius: $border-radius-md;
+  
+  @media (max-width: $breakpoint-sm) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.progress-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $primary-500 0%, $secondary-500 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: $shadow-md;
+  
+  .progress-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $white;
+    font-family: $font-mono;
+  }
+}
+
+.progress-stats {
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: $neutral-700;
+    
+    &:first-child {
+      margin-bottom: $spacing-1;
+    }
+    
+    strong {
+      color: $neutral-900;
+      font-weight: 600;
+    }
+  }
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-6;
+  
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+    gap: $spacing-4;
+  }
+}
+
+.chart-container {
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-md;
+  padding: $spacing-4;
+  
+  h4 {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $neutral-800;
+    margin: 0 0 $spacing-4 0;
+    
+    svg {
+      color: $primary-500;
+    }
+  }
+}
+
+.chart-wrapper {
+  height: 280px;
+  position: relative;
+  
+  @media (max-width: $breakpoint-sm) {
+    height: 240px;
+  }
+}
+
+.charts-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-12;
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  margin-bottom: $spacing-6;
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid $neutral-200;
+    border-top-color: $primary-500;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: $spacing-3;
+  }
+  
+  p {
+    color: $neutral-600;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+}
+
+.charts-error,
+.charts-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-12;
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  margin-bottom: $spacing-6;
+  text-align: center;
+  
+  svg {
+    color: $neutral-400;
+    margin-bottom: $spacing-3;
+  }
+  
+  p {
+    color: $neutral-600;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .project-progress-charts {
+    background: $neutral-900;
+    border-color: $neutral-700;
+  }
+  
+  .charts-header h3 {
+    color: $neutral-100;
+  }
+  
+  .progress-summary {
+    background: linear-gradient(135deg, rgba($primary-500, 0.2) 0%, rgba($secondary-500, 0.2) 100%);
+  }
+  
+  .progress-stats p {
+    color: $neutral-300;
+    
+    strong {
+      color: $neutral-100;
+    }
+  }
+  
+  .chart-container {
+    background: $neutral-800;
+    border-color: $neutral-700;
+    
+    h4 {
+      color: $neutral-200;
+    }
+  }
+  
+  .charts-loading,
+  .charts-error,
+  .charts-empty {
+    background: $neutral-800;
+    border-color: $neutral-700;
+    
+    p {
+      color: $neutral-400;
+    }
+  }
+  
+  .charts-loading .loading-spinner {
+    border-color: $neutral-700;
+    border-top-color: $primary-400;
+  }
+}

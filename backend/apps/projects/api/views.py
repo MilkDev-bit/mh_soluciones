@@ -155,6 +155,48 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Miembro no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='progress-stats')
+    def progress_stats(self, request, pk=None):
+        """
+        Returns progress statistics for the project based on tasks and submissions.
+        Provides data for pie and bar charts showing project progress.
+        """
+        project = self.get_object()
+        tasks = project.tasks.all()
+        submissions = project.submissions.all()
+
+        # Task status distribution
+        task_stats = {
+            'pending': tasks.filter(status='PENDING').count(),
+            'in_progress': tasks.filter(status='IN_PROGRESS').count(),
+            'for_review': tasks.filter(status='FOR_REVIEW').count(),
+            'completed': tasks.filter(status='COMPLETED').count(),
+        }
+        total_tasks = sum(task_stats.values())
+
+        # Task priority distribution
+        priority_stats = {
+            'low': tasks.filter(priority='LOW').count(),
+            'medium': tasks.filter(priority='MEDIUM').count(),
+            'high': tasks.filter(priority='HIGH').count(),
+        }
+
+        # Submission stats
+        total_submissions = submissions.count()
+
+        # Calculate overall progress percentage
+        progress_percentage = 0
+        if total_tasks > 0:
+            progress_percentage = round((task_stats['completed'] / total_tasks) * 100)
+
+        return Response({
+            'task_stats': task_stats,
+            'priority_stats': priority_stats,
+            'total_tasks': total_tasks,
+            'total_submissions': total_submissions,
+            'progress_percentage': progress_percentage,
+        }, status=status.HTTP_200_OK)
         
 
 class ProjectCommentViewSet(viewsets.ModelViewSet):

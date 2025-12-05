@@ -25,6 +25,7 @@ import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
 import AddMemberModal from '../../components/projects/AddMemberModal';
+import ProjectProgressCharts from '../../components/projects/ProjectProgressCharts';
 import {
   FiEdit2,
   FiPlus,
@@ -750,6 +751,8 @@ const ProjectDetailPage = () => {
 
         <div className="project-layout-grid">
           <div className="main-column">
+            <ProjectProgressCharts projectId={projectId} />
+
             <div className="glass-card">
               <div className="section-header">
                 <h2>
