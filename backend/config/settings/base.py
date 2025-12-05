@@ -8,35 +8,77 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-AWS_STORAGE_BUCKET_NAME = 'mh-soluciones-media'
-AWS_S3_REGION_NAME = 'us-east-2'
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
+# Detect Railway environment
+IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
 
-AWS_DEFAULT_ACL = None
-AWS_QUERYSTRING_AUTH = False
+# Storage configuration - Default to local storage for Railway
+# For S3/AWS storage, set the AWS environment variables
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='mh-soluciones-media')
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-2')
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+# Check if S3 credentials are available and not empty
+USE_S3_STORAGE = bool(
+    AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and 
+    AWS_ACCESS_KEY_ID.strip() and AWS_SECRET_ACCESS_KEY.strip()
+)
+
+if USE_S3_STORAGE:
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+else:
+    # Use local storage (Railway Volume or Whitenoise)
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    MEDIA_URL = '/media/'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
-def get_ecs_hosts():
-    """Obtener hosts permitidos para entorno ECS"""
-    return ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
+def get_allowed_hosts():
+    """Get allowed hosts based on environment"""
+    hosts = [
+        'app.mhsolucionesempresariales.com',
+        'localhost',
+        '127.0.0.1',
+    ]
+    
+    # Add Railway domains
+    if IS_RAILWAY:
+        hosts.extend([
+            '.railway.app',
+            '.up.railway.app',
+        ])
+        # Add specific Railway domain if set
+        railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+        if railway_domain:
+            hosts.append(railway_domain)
+    else:
+        # AWS ECS hosts
+        hosts.extend([
+            '.elb.amazonaws.com',
+            '.amazonaws.com',
+            '10.0.0.0/8',
+            '172.16.0.0/12',
+            '192.168.0.0/16',
+        ])
+    
+    # Add custom ALLOWED_HOSTS from environment
+    custom_hosts = config('ALLOWED_HOSTS', default='')
+    if custom_hosts:
+        hosts.extend([h.strip() for h in custom_hosts.split(',') if h.strip()])
+    
+    return hosts
 
-ALLOWED_HOSTS = [
-    'app.mhsolucionesempresariales.com',
-    'localhost',
-    '127.0.0.1',
-    '.elb.amazonaws.com',
-    '.amazonaws.com',
-] + get_ecs_hosts()
+ALLOWED_HOSTS = get_allowed_hosts()
 
 if DEBUG:
     ALLOWED_HOSTS = ['*']
@@ -133,11 +175,36 @@ AUTH_USER_MODEL = 'authentication.CustomUser'
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 
-CORS_ALLOWED_ORIGINS = [
-    "https://app.mhsolucionesempresariales.com",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# Build CORS allowed origins based on environment
+def get_cors_origins():
+    """Get CORS allowed origins based on environment"""
+    origins = [
+        "https://app.mhsolucionesempresariales.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    
+    # Add Railway frontend URL if available
+    frontend_url = config('FRONTEND_URL', default='')
+    if frontend_url and frontend_url not in origins:
+        origins.append(frontend_url)
+    
+    # Add Railway public domain
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if railway_domain:
+        origins.append(f"https://{railway_domain}")
+    
+    return origins
+
+CORS_ALLOWED_ORIGINS = get_cors_origins()
+
+# Allow CORS from Railway subdomains when in Railway environment
+if IS_RAILWAY:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^https://.*\.railway\.app$",
+        r"^https://.*\.up\.railway\.app$",
+    ]
+
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = False 

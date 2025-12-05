@@ -5,7 +5,21 @@ set -x
 
 echo "Iniciando entrypoint..."
 
-if [ -n "$AWS_EXECUTION_ENV" ] && command -v aws > /dev/null; then
+# Detect Railway environment
+if [ -n "$RAILWAY_ENVIRONMENT" ] || [ -n "$RAILWAY_PROJECT_ID" ]; then
+    echo "🚂 Entorno Railway detectado."
+    echo "Railway environment: ${RAILWAY_ENVIRONMENT:-production}"
+    
+    # Railway provides environment variables directly
+    # No need to fetch from secrets manager
+    
+    # Add Railway-specific hosts to ALLOWED_HOSTS if not already present
+    if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+        export ALLOWED_HOSTS="${ALLOWED_HOSTS},${RAILWAY_PUBLIC_DOMAIN}"
+        echo "Added Railway domain to ALLOWED_HOSTS: $RAILWAY_PUBLIC_DOMAIN"
+    fi
+    
+elif [ -n "$AWS_EXECUTION_ENV" ] && command -v aws > /dev/null; then
     echo "Entorno ECS detectado. Obteniendo secretos..."
     
     SECRET_CONTENT=$(aws secretsmanager get-secret-value \
