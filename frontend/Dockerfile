@@ -12,7 +12,7 @@ ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
 ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 COPY . .
 

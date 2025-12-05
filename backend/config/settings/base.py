@@ -18,8 +18,11 @@ AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-2')
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 
-# Check if S3 credentials are available
-USE_S3_STORAGE = bool(AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)
+# Check if S3 credentials are available and not empty
+USE_S3_STORAGE = bool(
+    AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and 
+    AWS_ACCESS_KEY_ID.strip() and AWS_SECRET_ACCESS_KEY.strip()
+)
 
 if USE_S3_STORAGE:
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'

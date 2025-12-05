@@ -17,8 +17,13 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Database configuration - supports both Railway PostgreSQL and AWS RDS
 if 'DATABASE_URL' in os.environ:
-    # Railway PostgreSQL may not require SSL, AWS RDS does
-    ssl_require = not IS_RAILWAY  # Disable SSL requirement for Railway internal connections
+    # SSL configuration can be overridden with DATABASE_SSL_REQUIRE environment variable
+    # Default: Railway internal connections don't require SSL, AWS RDS does
+    ssl_require_override = os.environ.get('DATABASE_SSL_REQUIRE')
+    if ssl_require_override is not None:
+        ssl_require = ssl_require_override.lower() in ('true', '1', 'yes')
+    else:
+        ssl_require = not IS_RAILWAY  # Railway internal network is secure by default
     
     DATABASES = {
         'default': dj_database_url.config(
@@ -31,6 +36,7 @@ else:
     raise Exception("DATABASE_URL no encontrada en variables de entorno")
 
 # Redis configuration - supports both Railway Redis and AWS ElastiCache
+# IMPORTANT: REDIS_URL is required for production multi-instance deployments
 if 'REDIS_URL' in os.environ:
     redis_url = os.environ.get('REDIS_URL')
     CELERY_BROKER_URL = redis_url
@@ -45,8 +51,15 @@ if 'REDIS_URL' in os.environ:
         },
     }
 else:
-    print("⚠️ REDIS_URL no encontrada - Celery y Channels no funcionarán")
-    # Fallback to InMemory channel layer
+    # WARNING: InMemoryChannelLayer does not work across multiple instances
+    # This is only suitable for single-instance deployments or development
+    import warnings
+    warnings.warn(
+        "REDIS_URL not configured. Using InMemoryChannelLayer which does not work "
+        "across multiple server instances. Configure REDIS_URL for production.",
+        RuntimeWarning
+    )
+    print("⚠️ REDIS_URL no encontrada - Usando InMemoryChannelLayer (solo para una instancia)")
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer'

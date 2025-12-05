@@ -168,19 +168,20 @@
   }
 }
 
-.grid-1-col-mobile {
+// Grid column utilities with higher specificity
+[class].grid-1-col-mobile {
   @media (max-width: $breakpoint-md) {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
 
-.grid-2-col-mobile {
+[class].grid-2-col-mobile {
   @media (max-width: $breakpoint-md) {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr);
   }
   
   @media (max-width: $breakpoint-sm) {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -575,13 +576,17 @@
 // PRINT STYLES
 // ==========================================
 
+// Print styles - using higher specificity for print overrides
 @media print {
+  // Print utility classes
+  [class].no-print,
   .no-print {
-    display: none !important;
+    display: none;
   }
   
+  [class].print-only,
   .print-only {
-    display: block !important;
+    display: block;
   }
   
   body {
@@ -600,15 +605,20 @@
     }
   }
   
+  // Hide navigation elements for print
   .sidebar,
+  .main-header,
   .header,
   .footer,
-  .bottom-nav-mobile {
-    display: none !important;
+  .bottom-nav-mobile,
+  nav {
+    display: none;
   }
   
-  .main-content {
-    margin: 0 !important;
-    padding: 0 !important;
+  // Reset main content for print layout
+  .main-content,
+  .main-layout .main-content {
+    margin: 0;
+    padding: 0;
   }
 }
