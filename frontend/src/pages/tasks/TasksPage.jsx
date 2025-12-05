@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { getTasks } from '../../services/taskService';
 import { getProjects, getProjectMembers } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
-import { FiCheckSquare, FiFilter, FiPaperclip } from 'react-icons/fi';
+import { FiCheckSquare, FiFilter, FiPaperclip, FiRefreshCw } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
@@ -21,73 +22,100 @@ const TasksPage = () => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [projectMembers, setProjectMembers] = useState([]);
   const [taskDocuments, setTaskDocuments] = useState({});
 
-  useEffect(() => {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          const [userData, tasksData, projectsData] = await Promise.all([
-            getCurrentUserFromSession(),
-            getTasks(),
-            getProjects(),
-          ]);
+  const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
-          setUser(userData);
-          const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
-          
-          let filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
-
-          if (userData.role === 'STUDENT') {
-            filteredTasks = filteredTasks.filter(task => 
-              task.assigned_to?.id === userData.id
-            );
-          } else {
-            filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
-          }
-    
-        setTasks(filteredTasks);
-        
-        let filteredProjects = Array.isArray(projectsData.results) ? projectsData.results : [];
-        if (userData.role === 'STUDENT') {
-          filteredProjects = filteredProjects.filter(project => 
-            project.members?.some(member => 
-              member.user?.id === userData.id || member.id === userData.id
-            )
-          );
-        }
-        
-        setProjects(filteredProjects);
-        
-        const documentsPromises = filteredTasks.map(async (task) => {
-          try {
-            const documents = await getDocumentsByTask(task.id);
-            return { taskId: task.id, documents };
-          } catch (error) {
-            console.error(`Error fetching documents for task ${task.id}:`, error);
-            return { taskId: task.id, documents: [] };
-          }
-        });
-        
-        const documentsResults = await Promise.all(documentsPromises);
-        const documentsMap = {};
-        documentsResults.forEach(result => {
-          documentsMap[result.taskId] = result.documents;
-        });
-        setTaskDocuments(documentsMap);
-        
-          } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('No se pudieron cargar los datos.');
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async (showRefreshIndicator = false) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    };
-    fetchData();
+      
+      const [userData, tasksData, projectsData] = await Promise.all([
+        getCurrentUserFromSession(),
+        getTasks(),
+        getProjects(),
+      ]);
+
+      setUser(userData);
+      const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
+      
+      let filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
+
+      if (userData.role === 'STUDENT') {
+        filteredTasks = filteredTasks.filter(task => 
+          task.assigned_to?.id === userData.id
+        );
+      } else {
+        filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
+      }
+
+      setTasks(filteredTasks);
+      
+      let filteredProjects = Array.isArray(projectsData.results) ? projectsData.results : [];
+      if (userData.role === 'STUDENT') {
+        filteredProjects = filteredProjects.filter(project => 
+          project.members?.some(member => 
+            member.user?.id === userData.id || member.id === userData.id
+          )
+        );
+      }
+      
+      setProjects(filteredProjects);
+      
+      const documentsPromises = filteredTasks.map(async (task) => {
+        try {
+          const documents = await getDocumentsByTask(task.id);
+          return { taskId: task.id, documents };
+        } catch (error) {
+          console.error(`Error fetching documents for task ${task.id}:`, error);
+          return { taskId: task.id, documents: [] };
+        }
+      });
+      
+      const documentsResults = await Promise.all(documentsPromises);
+      const documentsMap = {};
+      documentsResults.forEach(result => {
+        documentsMap[result.taskId] = result.documents;
+      });
+      setTaskDocuments(documentsMap);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('No se pudieron cargar los datos.');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Listen for task updates from other components
+  useEffect(() => {
+    if (tasksUpdated) {
+      fetchData(true);
+      consumeTasksUpdate();
+    }
+  }, [tasksUpdated, fetchData, consumeTasksUpdate]);
+
+  // Listen for external task update events
+  useEffect(() => {
+    const handleTaskChange = () => {
+      fetchData(true);
+    };
+    window.addEventListener('tasksUpdated', handleTaskChange);
+    return () => window.removeEventListener('tasksUpdated', handleTaskChange);
+  }, [fetchData]);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -106,13 +134,47 @@ const TasksPage = () => {
     fetchMembers();
   }, [selectedProject, isModalOpen]);
 
+  const handleRefresh = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
+
+  const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
+    if (isEditMode) {
+      setTasks(prev => prev.map(task => 
+        task.id === newTask.id ? newTask : task
+      ));
+    } else {
+      setTasks(prev => [newTask, ...prev]);
+    }
+    setIsModalOpen(false);
+    notifyTaskChange(newTask.id, newTask.project, isEditMode ? 'update' : 'create');
+    toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
+  }, [notifyTaskChange]);
+
+  const handleTaskUpdated = useCallback((updatedTask) => {
+    if (updatedTask.status === 'COMPLETED') {
+      setTasks(prev => prev.filter(task => task.id !== updatedTask.id));
+    } else {
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    }
+    notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
+  }, [notifyTaskChange]);
+
+  const handleTaskDeleted = useCallback((taskId) => {
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+    setSelectedTask(null);
+    notifyTaskChange(taskId, null, 'delete');
+  }, [notifyTaskChange]);
+
   const filteredTasks =
     selectedProject === 'all'
       ? tasks
       : tasks.filter((task) => task.project === parseInt(selectedProject));
 
   if (loading || !user) {
-    return <Loading fullscreen />;
+    return <Loading fullscreen text="Cargando tareas..." />;
   }
 
   return (
@@ -122,27 +184,21 @@ const TasksPage = () => {
       </Helmet>
 
       {isModalOpen && (
-        <Modal title="Nueva Tarea" onClose={() => setIsModalOpen(false)}>
+        <Modal 
+          title="Nueva Tarea" 
+          onClose={() => setIsModalOpen(false)}
+          aria-labelledby="modal-title"
+        >
           {selectedProject !== 'all' ? (
             <TaskForm
               onCancel={() => setIsModalOpen(false)}
               project={projects.find(p => p.id === parseInt(selectedProject))}
               projectMembers={projectMembers}
-              onTaskSaved={(newTask, isEditMode = false) => {
-                if (isEditMode) {
-                  setTasks((prev) => prev.map(task => 
-                    task.id === newTask.id ? newTask : task
-                  ));
-                } else {
-                  setTasks((prev) => [newTask, ...prev]);
-                }
-                setIsModalOpen(false);
-                toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
-              }}
+              onTaskSaved={handleTaskCreated}
             />
           ) : (
             <div className="p-4">
-              <p className="text-warning">Por favor selecciona un proyecto primero</p>
+              <p className="text-warning" role="alert">Por favor selecciona un proyecto primero</p>
               <button 
                 className="btn btn-secondary" 
                 onClick={() => setIsModalOpen(false)}
@@ -181,15 +237,8 @@ const TasksPage = () => {
                   console.error('Error refreshing documents:', error);
                 });
             }}
-            onTaskUpdated={(updatedTask) => {
-              setTasks((prev) => prev.map(task => 
-                task.id === updatedTask.id ? updatedTask : task
-              ));
-            }}
-            onTaskDeleted={(taskId) => {
-              setTasks((prev) => prev.filter(task => task.id !== taskId));
-              setSelectedTask(null);
-            }}
+            onTaskUpdated={handleTaskUpdated}
+            onTaskDeleted={handleTaskDeleted}
           />
         </Modal>
       )}
@@ -199,28 +248,44 @@ const TasksPage = () => {
           <h1>
             {user.role === 'STUDENT' ? 'Mis Tareas' : 'Gestor de Tareas'}
           </h1>
-          {['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) && (
-            <button 
-              className="btn btn-primary" 
-              onClick={() => setIsModalOpen(true)}
-              disabled={selectedProject === 'all'}
-              title={selectedProject === 'all' ? 'Selecciona un proyecto primero' : 'Crear nueva tarea'}
+          <div className="header-actions">
+            {isRefreshing && (
+              <Loading inline size="small" text="Actualizando..." />
+            )}
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              aria-label="Actualizar lista de tareas"
+              title="Actualizar"
             >
-              + Nueva Tarea
+              <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
             </button>
-          )}
+            {['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) && (
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setIsModalOpen(true)}
+                disabled={selectedProject === 'all'}
+                title={selectedProject === 'all' ? 'Selecciona un proyecto primero' : 'Crear nueva tarea'}
+                aria-label="Crear nueva tarea"
+              >
+                + Nueva Tarea
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="glass-card">
           <div className="filters-bar">
             <div className="filter-group">
-              <FiFilter />
-              <label htmlFor="project-filter">Filtrar por Proyecto:</label>
+              <FiFilter aria-hidden="true" />
+              <label htmlFor="project-filter" id="project-filter-label">Filtrar por Proyecto:</label>
               <select
                 id="project-filter"
                 className="form-select"
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
+                aria-labelledby="project-filter-label"
               >
                 <option value="all">Todos los Proyectos</option>
                 {Array.isArray(projects) &&
@@ -233,7 +298,7 @@ const TasksPage = () => {
             </div>
           </div>
 
-          <div className="tasks-list-container">
+          <div className="tasks-list-container" role="list" aria-label="Lista de tareas">
             {Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
               filteredTasks.map((task) => {
                 const documents = taskDocuments[task.id] || [];
@@ -241,18 +306,28 @@ const TasksPage = () => {
                 return (
                   <div
                     key={task.id}
-                    className="task-list-item"
+                    className={`task-list-item ${task._isOptimistic ? 'optimistic-item' : ''}`}
                     onClick={() => setSelectedTask(task)}
+                    role="listitem"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedTask(task);
+                      }
+                    }}
+                    aria-label={`Tarea: ${task.title}, Estado: ${task.status}`}
                   >
                     <FiCheckSquare
                       className={`task-status-icon status-${task.status.toLowerCase()}`}
+                      aria-hidden="true"
                     />
                     <div className="task-list-info">
                       <p className="task-title">{task.title}</p>
                       <span className="task-project-name">{task.project_name}</span>
                       {documents.length > 0 && (
-                        <div className="task-documents-badge">
-                          <FiPaperclip size={12} />
+                        <div className="task-documents-badge" aria-label={`${documents.length} documentos adjuntos`}>
+                          <FiPaperclip size={12} aria-hidden="true" />
                           <span>{documents.length} documento(s)</span>
                         </div>
                       )}
@@ -270,7 +345,7 @@ const TasksPage = () => {
                             task.assigned_to.profile_picture ||
                             `https://ui-avatars.com/api/?name=${task.assigned_to.first_name}+${task.assigned_to.last_name}&background=f97316&color=fff`
                           }
-                          alt={task.assigned_to.first_name}
+                          alt={`Asignada a ${task.assigned_to.first_name}`}
                           className="task-assignee-avatar"
                           title={`Asignada a ${task.assigned_to.first_name}`}
                         />
@@ -280,7 +355,7 @@ const TasksPage = () => {
                 );
               })
             ) : (
-              <div className="empty-list-message">
+              <div className="empty-list-message" role="status">
                 <h2>No hay tareas</h2>
                 <p>No se encontraron tareas que coincidan con el filtro seleccionado.</p>
               </div>

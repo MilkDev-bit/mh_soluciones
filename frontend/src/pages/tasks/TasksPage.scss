@@ -77,6 +77,14 @@
       font-size: 1.75rem;
     }
   }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    position: relative;
+    z-index: 1;
+  }
   
   .btn {
     flex-shrink: 0;
@@ -96,6 +104,20 @@
       cursor: not-allowed;
       box-shadow: none;
     }
+  }
+}
+
+// Spinning animation for refresh icon
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -443,9 +465,15 @@
   .page-header {
     padding: $spacing-5;
 
-    .btn {
+    .header-actions {
       width: 100%;
-      justify-content: center;
+      justify-content: space-between;
+    }
+
+    .btn {
+      &.btn-primary {
+        flex: 1;
+      }
     }
   }
 
