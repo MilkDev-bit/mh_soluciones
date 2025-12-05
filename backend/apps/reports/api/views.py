@@ -1,19 +1,25 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count, Q, Case, When, IntegerField
-from django.utils import timezone
 from datetime import timedelta
 
+from django.db.models import Count, Q
+from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.authentication.models import CustomUser
 from apps.projects.models import Project
 from apps.tasks.models import Task
-from apps.authentication.models import CustomUser
 from .serializers import (
     SearchResultSerializer, 
     ProjectStatusSerializer, 
     TaskSummarySerializer, 
     UserActivitySerializer
 )
+
+# Role constants to avoid repetition
+ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+SEARCH_ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'RH')
+
 
 class DashboardDataAPIView(APIView):
     """
@@ -147,7 +153,7 @@ class GlobalSearchAPIView(APIView):
             return Response({"error": "La búsqueda requiere al menos 3 caracteres."}, status=400)
 
         allowed_projects_qs = Project.objects.none()
-        if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if user.role in ADMIN_ROLES:
             allowed_projects_qs = Project.objects.all()
         elif user.role == 'CLIENT':
             allowed_projects_qs = Project.objects.filter(client=user)
@@ -168,7 +174,7 @@ class GlobalSearchAPIView(APIView):
 
         tasks = Task.objects.filter(project__in=allowed_projects_qs).filter(
             Q(title__icontains=query) | Q(description__icontains=query)
-        )[:5]
+        ).select_related('project')[:5]
         for task in tasks:
             results.append({
                 'id': task.id,
@@ -178,7 +184,7 @@ class GlobalSearchAPIView(APIView):
                 'details': f"En proyecto: {task.project.name}"
             })
         
-        if user.role in ['SUPERADMIN', 'ADMIN', 'RH']:
+        if user.role in SEARCH_ADMIN_ROLES:
             users = CustomUser.objects.filter(is_active=True).filter(
                 Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
             )[:5]

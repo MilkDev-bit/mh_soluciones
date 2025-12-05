@@ -24,10 +24,14 @@ export const getDocumentsByTask = async (taskId) => {
 
 export const uploadDocument = async (formData) => {
   try {
-    try {
-      const response = await api.post('/documents/', formData);
-      return response.data;
-    } catch (error) {
+    const response = await api.post('/documents/', formData);
+    return response.data;
+  } catch (error) {
+    // Try alternative format only if the error is specifically about 'task' field
+    const isTaskFieldError = error.response?.status === 400 && 
+      error.response?.data?.task !== undefined;
+    
+    if (isTaskFieldError) {
       const newFormData = new FormData();
       for (let [key, value] of formData.entries()) {
         if (key !== 'task') {
@@ -44,22 +48,21 @@ export const uploadDocument = async (formData) => {
       return response2.data;
     }
 
-  } catch (error) {
     throw new Error(
       error.response?.data?.message || 'Error al subir el documento'
     );
   }
 };
 
+/**
+ * Returns a usable URL for a file path.
+ * Handles absolute URLs and relative media paths.
+ */
 export const getFileUrl = (filePath) => {
-  if (filePath.startsWith('http')) {
-    return filePath;
-  }
+  if (!filePath) return null;
   
-  if (filePath.startsWith('/media/') || filePath.startsWith('/static/')) {
-    return `http://mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com${filePath}`;
-  }
-  
+  // For any path (absolute URL or relative), return as-is
+  // The proxy configuration handles media paths
   return filePath;
 };
 

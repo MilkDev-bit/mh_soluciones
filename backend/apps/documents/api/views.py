@@ -1,12 +1,19 @@
-from rest_framework import viewsets
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+import logging
+
 from django.db.models import Q
+from rest_framework import viewsets
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from ..models import Document
-from .serializers import DocumentSerializer
-from .permissions import IsOwnerOrAdminReadOnly
 from ..tasks import upload_document_to_drive
+from .permissions import IsOwnerOrAdminReadOnly
+from .serializers import DocumentSerializer
+
+logger = logging.getLogger(__name__)
+
+# Admin roles constant
+ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+
 
 class DocumentViewSet(viewsets.ModelViewSet):
     """
@@ -25,7 +32,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Document.objects.all()
 
-        if not user.is_anonymous and user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if not user.is_anonymous and user.role not in ADMIN_ROLES:
             user_projects = user.projects.all()
             queryset = queryset.filter(
                 Q(project__in=user_projects) | 
@@ -54,9 +61,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.save(update_fields=['project']) 
         try:
             upload_document_to_drive.delay(document.id)
-            print(f"Tarea para subir el documento {document.id} a Google Drive ha sido encolada.")
+            logger.info(f"Tarea para subir el documento {document.id} a Google Drive ha sido encolada.")
         except Exception as e:
-
-            print(f"Error al encolar la tarea de subida a Drive: {e}")
+            logger.error(f"Error al encolar la tarea de subida a Drive: {e}")
             document.upload_status = Document.UploadStatus.FAILED
             document.save(update_fields=['upload_status'])

@@ -21,7 +21,6 @@ const DashboardPage = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching dashboard data from /api/v1/reports/dashboard/...');
         
         const token = localStorage.getItem('access_token');
         if (!token) {
@@ -29,11 +28,8 @@ const DashboardPage = () => {
         }
         
         const response = await getDashboardData();
-        console.log('Dashboard data received:', response);
         setData(response);
       } catch (error) {
-        console.error('Detailed error:', error);
-        
         if (error.response?.status === 401) {
           setError('Error de autenticación. Por favor, inicia sesión nuevamente.');
           toast.error('Sesión expirada. Redirigiendo al login...');

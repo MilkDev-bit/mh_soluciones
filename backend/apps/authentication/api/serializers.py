@@ -1,7 +1,10 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
-from rest_framework import serializers
 from django_otp.plugins.otp_totp.models import TOTPDevice
+from rest_framework import serializers
+
 from ..models import CustomUser
+
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -23,7 +26,11 @@ class UserSerializer(serializers.ModelSerializer):
         Genera la URL absoluta para la imagen de perfil.
         """
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
-            return obj.profile_picture.url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            base_url = getattr(settings, 'BACKEND_URL', 'http://localhost:8000')
+            return f"{base_url.rstrip('/')}{obj.profile_picture.url}"
         return None
 
 class UserUpdateSerializer(serializers.ModelSerializer):
