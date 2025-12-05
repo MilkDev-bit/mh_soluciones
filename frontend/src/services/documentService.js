@@ -15,11 +15,9 @@ export const getDocumentsByTask = async (taskId) => {
       return data.documents;
     }
     
-    console.warn('Estructura de respuesta inesperada:', data);
     return [];
 
   } catch (error) {
-    console.error('Error al obtener documentos:', error);
     return [];
   }
 };
@@ -72,7 +70,6 @@ export const deleteDocument = async (documentId) => {
   try {
     await api.delete(`/documents/${documentId}/`);
   } catch (error) {
-    console.error('Error deleting document:', error);
     throw new Error(
       error.response?.data?.message || 'Error al eliminar el documento'
     );

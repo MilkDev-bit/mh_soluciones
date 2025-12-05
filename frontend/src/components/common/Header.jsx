@@ -1,8 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
+
 import { AuthContext } from '../../contexts/AuthContext';
-import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown } from 'react-icons/fi';
-import NotificationsDropdown from '../notifications/NotificationsDropdown';
+import notificationService from '../../services/NotificationService';
+
+import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiBell, FiCheck, FiCheckCircle } from 'react-icons/fi';
 import './Header.scss';
 
 const pageTitles = {
@@ -11,25 +16,70 @@ const pageTitles = {
   '/tasks': 'Mis Tareas',
   '/calendar': 'Calendario',
   '/users': 'Usuarios',
-  '/profile': 'Mi Perfil'
+  '/profile': 'Mi Perfil',
+  '/completed-tasks': 'Tareas Completadas',
+  '/hr': 'Recursos Humanos',
+  '/admin/users': 'Administración de Usuarios'
 };
 
 const Header = ({ onToggleSidebar, sidebarOpen }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      setScrolled(isScrolled);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    notificationService.connectWebSocket(user.id);
+
+    const handleMessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'new_notification') {
+        const newNotification = data.payload;
+        setNotifications(prev => [newNotification, ...prev].slice(0, 10));
+        setUnreadCount(prev => prev + 1);
+        toast.info(`🔔 ${newNotification.title}`);
+      }
+    };
+
+    const socket = notificationService.socket;
+    if (socket) {
+      socket.addEventListener('message', handleMessage);
+    }
+
+    const fetchInitialData = async () => {
+      try {
+        const initialNotifs = await notificationService.getNotifications({ limit: 10 });
+        setNotifications(initialNotifs.results || []);
+        const count = await notificationService.getUnreadCount();
+        setUnreadCount(count);
+      } catch (error) {
+        console.error("Error al cargar notificaciones iniciales:", error);
+      }
+    };
+
+    fetchInitialData();
+
+    return () => {
+      if (socket) {
+        socket.removeEventListener('message', handleMessage);
+      }
+      notificationService.disconnect();
+    };
+  }, [user]);
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -40,9 +90,31 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
   };
 
   const handleLogout = () => {
-    setIsDropdownOpen(false);
+    setIsProfileOpen(false);
     logout();
-    navigate('/login');
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error al marcar como leída:", error);
+      toast.error("No se pudo marcar la notificación.");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+        await notificationService.markAllAsRead();
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+        setTimeout(() => setNotifications([]), 500);
+    } catch (error) {
+        console.error("Error al marcar todas como leídas:", error);
+        toast.error("No se pudieron marcar las notificaciones.");
+    }
   };
 
   if (!user) return null;
@@ -58,84 +130,83 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
         </div>
 
         <div className="header-right">
-          <div className="header-actions">
-            <NotificationsDropdown />
+          <div className="notifications-dropdown">
+            <button className="icon-button" onClick={() => { setIsNotificationsOpen(prev => !prev); setIsProfileOpen(false); }}>
+              <FiBell />
+              {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+            </button>
+            
+            <div className={`dropdown-panel notifications-panel ${isNotificationsOpen ? 'active' : ''}`}>
+              <div className="dropdown-header">
+                <h3>Notificaciones</h3>
+                {notifications.some(n => !n.is_read) && (
+                    <button className="mark-all-read-btn" onClick={handleMarkAllAsRead}>
+                        <FiCheckCircle /> Marcar todas como leídas
+                    </button>
+                )}
+              </div>
+              <div className="notification-list">
+                {notifications.length === 0 ? (
+                  <div className="empty-state">No tienes notificaciones.</div>
+                ) : (
+                  notifications.map(notif => (
+                    <div key={notif.id} className={`notification-item ${notif.is_read ? 'read' : ''}`}>
+                      <div className="notification-content">
+                        <p className="title">{notif.title}</p>
+                        <p className="message">{notif.message}</p>
+                        <span className="time">{formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: es })}</span>
+                      </div>
+                      {!notif.is_read && (
+                        <button className="mark-read-btn" onClick={() => handleMarkAsRead(notif.id)} title="Marcar como leída"><FiCheck /></button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="header-profile">
-            <button
-              className="profile-button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            >
-              <div className="avatar-container">
-                <img
-                  src={
-                    user.profile_picture ||
-                    `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`
-                  }
-                  alt="Avatar"
-                  className="profile-avatar"
-                />
-              </div>
+            <button className="profile-button" onClick={() => { setIsProfileOpen(prev => !prev); setIsNotificationsOpen(false); }}>
+              <img src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`} alt="Avatar" className="profile-avatar" />
               <div className="profile-info">
-                <span className="profile-name">
-                  {user.first_name} {user.last_name}
-                </span>
-                <span className="profile-role">
-                  {user.role.replace('_', ' ')}
-                </span>
+                <span className="profile-name">{user.first_name} {user.last_name}</span>
+                <span className="profile-role">{user.role.replace('_', ' ')}</span>
               </div>
-              <FiChevronDown
-                className={`dropdown-icon ${isDropdownOpen ? 'open' : ''}`}
-              />
+              <FiChevronDown className={`dropdown-icon ${isProfileOpen ? 'open' : ''}`} />
             </button>
-
-            <div className={`profile-dropdown ${isDropdownOpen ? 'active' : ''}`}>
-              <div className="dropdown-header">
-                <div className="dropdown-avatar">
-                  <img
-                    src={
-                      user.profile_picture ||
-                      `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`
-                    }
-                    alt="Avatar"
-                  />
+             
+            <div className={`dropdown-panel profile-panel ${isProfileOpen ? 'active' : ''}`}>
+                <div className="dropdown-header">
+                  <div className="dropdown-avatar">
+                    <img
+                      src={
+                        user.profile_picture ||
+                        `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`
+                      }
+                      alt="Avatar"
+                      className="profile-avatar"
+                    />
+                  </div>
+                  <div className="dropdown-user-info">
+                    <span className="dropdown-name">
+                      {user.first_name} {user.last_name}
+                    </span>
+                    <span className="dropdown-email">{user.email}</span>
+                  </div>
                 </div>
-                <div className="dropdown-user-info">
-                  <span className="dropdown-name">
-                    {user.first_name} {user.last_name}
-                  </span>
-                  <span className="dropdown-email">{user.email}</span>
-                </div>
-              </div>
-
-              <div className="dropdown-divider"></div>
-
-              <Link
-                to="/profile"
-                onClick={() => setIsDropdownOpen(false)}
-                className="dropdown-item"
-              >
-                <FiUser /> Mi Perfil
-              </Link>
-
-              <div className="dropdown-divider"></div>
-
-              <button onClick={handleLogout} className="dropdown-item">
-                <FiLogOut /> Cerrar Sesión
-              </button>
+                <div className="dropdown-divider"></div>
+                <Link to="/profile" onClick={() => setIsProfileOpen(false)} className="dropdown-item"><FiUser /> Mi Perfil</Link>
+                <div className="dropdown-divider"></div>
+                <button onClick={handleLogout} className="dropdown-item"><FiLogOut /> Cerrar Sesión</button>
             </div>
           </div>
         </div>
 
-        {isDropdownOpen && (
-          <div
-            className="dropdown-overlay"
-            onClick={() => setIsDropdownOpen(false)}
-          />
+        {(isProfileOpen || isNotificationsOpen) && (
+          <div className="dropdown-overlay" onClick={() => { setIsProfileOpen(false); setIsNotificationsOpen(false); }} />
         )}
       </header>
-
       <div className="header-spacer"></div>
     </>
   );

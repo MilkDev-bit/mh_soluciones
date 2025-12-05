@@ -33,6 +33,46 @@
       color: $neutral-700;
       font-size: 0.9rem;
     }
+
+      @media (max-width: $breakpoint-md) {
+        thead {
+          display: none;
+        }
+
+        tr {
+          display: block;
+          margin-bottom: 1.5rem;
+          border-radius: $border-radius-lg;
+          box-shadow: $shadow-md;
+          background: rgba(255, 255, 255, 0.5);
+          border: 1px solid $glass-border;
+        }
+        
+        td {
+          display: block;
+          text-align: right;
+          padding-left: 50%;
+          position: relative;
+          border-bottom: 1px solid $glass-border;
+
+          &::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 1.5rem;
+            font-weight: 600;
+            color: $neutral-600;
+            text-align: left;
+          }
+          
+          &:last-child {
+            border-bottom: none;
+          }
+        }
+        
+        .action-buttons {
+          justify-content: flex-end;
+        }
+    }
   }
 
   .user-cell {

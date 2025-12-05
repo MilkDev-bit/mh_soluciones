@@ -1,46 +1,111 @@
-$primary-color: #ff7c15;
-$primary-hover: #e66a0a;
-$background-color: #ffffff;
-$text-color: #2d3748;
-$text-light: #718096;
-$error-color: #e53e3e;
-$border-color: #e2e8f0;
-$shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+@import '../../assets/styles/variables';
 
 .auth-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background: linear-gradient(135deg, #fff8f2 0%, #ffefe6 100%);
+  padding: $spacing-4;
+  background: linear-gradient(135deg, $primary-50 0%, $secondary-50 50%, $primary-100 100%);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -5%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba($primary-500, 0.15), transparent);
+    border-radius: $rounded-full;
+    animation: float 20s ease-in-out infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -15%;
+    left: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba($secondary-500, 0.12), transparent);
+    border-radius: $rounded-full;
+    animation: float 25s ease-in-out infinite reverse;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
 }
 
 .auth-card {
-  background: $background-color;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: $shadow;
-  border: 1px solid #ffe0cc;
+  background: $white;
+  border-radius: $rounded-xl;
+  padding: $spacing-10;
+  box-shadow: $shadow-2xl;
+  border: 2px solid $primary-200;
   width: 100%;
-  max-width: 600px;
-  max-height: 500px; 
+  max-width: 700px; 
+  min-height: 400px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, $primary-500 0%, $secondary-500 100%);
+    border-radius: $rounded-xl $rounded-xl 0 0;
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-8;
+    max-width: 95%;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .auth-logo {
   text-align: center;
-  margin-bottom: 1.5rem;
-  flex-shrink: 0;
+  margin-bottom: $spacing-8;
   
   .logo-image {
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 100px;
     object-fit: contain;
     margin: 0 auto;
     display: block;
+    filter: drop-shadow(0 4px 12px rgba($primary-500, 0.2));
+    transition: all $transition-slow;
+    animation: logoFade 0.8s ease-out;
+    
+    &:hover {
+      transform: scale(1.05) rotate(2deg);
+      filter: drop-shadow(0 6px 16px rgba($primary-500, 0.3));
+    }
   }
   
   .logo-fallback {
@@ -48,37 +113,66 @@ $shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     justify-content: center;
     
     .logo-icon {
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, $primary-color, #ff9c45);
-      color: white;
-      border-radius: 12px;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+      color: $white;
+      border-radius: $border-radius-xl;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 1.5rem;
-      box-shadow: 0 2px 10px rgba(255, 124, 21, 0.3);
+      font-weight: 800;
+      font-size: 2rem;
+      box-shadow: 0 4px 20px rgba($primary-500, 0.4);
+      letter-spacing: -1px;
     }
+  }
+}
+
+@keyframes logoFade {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 1.5rem;
-  flex-shrink: 0;
+  margin-bottom: $spacing-8;
   
   h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: $text-color;
-    margin-bottom: 0.375rem;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, $neutral-900 0%, $neutral-700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: $spacing-3;
+    letter-spacing: -0.5px;
+    animation: fadeIn 0.8s ease-out 0.2s backwards;
   }
   
   p {
-    color: $text-light;
+    color: $neutral-600;
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: 500;
+    animation: fadeIn 0.8s ease-out 0.3s backwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -86,18 +180,24 @@ $shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  gap: $spacing-6;
   
   .form-group {
-    margin-bottom: 1.25rem;
+    animation: fadeIn 0.8s ease-out 0.4s backwards;
+    
+    &:nth-child(2) {
+      animation-delay: 0.5s;
+    }
   }
   
   .form-label {
     display: block;
-    font-weight: 600;
-    color: $text-color;
-    margin-bottom: 0.375rem;
-    font-size: 0.85rem;
+    font-weight: 700;
+    color: $neutral-800;
+    margin-bottom: $spacing-3;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 }
 
@@ -106,112 +206,170 @@ $shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   
   input {
     width: 100%;
-    padding: 0.75rem;
-    border: 2px solid $border-color;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: all 0.2s ease;
-    background: white;
+    padding: $spacing-4;
+    border: 2px solid $neutral-200;
+    border-radius: $border-radius-lg;
+    font-size: 1rem;
+    transition: all $transition;
+    background: $white;
+    font-family: $font-sans;
     
     &:focus {
       outline: none;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+      border-color: $primary-500;
+      box-shadow: 0 0 0 4px rgba($primary-500, 0.1);
+      background: $primary-25;
+      transform: translateY(-1px);
     }
     
     &.error {
-      border-color: $error-color;
-      box-shadow: 0 0 0 2px rgba($error-color, 0.1);
+      border-color: $error;
+      box-shadow: 0 0 0 4px rgba($error, 0.1);
+      animation: shake 0.4s ease-in-out;
     }
     
     &::placeholder {
-      color: #a0aec0;
-      font-size: 0.9rem;
+      color: $neutral-400;
+      font-size: 0.9375rem;
     }
   }
   
   &.password-input {
     input {
-      padding-right: 2.5rem;
+      padding-right: $spacing-12;
     }
     
     .password-toggle {
       position: absolute;
-      right: 0.75rem;
+      right: $spacing-3;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: $text-light;
+      background: $neutral-100;
+      border: 2px solid $neutral-200;
+      color: $neutral-600;
       cursor: pointer;
-      padding: 0.25rem;
-      border-radius: 4px;
-      font-size: 1rem;
+      padding: $spacing-2;
+      border-radius: $border-radius;
+      font-size: 1.125rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all $transition;
+      width: 36px;
+      height: 36px;
       
       &:hover {
-        color: $primary-color;
+        background: $primary-50;
+        color: $primary-600;
+        border-color: $primary-500;
+        transform: translateY(-50%) scale(1.1);
+      }
+      
+      &:active {
+        transform: translateY(-50%) scale(0.95);
       }
     }
   }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
 .error-message {
-  display: block;
-  color: $error-color;
-  font-size: 0.75rem;
-  margin-top: 0.375rem;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  color: $error;
+  font-size: 0.8125rem;
+  margin-top: $spacing-2;
+  font-weight: 600;
+  animation: slideIn 0.3s ease-out;
+  
+  &::before {
+    content: '⚠';
+    font-size: 1rem;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .auth-button {
   width: 100%;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, $primary-color, $primary-hover);
-  color: white;
+  padding: $spacing-4;
+  background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+  color: $white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  border-radius: $border-radius-lg;
+  font-size: 1rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: $spacing-3;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 0.5rem;
-  flex-shrink: 0;
+  transition: all $transition;
+  margin-top: $spacing-4;
+  box-shadow: 0 4px 12px rgba($primary-500, 0.3);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.8s ease-out 0.6s backwards;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, $primary-600 0%, $primary-700 100%);
+    opacity: 0;
+    transition: opacity $transition;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  svg {
+    font-size: 1.25rem;
+  }
   
   &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba($primary-500, 0.4);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
   }
   
   &:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+    transform: none;
   }
   
   .button-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid transparent;
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-}
-
-.auth-footer {
-  margin-top: auto;
-  text-align: center;
-  padding-top: 1rem;
-  border-top: 1px solid $border-color;
-  flex-shrink: 0;
-  
-  p {
-    color: $text-light;
-    font-size: 0.7rem;
-    margin: 0;
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba($white, 0.3);
+    border-top: 3px solid $white;
+    border-radius: $rounded-full;
+    animation: spin 0.8s linear infinite;
   }
 }
 
@@ -221,20 +379,91 @@ $shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 }
 
-@media (max-width: 650px) {
+.auth-footer {
+  margin-top: $spacing-8;
+  text-align: center;
+  padding-top: $spacing-6;
+  border-top: 2px solid $neutral-200;
+  animation: fadeIn 0.8s ease-out 0.7s backwards;
+  
+  p {
+    color: $neutral-500;
+    font-size: 0.8125rem;
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
+.auth-button:focus-visible,
+.input-container input:focus-visible,
+.password-toggle:focus-visible {
+  outline: 3px solid $primary-500;
+  outline-offset: 2px;
+}
+
+@media (max-width: $breakpoint-md) {
   .auth-container {
-    padding: 0.75rem;
+    padding: $spacing-3;
+    
+    &::before,
+    &::after {
+      width: 300px;
+      height: 300px;
+    }
   }
   
   .auth-card {
-    padding: 1.5rem;
-    border-radius: 14px;
-    max-width: 95%;
-    max-height: 450px;
+    padding: $spacing-8;
   }
   
   .auth-logo {
-    margin-bottom: 1.25rem;
+    margin-bottom: $spacing-6;
+    
+    .logo-image {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .logo-fallback .logo-icon {
+      width: 64px;
+      height: 64px;
+      font-size: 1.5rem;
+    }
+  }
+  
+  .auth-header {
+    margin-bottom: $spacing-6;
+    
+    h2 {
+      font-size: 1.75rem;
+    }
+    
+    p {
+      font-size: 0.9375rem;
+    }
+  }
+  
+  .auth-form {
+    gap: $spacing-5;
+  }
+  
+  .input-container input {
+    padding: $spacing-3;
+  }
+  
+  .auth-button {
+    padding: $spacing-3;
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .auth-card {
+    padding: $spacing-6;
+    border-radius: $border-radius-lg;
+  }
+  
+  .auth-logo {
+    margin-bottom: $spacing-5;
     
     .logo-image {
       width: 70px;
@@ -242,60 +471,94 @@ $shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
     
     .logo-fallback .logo-icon {
-      width: 50px;
-      height: 50px;
+      width: 56px;
+      height: 56px;
       font-size: 1.25rem;
     }
   }
   
   .auth-header {
-    margin-bottom: 1.25rem;
-    
     h2 {
-      font-size: 1.25rem;
+      font-size: 1.5rem;
     }
     
     p {
-      font-size: 0.85rem;
+      font-size: 0.875rem;
     }
   }
   
-  .input-container input {
-    padding: 0.675rem;
+  .auth-form {
+    gap: $spacing-4;
+  }
+  
+  .form-label {
+    font-size: 0.8125rem;
+  }
+  
+  .input-container {
+    input {
+      font-size: 0.9375rem;
+      padding: $spacing-3;
+    }
+    
+    &.password-input {
+      .password-toggle {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+      }
+    }
   }
   
   .auth-button {
-    padding: 0.8rem;
+    font-size: 0.9375rem;
+    padding: $spacing-3;
+  }
+  
+  .auth-footer {
+    margin-top: $spacing-6;
+    padding-top: $spacing-5;
+    
+    p {
+      font-size: 0.75rem;
+    }
   }
 }
 
-@media (max-width: 480px) {
+@media (max-height: 700px) and (max-width: $breakpoint-md) {
+  .auth-container {
+    padding: $spacing-2;
+  }
+  
   .auth-card {
-    padding: 1.25rem;
-    max-height: 420px;
+    padding: $spacing-5;
+    max-height: 95vh;
+    overflow-y: auto;
   }
   
   .auth-logo {
+    margin-bottom: $spacing-4;
+    
     .logo-image {
       width: 60px;
       height: 60px;
     }
+  }
+  
+  .auth-header {
+    margin-bottom: $spacing-4;
     
-    .logo-fallback .logo-icon {
-      width: 45px;
-      height: 45px;
-      font-size: 1.1rem;
+    h2 {
+      font-size: 1.25rem;
     }
   }
   
-  .auth-header h2 {
-    font-size: 1.2rem;
+  .auth-form {
+    gap: $spacing-3;
   }
-}
-
-.auth-button:focus-visible,
-.input-container input:focus-visible,
-.password-toggle:focus-visible {
-  outline: 2px solid $primary-color;
-  outline-offset: 1px;
+  
+  .auth-footer {
+    margin-top: $spacing-5;
+    padding-top: $spacing-4;
+  }
 }

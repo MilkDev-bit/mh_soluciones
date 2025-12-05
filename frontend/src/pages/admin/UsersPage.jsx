@@ -110,7 +110,7 @@ const UsersPage = () => {
               <tbody>
                 {users.map(user => (
                   <tr key={user.id}>
-                    <td>
+                    <td data-label="Usuario">
                       <div className="user-cell">
                         <img 
                           src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`}
@@ -123,10 +123,18 @@ const UsersPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td>{user.email}</td>
-                    <td><span className={`role-badge role-${user.role.toLowerCase()}`}>{user.role.replace('_', ' ')}</span></td>
-                    <td><span className={`status-badge ${user.is_active ? 'status-active' : 'status-inactive'}`}>{user.is_active ? 'Activo' : 'Inactivo'}</span></td>
-                    <td>
+                    <td data-label="Email">{user.email}</td>
+                    <td data-label="Rol">
+                      <span className={`role-badge role-${user.role.toLowerCase()}`}>
+                        {user.role.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td data-label="Estado">
+                      <span className={`status-badge ${user.is_active ? 'status-active' : 'status-inactive'}`}>
+                        {user.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td data-label="Acciones">
                       <div className="action-buttons">
                         <button className="action-btn edit" title="Editar" onClick={() => handleOpenModal(user)}>
                           <FiEdit />

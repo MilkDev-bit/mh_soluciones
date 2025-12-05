@@ -18,13 +18,14 @@ import {
   FiFolder,
   FiAward,
   FiFileText,
-  FiRefreshCw
+  FiRefreshCw,
+  FiCheckCircle
 } from 'react-icons/fi';
 import './Sidebar.scss';
 
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
-  const { projectsUpdated, setProjectsUpdated } = useContext(ProjectContext); // Contexto para manejar actualizaciones
+  const { projectsUpdated, setProjectsUpdated } = useContext(ProjectContext);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -32,7 +33,7 @@ const Sidebar = () => {
   const [refreshing, setRefreshing] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
+   useEffect(() => {
     if (isMobileOpen || !isCollapsed || projectsUpdated) {
       fetchProjects();
     }
@@ -105,6 +106,7 @@ const Sidebar = () => {
   };
 
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
+  const hasAdminAccess = ['SUPERADMIN', 'ADMIN', 'DIRECTOR', 'PROFESSOR', 'CEO', 'RH'].includes(user?.role);
 
   return (
     <>
@@ -154,50 +156,61 @@ const Sidebar = () => {
               </button>
             </div>
           </div>
+      
+      <nav className="sidebar-nav">
+        <div className="menu-section">
+          <span className="menu-section-title">Principal</span>
+          <div className="menu-items">
+            <NavLink 
+              to="/" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiHome />
+              {!isCollapsed && <span>Panel de Control</span>}
+            </NavLink>
+            
+            <NavLink 
+              to="/projects" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiBriefcase />
+              {!isCollapsed && <span>Proyectos</span>}
+            </NavLink>
+            
+            <NavLink 
+              to="/tasks" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiCheckSquare />
+              {!isCollapsed && <span>Tareas</span>}
+            </NavLink>
+            
+            {hasAdminAccess && (
+              <NavLink 
+                to="/completed-tasks" 
+                className="menu-item"
+                onClick={closeMobileMenu}
+              >
+                <FiCheckCircle />
+                {!isCollapsed && <span>Tareas Finalizadas</span>}
+              </NavLink>
+            )}
+            
+            <NavLink 
+              to="/calendar" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiCalendar />
+              {!isCollapsed && <span>Calendario</span>}
+            </NavLink>
+          </div>
+        </div>
 
-          <nav className="sidebar-nav">
-            <div className="menu-section">
-              <span className="menu-section-title">Principal</span>
-              <div className="menu-items">
-                <NavLink 
-                  to="/" 
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiHome />
-                  {!isCollapsed && <span>Panel de Control</span>}
-                </NavLink>
-                
-                <NavLink 
-                  to="/projects" 
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiBriefcase />
-                  {!isCollapsed && <span>Proyectos</span>}
-                </NavLink>
-                
-                <NavLink 
-                  to="/tasks" 
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiCheckSquare />
-                  {!isCollapsed && <span>Tareas</span>}
-                </NavLink>
-                
-                <NavLink 
-                  to="/calendar" 
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiCalendar />
-                  {!isCollapsed && <span>Calendario</span>}
-                </NavLink>
-              </div>
-            </div>
-
-            <div className="menu-section">
+      <div className="menu-section">
               <div className="section-header">
                 <span className="menu-section-title">Salas de Trabajo</span>
                 {!isCollapsed && (

@@ -9,7 +9,7 @@ import {
   getEmployeeDocumentsByUser,
   downloadDocument,
   deleteEmployeeDocument,
-  createPerformanceReview // Asegúrate de importar esta función
+  createPerformanceReview
 } from '../../services/hrService';
 import Loading from '../../components/common/Loading';
 import { 

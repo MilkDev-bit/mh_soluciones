@@ -8,7 +8,6 @@ export const getEventsByProject = async (projectId) => {
     const { data } = await api.get(`calendar/calendar-events/?project_id=${projectId}`);
     return data;
   } catch (error) {
-    console.error("Error al obtener los eventos del calendario:", error);
     throw error;
   }
 };
@@ -18,7 +17,6 @@ export const createEvent = async (eventData) => {
     const { data } = await api.post('calendar/calendar-events/', eventData);
     return data;
   } catch (error) {
-    console.error("Error al crear el evento:", error);
     throw error;
   }
 };
@@ -28,7 +26,6 @@ export const updateEvent = async (eventId, eventData) => {
       const { data } = await api.patch(`calendar/calendar-events/${eventId}/`, eventData);
       return data;
     } catch (error) {
-      console.error(`Error al actualizar el evento ${eventId}:`, error);
       throw error;
     }
 };
@@ -37,7 +34,6 @@ export const deleteEvent = async (eventId) => {
   try {
     await api.delete(`calendar/calendar-events/${eventId}/`);
   } catch (error) {
-    console.error(`Error al eliminar el evento ${eventId}:`, error);
     throw error;
   }
 };

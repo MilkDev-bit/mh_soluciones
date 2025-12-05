@@ -54,7 +54,6 @@ const DashboardPage = () => {
     return `${greeting}, ${user.first_name || user.username}!`;
   };
 
-  // Datos de demostración para cuando hay error
   const getDemoDataByRole = () => {
     const baseDemoData = {
       kpis: {
@@ -96,7 +95,6 @@ const DashboardPage = () => {
     return <Loading />;
   }
 
-  // Usar datos reales si están disponibles, o datos demo si hay error
   const displayData = data || getDemoDataByRole();
 
   const AdminDashboard = () => (

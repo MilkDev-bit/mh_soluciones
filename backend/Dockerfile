@@ -6,22 +6,30 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev gcc curl && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev gcc curl jq unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf awscliv2.zip aws
 
 RUN pip install --upgrade pip
 
 COPY requirements/base.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
+RUN pip install channels channels-redis daphne
+
 COPY . /app
 
-RUN SECRET_KEY=dummy DEBUG=False ALLOWED_HOSTS=localhost \
-    POSTGRES_DB=dummy POSTGRES_USER=dummy POSTGRES_PASSWORD=dummy DB_HOST=db DB_PORT=5432 \
-    FRONTEND_URL=http://localhost:5173 REDIS_URL=redis://dummy:6379/0 \
-    python manage.py collectstatic --noinput --clear
+RUN SECRET_KEY=dummy python manage.py collectstatic --noinput --clear
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000"]
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
