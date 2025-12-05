@@ -92,7 +92,7 @@ const DashboardPage = () => {
   };
 
   if (loading) {
-    return <Loading />;
+    return <Loading fullscreen text="Cargando dashboard..." />;
   }
 
   const displayData = data || getDemoDataByRole();

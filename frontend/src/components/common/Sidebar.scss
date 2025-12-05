@@ -193,6 +193,45 @@
   }
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 $spacing-5 $spacing-2;
+  
+  @media (max-width: $breakpoint-md) {
+    padding: 0 $spacing-4 $spacing-2;
+  }
+}
+
+.refresh-projects-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: $border-radius-sm;
+  color: rgba($neutral-50, 0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all $transition;
+  
+  &:hover:not(:disabled) {
+    background: rgba($neutral-50, 0.15);
+    color: $neutral-50;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+}
+
 .menu-section-title {
   display: block;
   padding: 0 $spacing-5 $spacing-2;

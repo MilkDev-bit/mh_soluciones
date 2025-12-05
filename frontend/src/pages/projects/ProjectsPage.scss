@@ -18,6 +18,8 @@
   box-shadow: 0 8px 32px rgba($neutral-900, 0.08);
   position: relative;
   overflow: hidden;
+  flex-wrap: wrap;
+  gap: $spacing-4;
 
   &::before {
     content: '';
@@ -64,6 +66,14 @@
       filter: drop-shadow(0 2px 4px rgba($primary-500, 0.3));
       animation: float 3s ease-in-out infinite;
     }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    position: relative;
+    z-index: 1;
   }
 
   .btn {

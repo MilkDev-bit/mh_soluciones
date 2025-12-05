@@ -17,6 +17,7 @@ import {
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { AuthContext } from '../../contexts/AuthContext';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
@@ -36,7 +37,8 @@ import {
   FiTrash2,
   FiSave,
   FiX,
-  FiCalendar 
+  FiCalendar,
+  FiRefreshCw
 } from 'react-icons/fi';
 import { format, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -341,6 +343,7 @@ const ProjectDetailPage = () => {
   const [tasks, setTasks] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -348,6 +351,7 @@ const ProjectDetailPage = () => {
   const [taskDocuments, setTaskDocuments] = useState({});
   const [projectEvents, setProjectEvents] = useState([]);
 
+  const { notifyProjectChange, notifyTaskChange, tasksUpdated, consumeTasksUpdate } = useProjectContext();
   const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
   const { register: submissionRegister, handleSubmit: submissionHandleSubmit, reset: submissionReset } = useForm();
 
@@ -370,14 +374,18 @@ const ProjectDetailPage = () => {
     }
   }, [projectId]);
 
-  const fetchProjectData = useCallback(async () => {
+  const fetchProjectData = useCallback(async (showRefreshIndicator = false) => {
     if (!projectId) {
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const [projectData, userData] = await Promise.all([
         getProjectById(projectId), 
         getCurrentUserFromSession()
@@ -392,6 +400,7 @@ const ProjectDetailPage = () => {
           setProject(null);
           setTasks([]);
           setLoading(false);
+          setIsRefreshing(false);
           return;
         }
       }
@@ -447,12 +456,32 @@ const ProjectDetailPage = () => {
       setTasks([]);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [projectId]);
 
   useEffect(() => {
     fetchProjectData();
   }, [fetchProjectData]);
+
+  // Listen for task updates from other components
+  useEffect(() => {
+    if (tasksUpdated) {
+      fetchProjectData(true);
+      consumeTasksUpdate();
+    }
+  }, [tasksUpdated, fetchProjectData, consumeTasksUpdate]);
+
+  // Listen for external task update events
+  useEffect(() => {
+    const handleTaskChange = (e) => {
+      if (!e.detail?.projectId || e.detail.projectId === parseInt(projectId)) {
+        fetchProjectData(true);
+      }
+    };
+    window.addEventListener('tasksUpdated', handleTaskChange);
+    return () => window.removeEventListener('tasksUpdated', handleTaskChange);
+  }, [fetchProjectData, projectId]);
 
   const handleDeleteProject = async () => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.')) {
@@ -533,6 +562,9 @@ const ProjectDetailPage = () => {
       setTasks((prev) => [newTask, ...prev]);
     }
     setIsModalOpen(false);
+    // Notify other components about the task change
+    notifyTaskChange(newTask.id, projectId, isEditMode ? 'update' : 'create');
+    toast.success(isEditMode ? '¡Tarea actualizada!' : '¡Tarea creada exitosamente!');
   };
 
   const handleEditProject = () => setIsEditModalOpen(true);
@@ -541,13 +573,15 @@ const ProjectDetailPage = () => {
   const handleProjectUpdated = (updatedProject) => {
     setProject((prev) => ({ ...prev, ...updatedProject }));
     setIsEditModalOpen(false);
+    // Notify other components about the project change
+    notifyProjectChange(projectId, 'update');
     toast.success('Proyecto actualizado correctamente.');
   };
 
   const handleAddMember = () => setIsAddMemberModalOpen(true);
 
   const handleMemberAdded = () => {
-    fetchProjectData();
+    fetchProjectData(true);
     setIsAddMemberModalOpen(false);
   };
 
@@ -603,11 +637,11 @@ const ProjectDetailPage = () => {
     );
   };
 
-  if (loading) return <Loading fullscreen />;
+  if (loading) return <Loading fullscreen text="Cargando proyecto..." />;
 
   if (!project || typeof project !== 'object') {
     return (
-      <div className="empty-state">
+      <div className="empty-state" role="alert">
         <h2>Proyecto no encontrado</h2>
         <p>El proyecto que buscas no existe o no tienes permiso para verlo.</p>
         <Link to="/projects" className="btn btn-primary">
