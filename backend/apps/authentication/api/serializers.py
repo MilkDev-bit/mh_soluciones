@@ -23,8 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
         Genera la URL absoluta para la imagen de perfil.
         """
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
-            base_url = "http://localhost:8000"
-            return f"{base_url}{obj.profile_picture.url}"
+            return obj.profile_picture.url
         return None
 
 class UserUpdateSerializer(serializers.ModelSerializer):

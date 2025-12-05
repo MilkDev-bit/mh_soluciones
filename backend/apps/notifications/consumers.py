@@ -17,10 +17,13 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         self.group_name = f'user_{self.user.id}_notifications'
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        
+        print(f"WebSocket conectado para usuario {self.user.id}")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            print(f"WebSocket desconectado para usuario {self.user.id}")
 
     async def receive(self, text_data):
         """
@@ -54,9 +57,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     def mark_notification_as_read(self, notification_id):
         """
         Busca una notificación por su ID en la base de datos y la marca como leída.
-        
-        Se usa el decorador @database_sync_to_async porque las operaciones de base de datos
-        de Django son síncronas, y necesitamos llamarlas desde un contexto asíncrono.
         """
         try:
             notification = Notification.objects.get(id=notification_id, user=self.user)

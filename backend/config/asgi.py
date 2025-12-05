@@ -6,7 +6,6 @@ from django.core.asgi import get_asgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-
 from apps.authentication.middleware import JWTAuthMiddleware
 import apps.notifications.routing
 

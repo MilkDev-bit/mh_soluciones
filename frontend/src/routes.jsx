@@ -17,6 +17,7 @@ const HRPage = lazy(() => import('./pages/hr/HRPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const CompletedTasksPage = lazy(() => import('./components/completed-tasks/CompletedTasksPage'));
 
 const AppRoutes = () => {
   console.log("AppRoutes -> Renderizando el mapa de rutas.");
@@ -37,6 +38,12 @@ const AppRoutes = () => {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          
+          <Route path="/completed-tasks" element={
+            <ProtectedRoute roles={['SUPERADMIN', 'ADMIN', 'DIRECTOR', 'PROFESSOR', 'CEO', 'RH']}>
+              <CompletedTasksPage />
+            </ProtectedRoute>
+          } />
           
           <Route path="/admin/users" element={
             <ProtectedRoute roles={['SUPERADMIN']}>
