@@ -159,8 +159,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='progress-stats')
     def progress_stats(self, request, pk=None):
         """
-        Returns progress statistics for the project based on tasks and submissions.
+        Returns progress statistics for the project based on tasks.
         Provides data for pie and bar charts showing project progress.
+        Also includes submission count for informational purposes.
         """
         project = self.get_object()
         tasks = project.tasks.all()
