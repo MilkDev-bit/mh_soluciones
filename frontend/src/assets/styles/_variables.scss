@@ -91,6 +91,8 @@ $transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 $transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 $transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 
+// Mobile-first breakpoints
+$breakpoint-xs: 320px;
 $breakpoint-sm: 640px;
 $breakpoint-md: 768px;
 $breakpoint-lg: 1024px;
@@ -151,9 +153,92 @@ $header-height: 4rem;
 
 $widget-background-color: $white;
 
-$breakpoint-sm: 640px;
-$breakpoint-md: 768px;
-$breakpoint-lg: 1024px;
+// CSS Custom Properties for theming (used with data-theme attribute)
+:root {
+  // Light mode (default)
+  --bg-primary: #{$white};
+  --bg-secondary: #{$neutral-50};
+  --bg-tertiary: #{$neutral-100};
+  --bg-card: #{$white};
+  --bg-input: #{$white};
+  --bg-hover: #{$neutral-100};
+  
+  --text-primary: #{$neutral-900};
+  --text-secondary: #{$neutral-600};
+  --text-tertiary: #{$neutral-500};
+  --text-muted: #{$neutral-400};
+  
+  --border-color: #{$neutral-200};
+  --border-color-light: #{$neutral-100};
+  --border-color-dark: #{$neutral-300};
+  
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  
+  --sidebar-bg: linear-gradient(180deg, #{$primary-800} 0%, #{$primary-900} 100%);
+  --sidebar-text: #{$neutral-50};
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active: rgba(255, 255, 255, 0.15);
+  
+  --header-bg: #{$white};
+  --header-border: #{$neutral-200};
+  
+  --accent-primary: #{$primary-500};
+  --accent-secondary: #{$secondary-500};
+  
+  --success-bg: #{$success-light};
+  --success-text: #{$success-dark};
+  --warning-bg: #{$warning-light};
+  --warning-text: #{$warning-dark};
+  --error-bg: #{$error-light};
+  --error-text: #{$error-dark};
+  --info-bg: #{$info-light};
+  --info-text: #{$info-dark};
+}
+
+// Dark mode
+[data-theme="dark"] {
+  --bg-primary: #{$neutral-900};
+  --bg-secondary: #{$neutral-800};
+  --bg-tertiary: #{$neutral-700};
+  --bg-card: #{$neutral-800};
+  --bg-input: #{$neutral-800};
+  --bg-hover: #{$neutral-700};
+  
+  --text-primary: #{$neutral-50};
+  --text-secondary: #{$neutral-300};
+  --text-tertiary: #{$neutral-400};
+  --text-muted: #{$neutral-500};
+  
+  --border-color: #{$neutral-700};
+  --border-color-light: #{$neutral-800};
+  --border-color-dark: #{$neutral-600};
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  
+  --sidebar-bg: linear-gradient(180deg, #{$neutral-950} 0%, #000000 100%);
+  --sidebar-text: #{$neutral-100};
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active: rgba(255, 255, 255, 0.12);
+  
+  --header-bg: #{$neutral-900};
+  --header-border: #{$neutral-700};
+  
+  --accent-primary: #{$primary-400};
+  --accent-secondary: #{$secondary-400};
+  
+  --success-bg: rgba(16, 185, 129, 0.2);
+  --success-text: #{$success};
+  --warning-bg: rgba(245, 158, 11, 0.2);
+  --warning-text: #{$warning};
+  --error-bg: rgba(239, 68, 68, 0.2);
+  --error-text: #{$error};
+  --info-bg: rgba(59, 130, 246, 0.2);
+  --info-text: #{$info};
+}
 
 @mixin flex-center {
   display: flex;
@@ -186,7 +271,50 @@ $breakpoint-lg: 1024px;
 }
 
 @mixin mobile-only {
-  @media (max-width: 768px) {
+  @media (max-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin tablet-only {
+  @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+@mixin desktop-only {
+  @media (min-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+// Mobile-first responsive mixins
+@mixin xs-up {
+  @media (min-width: $breakpoint-xs) {
+    @content;
+  }
+}
+
+@mixin sm-up {
+  @media (min-width: $breakpoint-sm) {
+    @content;
+  }
+}
+
+@mixin md-up {
+  @media (min-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin lg-up {
+  @media (min-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+@mixin xl-up {
+  @media (min-width: $breakpoint-xl) {
     @content;
   }
 }

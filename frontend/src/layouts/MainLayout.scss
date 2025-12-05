@@ -3,8 +3,9 @@
 .main-layout {
   display: flex;
   min-height: 100vh;
-  background: $background-gray;
+  background: var(--bg-secondary);
   position: relative;
+  transition: background-color $transition;
 
   &.sidebar-collapsed {
     .sidebar {
@@ -32,11 +33,11 @@
   left: 0;
   width: $sidebar-width;
   height: 100vh;
-  background: linear-gradient(180deg, $primary-800 0%, $primary-900 100%);
-  color: $neutral-50;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
   z-index: $z-fixed;
   transition: all $transition;
-  box-shadow: $shadow-lg;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   
@@ -194,6 +195,10 @@
   @media (max-width: $breakpoint-sm) {
     padding: $spacing-3;
   }
+  
+  @media (max-width: $breakpoint-xs) {
+    padding: $spacing-2;
+  }
 }
 
 .mobile-menu-toggle {
@@ -204,7 +209,7 @@
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  background: $primary-500;
+  background: var(--accent-primary);
   color: $neutral-50;
   border: none;
   box-shadow: $shadow-xl;
