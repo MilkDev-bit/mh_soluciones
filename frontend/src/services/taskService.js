@@ -83,18 +83,15 @@ export const getTaskComments = async (taskId) => {
 
 export const addTaskComment = async (taskId, commentData) => {
   if (!taskId || typeof taskId !== 'number') {
-    console.error('addTaskComment: taskId inválido', taskId);
     throw new Error('ID de tarea inválido');
   }
 
   if (!commentData || typeof commentData.comment !== 'string' || commentData.comment.trim() === '') {
-    console.error('addTaskComment: comentario vacío o inválido', commentData);
     throw new Error('El comentario no puede estar vacío');
   }
 
   try {
     const response = await api.post(`/tasks/${taskId}/comments/`, commentData);
-    console.info(`Comentario agregado a la tarea ${taskId}`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al agregar comentario a la tarea ${taskId}:`, error);

@@ -1,16 +1,14 @@
+import logging
+
+from django.db import IntegrityError
 from django.db.models import Q
-from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
-from django.db import IntegrityError
+
 from apps.authentication.models import CustomUser
-import logging
-
-logger = logging.getLogger(__name__)
-
-from ..models import Project, ProjectMember
+from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
 from .serializers import (
     ProjectSerializer,
     ProjectDetailSerializer,
@@ -21,13 +19,19 @@ from .serializers import (
 )
 from .permissions import IsOwnerOrAdmin, IsProjectMemberOrAdmin, CanInteractInProject, IsAdminRole
 
+logger = logging.getLogger(__name__)
+
+# Admin roles constant to avoid repetition
+ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
 
-        if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if user.role in ADMIN_ROLES:
             return Project.objects.all().prefetch_related('members')
 
         if user.role == 'STUDENT':
@@ -51,7 +55,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return ProjectSerializer
 
     def perform_create(self, serializer):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if self.request.user.role not in ADMIN_ROLES:
             raise PermissionDenied("No tienes permisos para crear proyectos.")
         
         project = serializer.save(created_by=self.request.user)
@@ -63,7 +67,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='add-members')
     def add_members(self, request, pk=None):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if self.request.user.role not in ADMIN_ROLES:
             raise PermissionDenied("No tienes permisos para añadir miembros.")
         
         project = self.get_object()
@@ -137,7 +141,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['delete'], url_path='remove-member/(?P<user_id>[^/.]+)')
     def remove_member(self, request, pk=None, user_id=None):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if self.request.user.role not in ADMIN_ROLES:
             raise PermissionDenied("No tienes permisos para eliminar miembros.")
         
         project = self.get_object()

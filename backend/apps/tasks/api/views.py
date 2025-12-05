@@ -1,7 +1,15 @@
+import logging
+import mimetypes
+import os
+
+from django.conf import settings
+from django.db.models import Q
+from django.utils.text import slugify
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import Q
 from rest_framework.parsers import MultiPartParser, FormParser
+
+from apps.documents.services import GoogleDriveService
 from ..models import Task, TaskSubmission, TaskComment
 from .serializers import (
     TaskSerializer,
@@ -11,9 +19,13 @@ from .serializers import (
     TaskCommentSerializer
 )
 from .permissions import IsOwnerOrAdmin, CanInteractWithTask
-from apps.documents.services import GoogleDriveService
-from django.conf import settings
-from django.utils.text import slugify
+
+logger = logging.getLogger(__name__)
+
+# Role constants to avoid repetition
+ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+EDITOR_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     """
@@ -23,9 +35,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        base_queryset = Task.objects.none()
 
-        if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if user.role in ADMIN_ROLES:
             base_queryset = Task.objects.all().select_related('project', 'assigned_to')
         else:
             base_queryset = Task.objects.filter(
@@ -48,17 +59,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         return TaskSerializer
 
     def perform_create(self, serializer):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if self.request.user.role not in ADMIN_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
         serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR']:
+        if self.request.user.role not in EDITOR_ROLES:
             raise PermissionDenied("No tienes permisos para editar tareas.")
         serializer.save()
 
     def perform_destroy(self, instance):
-        if self.request.user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if self.request.user.role not in ADMIN_ROLES:
             raise PermissionDenied("No tienes permisos para eliminar tareas.")
         instance.delete()
 
@@ -114,7 +125,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             user = task_submission.submitted_by
             task = task_submission.task
             
-            print(f"🚀 Iniciando subida a Google Drive para entrega de tarea: {task.title}")
+            logger.info(f"Iniciando subida a Google Drive para entrega de tarea: {task.title}")
             
             drive_service = GoogleDriveService(user)
             
@@ -127,7 +138,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             
             mime_type = self._get_mime_type(original_filename)
             
-            print(f"📤 Subiendo archivo: {new_filename} a carpeta ID: {folder_id}")
+            logger.info(f"Subiendo archivo: {new_filename} a carpeta ID: {folder_id}")
             
             drive_result = drive_service.upload_file(
                 file_name=new_filename,
@@ -142,17 +153,12 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 task_submission.uploaded_to_drive = True
                 task_submission.save()
                 
-                print(f"✅ Archivo subido exitosamente a Google Drive")
-                print(f"📄 Nombre: {drive_result['name']}")
-                print(f"🆔 ID: {drive_result['id']}")
-                print(f"🔗 Enlace: {drive_result['webViewLink']}")
+                logger.info(f"Archivo subido exitosamente a Google Drive: {drive_result['name']} (ID: {drive_result['id']})")
             else:
-                print("⚠️ Archivo guardado localmente pero no se pudo subir a Google Drive")
+                logger.warning("Archivo guardado localmente pero no se pudo subir a Google Drive")
                 
         except Exception as e:
-            print(f"❌ Error al subir a Google Drive: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Error al subir a Google Drive: {e}")
 
     def _create_structured_filename(self, task_submission, original_filename):
         """
@@ -165,12 +171,9 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         responsible_name = slugify(user.get_full_name() or user.username)
         date_str = task_submission.created_at.strftime('%d-%m-%y')
         
-        import os
         filename, extension = os.path.splitext(original_filename)
         
-        new_filename = f"entrega_{task_title}_{responsible_name}_{date_str}{extension}"
-        
-        return new_filename
+        return f"entrega_{task_title}_{responsible_name}_{date_str}{extension}"
 
     def _get_destination_folder(self, drive_service, task, user):
         """
@@ -185,7 +188,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 project_status_folder = "Proyectos Activos" if task.project.status in active_statuses else "Proyectos Inactivos"
                 project_name = slugify(task.project.name)
                 
-                print(f"📁 Creando estructura de carpetas para proyecto: {task.project.name}")
+                logger.debug(f"Creando estructura de carpetas para proyecto: {task.project.name}")
 
                 year1_id = drive_service._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
                 status_id = drive_service._get_or_create_folder(project_status_folder, parent_id=year1_id)
@@ -201,13 +204,12 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 return final_folder_id
                 
         except Exception as e:
-            print(f"❌ Error al crear estructura de carpetas: {e}")
+            logger.error(f"Error al crear estructura de carpetas: {e}")
             return "1soAtacPEeRySDgcN6760zMP_WYuGGsio"
 
     def _get_mime_type(self, filename):
         """
         Determina el MIME type basado en la extensión del archivo
         """
-        import mimetypes
         mime_type, _ = mimetypes.guess_type(filename)
         return mime_type or 'application/octet-stream'

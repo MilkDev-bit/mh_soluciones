@@ -5,8 +5,6 @@ export const getDocumentsByTask = async (taskId) => {
     const response = await api.get(`/documents/?task=${taskId}`);
     const data = response.data;
 
-    console.log('Respuesta de API:', data);
-
     if (data && Array.isArray(data.results)) {
       return data.results;
     }
@@ -28,19 +26,11 @@ export const getDocumentsByTask = async (taskId) => {
 
 export const uploadDocument = async (formData) => {
   try {
-    console.group('📤 Subida de documento');
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-    console.groupEnd();
-
-    try {
-      const response = await api.post('/documents/', formData);
-      console.log('✅ Respuesta exitosa:', response.data);
-      return response.data;
-    } catch (error) {
-      console.warn('⚠️ Endpoint normal falló, probando con task_id...');
-
+    const response = await api.post('/documents/', formData);
+    return response.data;
+  } catch (error) {
+    // Try alternative format if first attempt fails
+    if (error.response?.status === 400) {
       const newFormData = new FormData();
       for (let [key, value] of formData.entries()) {
         if (key !== 'task') {
@@ -54,23 +44,7 @@ export const uploadDocument = async (formData) => {
       }
 
       const response2 = await api.post('/documents/', newFormData);
-      console.log('✅ Respuesta exitosa con task_id:', response2.data);
       return response2.data;
-    }
-
-  } catch (error) {
-    console.error('❌ Error completo:', error);
-
-    if (error.response) {
-      console.error('Datos del error:', error.response.data);
-      console.error('Status:', error.response.status);
-
-      if (error.response.data && typeof error.response.data === 'object') {
-        console.error(
-          'Errores de validación:',
-          JSON.stringify(error.response.data, null, 2)
-        );
-      }
     }
 
     throw new Error(
@@ -80,22 +54,24 @@ export const uploadDocument = async (formData) => {
 };
 
 export const getFileUrl = (filePath) => {
-  let correctedUrl = filePath;
+  if (!filePath) return null;
   
-  if (filePath.includes('localhost:8000')) {
-    correctedUrl = filePath.replace('localhost:8000', 'localhost:5173');
-  } else if (filePath.includes('localhost/media/')) {
-    correctedUrl = filePath.replace('localhost/', 'localhost:5173/');
-  } else if (filePath.startsWith('/media/')) {
-    correctedUrl = `http://localhost:5173${filePath}`;
+  // If it's already a complete URL, return as-is
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return filePath;
   }
-  return correctedUrl;
+  
+  // For relative paths starting with /media/, use proxy
+  if (filePath.startsWith('/media/')) {
+    return filePath;
+  }
+  
+  return filePath;
 };
 
 export const deleteDocument = async (documentId) => {
   try {
     await api.delete(`/documents/${documentId}/`);
-    console.log(`🗑 Documento ${documentId} eliminado correctamente`);
   } catch (error) {
     console.error('Error deleting document:', error);
     throw new Error(

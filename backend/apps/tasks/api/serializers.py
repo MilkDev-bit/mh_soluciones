@@ -1,7 +1,12 @@
 from rest_framework import serializers
-from ..models import Task, TaskSubmission, TaskComment
+
 from apps.authentication.api.serializers import UserSerializer
 from apps.projects.api.serializers import ProjectSerializer
+from ..models import Task, TaskSubmission, TaskComment
+
+# Role constants to avoid repetition
+ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+
 
 class TaskCommentSerializer(serializers.ModelSerializer):
     """ Serializador para los comentarios de las tareas. """
@@ -71,6 +76,6 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         user = self.context['request'].user
-        if user.role not in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if user.role not in ADMIN_ROLES:
             raise serializers.ValidationError("No tienes permisos para crear o editar tareas.")
         return data

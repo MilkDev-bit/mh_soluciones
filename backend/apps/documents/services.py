@@ -1,13 +1,19 @@
-import os
 import io
+import logging
+import os
+
 from django.conf import settings
 from django.utils.text import slugify
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from googleapiclient.errors import HttpError
-from google.auth.transport.requests import Request
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+
 from apps.authentication.models import GoogleApiCredentials
+
+logger = logging.getLogger(__name__)
+
 
 class GoogleDriveService:
     """
@@ -41,12 +47,12 @@ class GoogleDriveService:
                 stored_credentials.save()
             
             self.service = build('drive', 'v3', credentials=self.credentials)
-            print(f"✅ Servicio de Google Drive inicializado para {self.user.username}")
+            logger.info(f"Servicio de Google Drive inicializado para {self.user.username}")
             
         except GoogleApiCredentials.DoesNotExist:
             raise Exception(f"El usuario {self.user.username} no ha vinculado su cuenta de Google.")
         except Exception as e:
-            print(f"❌ Error al inicializar el servicio de Google Drive: {e}")
+            logger.error(f"Error al inicializar el servicio de Google Drive: {e}")
             raise
 
     def _get_or_create_folder(self, folder_name, parent_id=None):
@@ -65,7 +71,7 @@ class GoogleDriveService:
             response = self.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
             files = response.get('files', [])
             if files:
-                print(f"✅ Carpeta encontrada: {folder_name} (ID: {files[0].get('id')})")
+                logger.debug(f"Carpeta encontrada: {folder_name} (ID: {files[0].get('id')})")
                 return files[0].get('id')
             else:
                 file_metadata = {
@@ -79,11 +85,11 @@ class GoogleDriveService:
                     body=file_metadata, 
                     fields='id, name'
                 ).execute()
-                print(f"✅ Carpeta creada: {folder_name} (ID: {folder.get('id')})")
+                logger.debug(f"Carpeta creada: {folder_name} (ID: {folder.get('id')})")
                 return folder.get('id')
                 
         except HttpError as error:
-            print(f"❌ Error al buscar/crear carpeta '{folder_name}': {error}")
+            logger.error(f"Error al buscar/crear carpeta '{folder_name}': {error}")
             raise
 
     def upload_document(self, document_instance):
@@ -94,7 +100,7 @@ class GoogleDriveService:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
 
         if not document_instance.file:
-            print("❌ El documento no tiene un archivo físico.")
+            logger.warning("El documento no tiene un archivo físico.")
             return None
 
         try:
@@ -107,7 +113,7 @@ class GoogleDriveService:
                 project_name = slugify(document_instance.project.name)
                 folder_type = document_instance._get_folder_type_for_drive()
 
-                print(f"📁 Creando estructura de carpetas para proyecto: {document_instance.project.name}")
+                logger.debug(f"Creando estructura de carpetas para proyecto: {document_instance.project.name}")
 
                 year1_id = self._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
                 status_id = self._get_or_create_folder(project_status_folder, parent_id=year1_id)
@@ -129,7 +135,7 @@ class GoogleDriveService:
                 
             else:
                 folder_type = document_instance._get_folder_type_for_drive()
-                print(f"📁 Creando estructura simple para documento sin proyecto")
+                logger.debug("Creando estructura simple para documento sin proyecto")
 
                 year_id = self._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
                 final_parent_folder_id = self._get_or_create_folder(folder_type, parent_id=year_id)
@@ -141,7 +147,7 @@ class GoogleDriveService:
             filename, extension = os.path.splitext(document_instance.file.name)
             new_filename = f"{task_title}_{responsible_name}_{date_str}{extension}"
 
-            print(f"📤 Subiendo archivo: {new_filename}")
+            logger.info(f"Subiendo archivo: {new_filename}")
 
             file_metadata = {
                 'name': new_filename,
@@ -165,15 +171,12 @@ class GoogleDriveService:
                 fields='id, name, webViewLink, mimeType, size'
             ).execute()
 
-            print(f"✅ Archivo subido exitosamente: {uploaded_file.get('name')}")
-            print(f"🔗 Enlace: {uploaded_file.get('webViewLink')}")
+            logger.info(f"Archivo subido exitosamente: {uploaded_file.get('name')} - {uploaded_file.get('webViewLink')}")
 
             return uploaded_file
             
         except Exception as e:
-            print(f"❌ Error al subir el archivo a Google Drive: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Error al subir el archivo a Google Drive: {e}")
             return None
         
     def upload_file(self, file_name, file_content, folder_id, mime_type='text/plain'):
@@ -193,7 +196,7 @@ class GoogleDriveService:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
 
         try:
-            print(f"📤 Subiendo archivo: {file_name}")
+            logger.info(f"Subiendo archivo: {file_name}")
 
             file_metadata = {
                 'name': file_name,
@@ -213,15 +216,12 @@ class GoogleDriveService:
                 fields='id, name, webViewLink, mimeType, size'
             ).execute()
 
-            print(f"✅ Archivo subido exitosamente: {uploaded_file.get('name')}")
-            print(f"🔗 Enlace: {uploaded_file.get('webViewLink')}")
+            logger.info(f"Archivo subido exitosamente: {uploaded_file.get('name')} - {uploaded_file.get('webViewLink')}")
 
             return uploaded_file
             
         except Exception as e:
-            print(f"❌ Error al subir el archivo a Google Drive: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception(f"Error al subir el archivo a Google Drive: {e}")
             return None
 
     def test_connection(self):

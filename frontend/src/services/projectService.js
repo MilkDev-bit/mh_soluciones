@@ -77,8 +77,6 @@ export const getProjectMembers = async (projectId) => {
   try {
     const { data } = await api.get(`projects/${projectId}/`);
     
-    console.log('Datos de miembros recibidos:', data.members);
-    
     if (data.members && Array.isArray(data.members)) {
       return data.members.map(member => ({
         id: member.user?.id || member.id,

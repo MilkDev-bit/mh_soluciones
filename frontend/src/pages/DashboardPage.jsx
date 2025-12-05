@@ -21,20 +21,15 @@ const DashboardPage = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Fetching dashboard data from /api/v1/reports/dashboard/...');
         
-        // Verifica que hay un token antes de hacer la petición
         const token = localStorage.getItem('access_token');
         if (!token) {
           throw new Error('No authentication token found');
         }
         
         const response = await getDashboardData();
-        console.log('Dashboard data received:', response);
         setData(response);
       } catch (error) {
-        console.error('Detailed error:', error);
-        
         if (error.response?.status === 401) {
           setError('Error de autenticación. Por favor, inicia sesión nuevamente.');
           toast.error('Sesión expirada. Redirigiendo al login...');
