@@ -219,7 +219,7 @@ $widget-background-color: $white;
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
   
-  --sidebar-bg: linear-gradient(180deg, #{$neutral-950} 0%, #000000 100%);
+  --sidebar-bg: linear-gradient(180deg, #{$neutral-950} 0%, #{$neutral-950} 100%);
   --sidebar-text: #{$neutral-100};
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: rgba(255, 255, 255, 0.12);
