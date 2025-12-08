@@ -9,7 +9,6 @@
     ]
   },
   "deploy": {
-    "startCommand": "/app/entrypoint.sh daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application",
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 600,
     "restartPolicyType": "ON_FAILURE",
