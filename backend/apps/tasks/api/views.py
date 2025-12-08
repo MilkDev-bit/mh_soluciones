@@ -4,13 +4,14 @@ import os
 
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.text import slugify
-from rest_framework import viewsets, permissions
-from rest_framework.exceptions import PermissionDenied
+from rest_framework import viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from apps.documents.services import GoogleDriveService
-from ..models import Task, TaskSubmission, TaskComment
+from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
 from django.db.models import F, Avg
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -19,7 +20,10 @@ from .serializers import (
     TaskDetailSerializer,
     TaskCreateUpdateSerializer,
     TaskSubmissionSerializer,
-    TaskCommentSerializer
+    TaskSubmissionGradeSerializer,
+    TaskCommentSerializer,
+    TaskReopenSerializer,
+    TaskEditHistorySerializer
 )
 from .permissions import IsOwnerOrAdmin, CanInteractWithTask
 
@@ -27,7 +31,8 @@ logger = logging.getLogger(__name__)
 
 # Role constants to avoid repetition
 ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
-EDITOR_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
+TEACHER_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
+EDITOR_ROLES = TEACHER_ROLES
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -40,16 +45,18 @@ class TaskViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.role in ADMIN_ROLES:
-            base_queryset = Task.objects.all().select_related('project', 'assigned_to')
+            base_queryset = Task.objects.all().select_related('project', 'assigned_to').prefetch_related('assigned_students')
         else:
-            if user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
-                base_queryset = Task.objects.all().select_related('project', 'assigned_to')
+            if user.role in TEACHER_ROLES:
+                base_queryset = Task.objects.all().select_related('project', 'assigned_to').prefetch_related('assigned_students')
             else:
+                # Students see only tasks assigned to them or their project tasks
                 base_queryset = Task.objects.filter(
                     Q(project__members=user) |
                     Q(assigned_to=user) |
+                    Q(assigned_students=user) |
                     Q(created_by=user)
-                ).distinct().select_related('project', 'assigned_to')
+                ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
 
         project_id = self.request.query_params.get('project', None)
         if project_id:
@@ -62,16 +69,43 @@ class TaskViewSet(viewsets.ModelViewSet):
             return TaskCreateUpdateSerializer
         if self.action == 'retrieve':
             return TaskDetailSerializer
+        if self.action == 'reopen':
+            return TaskReopenSerializer
         return TaskSerializer
 
     def perform_create(self, serializer):
-        if self.request.user.role not in ADMIN_ROLES:
+        if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
         serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
-        if self.request.user.role not in EDITOR_ROLES:
+        if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para editar tareas.")
+        
+        instance = self.get_object()
+        
+        # Check if task has submissions - use count() for better performance
+        submission_count = instance.submissions.count()
+        if submission_count > 0:
+            # Log the changes
+            changes = {}
+            for field in serializer.validated_data:
+                old_value = getattr(instance, field)
+                new_value = serializer.validated_data[field]
+                if old_value != new_value:
+                    changes[field] = {
+                        'old': str(old_value),
+                        'new': str(new_value)
+                    }
+            
+            if changes:
+                TaskEditHistory.objects.create(
+                    task=instance,
+                    edited_by=self.request.user,
+                    changes=changes,
+                    edit_reason=self.request.data.get('edit_reason', '')
+                )
+        
         serializer.save()
 
     def perform_destroy(self, instance):
@@ -83,6 +117,96 @@ class TaskViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+    
+    @action(detail=True, methods=['post'], url_path='reopen')
+    def reopen(self, request, pk=None):
+        """
+        Reabrir una tarea cerrada.
+        Solo TEACHER y ADMIN pueden reabrir tareas.
+        """
+        task = self.get_object()
+        
+        if request.user.role not in TEACHER_ROLES:
+            raise PermissionDenied("No tienes permisos para reabrir tareas.")
+        
+        serializer = TaskReopenSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        
+        # Update task status
+        task.status = Task.TaskStatus.REOPENED
+        task.close_date = serializer.validated_data['new_deadline']
+        task.save()
+        
+        # Create reopen log
+        reopen_log = TaskReopenLog.objects.create(
+            task=task,
+            reopened_by=request.user,
+            new_deadline=serializer.validated_data['new_deadline'],
+            reason=serializer.validated_data.get('reason', '')
+        )
+        
+        # Add specific students if provided
+        if 'specific_students' in serializer.validated_data:
+            from apps.authentication.models import CustomUser
+            students = CustomUser.objects.filter(
+                id__in=serializer.validated_data['specific_students']
+            )
+            reopen_log.specific_students.set(students)
+        
+        return Response({
+            'message': 'Tarea reabierta exitosamente',
+            'task': TaskDetailSerializer(task).data
+        })
+    
+    @action(detail=False, methods=['get'], url_path='my-tasks')
+    def my_tasks(self, request):
+        """
+        Obtener tareas del estudiante actual organizadas por estado.
+        """
+        user = request.user
+        
+        if user.role not in ['STUDENT', 'PROFESSOR']:
+            return Response({
+                'error': 'Este endpoint es solo para estudiantes'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all tasks assigned to this student
+        tasks = Task.objects.filter(
+            Q(assigned_students=user) | Q(assigned_to=user)
+        ).exclude(status='DRAFT').distinct()
+        
+        # Categorize tasks
+        now = timezone.now()
+        to_submit = []
+        submitted = []
+        graded = []
+        overdue = []
+        
+        for task in tasks:
+            # Check if student has submitted
+            submission = TaskSubmission.objects.filter(
+                task=task,
+                submitted_by=user
+            ).order_by('-version').first()
+            
+            if submission:
+                if submission.status == 'GRADED':
+                    graded.append(task)
+                else:
+                    submitted.append(task)
+            else:
+                # Not submitted
+                if task.close_date and task.close_date < now:
+                    overdue.append(task)
+                else:
+                    to_submit.append(task)
+        
+        return Response({
+            'to_submit': TaskSerializer(to_submit, many=True).data,
+            'submitted': TaskSerializer(submitted, many=True).data,
+            'graded': TaskSerializer(graded, many=True).data,
+            'overdue': TaskSerializer(overdue, many=True).data
+        })
     
     @action(detail=False, methods=['get'], url_path='completed')
     def completed_tasks(self, request):
@@ -153,20 +277,123 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [CanInteractWithTask]
 
     def get_queryset(self):
-        return TaskSubmission.objects.filter(task_id=self.kwargs['task_pk']).select_related('submitted_by')
+        queryset = TaskSubmission.objects.filter(task_id=self.kwargs['task_pk']).select_related('submitted_by', 'graded_by')
+        
+        # Filter by student if specified
+        student_id = self.request.query_params.get('student', None)
+        if student_id:
+            queryset = queryset.filter(submitted_by_id=student_id)
+        
+        # Filter by status if specified
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        return queryset
+
+    def get_serializer_class(self):
+        if self.action == 'grade':
+            return TaskSubmissionGradeSerializer
+        return TaskSubmissionSerializer
 
     def perform_create(self, serializer):
+        task = Task.objects.get(id=self.kwargs['task_pk'])
+        
+        # Check if task accepts submissions
+        now = timezone.now()
+        if task.status == 'CLOSED' and not task.accept_after_close:
+            raise ValidationError("Esta tarea está cerrada y no acepta entregas.")
+        
+        if task.close_date and task.close_date < now:
+            if not task.allow_late_submissions and not task.accept_after_close:
+                raise ValidationError("El plazo para entregar esta tarea ha vencido.")
+        
         task_submission = serializer.save(
             submitted_by=self.request.user, 
             task_id=self.kwargs['task_pk']
         )
         
+        # Mark as late if submitted after deadline
+        if task.close_date and task_submission.created_at > task.close_date:
+            task_submission.status = 'LATE'
+            task_submission.save()
+        
         if task_submission.file:
             self._upload_to_google_drive(task_submission)
+    
+    @action(detail=True, methods=['post', 'patch'], url_path='grade')
+    def grade(self, request, task_pk=None, pk=None):
+        """
+        Calificar una entrega de tarea.
+        Solo TEACHER y ADMIN pueden calificar.
+        """
+        if request.user.role not in TEACHER_ROLES:
+            raise PermissionDenied("No tienes permisos para calificar entregas.")
+        
+        submission = self.get_object()
+        serializer = TaskSubmissionGradeSerializer(
+            submission,
+            data=request.data,
+            partial=True,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        # Update submission with grading data
+        submission.status = 'GRADED'
+        submission.graded_by = request.user
+        submission.graded_at = timezone.now()
+        serializer.save()
+        
+        return Response({
+            'message': 'Entrega calificada exitosamente',
+            'submission': TaskSubmissionSerializer(submission).data
+        })
+    
+    @action(detail=False, methods=['get'], url_path='by-student')
+    def by_student(self, request, task_pk=None):
+        """
+        Obtener todas las entregas de la tarea agrupadas por estudiante.
+        Solo TEACHER y ADMIN.
+        """
+        if request.user.role not in TEACHER_ROLES:
+            raise PermissionDenied("No tienes permisos para ver las entregas.")
+        
+        task = Task.objects.get(id=task_pk)
+        submissions = TaskSubmission.objects.filter(task=task).select_related('submitted_by', 'graded_by')
+        
+        # Group by student
+        students_data = {}
+        for submission in submissions:
+            student_id = submission.submitted_by.id
+            if student_id not in students_data:
+                students_data[student_id] = {
+                    'student': submission.submitted_by,
+                    'submissions': []
+                }
+            students_data[student_id]['submissions'].append(submission)
+        
+        # Serialize the data
+        result = []
+        for student_id, data in students_data.items():
+            result.append({
+                'student': {
+                    'id': data['student'].id,
+                    'username': data['student'].username,
+                    'full_name': data['student'].get_full_name(),
+                    'email': data['student'].email
+                },
+                'submissions': TaskSubmissionSerializer(data['submissions'], many=True).data,
+                'latest_submission': TaskSubmissionSerializer(
+                    max(data['submissions'], key=lambda x: x.version)
+                ).data
+            })
+        
+        return Response(result)
 
     def _upload_to_google_drive(self, task_submission):
         """
-        Sube el archivo adjunto a Google Drive usando la estructura de upload_document
+        Sube el archivo adjunto a Google Drive usando la estructura de Teams
         """
         try:
             user = task_submission.submitted_by
@@ -181,7 +408,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             
             new_filename = self._create_structured_filename(task_submission, original_filename)
             
-            folder_id = self._get_destination_folder(drive_service, task, user)
+            folder_id = self._get_destination_folder(drive_service, task, user, task_submission)
             
             mime_type = self._get_mime_type(original_filename)
             
@@ -198,6 +425,19 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 task_submission.google_drive_file_id = drive_result['id']
                 task_submission.google_drive_link = drive_result['webViewLink']
                 task_submission.uploaded_to_drive = True
+                
+                # Store file metadata
+                if not task_submission.files_metadata:
+                    task_submission.files_metadata = []
+                
+                task_submission.files_metadata.append({
+                    'name': drive_result['name'],
+                    'gdrive_id': drive_result['id'],
+                    'size': drive_result.get('size', 0),
+                    'mime_type': drive_result.get('mimeType', mime_type),
+                    'web_view_link': drive_result['webViewLink']
+                })
+                
                 task_submission.save()
                 
                 logger.info(f"Archivo subido exitosamente a Google Drive: {drive_result['name']} (ID: {drive_result['id']})")
@@ -222,37 +462,65 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         
         return f"entrega_{task_title}_{responsible_name}_{date_str}{extension}"
 
-    def _get_destination_folder(self, drive_service, task, user):
+    def _get_destination_folder(self, drive_service, task, user, submission):
         """
-        Define la carpeta destino en Google Drive usando estructura similar a upload_document
+        Crea estructura de carpetas según el formato de Teams:
+        MH Soluciones/[Año]/[Curso]/[Asignatura]/Tarea_[N]/[Usuario_Estudiante]/Entrega_v[N]
         """
         try:
-            date = task.created_at
+            date = submission.created_at
             current_year = date.strftime('%Y')
             
+            # Root: MH Soluciones
+            base_folder_id = drive_service._get_or_create_folder(
+                "MH Soluciones", 
+                parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+            )
+            
+            # Year folder
+            year_id = drive_service._get_or_create_folder(current_year, parent_id=base_folder_id)
+            
+            # Course/Project folder
             if task.project:
-                active_statuses = ['PLANNING', 'IN_PROGRESS']
-                project_status_folder = "Proyectos Activos" if task.project.status in active_statuses else "Proyectos Inactivos"
-                project_name = slugify(task.project.name)
-                
-                logger.debug(f"Creando estructura de carpetas para proyecto: {task.project.name}")
-
-                year1_id = drive_service._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
-                status_id = drive_service._get_or_create_folder(project_status_folder, parent_id=year1_id)
-                project_id = drive_service._get_or_create_folder(project_name, parent_id=status_id)
-                year2_id = drive_service._get_or_create_folder(current_year, parent_id=project_id)
-                final_folder_id = drive_service._get_or_create_folder("Entregas de Tareas", parent_id=year2_id)
-                
-                return final_folder_id
+                course_name = slugify(task.project.name)
             else:
-                year_id = drive_service._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
-                final_folder_id = drive_service._get_or_create_folder("Entregas de Tareas", parent_id=year_id)
-                
-                return final_folder_id
+                course_name = "General"
+            course_id = drive_service._get_or_create_folder(course_name, parent_id=year_id)
+            
+            # Subject folder (using project or generic)
+            subject_name = "Asignatura_General"
+            if task.project and hasattr(task.project, 'subject'):
+                subject_name = slugify(task.project.subject)
+            subject_id = drive_service._get_or_create_folder(subject_name, parent_id=course_id)
+            
+            # Task folder: Tarea_[number or id]
+            task_folder_name = f"Tarea_{task.id}"
+            task_id = drive_service._get_or_create_folder(task_folder_name, parent_id=subject_id)
+            
+            # Student folder: [Full_Name]_[Username or ID]
+            student_name = slugify(user.get_full_name() or user.username)
+            student_identifier = user.username or f"ID{user.id}"
+            student_folder_name = f"{student_name}_{student_identifier}"
+            student_id = drive_service._get_or_create_folder(student_folder_name, parent_id=task_id)
+            
+            # Version folder: Entrega_v[N]
+            version_folder_name = f"Entrega_v{submission.version}"
+            version_id = drive_service._get_or_create_folder(version_folder_name, parent_id=student_id)
+            
+            logger.info(f"Estructura de carpetas creada: {version_folder_name}")
+            return version_id
                 
         except Exception as e:
             logger.error(f"Error al crear estructura de carpetas: {e}")
-            return "1soAtacPEeRySDgcN6760zMP_WYuGGsio"
+            # Fallback to simple structure
+            try:
+                year_id = drive_service._get_or_create_folder(
+                    current_year, 
+                    parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+                )
+                return drive_service._get_or_create_folder("Entregas de Tareas", parent_id=year_id)
+            except:
+                return settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
 
     def _get_mime_type(self, filename):
         """

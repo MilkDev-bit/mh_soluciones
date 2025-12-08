@@ -98,12 +98,42 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         return;
       }
 
-      const taskData = {
-        ...data,
-        project: project.id,
-        assigned_to: data.assigned_to ? parseInt(data.assigned_to) : null,
-        due_date: data.due_date || null
-      };
+      // Handle file upload with FormData if there's an attachment
+      let taskData;
+      
+      if (data.attachment && data.attachment.length > 0 && data.attachment[0]) {
+        const formData = new FormData();
+        formData.append('title', data.title);
+        formData.append('description', data.description || '');
+        formData.append('project', project.id);
+        formData.append('assigned_to', data.assigned_to ? parseInt(data.assigned_to) : '');
+        formData.append('due_date', data.due_date || '');
+        formData.append('open_date', data.open_date || '');
+        formData.append('close_date', data.close_date || '');
+        formData.append('max_score', data.max_score || 100);
+        formData.append('allow_late_submissions', data.allow_late_submissions || false);
+        formData.append('accept_after_close', data.accept_after_close || false);
+        formData.append('days_after_close', data.days_after_close || 0);
+        formData.append('attachment', data.attachment[0]);
+        if (data.status) {
+          formData.append('status', data.status);
+        }
+        taskData = formData;
+      } else {
+        taskData = {
+          ...data,
+          project: project.id,
+          assigned_to: data.assigned_to ? parseInt(data.assigned_to) : null,
+          due_date: data.due_date || null,
+          open_date: data.open_date || null,
+          close_date: data.close_date || null,
+          max_score: data.max_score || 100,
+          allow_late_submissions: data.allow_late_submissions || false,
+          accept_after_close: data.accept_after_close || false,
+          days_after_close: data.days_after_close || 0,
+        };
+        delete taskData.attachment; // Remove empty attachment field
+      }
       
       console.log('Datos enviados al servidor:', taskData);
 
@@ -260,10 +290,108 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         </div>
       </div>
 
+      {/* New Teams-style fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="open_date">Fecha de Apertura</label>
+          <input 
+            id="open_date" 
+            type="datetime-local" 
+            className="form-input" 
+            {...register('open_date')} 
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="close_date">Fecha de Cierre *</label>
+          <input 
+            id="close_date" 
+            type="datetime-local" 
+            className="form-input" 
+            {...register('close_date', {
+              required: 'La fecha de cierre es obligatoria'
+            })} 
+          />
+          {errors.close_date && <span className="error-message">{errors.close_date.message}</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="max_score">Puntuación Máxima</label>
+          <input 
+            id="max_score" 
+            type="number" 
+            step="0.01"
+            min="0"
+            max="100"
+            className="form-input" 
+            {...register('max_score')} 
+            defaultValue="100"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="days_after_close">Días Adicionales (Entregas Tardías)</label>
+          <input 
+            id="days_after_close" 
+            type="number" 
+            min="0"
+            className="form-input" 
+            {...register('days_after_close')} 
+            defaultValue="0"
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-group">
+          <label className="form-label">
+            <input 
+              type="checkbox" 
+              {...register('allow_late_submissions')} 
+              style={{ marginRight: '0.5rem' }}
+            />
+            Permitir Entregas Tardías
+          </label>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">
+            <input 
+              type="checkbox" 
+              {...register('accept_after_close')} 
+              style={{ marginRight: '0.5rem' }}
+            />
+            Aceptar Entregas Después del Cierre
+          </label>
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label" htmlFor="attachment">Archivo Adjunto</label>
+        <input 
+          id="attachment" 
+          type="file" 
+          className="form-input" 
+          {...register('attachment')}
+          accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
+        />
+        <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          Formatos permitidos: PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR (máx. 100MB)
+        </small>
+      </div>
+
       {isEditMode && (
         <div className="form-group">
           <label className="form-label" htmlFor="status">Estado</label>
           <select id="status" className="form-select" {...register('status')}>
+            <option value="DRAFT">Borrador</option>
+            <option value="OPEN">Abierta</option>
+            <option value="IN_REVIEW">En Revisión</option>
+            <option value="CLOSED">Cerrada</option>
+            <option value="REOPENED">Reabierta</option>
+            {/* Legacy statuses */}
             <option value="PENDING">Pendiente</option>
             <option value="IN_PROGRESS">En Progreso</option>
             <option value="FOR_REVIEW">En Revisión</option>

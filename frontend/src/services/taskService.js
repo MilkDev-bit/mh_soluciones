@@ -10,6 +10,15 @@ export const getTasks = async (projectId = null) => {
   }
 };
 
+export const getMyTasks = async () => {
+  try {
+    const response = await api.get('/tasks/my-tasks/');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener mis tareas');
+  }
+};
+
 export const getTaskDetails = async (taskId) => {
   try {
     const response = await api.get(`/tasks/${taskId}/`);
@@ -45,12 +54,30 @@ export const createTask = async (taskData) => {
   }
 };
 
+export const reopenTask = async (taskId, reopenData) => {
+  try {
+    const { data } = await api.post(`/tasks/${taskId}/reopen/`, reopenData);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al reabrir la tarea');
+  }
+};
+
 export const getTaskSubmissions = async (taskId) => {
   try {
     const response = await api.get(`/tasks/${taskId}/submissions/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || new Error('Error al obtener entregas');
+  }
+};
+
+export const getSubmissionsByStudent = async (taskId) => {
+  try {
+    const response = await api.get(`/tasks/${taskId}/submissions/by-student/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener entregas por estudiante');
   }
 };
 
@@ -62,6 +89,18 @@ export const addTaskSubmission = async (taskId, formData) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || new Error('Error al subir la entrega');
+  }
+};
+
+export const gradeSubmission = async (taskId, submissionId, gradeData) => {
+  try {
+    const response = await api.post(
+      `/tasks/${taskId}/submissions/${submissionId}/grade/`,
+      gradeData
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al calificar la entrega');
   }
 };
 
