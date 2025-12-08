@@ -1,44 +1,61 @@
-FROM node:20-alpine AS build
+name: Deploy to Railway
 
-WORKDIR /app
+on:
+  push:
+    branches: [main, develop]
 
-# Railway environment variables for build
-ARG VITE_API_BASE_URL
-ARG VITE_WS_BASE_URL
-ARG VITE_VAPID_PUBLIC_KEY
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-changed: ${{ steps.changes. outputs.backend }}
+      frontend-changed: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
-ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
+      - name: Detect file changes
+        id: changes
+        run: |
+          if git diff --name-only origin/main HEAD | grep -q "^backend/"; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if git diff --name-only origin/main HEAD | grep -q "^frontend/"; then
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=false" >> $GITHUB_OUTPUT
+          fi
 
-COPY package*.json ./
-RUN npm ci
+  deploy-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy Backend to Railway
+        run: |
+          echo "🚀 Desplegando SOLO backend..."
+          # Railway CLI deploy - solo backend
+          npx railway up --service backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-COPY . .
-
-RUN npm run build
-
-# Use specific nginx version for stability
-FROM nginx:1.25-alpine
-
-# Create directories and user
-RUN mkdir -p /var/log/nginx /var/cache/nginx /run/nginx \
-    && chown -R nginx:nginx /var/log/nginx /var/cache/nginx /run/nginx
-
-# Remove default config
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy built application
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Railway uses dynamic port
-EXPOSE 80
-
-# Health check for Railway
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:80/health || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]
+  deploy-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs. frontend-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy Frontend to Railway
+        run: |
+          echo "🚀 Desplegando SOLO frontend..."
+          # Railway CLI deploy - solo frontend
+          npx railway up --service frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
