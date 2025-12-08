@@ -2,7 +2,6 @@ FROM python:3.10-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
 ENV DJANGO_SETTINGS_MODULE=config.settings.railway
 
 WORKDIR /app
@@ -24,14 +23,15 @@ COPY . /app
 
 RUN SECRET_KEY=dummy DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput --clear
 
-EXPOSE ${PORT}
-
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Health check with longer start period to allow for migrations
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-  CMD curl -f http://localhost:${PORT}/health/ || exit 1
+# Railway assigns PORT dynamically, expose common port for reference
+EXPOSE 8000
+
+# Note: Railway uses external health checks via healthcheckPath in railway.json
+# Internal HEALTHCHECK is not needed and can cause issues with dynamic ports
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["sh", "-c", "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"]
+# Use shell form to allow PORT environment variable expansion
+CMD sh -c "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"
