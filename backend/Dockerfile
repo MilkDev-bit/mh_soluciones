@@ -3,6 +3,7 @@ FROM python:3.10-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
+ENV DJANGO_SETTINGS_MODULE=config.settings.railway
 
 WORKDIR /app
 
@@ -21,16 +22,16 @@ RUN pip install channels channels-redis daphne
 
 COPY . /app
 
-RUN SECRET_KEY=dummy python manage.py collectstatic --noinput --clear
+RUN SECRET_KEY=dummy DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput --clear
 
 EXPOSE ${PORT}
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+# Health check with longer start period to allow for migrations
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
   CMD curl -f http://localhost:${PORT}/health/ || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["sh", "-c", "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
