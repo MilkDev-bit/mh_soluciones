@@ -98,6 +98,7 @@ class ProjectDetailSerializer(ProjectSerializer):
 class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Serializador usado específicamente para crear y actualizar proyectos.
+    Incluye validaciones mejoradas para fechas y campos requeridos.
     """
     client = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.filter(role=CustomUser.Role.CLIENT),
@@ -116,12 +117,62 @@ class ProjectCreateUpdateSerializer(serializers.ModelSerializer):
             'end_date', 
         ]
 
+    def validate_name(self, value):
+        """
+        Valida que el nombre no esté vacío y tenga una longitud adecuada.
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError("El nombre del proyecto no puede estar vacío.")
+        
+        if len(value) > 255:
+            raise serializers.ValidationError("El nombre del proyecto no puede exceder los 255 caracteres.")
+        
+        return value.strip()
+
+    def validate(self, data):
+        """
+        Validaciones a nivel de objeto:
+        1. La fecha de fin debe ser posterior a la de inicio
+        2. El proyecto no puede durar más de 10 años
+        """
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        if start_date and end_date:
+            if end_date <= start_date:
+                raise serializers.ValidationError({
+                    'end_date': "La fecha de finalización debe ser posterior a la fecha de inicio."
+                })
+            
+            # Validar que el proyecto no dure más de 10 años
+            from datetime import timedelta
+            duration = end_date - start_date
+            if duration > timedelta(days=365*10):
+                raise serializers.ValidationError({
+                    'end_date': "El proyecto no puede durar más de 10 años."
+                })
+        
+        return data
+
 
 class AddMembersSerializer(serializers.Serializer):
     """
     Serializador para validar la lista de IDs de usuario a añadir.
     """
     user_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        allow_empty=False
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+        max_length=100  # Limitar a 100 usuarios por operación
     )
+    
+    def validate_user_ids(self, value):
+        """
+        Valida que la lista no tenga duplicados y no exceda el límite.
+        """
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("La lista contiene IDs duplicados.")
+        
+        if len(value) > 100:
+            raise serializers.ValidationError("No se pueden añadir más de 100 miembros a la vez.")
+        
+        return value
