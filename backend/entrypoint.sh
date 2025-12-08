@@ -1,9 +1,8 @@
 #!/bin/sh
 
 set -e
-set -x
 
-echo "Iniciando entrypoint..."
+echo "🚀 Iniciando entrypoint..."
 
 # Detect Railway environment
 if [ -n "$RAILWAY_ENVIRONMENT" ] || [ -n "$RAILWAY_PROJECT_ID" ]; then
@@ -63,22 +62,73 @@ if [ -z "$SECRET_KEY" ] || [ -z "$DATABASE_URL" ]; then
     exit 1
 fi
 
-echo "Variables de entorno exportadas correctamente."
+echo "✅ Variables de entorno exportadas correctamente."
 
-echo "Aplicando migraciones de base de datos..."
-python manage.py migrate --noinput
+# Set PORT from environment or default
+export PORT=${PORT:-8000}
 
-echo "Creando superusuario si no existe..."
-python manage.py shell -c "
-from django.contrib.auth import get_user_model
-User = get_user_model()
-if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
-    User.objects.create_superuser('$DJANGO_SUPERUSER_USERNAME', '$DJANGO_SUPERUSER_EMAIL', '$DJANGO_SUPERUSER_PASSWORD')
-    print('Superusuario creado exitosamente')
-else:
-    print('Superusuario ya existe')
+# Wait for database to be ready
+echo "⏳ Esperando a que la base de datos esté lista..."
+python -c "
+import time
+import sys
+import os
+
+import dj_database_url
+import psycopg2
+
+database_url = os.environ.get('DATABASE_URL')
+config = dj_database_url.parse(database_url)
+
+max_retries = 30
+retry_count = 0
+
+while retry_count < max_retries:
+    try:
+        conn = psycopg2.connect(
+            dbname=config['NAME'],
+            user=config['USER'],
+            password=config['PASSWORD'],
+            host=config['HOST'],
+            port=config['PORT']
+        )
+        conn.close()
+        print('✅ Base de datos lista!')
+        sys.exit(0)
+    except psycopg2.OperationalError as e:
+        retry_count += 1
+        print(f'⏳ Esperando base de datos... intento {retry_count}/{max_retries}')
+        time.sleep(2)
+
+print(f'❌ No se pudo conectar a la base de datos después de {max_retries} intentos')
+sys.exit(1)
 "
 
-echo "Iniciando servidor Daphne para Django Channels..."
+if [ $? -ne 0 ]; then
+    echo "❌ Error: No se pudo conectar a la base de datos"
+    exit 1
+fi
+
+echo "📊 Aplicando migraciones de base de datos..."
+python manage.py migrate --noinput
+
+echo "👤 Creando superusuario si no existe..."
+python manage.py shell -c "
+from django.contrib.auth import get_user_model
+import os
+User = get_user_model()
+username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'changeme123')
+if not User.objects.filter(username=username).exists():
+    User.objects.create_superuser(username, email, password)
+    print('✅ Superusuario creado exitosamente')
+else:
+    print('ℹ️ Superusuario ya existe')
+"
+
+echo "✅ Configuración completada"
+echo "🚀 Iniciando servidor Daphne en puerto $PORT..."
+echo "📍 Health check disponible en http://localhost:$PORT/health/"
 
 exec "$@"
