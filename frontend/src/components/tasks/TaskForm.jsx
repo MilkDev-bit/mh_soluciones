@@ -101,7 +101,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
-      if (data.attachment && data.attachment[0]) {
+      if (data.attachment && data.attachment.length > 0 && data.attachment[0]) {
         const formData = new FormData();
         formData.append('title', data.title);
         formData.append('description', data.description || '');

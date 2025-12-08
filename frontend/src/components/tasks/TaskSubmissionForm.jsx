@@ -47,9 +47,9 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
 
       const formData = new FormData();
       
-      // Add files
+      // Add files with index to handle multiple files
       selectedFiles.forEach((file, index) => {
-        formData.append(`file`, file);
+        formData.append(`file_${index}`, file);
       });
       
       // Add notes/comment

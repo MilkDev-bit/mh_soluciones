@@ -255,17 +255,20 @@ class TaskSubmission(TimeStampedModel):
         if self.google_drive_file_id and self.google_drive_link:
             self.uploaded_to_drive = True
         
-        # Auto-asignar versión si es nueva entrega
+        # Auto-asignar versión si es nueva entrega usando atomic transaction
         if not self.pk:
-            previous_submissions = TaskSubmission.objects.filter(
-                task=self.task,
-                submitted_by=self.submitted_by
-            ).order_by('-version')
-            
-            if previous_submissions.exists():
-                self.version = previous_submissions.first().version + 1
-            else:
-                self.version = 1
+            from django.db import transaction
+            with transaction.atomic():
+                # Lock the rows to prevent race conditions
+                previous_submissions = TaskSubmission.objects.filter(
+                    task=self.task,
+                    submitted_by=self.submitted_by
+                ).select_for_update().order_by('-version')
+                
+                if previous_submissions.exists():
+                    self.version = previous_submissions.first().version + 1
+                else:
+                    self.version = 1
         
         super().save(*args, **kwargs)
 

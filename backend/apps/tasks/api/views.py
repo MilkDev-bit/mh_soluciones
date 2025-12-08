@@ -84,8 +84,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         instance = self.get_object()
         
-        # Check if task has submissions
-        if instance.submissions.exists():
+        # Check if task has submissions - use count() for better performance
+        submission_count = instance.submissions.count()
+        if submission_count > 0:
             # Log the changes
             changes = {}
             for field in serializer.validated_data:
