@@ -27,10 +27,14 @@ Esta guía detalla los pasos necesarios para migrar MH Soluciones Empresariales 
 
 Los siguientes archivos han sido creados para la migración:
 
-- `railway.json` - Configuración principal de Railway
-- `backend/Dockerfile.railway` - Dockerfile optimizado para Railway
-- `backend/entrypoint.railway.sh` - Script de entrada para Railway
+- `railway.json` - Configuración raíz de Railway
+- `backend/railway.json` - Configuración específica del backend
+- `backend/Dockerfile` - Dockerfile para el backend
+- `backend/entrypoint.sh` - Script de entrada para el backend
 - `backend/config/settings/railway.py` - Configuración de Django para Railway
+- `frontend/railway.json` - Configuración específica del frontend
+- `frontend/Dockerfile` - Dockerfile para el frontend
+- `frontend/nginx.railway.conf` - Configuración de Nginx para el frontend
 
 ---
 
@@ -160,19 +164,41 @@ railway connect postgres
 
 ### 1. Configurar railway.json
 
-El archivo `railway.json` ya está configurado para usar el Dockerfile de Railway:
+Los archivos `railway.json` están configurados para cada servicio en la estructura monorepo:
 
+**Backend** (`backend/railway.json`):
 ```json
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "backend/Dockerfile.railway"
+    "dockerfilePath": "backend/Dockerfile",
+    "dockerContext": "backend",
+    "watchPatterns": ["backend/**"]
   },
   "deploy": {
-    "startCommand": "/app/entrypoint.sh daphne -b 0.0.0.0 -p $PORT config.asgi:application",
-    "healthcheckPath": "/api/v1/docs/",
-    "healthcheckTimeout": 30,
+    "startCommand": "/app/entrypoint.sh",
+    "healthcheckPath": "/health/",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
+```
+
+**Frontend** (`frontend/railway.json`):
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "frontend/Dockerfile",
+    "dockerContext": "frontend",
+    "watchPatterns": ["frontend/**"]
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
@@ -266,6 +292,35 @@ Si necesitas revertir:
 2. Selecciona un deployment anterior
 3. Click en "Rollback"
 
+### Solución de Problemas
+
+#### Error: "Dockerfile does not exist"
+
+Si encuentras este error en Railway, verifica:
+
+1. **Configuración de monorepo**: Asegúrate de que cada servicio tenga su propio `railway.json` con:
+   - `dockerfilePath`: Ruta al Dockerfile desde la raíz del repositorio
+   - `dockerContext`: Directorio de contexto de compilación
+   - `watchPatterns`: Patrones de archivos a vigilar
+
+2. **Ejemplo de configuración correcta**:
+   ```json
+   {
+     "build": {
+       "builder": "DOCKERFILE",
+       "dockerfilePath": "backend/Dockerfile",
+       "dockerContext": "backend",
+       "watchPatterns": ["backend/**"]
+     }
+   }
+   ```
+
+3. **Verifica que los Dockerfiles existan**:
+   ```bash
+   ls -la backend/Dockerfile
+   ls -la frontend/Dockerfile
+   ```
+
 ---
 
 ## Comparación de Costos
@@ -290,8 +345,19 @@ Si necesitas revertir:
 
 ## Archivos Modificados
 
-- `railway.json` - Configuración de Railway
-- `backend/Dockerfile.railway` - Dockerfile optimizado
-- `backend/entrypoint.railway.sh` - Script de entrada
-- `backend/config/settings/railway.py` - Settings de Django
+- `railway.json` - Configuración raíz de Railway
+- `backend/railway.json` - Configuración del servicio backend con rutas correctas para monorepo
+- `backend/Dockerfile` - Dockerfile del backend
+- `backend/entrypoint.sh` - Script de entrada del backend
+- `backend/config/settings/railway.py` - Settings de Django para Railway
+- `frontend/railway.json` - Configuración del servicio frontend con rutas correctas para monorepo
+- `frontend/Dockerfile` - Dockerfile del frontend
+- `frontend/nginx.railway.conf` - Configuración de Nginx para el frontend
 - `RAILWAY_MIGRATION.md` - Esta guía
+
+### Notas Importantes
+
+En una configuración de monorepo con Railway, es crucial:
+- Especificar `dockerfilePath` relativo a la raíz del repositorio (ej: `backend/Dockerfile`)
+- Definir `dockerContext` para establecer el contexto de compilación (ej: `backend`)
+- Usar `watchPatterns` para que cada servicio se reconstruya solo cuando cambien sus archivos
