@@ -366,3 +366,176 @@
     min-width: calc(50% - $spacing-3);
   }
 }
+
+// Additional enhancements for improved UX
+.project-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  width: 100%;
+}
+
+.project-dates {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  margin-bottom: $spacing-4;
+  padding: $spacing-2 $spacing-3;
+  background: rgba($neutral-100, 0.5);
+  border-radius: $border-radius;
+  
+  .date-icon {
+    color: $primary-500;
+    flex-shrink: 0;
+  }
+  
+  .date-text {
+    font-size: 0.8125rem;
+    color: $neutral-600;
+    font-weight: 500;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    background: rgba($neutral-700, 0.3);
+    
+    .date-text {
+      color: $neutral-400;
+    }
+  }
+}
+
+.progress-bar-container {
+  flex: 1;
+  height: 8px;
+  background: $neutral-200;
+  border-radius: $border-radius-full;
+  overflow: hidden;
+  
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: $border-radius-full;
+    transition: width 0.5s ease-in-out, background-color 0.3s;
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba($neutral-50, 0.3), transparent);
+      animation: progressShine 2s infinite;
+    }
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    background: $neutral-700;
+  }
+}
+
+// Status badge color variations
+.status-badge {
+  &.status-in-progress {
+    background: rgba($primary-500, 0.15);
+    color: $primary-600;
+  }
+  
+  &.status-completed {
+    background: rgba($success, 0.15);
+    color: $success-dark;
+  }
+  
+  &.status-on-hold {
+    background: rgba($warning, 0.15);
+    color: $warning-dark;
+  }
+  
+  &.status-cancelled {
+    background: rgba($error, 0.15);
+    color: $error-dark;
+  }
+  
+  &.status-default {
+    background: rgba($neutral-400, 0.15);
+    color: $neutral-600;
+  }
+}
+
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  color: $neutral-400;
+  margin-bottom: $spacing-4;
+  opacity: 0.6;
+}
+
+.header-content {
+  flex: 1;
+  
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    margin-bottom: $spacing-2;
+    
+    .header-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      color: $primary-500;
+    }
+    
+    h1 {
+      margin: 0;
+    }
+  }
+  
+  .header-subtitle {
+    font-size: 1rem;
+    color: $neutral-600;
+    font-weight: 500;
+    margin-left: 3.75rem;
+    
+    @media (max-width: $breakpoint-sm) {
+      margin-left: 0;
+      font-size: 0.9375rem;
+    }
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: $spacing-3;
+  align-items: center;
+  flex-wrap: wrap;
+  
+  @media (max-width: $breakpoint-sm) {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.optimistic-item {
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+}

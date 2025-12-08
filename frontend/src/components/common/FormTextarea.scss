@@ -1,0 +1,122 @@
+@import '../../assets/styles/variables';
+
+.form-textarea-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  width: 100%;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: $spacing-1;
+  
+  &.required::after {
+    content: ' *';
+    color: $error;
+  }
+}
+
+.form-textarea-container {
+  position: relative;
+  
+  &.error {
+    .form-textarea {
+      border-color: $error;
+      box-shadow: 0 0 0 3px rgba($error, 0.1);
+    }
+  }
+  
+  &.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.form-textarea {
+  width: 100%;
+  padding: $spacing-3 $spacing-4;
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius;
+  background: var(--bg-input);
+  font-family: $font-sans;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: all $transition;
+  min-height: 100px;
+  
+  &::placeholder {
+    color: var(--text-muted);
+  }
+  
+  &:hover:not(:disabled) {
+    border-color: var(--border-color-dark);
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    
+    [data-theme="dark"] & {
+      box-shadow: 0 0 0 3px rgba($primary-400, 0.2);
+    }
+  }
+  
+  &:disabled {
+    background-color: var(--bg-tertiary);
+    cursor: not-allowed;
+  }
+  
+  &.resize-vertical {
+    resize: vertical;
+  }
+  
+  &.resize-horizontal {
+    resize: horizontal;
+  }
+  
+  &.resize-both {
+    resize: both;
+  }
+  
+  &.resize-none {
+    resize: none;
+  }
+}
+
+.form-message {
+  display: flex;
+  align-items: center;
+  gap: $spacing-1;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  
+  &.error-message {
+    color: $error;
+  }
+  
+  &.helper-text {
+    color: var(--text-tertiary);
+  }
+}
+
+.character-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+  font-family: $font-mono;
+}
+
+// Responsive adjustments
+@include mobile-only {
+  .form-textarea {
+    font-size: 0.9375rem;
+    padding: $spacing-2 $spacing-3;
+    min-height: 80px;
+  }
+}

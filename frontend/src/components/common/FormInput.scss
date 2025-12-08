@@ -1,0 +1,251 @@
+@import '../../assets/styles/variables';
+
+.form-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  width: 100%;
+  
+  &.inline {
+    flex-direction: row;
+    align-items: center;
+    
+    .form-label {
+      margin-bottom: 0;
+      margin-right: $spacing-3;
+    }
+  }
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: $spacing-1;
+  
+  &.required::after {
+    content: ' *';
+    color: $error;
+  }
+}
+
+.form-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius;
+  transition: all $transition;
+  
+  &:hover:not(.disabled) {
+    border-color: var(--border-color-dark);
+  }
+  
+  &.focused {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    
+    [data-theme="dark"] & {
+      box-shadow: 0 0 0 3px rgba($primary-400, 0.2);
+    }
+  }
+  
+  &.error {
+    border-color: $error;
+    box-shadow: 0 0 0 3px rgba($error, 0.1);
+    
+    .form-input-icon {
+      color: $error;
+    }
+  }
+  
+  &.success {
+    border-color: $success;
+    
+    .form-input-icon {
+      color: $success;
+    }
+  }
+  
+  &.disabled {
+    background-color: var(--bg-tertiary);
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.form-input-icon {
+  position: absolute;
+  left: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
+.form-input {
+  width: 100%;
+  padding: $spacing-3 $spacing-4;
+  border: none;
+  background: transparent;
+  font-family: $font-sans;
+  font-size: 1rem;
+  color: var(--text-primary);
+  outline: none;
+  
+  &.has-icon {
+    padding-left: 2.75rem;
+  }
+  
+  &.has-toggle {
+    padding-right: 3rem;
+  }
+  
+  &::placeholder {
+    color: var(--text-muted);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+  }
+  
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset;
+    -webkit-text-fill-color: var(--text-primary);
+  }
+}
+
+.password-toggle {
+  position: absolute;
+  right: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: $spacing-1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color $transition;
+  
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  
+  &:hover {
+    color: var(--text-secondary);
+  }
+  
+  &:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+    border-radius: $border-radius-sm;
+  }
+}
+
+.form-input-status {
+  position: absolute;
+  right: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  
+  &.error-icon {
+    color: $error;
+  }
+  
+  &.success-icon {
+    color: $success;
+  }
+}
+
+.form-message {
+  display: flex;
+  align-items: center;
+  gap: $spacing-1;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  
+  svg {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+  }
+  
+  &.error-message {
+    color: $error;
+    animation: shake 0.3s ease-in-out;
+  }
+  
+  &.helper-text {
+    color: var(--text-tertiary);
+  }
+}
+
+.character-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+  font-family: $font-mono;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+// Responsive adjustments
+@include mobile-only {
+  .form-input-wrapper {
+    &.inline {
+      flex-direction: column;
+      align-items: stretch;
+      
+      .form-label {
+        margin-right: 0;
+        margin-bottom: $spacing-2;
+      }
+    }
+  }
+  
+  .form-input {
+    font-size: 0.9375rem;
+    padding: $spacing-2 $spacing-3;
+    
+    &.has-icon {
+      padding-left: 2.5rem;
+    }
+  }
+  
+  .form-input-icon {
+    left: $spacing-2;
+  }
+}

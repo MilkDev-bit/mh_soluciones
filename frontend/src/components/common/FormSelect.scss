@@ -1,0 +1,165 @@
+@import '../../assets/styles/variables';
+
+.form-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+  width: 100%;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: $spacing-1;
+  
+  &.required::after {
+    content: ' *';
+    color: $error;
+  }
+}
+
+.form-select-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  
+  &.error {
+    .form-select {
+      border-color: $error;
+      box-shadow: 0 0 0 3px rgba($error, 0.1);
+    }
+    
+    .form-select-icon {
+      color: $error;
+    }
+  }
+  
+  &.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.form-select-icon {
+  position: absolute;
+  left: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
+.form-select {
+  width: 100%;
+  padding: $spacing-3 3rem $spacing-3 $spacing-4;
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius;
+  background: var(--bg-input);
+  font-family: $font-sans;
+  font-size: 1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all $transition;
+  appearance: none;
+  
+  &.has-icon {
+    padding-left: 2.75rem;
+  }
+  
+  &:hover:not(:disabled) {
+    border-color: var(--border-color-dark);
+  }
+  
+  &:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    
+    [data-theme="dark"] & {
+      box-shadow: 0 0 0 3px rgba($primary-400, 0.2);
+    }
+  }
+  
+  &:disabled {
+    background-color: var(--bg-tertiary);
+    cursor: not-allowed;
+  }
+  
+  option {
+    color: var(--text-primary);
+    background: var(--bg-input);
+    padding: $spacing-2;
+    
+    &:disabled {
+      color: var(--text-muted);
+    }
+  }
+}
+
+.form-select-arrow {
+  position: absolute;
+  right: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  transition: transform $transition;
+  
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+.form-select:focus ~ .form-select-arrow {
+  color: var(--accent-primary);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.form-message {
+  display: flex;
+  align-items: center;
+  gap: $spacing-1;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  
+  &.error-message {
+    color: $error;
+  }
+  
+  &.helper-text {
+    color: var(--text-tertiary);
+  }
+}
+
+// Responsive adjustments
+@include mobile-only {
+  .form-select {
+    font-size: 0.9375rem;
+    padding: $spacing-2 2.75rem $spacing-2 $spacing-3;
+    
+    &.has-icon {
+      padding-left: 2.5rem;
+    }
+  }
+  
+  .form-select-icon {
+    left: $spacing-2;
+  }
+  
+  .form-select-arrow {
+    right: $spacing-2;
+  }
+}

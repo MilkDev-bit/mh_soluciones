@@ -6,8 +6,10 @@ import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
 import ProjectCard from '../../components/projects/ProjectCard';
 import Loading from '../../components/common/Loading';
+import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import ProjectForm from '../../components/projects/ProjectForm';
+import { FiPlus, FiRefreshCw, FiBriefcase } from 'react-icons/fi';
 import './ProjectsPage.scss';
 
 const ProjectsPage = () => {
@@ -84,7 +86,27 @@ const ProjectsPage = () => {
   }, []);
   
   if (loading || !user) {
-    return <Loading fullscreen text="Cargando proyectos..." />;
+    return (
+      <>
+        <Helmet>
+          <title>Proyectos | MH Soluciones</title>
+        </Helmet>
+        <div className="page-container">
+          <div className="page-header">
+            <div className="header-content">
+              <div className="header-title">
+                <FiBriefcase className="header-icon" />
+                <h1>Salas de Trabajo (Proyectos)</h1>
+              </div>
+              <div className="header-subtitle">
+                Gestiona y colabora en proyectos de manera eficiente
+              </div>
+            </div>
+          </div>
+          <SkeletonList count={6} />
+        </div>
+      </>
+    );
   }
 
   return (
@@ -108,18 +130,34 @@ const ProjectsPage = () => {
 
       <div className="page-container">
         <div className="page-header">
-          <h1>Salas de Trabajo (Proyectos)</h1>
+          <div className="header-content">
+            <div className="header-title">
+              <FiBriefcase className="header-icon" />
+              <h1>Salas de Trabajo (Proyectos)</h1>
+            </div>
+            <div className="header-subtitle">
+              Gestiona y colabora en proyectos de manera eficiente
+            </div>
+          </div>
           <div className="header-actions">
             {isRefreshing && (
               <Loading inline size="small" text="Actualizando..." />
             )}
+            <button 
+              className="btn btn-ghost btn-icon" 
+              onClick={() => fetchProjects(true)}
+              disabled={isRefreshing}
+              title="Actualizar proyectos"
+            >
+              <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
+            </button>
             {user && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) && (
               <button 
                 className="btn btn-primary" 
                 onClick={handleOpenModal}
                 aria-label="Crear nuevo proyecto"
               >
-                + Nuevo Proyecto
+                <FiPlus /> Nuevo Proyecto
               </button>
             )}
           </div>
@@ -136,9 +174,14 @@ const ProjectsPage = () => {
             ))}
           </div>
         ) : (
-          <div className="empty-state" role="status">
+          <div className="empty-state glass-card" role="status">
+            <FiBriefcase className="empty-state-icon" />
             <h2>No hay proyectos</h2>
-            <p>Aún no se han creado proyectos o no eres miembro de ninguno.</p>
+            <p>
+              {user && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) 
+                ? 'Comienza creando tu primer proyecto haciendo clic en "Nuevo Proyecto"' 
+                : 'Aún no eres miembro de ningún proyecto. Contacta a tu administrador.'}
+            </p>
           </div>
         )}
       </div>
