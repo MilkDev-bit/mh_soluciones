@@ -6,7 +6,7 @@ ENV DJANGO_SETTINGS_MODULE=config.settings. railway
 
 WORKDIR /app
 
-# Install system dependencies (without AWS CLI for Railway)
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential libpq-dev gcc curl jq && \
     apt-get clean && \
@@ -14,23 +14,20 @@ RUN apt-get update && \
 
 RUN pip install --upgrade pip
 
+# Copiar desde la carpeta backend (importante para monorepo)
 COPY requirements/base.txt /app/requirements. txt
 RUN pip install -r /app/requirements.txt
 
-# Install additional dependencies for channels
 RUN pip install channels channels-redis daphne
 
-# Copy entrypoint script BEFORE copying everything else
-COPY backend/entrypoint.railway.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY . /app
 
-# Copy all application code
-COPY .  /app
-
-# Collect static files
 RUN SECRET_KEY=dummy python manage.py collectstatic --noinput --clear
 
 EXPOSE ${PORT:-8000}
+
+COPY entrypoint.railway.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
