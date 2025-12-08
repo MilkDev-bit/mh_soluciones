@@ -28,5 +28,9 @@ EXPOSE ${PORT}
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/api/v1/docs/ || exit 1
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["sh", "-c", "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"]
