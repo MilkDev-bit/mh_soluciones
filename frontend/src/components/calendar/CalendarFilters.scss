@@ -1,0 +1,74 @@
+@import '../../assets/styles/variables';
+
+.calendar-filters {
+  padding: $spacing-4;
+  margin-bottom: $spacing-4;
+  
+  .filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-4;
+    
+    .filters-title {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+      
+      svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        color: var(--accent-primary);
+      }
+    }
+  }
+  
+  .filters-content {
+    display: grid;
+    gap: $spacing-4;
+    
+    @include md-up {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    @include lg-up {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  .filter-group {
+    position: relative;
+    
+    .filter-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: $spacing-2;
+    }
+    
+    .color-preview-badge {
+      position: absolute;
+      right: $spacing-3;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--bg-card);
+      box-shadow: var(--shadow-md);
+      pointer-events: none;
+    }
+  }
+}
+
+@include mobile-only {
+  .calendar-filters {
+    .filters-content {
+      grid-template-columns: 1fr;
+    }
+  }
+}

@@ -562,3 +562,144 @@
     font-size: 0.875rem !important;
   }
 }
+
+// Additional enhancements for improved UX
+.calendar-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: $border-radius-xl;
+  
+  [data-theme="dark"] & {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-12;
+  text-align: center;
+  background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.9) 100%);
+  border-radius: $border-radius-xl;
+  border: 1px solid rgba($neutral-200, 0.5);
+  box-shadow: 0 8px 32px rgba($neutral-900, 0.06);
+  min-height: 400px;
+  
+  .empty-state-icon {
+    width: 5rem;
+    height: 5rem;
+    color: $neutral-400;
+    margin-bottom: $spacing-4;
+    opacity: 0.6;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: $neutral-900;
+    margin: 0 0 $spacing-3 0;
+    letter-spacing: -0.01em;
+  }
+  
+  p {
+    font-size: 1.0625rem;
+    color: $neutral-600;
+    margin: 0;
+    max-width: 500px;
+    line-height: 1.6;
+  }
+}
+
+.header-content {
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    margin-bottom: $spacing-2;
+    
+    .header-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      color: $primary-500;
+    }
+  }
+  
+  .header-subtitle {
+    font-size: 1rem;
+    color: $neutral-600;
+    font-weight: 500;
+    margin-left: 3.75rem;
+    
+    @media (max-width: $breakpoint-sm) {
+      margin-left: 0;
+      font-size: 0.9375rem;
+    }
+  }
+}
+
+.btn-icon {
+  padding: $spacing-3;
+  border-radius: $border-radius;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  &.btn-sm {
+    padding: $spacing-2;
+    
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Improved drag and drop feedback
+.fc-event-dragging {
+  opacity: 0.6;
+  cursor: grabbing !important;
+}
+
+.fc-event-resizing {
+  opacity: 0.8;
+}
+
+// Better mobile responsiveness for calendar filters
+@media (max-width: $breakpoint-sm) {
+  .calendar-filters {
+    padding: $spacing-3;
+    
+    .filters-content {
+      grid-template-columns: 1fr !important;
+    }
+  }
+}
