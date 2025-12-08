@@ -73,7 +73,6 @@ python -c "
 import time
 import sys
 import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.railway')
 
 import dj_database_url
 import psycopg2
@@ -101,7 +100,7 @@ while retry_count < max_retries:
         print(f'⏳ Esperando base de datos... intento {retry_count}/{max_retries}')
         time.sleep(2)
 
-print('❌ No se pudo conectar a la base de datos después de 30 intentos')
+print(f'❌ No se pudo conectar a la base de datos después de {max_retries} intentos')
 sys.exit(1)
 "
 
