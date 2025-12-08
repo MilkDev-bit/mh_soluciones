@@ -1,61 +1,35 @@
-name: Deploy to Railway
+# Build stage
+FROM node:20-alpine AS build
 
-on:
-  push:
-    branches: [main, develop]
+WORKDIR /app
 
-jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend-changed: ${{ steps.changes. outputs.backend }}
-      frontend-changed: ${{ steps.changes.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+# Copy package files
+COPY package*.json ./
 
-      - name: Detect file changes
-        id: changes
-        run: |
-          if git diff --name-only origin/main HEAD | grep -q "^backend/"; then
-            echo "backend=true" >> $GITHUB_OUTPUT
-          else
-            echo "backend=false" >> $GITHUB_OUTPUT
-          fi
-          
-          if git diff --name-only origin/main HEAD | grep -q "^frontend/"; then
-            echo "frontend=true" >> $GITHUB_OUTPUT
-          else
-            echo "frontend=false" >> $GITHUB_OUTPUT
-          fi
+# Install dependencies
+RUN npm ci
 
-  deploy-backend:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend-changed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy Backend to Railway
-        run: |
-          echo "🚀 Desplegando SOLO backend..."
-          # Railway CLI deploy - solo backend
-          npx railway up --service backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+# Copy source code
+COPY . .
 
-  deploy-frontend:
-    needs: detect-changes
-    if: needs.detect-changes.outputs. frontend-changed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy Frontend to Railway
-        run: |
-          echo "🚀 Desplegando SOLO frontend..."
-          # Railway CLI deploy - solo frontend
-          npx railway up --service frontend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy custom nginx configuration
+COPY nginx.railway.conf /etc/nginx/conf.d/default.conf
+
+# Copy built assets from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
