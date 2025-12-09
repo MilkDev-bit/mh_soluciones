@@ -169,6 +169,8 @@ DJANGO_SUPERUSER_PASSWORD=<contraseña-segura>
 
 **Generar SECRET_KEY**:
 ```bash
+# ⚠️ IMPORTANTE: Ejecutar LOCALMENTE en tu máquina, NO en Railway
+# Copia el resultado a las variables de entorno de Railway
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
