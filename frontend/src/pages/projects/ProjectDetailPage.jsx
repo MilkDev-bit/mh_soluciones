@@ -18,6 +18,7 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { ROLES, isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
@@ -26,6 +27,8 @@ import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
 import AddMemberModal from '../../components/projects/AddMemberModal';
 import ProjectProgressCharts from '../../components/projects/ProjectProgressCharts';
+import StudentPerformance from '../../components/projects/StudentPerformance';
+import GoogleDriveFolder from '../../components/projects/GoogleDriveFolder';
 import {
   FiEdit2,
   FiPlus,
@@ -54,7 +57,7 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
 
   const canEditOrDelete =
     currentUser?.id === comment?.user?.id ||
-    ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser?.role);
+    (currentUser?.role && isAdmin(currentUser.role));
 
   useEffect(() => {
     setEditedText(comment?.comment || '');
@@ -142,7 +145,7 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
 
   const canEditOrDelete =
     currentUser?.id === submission?.submitted_by?.id ||
-    ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser?.role);
+    (currentUser?.role && isAdmin(currentUser.role));
 
   const user = submission?.submitted_by || {};
 
@@ -318,7 +321,7 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
               <span className="member-role">{member?.role ? member.role.replace('_', ' ') : 'Miembro'}</span>
             </div>
             {currentUser &&
-              ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) &&
+              isAdmin(currentUser.role) &&
               user.id !== project?.created_by && (
                 <button
                   className="btn btn-danger btn-sm"
@@ -689,7 +692,7 @@ const ProjectDetailPage = () => {
 
       {selectedTask && (
         <Modal
-          title={currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) ? 'Editar Tarea' : 'Detalles de la Tarea'}
+          title={currentUser && isAdmin(currentUser.role) ? 'Editar Tarea' : 'Detalles de la Tarea'}
           onClose={() => setSelectedTask(null)}
           size="large"
         >
@@ -732,7 +735,7 @@ const ProjectDetailPage = () => {
             <p className="project-description-detail">{project?.description || 'Sin descripción'}</p>
           </div>
           <div className="page-header-actions">
-            {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
+            {currentUser && isAdmin(currentUser.role) && (
               <>
                 <button className="btn btn-secondary" onClick={handleEditProject}>
                   <FiEdit2 /> Editar
@@ -753,140 +756,167 @@ const ProjectDetailPage = () => {
           <div className="main-column">
             <ProjectProgressCharts projectId={projectId} />
 
-            <div className="glass-card">
-              <div className="section-header">
-                <h2>
-                  {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${tasks.length})`}
-                </h2>
-                {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
-                  <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
-                    <FiPlus /> Nueva Tarea
-                  </button>
-                )}
+            {/* Student Performance - visible to analytics viewers */}
+            {currentUser && canViewAnalytics(currentUser.role) && (
+              <div className="glass-card">
+                <StudentPerformance projectId={projectId} />
               </div>
-              <div className="task-list">
-                {tasks.length > 0 ? (
-                  tasks.map((task) => {
-                    const assignee = task?.assigned_to || {};
-                    const avatar =
-                      assignee?.profile_picture ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
-                    const documents = taskDocuments[task.id] || [];
+            )}
 
-                    return (
-                      <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
-                        <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
-                        <div className="task-info">
-                          <p className="task-title">{task.title || 'Tarea sin título'}</p>
-                          {task?.due_date && (
-                            <span className="task-due-date">
-                              Vence:{' '}
-                              {format(parseISO(task.due_date), 'dd MMMM, yyyy', {
-                                locale: es
-                              })}
-                            </span>
-                          )}
-                          {documents.length > 0 && (
-                            <div className="task-documents-badge">
-                              <FiPaperclip size={12} />
-                              <span>{documents.length} documento(s)</span>
-                            </div>
-                          )}
+            {/* Google Drive Folder - visible to admins and CLIENT */}
+            {currentUser && canAccessDrive(currentUser.role) && (
+              <div className="glass-card">
+                <GoogleDriveFolder projectId={projectId} userRole={currentUser.role} />
+              </div>
+            )}
+
+            {/* Only show tasks section to non-CLIENT users or if CLIENT wants to see them */}
+            {currentUser && currentUser.role !== 'CLIENT' && (
+              <div className="glass-card">
+                <div className="section-header">
+                  <h2>
+                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${tasks.length})`}
+                  </h2>
+                  {currentUser && isAdmin(currentUser.role) && (
+                    <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
+                      <FiPlus /> Nueva Tarea
+                    </button>
+                  )}
+                </div>
+                <div className="task-list">
+                  {tasks.length > 0 ? (
+                    tasks.map((task) => {
+                      const assignee = task?.assigned_to || {};
+                      const avatar =
+                        assignee?.profile_picture ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
+                      const documents = taskDocuments[task.id] || [];
+
+                      return (
+                        <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
+                          <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
+                          <div className="task-info">
+                            <p className="task-title">{task.title || 'Tarea sin título'}</p>
+                            {task?.due_date && (
+                              <span className="task-due-date">
+                                Vence:{' '}
+                                {format(parseISO(task.due_date), 'dd MMMM, yyyy', {
+                                  locale: es
+                                })}
+                              </span>
+                            )}
+                            {documents.length > 0 && (
+                              <div className="task-documents-badge">
+                                <FiPaperclip size={12} />
+                                <span>{documents.length} documento(s)</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="task-right-section">
+                            {task?.assigned_to && (
+                              <img src={avatar} alt={assignee.first_name || 'Usuario'} className="task-assignee-avatar" title={`Asignada a ${assignee.first_name || ''}`} />
+                            )}
+                          </div>
                         </div>
-                        <div className="task-right-section">
-                          {task?.assigned_to && (
-                            <img src={avatar} alt={assignee.first_name || 'Usuario'} className="task-assignee-avatar" title={`Asignada a ${assignee.first_name || ''}`} />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p>No hay tareas en este proyecto todavía.</p>
-                )}
+                      );
+                    })
+                  ) : (
+                    <p>No hay tareas en este proyecto todavía.</p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="glass-card">
-              <div className="section-header">
-                <h2>
-                  <FiUploadCloud /> Entregas Generales del Proyecto
-                </h2>
-              </div>
-              <div className="submissions-list">
-                {project?.submissions && project.submissions.length > 0 ? (
-                  project.submissions.map((sub) => (
-                    <ProjectSubmissionItem key={sub.id} submission={sub} currentUser={currentUser} onUpdate={handleUpdateSubmission} onDelete={handleDeleteSubmission} />
-                  ))
-                ) : (
-                  <p>No hay entregas generales para este proyecto.</p>
-                )}
-              </div>
+            {/* Hide submissions and comments from CLIENT users */}
+            {currentUser && currentUser.role !== 'CLIENT' && (
+              <>
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h2>
+                      <FiUploadCloud /> Entregas Generales del Proyecto
+                    </h2>
+                  </div>
+                  <div className="submissions-list">
+                    {project?.submissions && project.submissions.length > 0 ? (
+                      project.submissions.map((sub) => (
+                        <ProjectSubmissionItem key={sub.id} submission={sub} currentUser={currentUser} onUpdate={handleUpdateSubmission} onDelete={handleDeleteSubmission} />
+                      ))
+                    ) : (
+                      <p>No hay entregas generales para este proyecto.</p>
+                    )}
+                  </div>
 
-              {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR'].includes(currentUser.role) && (
-                <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
-                  <h4>Añadir nueva entrega</h4>
-                  <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
-                  <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
-                  <input type="file" {...submissionRegister('file')} />
-                  <button type="submit" className="btn btn-primary">
-                    <FiSend /> Enviar
-                  </button>
-                </form>
-              )}
-            </div>
+                  {currentUser && canSubmit(currentUser.role) && (
+                    <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
+                      <h4>Añadir nueva entrega</h4>
+                      <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
+                      <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
+                      <input type="file" {...submissionRegister('file')} />
+                      <button type="submit" className="btn btn-primary">
+                        <FiSend /> Enviar
+                      </button>
+                    </form>
+                  )}
+                </div>
 
-            <div className="glass-card">
-              <div className="section-header">
-                <h2>
-                  <FiMessageSquare /> Comentarios del Proyecto
-                </h2>
-              </div>
-              <div className="comment-list">
-                {(project?.comments || []).map((comment) => (
-                  <ProjectCommentItem key={comment.id} comment={comment} currentUser={currentUser} onUpdate={handleUpdateComment} onDelete={handleDeleteComment} />
-                ))}
-                {(project?.comments || []).length === 0 && <p>No hay comentarios todavía.</p>}
-              </div>
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h2>
+                      <FiMessageSquare /> Comentarios del Proyecto
+                    </h2>
+                  </div>
+                  <div className="comment-list">
+                    {(project?.comments || []).map((comment) => (
+                      <ProjectCommentItem key={comment.id} comment={comment} currentUser={currentUser} onUpdate={handleUpdateComment} onDelete={handleDeleteComment} />
+                    ))}
+                    {(project?.comments || []).length === 0 && <p>No hay comentarios todavía.</p>}
+                  </div>
 
-              <form onSubmit={commentHandleSubmit(onProjectCommentSubmit)} className="comment-form">
-                <textarea {...commentRegister('comment', { required: true })} placeholder="Escribe un comentario sobre el proyecto..." rows="2" />
-                <button type="submit" className="btn btn-primary">
-                  <FiSend /> Enviar
-                </button>
-              </form>
-            </div>
+                  <form onSubmit={commentHandleSubmit(onProjectCommentSubmit)} className="comment-form">
+                    <textarea {...commentRegister('comment', { required: true })} placeholder="Escribe un comentario sobre el proyecto..." rows="2" />
+                    <button type="submit" className="btn btn-primary">
+                      <FiSend /> Enviar
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="sidebar-column">
-            <div className="glass-card">
-              <div className="section-header">
-                <h3>Miembros ({membersList.length})</h3>
-                {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
-                  <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
-                    <FiPlus />
-                  </button>
-                )}
-              </div>
-              <div className="member-list">
-                <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
-              </div>
-            </div>
+            {/* Hide members and events from CLIENT users */}
+            {currentUser && currentUser.role !== 'CLIENT' && (
+              <>
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h3>Miembros ({membersList.length})</h3>
+                    {currentUser && isAdmin(currentUser.role) && (
+                      <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
+                        <FiPlus />
+                      </button>
+                    )}
+                  </div>
+                  <div className="member-list">
+                    <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+                  </div>
+                </div>
 
-            <div className="glass-card">
-              <div className="section-header">
-                <h3>
-                  <FiCalendar /> Próximos Eventos
-                </h3>
-              </div>
-              <div className="events-list">
-                {projectEvents && projectEvents.length > 0 ? (
-                  projectEvents.map((event) => <EventItem key={event.id} event={event} />)
-                ) : (
-                  <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
-                )}
-              </div>
-            </div>
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h3>
+                      <FiCalendar /> Próximos Eventos
+                    </h3>
+                  </div>
+                  <div className="events-list">
+                    {projectEvents && projectEvents.length > 0 ? (
+                      projectEvents.map((event) => <EventItem key={event.id} event={event} />)
+                    ) : (
+                      <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

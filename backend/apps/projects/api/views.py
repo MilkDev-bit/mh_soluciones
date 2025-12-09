@@ -1,13 +1,16 @@
 import logging
+from datetime import datetime, date
 
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Count, Case, When, IntegerField
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from apps.authentication.models import CustomUser
+from apps.tasks.models import TaskSubmission
+from apps.documents.models import Document
 from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
 from .serializers import (
     ProjectSerializer,
@@ -27,6 +30,15 @@ ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
+
+    def _validate_client_access(self, user, project):
+        """
+        Validates that a CLIENT user has access to the project.
+        Raises PermissionDenied if user is CLIENT but not assigned to this project.
+        """
+        if user.role == 'CLIENT' and user.is_authenticated:
+            if not project.client or project.client.id != user.id:
+                raise PermissionDenied("No tienes acceso a este proyecto.")
 
     def get_queryset(self):
         user = self.request.user
@@ -198,6 +210,146 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'total_submissions': total_submissions,
             'progress_percentage': progress_percentage,
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='student-performance')
+    def student_performance(self, request, pk=None):
+        """
+        Returns student performance metrics based on task submissions.
+        Shows on-time vs late submissions for students (STUDENT role) in the project.
+        Accessible by admins and CLIENT role (if they are the project client).
+        """
+        project = self.get_object()
+        user = request.user
+        
+        # Validate CLIENT access
+        self._validate_client_access(user, project)
+        
+        # Get all students assigned to tasks in this project
+        student_ids = project.tasks.filter(
+            assigned_students__role='STUDENT'
+        ).values_list('assigned_students__id', flat=True).distinct()
+        
+        # Also get students assigned to individual tasks
+        individual_student_ids = project.tasks.filter(
+            assigned_to__role='STUDENT'
+        ).values_list('assigned_to__id', flat=True).distinct()
+        
+        # Combine both sets of student IDs efficiently
+        all_student_ids = set(student_ids) | set(individual_student_ids)
+        
+        if not all_student_ids:
+            return Response({
+                'students': [],
+                'message': 'No hay estudiantes asignados a este proyecto'
+            }, status=status.HTTP_200_OK)
+        
+        students_data = []
+        
+        for student_id in all_student_ids:
+            try:
+                student = CustomUser.objects.get(id=student_id, role='STUDENT')
+            except CustomUser.DoesNotExist:
+                continue
+            
+            # Get all submissions for this student in this project
+            submissions = TaskSubmission.objects.filter(
+                task__project=project,
+                submitted_by=student
+            ).select_related('task')
+            
+            total_submissions = submissions.count()
+            on_time_count = 0
+            late_count = 0
+            
+            for submission in submissions:
+                task = submission.task
+                # Check if submission was on time
+                if task.due_date and submission.created_at:
+                    # Convert datetime to date for comparison if needed
+                    # created_at is a DateTimeField, so we need to extract the date
+                    if isinstance(submission.created_at, datetime):
+                        submission_date = submission.created_at.date()
+                    elif isinstance(submission.created_at, date):
+                        submission_date = submission.created_at
+                    else:
+                        # Skip if unable to determine date
+                        continue
+                    
+                    # Compare dates (task.due_date is a DateField)
+                    if submission_date <= task.due_date:
+                        on_time_count += 1
+                    else:
+                        late_count += 1
+                else:
+                    # If no due date, count as on time
+                    on_time_count += 1
+            
+            # Calculate on-time percentage
+            on_time_percentage = 0
+            if total_submissions > 0:
+                on_time_percentage = round((on_time_count / total_submissions) * 100)
+            
+            students_data.append({
+                'id': student.id,
+                'name': f"{student.first_name} {student.last_name}",
+                'email': student.email,
+                'total_submissions': total_submissions,
+                'on_time_submissions': on_time_count,
+                'late_submissions': late_count,
+                'on_time_percentage': on_time_percentage
+            })
+        
+        # Sort by on_time_percentage descending
+        students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
+        
+        return Response({
+            'students': students_data,
+            'total_students': len(students_data)
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='drive-folder')
+    def drive_folder(self, request, pk=None):
+        """
+        Returns Google Drive folder information for the project.
+        Accessible by admins and CLIENT role (if they are the project client).
+        Returns folder URL and list of files in the project's Drive folder.
+        """
+        project = self.get_object()
+        user = request.user
+        
+        # Validate CLIENT access
+        self._validate_client_access(user, project)
+        
+        # Get all documents for this project
+        
+        documents = Document.objects.filter(
+            project=project,
+            upload_status='COMPLETE'
+        ).order_by('-created_at')
+        
+        folder_info = {
+            'project_name': project.name,
+            'total_documents': documents.count(),
+            'documents': []
+        }
+        
+        for doc in documents:
+            folder_info['documents'].append({
+                'id': doc.id,
+                'name': doc.name,
+                'drive_file_id': doc.drive_file_id,
+                'drive_file_url': doc.drive_file_url,
+                'file_size': doc.file_size,
+                'file_type': doc.file_type,
+                'folder_type': doc.folder_type,
+                'uploaded_by': {
+                    'id': doc.uploaded_by.id if doc.uploaded_by else None,
+                    'name': f"{doc.uploaded_by.first_name} {doc.uploaded_by.last_name}" if doc.uploaded_by else "Unknown"
+                },
+                'created_at': doc.created_at
+            })
+        
+        return Response(folder_info, status=status.HTTP_200_OK)
         
 
 class ProjectCommentViewSet(viewsets.ModelViewSet):
