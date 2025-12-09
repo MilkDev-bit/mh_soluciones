@@ -297,8 +297,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
         user = request.user
         
         # Check if user is CLIENT and if they are the client for this project
-        if user.role == 'CLIENT' and project.client_id != user.id:
-            raise PermissionDenied("No tienes acceso a la carpeta de este proyecto.")
+        # Also handle case where project has no client assigned
+        if user.role == 'CLIENT':
+            if not project.client or project.client.id != user.id:
+                raise PermissionDenied("No tienes acceso a la carpeta de este proyecto.")
         
         # Get all documents for this project
         from apps.documents.models import Document

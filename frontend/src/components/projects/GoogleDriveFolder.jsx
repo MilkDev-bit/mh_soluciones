@@ -125,16 +125,19 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
                     <FiExternalLink />
                     <span>Ver</span>
                   </a>
-                  <a
-                    href={doc.drive_file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-action btn-download"
-                    title="Abrir para descargar"
-                  >
-                    <FiDownload />
-                    <span>Descargar</span>
-                  </a>
+                  {/* Google Drive download URL uses the file ID to create a direct download link */}
+                  {doc.drive_file_id && (
+                    <a
+                      href={`https://drive.google.com/uc?export=download&id=${doc.drive_file_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-action btn-download"
+                      title="Descargar archivo"
+                    >
+                      <FiDownload />
+                      <span>Descargar</span>
+                    </a>
+                  )}
                 </>
               )}
             </div>
