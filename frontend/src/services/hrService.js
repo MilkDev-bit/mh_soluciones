@@ -93,3 +93,49 @@ export const deletePerformanceReview = async (reviewId) => {
     throw error;
   }
 };
+
+// Attendance services
+export const getAttendances = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams(filters);
+    const { data } = await api.get(`hr/attendances/?${params.toString()}`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getAttendancesByEmployee = async (employeeId) => {
+  try {
+    const { data } = await api.get(`hr/attendances/?employee=${employeeId}`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createAttendance = async (attendanceData) => {
+  try {
+    const { data } = await api.post('hr/attendances/', attendanceData);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateAttendance = async (attendanceId, attendanceData) => {
+  try {
+    const { data } = await api.put(`hr/attendances/${attendanceId}/`, attendanceData);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteAttendance = async (attendanceId) => {
+  try {
+    await api.delete(`hr/attendances/${attendanceId}/`);
+  } catch (error) {
+    throw error;
+  }
+};

@@ -1,7 +1,7 @@
 from http.client import HTTPResponse
 from rest_framework import viewsets
-from ..models import EmployeeDocument, PerformanceReview
-from .serializers import EmployeeDocumentSerializer, PerformanceReviewSerializer
+from ..models import EmployeeDocument, PerformanceReview, Attendance
+from .serializers import EmployeeDocumentSerializer, PerformanceReviewSerializer, AttendanceSerializer
 from .permissions import IsHrOrSuperAdmin
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -51,3 +51,16 @@ class PerformanceReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(reviewer=self.request.user)
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar los registros de asistencia del personal.
+    """
+    queryset = Attendance.objects.select_related('employee', 'recorded_by').all()
+    serializer_class = AttendanceSerializer
+    permission_classes = [IsHrOrSuperAdmin]
+    filterset_fields = ['employee', 'date', 'status']
+
+    def perform_create(self, serializer):
+        serializer.save(recorded_by=self.request.user)

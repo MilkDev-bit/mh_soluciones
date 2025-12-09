@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EmployeeDocument, PerformanceReview
+from .models import EmployeeDocument, PerformanceReview, Attendance
 
 @admin.register(EmployeeDocument)
 class EmployeeDocumentAdmin(admin.ModelAdmin):
@@ -28,3 +28,17 @@ class PerformanceReviewAdmin(admin.ModelAdmin):
     raw_id_fields = ('employee', 'reviewer')
     ordering = ('-review_date',)
     list_per_page = 25
+
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    """
+    Configuración del panel de administrador para los registros de asistencia.
+    """
+    list_display = ('employee', 'date', 'status', 'check_in_time', 'check_out_time', 'recorded_by')
+    list_filter = ('status', 'date', 'employee')
+    search_fields = ('employee__username', 'employee__first_name', 'employee__last_name')
+    raw_id_fields = ('employee', 'recorded_by')
+    ordering = ('-date', 'employee')
+    list_per_page = 25
+    date_hierarchy = 'date'
