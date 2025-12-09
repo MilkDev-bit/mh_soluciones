@@ -1,0 +1,19 @@
+Evento de Calendario {{ action }}: {{ event.title }}
+
+Proyecto: {{ project.name }}
+
+Detalles del Evento:
+- Título: {{ event.title }}
+- Descripción: {{ event.description }}
+- Fecha de inicio: {{ event.start_time|date:"d/m/Y H:i" }}
+- Fecha de fin: {{ event.end_time|date:"d/m/Y H:i" }}
+
+{% if action == 'eliminado' %}
+Este evento ha sido eliminado del calendario.
+{% else %}
+Puedes ver más detalles en: {{ frontend_url }}/projects/{{ project.id }}
+{% endif %}
+
+---
+MH Soluciones
+{{ frontend_url }}

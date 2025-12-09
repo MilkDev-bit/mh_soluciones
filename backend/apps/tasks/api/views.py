@@ -26,6 +26,11 @@ from .serializers import (
     TaskEditHistorySerializer
 )
 from .permissions import IsOwnerOrAdmin, CanInteractWithTask
+from utils.email_notifications import (
+    send_task_assignment_notification, 
+    send_task_reopened_notification,
+    send_task_returned_notification
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +38,9 @@ logger = logging.getLogger(__name__)
 ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 TEACHER_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
 EDITOR_ROLES = TEACHER_ROLES
+
+# Task grading constants
+PASSING_SCORE_THRESHOLD = 0.7  # 70% of max score is considered passing
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -76,7 +84,17 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
-        serializer.save(created_by=self.request.user)
+        
+        # Get validated data to check for assigned users
+        validated_data = serializer.validated_data
+        has_assigned_to = validated_data.get('assigned_to') is not None
+        has_assigned_students = 'assigned_students' in validated_data and validated_data.get('assigned_students')
+        
+        task = serializer.save(created_by=self.request.user)
+        
+        # Send email notification if task is assigned
+        if has_assigned_to or has_assigned_students:
+            send_task_assignment_notification(task)
 
     def perform_update(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
@@ -152,6 +170,9 @@ class TaskViewSet(viewsets.ModelViewSet):
                 id__in=serializer.validated_data['specific_students']
             )
             reopen_log.specific_students.set(students)
+        
+        # Send email notification
+        send_task_reopened_notification(task, reopen_log)
         
         return Response({
             'message': 'Tarea reabierta exitosamente',
@@ -326,11 +347,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         """
         Calificar una entrega de tarea.
         Solo TEACHER y ADMIN pueden calificar.
+        Envía notificación por email si la tarea es devuelta para revisión.
         """
         if request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para calificar entregas.")
         
         submission = self.get_object()
+        task = submission.task
         serializer = TaskSubmissionGradeSerializer(
             submission,
             data=request.data,
@@ -339,11 +362,35 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         
+        # Check if submission is being returned for revision
+        # A submission is considered "returned" if:
+        # 1. It has teacher feedback and is not approved, or
+        # 2. Status is not 'GRADED', or
+        # 3. Score is below passing threshold (default 70% of max_score)
+        is_returned = False
+        new_status = request.data.get('status', submission.status)
+        new_score = request.data.get('score')
+        has_feedback = bool(request.data.get('teacher_feedback'))
+        
+        if has_feedback and new_status != 'GRADED':
+            is_returned = True
+        elif new_score is not None and task.max_score:
+            # Consider it returned if score is less than passing threshold
+            score_value = float(new_score)
+            passing_score = float(task.max_score) * PASSING_SCORE_THRESHOLD
+            if score_value < passing_score:
+                is_returned = True
+        
         # Update submission with grading data
-        submission.status = 'GRADED'
+        if new_status == 'GRADED':
+            submission.status = 'GRADED'
         submission.graded_by = request.user
         submission.graded_at = timezone.now()
-        serializer.save()
+        submission = serializer.save()
+        
+        # Send email notification if task is returned for revision
+        if is_returned and has_feedback:
+            send_task_returned_notification(task, submission)
         
         return Response({
             'message': 'Entrega calificada exitosamente',

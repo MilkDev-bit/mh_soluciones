@@ -1,0 +1,21 @@
+Tarea Reabierta: {{ task.title }}
+
+La tarea "{{ task.title }}" ha sido reabierta.
+
+Detalles de la Tarea:
+- Título: {{ task.title }}
+- Proyecto: {{ project.name }}
+- Descripción: {{ task.description }}
+- Nueva fecha límite: {{ reopen_log.new_deadline|date:"d/m/Y H:i" }}
+
+{% if reopen_log.reason %}
+Razón de reapertura:
+{{ reopen_log.reason }}
+{% endif %}
+
+Puedes ver más detalles y trabajar en la tarea en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}

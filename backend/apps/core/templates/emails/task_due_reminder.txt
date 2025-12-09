@@ -1,0 +1,21 @@
+Recordatorio: Tarea próxima a vencer - {{ task.title }}
+
+La siguiente tarea está próxima a vencer:
+
+Detalles de la Tarea:
+- Título: {{ task.title }}
+- Proyecto: {{ project.name }}
+- Descripción: {{ task.description }}
+- Prioridad: {{ task.get_priority_display }}
+{% if task.due_date %}
+- Fecha de vencimiento: {{ task.due_date|date:"d/m/Y" }}
+{% endif %}
+
+Por favor, asegúrate de completar esta tarea antes de la fecha límite.
+
+Puedes ver más detalles en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}

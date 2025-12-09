@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #ffc107; color: #333; padding: 20px; text-align: center; }
+        .content { background-color: #f9f9f9; padding: 20px; margin-top: 20px; border-radius: 5px; }
+        .details { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #ffc107; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 15px 0; border-radius: 5px; }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        .button { display: inline-block; padding: 10px 20px; background-color: #ffc107; color: #333; text-decoration: none; border-radius: 5px; margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Recordatorio: Tarea Próxima a Vencer</h1>
+        </div>
+        <div class="content">
+            <div class="warning">
+                <strong>⏰ Atención:</strong> Esta tarea está próxima a su fecha de vencimiento.
+            </div>
+            
+            <h2>{{ task.title }}</h2>
+            <p><strong>Proyecto:</strong> {{ project.name }}</p>
+            
+            <div class="details">
+                <p><strong>Descripción:</strong><br>{{ task.description|default:"Sin descripción" }}</p>
+                <p><strong>Prioridad:</strong> {{ task.get_priority_display }}</p>
+                {% if task.due_date %}
+                <p><strong>Fecha de vencimiento:</strong> {{ task.due_date|date:"d/m/Y" }}</p>
+                {% endif %}
+            </div>
+            
+            <p>Por favor, asegúrate de completar esta tarea antes de la fecha límite.</p>
+            
+            <a href="{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}" class="button">Ver Tarea</a>
+        </div>
+        <div class="footer">
+            <p>MH Soluciones - Sistema de Gestión de Proyectos</p>
+            <p><a href="{{ frontend_url }}">{{ frontend_url }}</a></p>
+        </div>
+    </div>
+</body>
+</html>

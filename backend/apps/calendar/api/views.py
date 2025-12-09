@@ -9,6 +9,7 @@ from ..models import CalendarEvent
 from apps.projects.models import Project, ProjectMember
 from .serializers import CalendarEventSerializer
 from .permissions import IsProjectMemberForCalendar
+from utils.email_notifications import send_calendar_event_notification
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
         """
         Asigna automáticamente el usuario que crea el evento.
         Valida que el proyecto exista y el usuario tenga acceso.
+        Envía notificación por email.
         """
         project = serializer.validated_data.get('project')
         user = self.request.user
@@ -94,8 +96,11 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
                 })
         
         try:
-            serializer.save(created_by=user)
+            event = serializer.save(created_by=user)
             logger.info(f"Event created by {user.email} for project {project.id}")
+            
+            # Send email notification
+            send_calendar_event_notification(event, action='created')
         except Exception as e:
             logger.error(f"Error creating event: {e}")
             raise ValidationError({
@@ -105,10 +110,14 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """
         Maneja la actualización de eventos con logging.
+        Envía notificación por email.
         """
         try:
             instance = serializer.save()
             logger.info(f"Event {instance.id} updated by {self.request.user.email}")
+            
+            # Send email notification
+            send_calendar_event_notification(instance, action='updated')
         except Exception as e:
             logger.error(f"Error updating event: {e}")
             raise ValidationError({
@@ -118,9 +127,12 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """
         Maneja la eliminación de eventos con logging.
+        Envía notificación por email.
         """
         try:
             event_id = instance.id
+            # Send email notification before deleting
+            send_calendar_event_notification(instance, action='deleted')
             instance.delete()
             logger.info(f"Event {event_id} deleted by {self.request.user.email}")
         except Exception as e:

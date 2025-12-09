@@ -129,4 +129,48 @@
       &.delete:hover { color: $error; }
     }
   }
+
+  .search-section {
+    margin-bottom: 1.5rem;
+    
+    .search-input-container {
+      position: relative;
+      max-width: 400px;
+      
+      svg {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+      }
+      
+      input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        font-size: 0.95rem;
+      }
+    }
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    
+    button {
+      padding: 0.5rem 1rem;
+    }
+    
+    span {
+      color: #6c757d;
+      font-size: 0.95rem;
+    }
+  }
+}
 }
