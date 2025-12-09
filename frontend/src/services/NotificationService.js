@@ -3,6 +3,9 @@ import api from './api';
 /**
  * Utility function to get WebSocket base URL from environment variables
  * Converts HTTP(S) URLs to WS(S) URLs
+ * 
+ * Note: Environment variables in Vite are resolved at build time, not runtime.
+ * This means the URL cannot change after the application is built.
  */
 function getWebSocketBaseURL() {
   // Use explicit WebSocket URL if provided
@@ -14,6 +17,7 @@ function getWebSocketBaseURL() {
   const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
   
   // Extract base URL without /api/v1 suffix
+  // Note: This assumes VITE_API_URL_BASE includes '/api/v1' at the end
   const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
   
   // Convert HTTP(S) to WS(S)
@@ -27,7 +31,8 @@ function getWebSocketBaseURL() {
   return 'ws://localhost:8000';
 }
 
-// Cache the WebSocket base URL to avoid repeated computation
+// Cache the WebSocket base URL at module load time
+// This is safe because Vite environment variables are resolved at build time
 const WS_BASE_URL = getWebSocketBaseURL();
 
 class NotificationService {
