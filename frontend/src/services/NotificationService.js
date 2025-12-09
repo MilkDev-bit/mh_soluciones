@@ -16,11 +16,19 @@ class NotificationService {
       console.log('WebSocket token:', token ? 'Present' : 'Missing');
     }
     
+    // Get WebSocket base URL from environment variable
+    // Convert HTTP(S) API URL to WS(S) URL if WS_URL_BASE is not set
+    const wsBaseUrl = import.meta.env.VITE_WS_URL_BASE || 
+      (import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000')
+        .replace('https://', 'wss://')
+        .replace('http://', 'ws://')
+        .replace('/api/v1', '');
+    
     if (token) {
-      return `wss://app.mhsolucionesempresariales.com/ws/notifications/?token=${encodeURIComponent(token)}`;
+      return `${wsBaseUrl}/ws/notifications/?token=${encodeURIComponent(token)}`;
     }
     
-    return 'wss://app.mhsolucionesempresariales.com/ws/notifications/';
+    return `${wsBaseUrl}/ws/notifications/`;
   }
 
   connectWebSocket(userId, onNewNotifications = null) {
