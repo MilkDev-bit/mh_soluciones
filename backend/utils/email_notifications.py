@@ -37,7 +37,7 @@ def send_email_notification(subject, recipient_list, template_name, context, htm
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=recipient_list,
             html_message=html_message,
-            fail_silently=False,
+            fail_silently=True,  # Don't crash the application if email fails
         )
         logger.info(f"Email sent successfully to {', '.join(recipient_list)}: {subject}")
         return True

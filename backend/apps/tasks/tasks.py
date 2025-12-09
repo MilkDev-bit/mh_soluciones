@@ -4,6 +4,7 @@ Handles periodic tasks like sending due date reminders
 """
 from celery import shared_task
 from django.utils import timezone
+from django.db.models import Q
 from datetime import timedelta
 import logging
 
@@ -27,10 +28,9 @@ def send_task_due_reminders():
     tasks_due_tomorrow = Task.objects.filter(
         due_date__date=one_day_from_now.date(),
         status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
-    ).exclude(
-        assigned_to__isnull=True,
-        assigned_students__isnull=True
-    ).select_related('project', 'assigned_to').prefetch_related('assigned_students')
+    ).filter(
+        Q(assigned_to__isnull=False) | Q(assigned_students__isnull=False)
+    ).select_related('project', 'assigned_to').prefetch_related('assigned_students').distinct()
     
     for task in tasks_due_tomorrow:
         try:
@@ -44,10 +44,9 @@ def send_task_due_reminders():
     tasks_due_in_three_days = Task.objects.filter(
         due_date__date=three_days_from_now.date(),
         status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
-    ).exclude(
-        assigned_to__isnull=True,
-        assigned_students__isnull=True
-    ).select_related('project', 'assigned_to').prefetch_related('assigned_students')
+    ).filter(
+        Q(assigned_to__isnull=False) | Q(assigned_students__isnull=False)
+    ).select_related('project', 'assigned_to').prefetch_related('assigned_students').distinct()
     
     for task in tasks_due_in_three_days:
         try:

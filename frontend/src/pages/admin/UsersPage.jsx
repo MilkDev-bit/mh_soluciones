@@ -140,21 +140,14 @@ const UsersPage = () => {
         </div>
 
         <div className="glass-card">
-          <div className="search-section" style={{ marginBottom: '1.5rem' }}>
-            <div className="search-input-container" style={{ position: 'relative', maxWidth: '400px' }}>
-              <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6c757d' }} />
+          <div className="search-section">
+            <div className="search-input-container">
+              <FiSearch />
               <input
                 type="text"
                 placeholder="Buscar por nombre, usuario o email..."
                 value={searchTerm}
                 onChange={handleSearchChange}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem 0.75rem 2.5rem',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem'
-                }}
               />
             </div>
           </div>
@@ -231,23 +224,21 @@ const UsersPage = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem', padding: '1rem' }}>
+            <div className="pagination">
               <button
                 className="btn btn-secondary"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                style={{ padding: '0.5rem 1rem' }}
               >
                 Anterior
               </button>
-              <span style={{ color: '#6c757d', fontSize: '0.95rem' }}>
+              <span>
                 Página {currentPage} de {totalPages} ({totalCount} usuarios)
               </span>
               <button
                 className="btn btn-secondary"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                style={{ padding: '0.5rem 1rem' }}
               >
                 Siguiente
               </button>

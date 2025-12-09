@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -278,8 +279,6 @@ LOGGING = {
 }
 
 # Celery Beat Schedule for periodic tasks
-from celery.schedules import crontab
-
 CELERY_BEAT_SCHEDULE = {
     'send-task-due-reminders': {
         'task': 'apps.tasks.tasks.send_task_due_reminders',

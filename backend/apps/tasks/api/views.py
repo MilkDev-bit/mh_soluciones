@@ -81,10 +81,16 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
+        
+        # Get validated data to check for assigned users
+        validated_data = serializer.validated_data
+        has_assigned_to = validated_data.get('assigned_to') is not None
+        has_assigned_students = 'assigned_students' in validated_data and validated_data.get('assigned_students')
+        
         task = serializer.save(created_by=self.request.user)
         
         # Send email notification if task is assigned
-        if task.assigned_to or task.assigned_students.exists():
+        if has_assigned_to or has_assigned_students:
             send_task_assignment_notification(task)
 
     def perform_update(self, serializer):
