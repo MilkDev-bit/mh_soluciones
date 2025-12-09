@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiBell, FiCheck } from 'react-icons/fi';
 import { useNotifications } from '../../hooks/useNotifications';
+import NotificationItem from './NotificationItem';
 import './NotificationsDropdown.scss';
 
 const NotificationsDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const { unreadCount, loading, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,11 +54,26 @@ const NotificationsDropdown = () => {
           </div>
 
           <div className="notifications-list">
-            <div className="empty-state">
-              <FiBell />
-              <p>Sistema de notificaciones activo</p>
-              <small>{unreadCount} no leídas</small>
-            </div>
+            {loading ? (
+              <div className="loading-state">
+                <p>Cargando...</p>
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="empty-state">
+                <FiBell />
+                <p>No tienes notificaciones sin leer</p>
+              </div>
+            ) : (
+              notifications.slice(0, 5).map(notification => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onMarkAsRead={(id) => {
+                    markAsRead(id);
+                  }}
+                />
+              ))
+            )}
           </div>
         </div>
       )}

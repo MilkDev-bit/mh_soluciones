@@ -14,7 +14,8 @@ export const useNotifications = () => {
     
     setLoading(true);
     try {
-      const data = await notificationService.getNotifications();
+      // Only load unread notifications
+      const data = await notificationService.getNotifications({ include_read: false });
       setNotifications(data.results || data || []);
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -45,9 +46,8 @@ export const useNotifications = () => {
   const markAsRead = useCallback(async (notificationId) => {
     try {
       await notificationService.markAsRead(notificationId);
-      setNotifications(prev => prev.map(notif => 
-        notif.id === notificationId ? { ...notif, is_read: true } : notif
-      ));
+      // Remove the notification from the list once marked as read
+      setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking as read:', error);
@@ -57,7 +57,8 @@ export const useNotifications = () => {
   const markAllAsRead = useCallback(async () => {
     try {
       await notificationService.markAllAsRead();
-      setNotifications(prev => prev.map(notif => ({ ...notif, is_read: true })));
+      // Clear all notifications from the list once marked as read
+      setNotifications([]);
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);

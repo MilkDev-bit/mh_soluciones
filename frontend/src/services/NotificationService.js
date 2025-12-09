@@ -11,7 +11,10 @@ class NotificationService {
 
   getWebSocketURL() {
     const token = localStorage.getItem('access_token');
-    console.log('WebSocket token:', token ? 'Present' : 'Missing');
+    // Only log in development mode
+    if (import.meta.env.DEV) {
+      console.log('WebSocket token:', token ? 'Present' : 'Missing');
+    }
     
     if (token) {
       return `wss://app.mhsolucionesempresariales.com/ws/notifications/?token=${encodeURIComponent(token)}`;
@@ -22,7 +25,9 @@ class NotificationService {
 
   connectWebSocket(userId, onNewNotifications = null) {
     if (!window.WebSocket) {
-      console.log('WebSocket no soportado, usando polling');
+      if (import.meta.env.DEV) {
+        console.log('WebSocket no soportado, usando polling');
+      }
       this.startPolling(userId, onNewNotifications);
       return;
     }
@@ -32,7 +37,9 @@ class NotificationService {
     if (this.isPolling) return;
     
     this.isPolling = true;
-    console.log('Iniciando polling de notificaciones');
+    if (import.meta.env.DEV) {
+      console.log('Iniciando polling de notificaciones');
+    }
 
     this.pollNotifications(onNewNotifications);
 
@@ -57,7 +64,9 @@ class NotificationService {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
       this.isPolling = false;
-      console.log('Polling de notificaciones detenido');
+      if (import.meta.env.DEV) {
+        console.log('Polling de notificaciones detenido');
+      }
     }
   }
 
@@ -70,7 +79,9 @@ class NotificationService {
     this.stopPolling();
     
     this.websocketEnabled = false;
-    console.log('Servicio de notificaciones desconectado');
+    if (import.meta.env.DEV) {
+      console.log('Servicio de notificaciones desconectado');
+    }
   }
 
   async showBrowserNotification(notificationData) {
