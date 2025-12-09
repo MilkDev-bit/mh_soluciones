@@ -155,3 +155,21 @@ export const getProjectProgressStats = async (projectId) => {
     throw error.response?.data || new Error('Error al obtener estadísticas del proyecto');
   }
 };
+
+export const getStudentPerformance = async (projectId) => {
+  try {
+    const { data } = await api.get(`/projects/${projectId}/student-performance/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener desempeño de estudiantes');
+  }
+};
+
+export const getProjectDriveFolder = async (projectId) => {
+  try {
+    const { data } = await api.get(`/projects/${projectId}/drive-folder/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener carpeta de Drive');
+  }
+};

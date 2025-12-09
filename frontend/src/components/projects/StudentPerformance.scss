@@ -1,0 +1,195 @@
+.student-performance {
+  margin-top: 2rem;
+
+  .performance-header {
+    margin-bottom: 1.5rem;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+
+      svg {
+        color: #3b82f6;
+      }
+    }
+
+    .performance-subtitle {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+  }
+
+  .performance-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .student-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .student-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+
+      .student-avatar {
+        img {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+      }
+
+      .student-details {
+        flex: 1;
+
+        .student-name {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #f8fafc;
+          margin-bottom: 0.25rem;
+        }
+
+        .student-email {
+          font-size: 0.85rem;
+          color: #94a3b8;
+        }
+      }
+    }
+
+    .student-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+
+      .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        .stat-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .stat-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #f8fafc;
+          margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+          font-size: 0.8rem;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .performance-circle {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          border: 3px solid;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.3);
+
+          .percentage-value {
+            font-size: 1rem;
+            font-weight: 700;
+          }
+        }
+      }
+    }
+
+    .progress-bar-container {
+      .progress-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+
+        .progress-fill {
+          height: 100%;
+          border-radius: 4px;
+          transition: width 0.5s ease;
+        }
+      }
+
+      .progress-text {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        text-align: center;
+      }
+    }
+  }
+}
+
+.student-performance-loading,
+.student-performance-error,
+.student-performance-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  svg {
+    color: #64748b;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .student-performance {
+    .student-card {
+      .student-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+}

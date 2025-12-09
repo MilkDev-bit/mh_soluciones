@@ -1,7 +1,8 @@
 import logging
 
 from django.db import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Count, Case, When, IntegerField
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -198,6 +199,137 @@ class ProjectViewSet(viewsets.ModelViewSet):
             'total_submissions': total_submissions,
             'progress_percentage': progress_percentage,
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='student-performance')
+    def student_performance(self, request, pk=None):
+        """
+        Returns student performance metrics based on task submissions.
+        Shows on-time vs late submissions for students (STUDENT role) in the project.
+        Accessible by admins and CLIENT role (if they are the project client).
+        """
+        project = self.get_object()
+        
+        # Import here to avoid circular dependency
+        from apps.tasks.models import TaskSubmission
+        
+        # Get all students assigned to tasks in this project
+        student_ids = project.tasks.filter(
+            assigned_students__role='STUDENT'
+        ).values_list('assigned_students__id', flat=True).distinct()
+        
+        # Also get students assigned to individual tasks
+        individual_student_ids = project.tasks.filter(
+            assigned_to__role='STUDENT'
+        ).values_list('assigned_to__id', flat=True).distinct()
+        
+        # Combine both sets of student IDs
+        all_student_ids = set(list(student_ids) + list(individual_student_ids))
+        
+        if not all_student_ids:
+            return Response({
+                'students': [],
+                'message': 'No hay estudiantes asignados a este proyecto'
+            }, status=status.HTTP_200_OK)
+        
+        students_data = []
+        
+        for student_id in all_student_ids:
+            try:
+                student = CustomUser.objects.get(id=student_id, role='STUDENT')
+            except CustomUser.DoesNotExist:
+                continue
+            
+            # Get all submissions for this student in this project
+            submissions = TaskSubmission.objects.filter(
+                task__project=project,
+                submitted_by=student
+            ).select_related('task')
+            
+            total_submissions = submissions.count()
+            on_time_count = 0
+            late_count = 0
+            
+            for submission in submissions:
+                task = submission.task
+                # Check if submission was on time
+                if task.due_date and submission.created_at:
+                    submission_date = submission.created_at.date() if hasattr(submission.created_at, 'date') else submission.created_at
+                    if submission_date <= task.due_date:
+                        on_time_count += 1
+                    else:
+                        late_count += 1
+                else:
+                    # If no due date, count as on time
+                    on_time_count += 1
+            
+            # Calculate on-time percentage
+            on_time_percentage = 0
+            if total_submissions > 0:
+                on_time_percentage = round((on_time_count / total_submissions) * 100)
+            
+            students_data.append({
+                'id': student.id,
+                'name': f"{student.first_name} {student.last_name}",
+                'email': student.email,
+                'total_submissions': total_submissions,
+                'on_time_submissions': on_time_count,
+                'late_submissions': late_count,
+                'on_time_percentage': on_time_percentage
+            })
+        
+        # Sort by on_time_percentage descending
+        students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
+        
+        return Response({
+            'students': students_data,
+            'total_students': len(students_data)
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='drive-folder')
+    def drive_folder(self, request, pk=None):
+        """
+        Returns Google Drive folder information for the project.
+        Accessible by admins and CLIENT role (if they are the project client).
+        Returns folder URL and list of files in the project's Drive folder.
+        """
+        project = self.get_object()
+        user = request.user
+        
+        # Check if user is CLIENT and if they are the client for this project
+        if user.role == 'CLIENT' and project.client_id != user.id:
+            raise PermissionDenied("No tienes acceso a la carpeta de este proyecto.")
+        
+        # Get all documents for this project
+        from apps.documents.models import Document
+        
+        documents = Document.objects.filter(
+            project=project,
+            upload_status='COMPLETE'
+        ).order_by('-created_at')
+        
+        folder_info = {
+            'project_name': project.name,
+            'total_documents': documents.count(),
+            'documents': []
+        }
+        
+        for doc in documents:
+            folder_info['documents'].append({
+                'id': doc.id,
+                'name': doc.name,
+                'drive_file_id': doc.drive_file_id,
+                'drive_file_url': doc.drive_file_url,
+                'file_size': doc.file_size,
+                'file_type': doc.file_type,
+                'folder_type': doc.folder_type,
+                'uploaded_by': {
+                    'id': doc.uploaded_by.id if doc.uploaded_by else None,
+                    'name': f"{doc.uploaded_by.first_name} {doc.uploaded_by.last_name}" if doc.uploaded_by else "Unknown"
+                },
+                'created_at': doc.created_at
+            })
+        
+        return Response(folder_info, status=status.HTTP_200_OK)
         
 
 class ProjectCommentViewSet(viewsets.ModelViewSet):
