@@ -71,9 +71,7 @@ const NotificationsDropdown = () => {
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
-                  onMarkAsRead={(id) => {
-                    markAsRead(id);
-                  }}
+                  onMarkAsRead={markAsRead}
                 />
               ))
             )}
