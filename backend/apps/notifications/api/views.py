@@ -25,7 +25,13 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(is_read=False)
         
         # Limitar a las 50 notificaciones más recientes para optimizar rendimiento
-        limit = int(self.request.query_params.get('limit', 50))
+        try:
+            limit = int(self.request.query_params.get('limit', 50))
+            # Validar que el límite esté en un rango razonable
+            limit = max(1, min(limit, 100))  # Entre 1 y 100
+        except (ValueError, TypeError):
+            limit = 50  # Valor por defecto si hay error
+        
         queryset = queryset[:limit]
         
         return queryset

@@ -4,6 +4,9 @@ import { useNotifications } from '../../hooks/useNotifications';
 import NotificationItem from './NotificationItem';
 import './NotificationsDropdown.scss';
 
+// Número máximo de notificaciones a mostrar en el dropdown
+const MAX_DROPDOWN_NOTIFICATIONS = 5;
+
 const NotificationsDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -64,7 +67,7 @@ const NotificationsDropdown = () => {
                 <p>No tienes notificaciones sin leer</p>
               </div>
             ) : (
-              notifications.slice(0, 5).map(notification => (
+              notifications.slice(0, MAX_DROPDOWN_NOTIFICATIONS).map(notification => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
