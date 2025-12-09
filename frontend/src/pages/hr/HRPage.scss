@@ -1003,3 +1003,72 @@
     }
   }
 }
+
+// Attendance-specific styles
+.attendance-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-3;
+  align-items: center;
+  margin-top: $spacing-3;
+  
+  .status-badge {
+    display: inline-block;
+    padding: $spacing-2 $spacing-4;
+    border-radius: $rounded-full;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    &.status-present {
+      background: linear-gradient(135deg, $success-light 0%, lighten($success-light, 5%) 100%);
+      color: $success;
+    }
+    
+    &.status-absent {
+      background: linear-gradient(135deg, $error-light 0%, lighten($error-light, 5%) 100%);
+      color: $error;
+    }
+    
+    &.status-late {
+      background: linear-gradient(135deg, $warning-light 0%, lighten($warning-light, 5%) 100%);
+      color: darken($warning, 10%);
+    }
+    
+    &.status-sick_leave {
+      background: linear-gradient(135deg, lighten($info-light, 10%) 0%, lighten($info-light, 15%) 100%);
+      color: $info;
+    }
+    
+    &.status-vacation {
+      background: linear-gradient(135deg, lighten($secondary-100, 5%) 0%, lighten($secondary-100, 10%) 100%);
+      color: $secondary-600;
+    }
+    
+    &.status-remote {
+      background: linear-gradient(135deg, $primary-100 0%, lighten($primary-100, 5%) 100%);
+      color: $primary-700;
+    }
+  }
+  
+  .time-info {
+    font-size: 0.8125rem;
+    color: $neutral-600;
+    background: $neutral-100;
+    padding: $spacing-1 $spacing-3;
+    border-radius: $border-radius;
+    font-family: $font-mono;
+    font-weight: 600;
+  }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-4;
+  
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr;
+  }
+}

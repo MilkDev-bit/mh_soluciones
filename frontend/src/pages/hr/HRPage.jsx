@@ -9,7 +9,10 @@ import {
   getEmployeeDocumentsByUser,
   downloadDocument,
   deleteEmployeeDocument,
-  createPerformanceReview
+  createPerformanceReview,
+  getAttendances,
+  createAttendance,
+  deleteAttendance
 } from '../../services/hrService';
 import Loading from '../../components/common/Loading';
 import { 
@@ -25,7 +28,9 @@ import {
   FiSearch,
   FiChevronDown,
   FiChevronUp,
-  FiFile
+  FiFile,
+  FiClock,
+  FiCalendar
 } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -34,12 +39,15 @@ import './HRPage.scss';
 const HRPage = () => {
   const [documents, setDocuments] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [attendances, setAttendances] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeDocuments, setEmployeeDocuments] = useState([]);
@@ -53,14 +61,16 @@ const HRPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [docsData, reviewsData, employeesData] = await Promise.all([
+      const [docsData, reviewsData, employeesData, attendancesData] = await Promise.all([
         getEmployeeDocuments(),
         getPerformanceReviews(),
-        getEmployees()
+        getEmployees(),
+        getAttendances()
       ]);
       setDocuments(docsData.results || docsData || []);
       setReviews(reviewsData.results || reviewsData || []);
       setEmployees(employeesData.results || employeesData || []);
+      setAttendances(attendancesData.results || attendancesData || []);
     } catch (error) {
       toast.error('No se pudieron cargar los datos de RRHH.');
     } finally {
@@ -208,6 +218,35 @@ const HRPage = () => {
     }
   };
 
+  const handleCreateAttendance = async (attendanceData) => {
+    try {
+      setAttendanceLoading(true);
+      await createAttendance(attendanceData);
+      toast.success('Registro de asistencia creado exitosamente');
+      setShowAttendanceModal(false);
+      fetchData();
+    } catch (error) {
+      toast.error('Error al crear el registro de asistencia');
+      throw error;
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const handleDeleteAttendance = async (attendanceId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+      return;
+    }
+    
+    try {
+      await deleteAttendance(attendanceId);
+      toast.success('Registro eliminado exitosamente');
+      fetchData();
+    } catch (error) {
+      toast.error('Error al eliminar el registro');
+    }
+  };
+
   const handleSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -237,6 +276,18 @@ const HRPage = () => {
     employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getAttendanceStatusText = (status) => {
+    const statusMap = {
+      'PRESENT': 'Presente',
+      'ABSENT': 'Ausente',
+      'LATE': 'Tardanza',
+      'SICK_LEAVE': 'Incapacidad',
+      'VACATION': 'Vacaciones',
+      'REMOTE': 'Trabajo Remoto'
+    };
+    return statusMap[status] || status;
+  };
 
   if (loading) {
     return <Loading fullscreen />;
@@ -404,6 +455,64 @@ const HRPage = () => {
               </ul>
             </div>
           </div>
+
+          {/* Tarjeta de Asistencias */}
+          <div className="glass-card">
+            <div className="section-header">
+              <h2><FiClock /> Registro de Asistencias</h2>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowAttendanceModal(true)}
+              >
+                <FiPlus /> Registrar Asistencia
+              </button>
+            </div>
+            
+            <div className="card-content">
+              <ul className="hr-list">
+                {attendances.length > 0 ? attendances.slice(0, 10).map(attendance => (
+                  <li key={attendance.id} className="hr-list-item">
+                    <div className="item-info">
+                      <span className="item-title">
+                        {attendance.employee?.first_name} {attendance.employee?.last_name}
+                      </span>
+                      <span className="item-subtitle">
+                        <FiCalendar size={12} /> 
+                        {format(parseISO(attendance.date), 'dd MMM yyyy', { locale: es })}
+                      </span>
+                      <div className="attendance-details">
+                        <span className={`status-badge status-${attendance.status.toLowerCase()}`}>
+                          {getAttendanceStatusText(attendance.status)}
+                        </span>
+                        {attendance.check_in_time && (
+                          <span className="time-info">
+                            Entrada: {attendance.check_in_time}
+                          </span>
+                        )}
+                        {attendance.check_out_time && (
+                          <span className="time-info">
+                            Salida: {attendance.check_out_time}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      className="btn-icon danger btn-sm"
+                      onClick={() => handleDeleteAttendance(attendance.id)}
+                      title="Eliminar registro"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </li>
+                )) : (
+                  <div className="empty-state">
+                    <FiClock size={48} />
+                    <p>No hay registros de asistencia</p>
+                  </div>
+                )}
+              </ul>
+            </div>
+          </div>
         </div>
 
         {showDocumentModal && (
@@ -434,6 +543,15 @@ const HRPage = () => {
             onClose={() => setShowReviewModal(false)}
             onSubmit={handleCreateReview}
             loading={reviewLoading}
+            employees={employees}
+          />
+        )}
+
+        {showAttendanceModal && (
+          <AttendanceModal
+            onClose={() => setShowAttendanceModal(false)}
+            onSubmit={handleCreateAttendance}
+            loading={attendanceLoading}
             employees={employees}
           />
         )}
@@ -778,6 +896,123 @@ const ReviewModal = ({ onClose, onSubmit, loading, employees }) => {
             </button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Creando...' : 'Crear Evaluación'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const AttendanceModal = ({ onClose, onSubmit, loading, employees }) => {
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    date: new Date().toISOString().split('T')[0],
+    status: 'PRESENT',
+    check_in_time: '',
+    check_out_time: '',
+    notes: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await onSubmit(formData);
+      onClose();
+    } catch (error) {
+      // Error is handled by the parent component
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Registrar Asistencia</h3>
+          <button className="modal-close" onClick={onClose}>
+            <FiX />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>Empleado *</label>
+            <select
+              required
+              value={formData.employee_id}
+              onChange={(e) => setFormData(prev => ({ ...prev, employee_id: e.target.value }))}
+            >
+              <option value="">Seleccionar empleado</option>
+              {employees.map(employee => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.first_name} {employee.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Fecha *</label>
+            <input
+              type="date"
+              required
+              value={formData.date}
+              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Estado *</label>
+            <select
+              required
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+            >
+              <option value="PRESENT">Presente</option>
+              <option value="ABSENT">Ausente</option>
+              <option value="LATE">Tardanza</option>
+              <option value="SICK_LEAVE">Incapacidad</option>
+              <option value="VACATION">Vacaciones</option>
+              <option value="REMOTE">Trabajo Remoto</option>
+            </select>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Hora de Entrada</label>
+              <input
+                type="time"
+                value={formData.check_in_time}
+                onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Hora de Salida</label>
+              <input
+                type="time"
+                value={formData.check_out_time}
+                onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Notas / Observaciones</label>
+            <textarea
+              rows={3}
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Observaciones adicionales sobre la asistencia..."
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar Asistencia'}
             </button>
           </div>
         </form>
