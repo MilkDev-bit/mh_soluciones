@@ -126,10 +126,11 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
                     <span>Ver</span>
                   </a>
                   <a
-                    href={doc.drive_file_url.replace('/view', '/export')}
-                    download
+                    href={doc.drive_file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn-action btn-download"
-                    title="Descargar"
+                    title="Abrir para descargar"
                   >
                     <FiDownload />
                     <span>Descargar</span>

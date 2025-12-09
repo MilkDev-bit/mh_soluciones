@@ -2,7 +2,6 @@ import logging
 
 from django.db import IntegrityError
 from django.db.models import Q, Count, Case, When, IntegerField
-from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -253,7 +252,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 task = submission.task
                 # Check if submission was on time
                 if task.due_date and submission.created_at:
+                    # Ensure both dates are date objects for proper comparison
                     submission_date = submission.created_at.date() if hasattr(submission.created_at, 'date') else submission.created_at
+                    # task.due_date is already a date field from the model
                     if submission_date <= task.due_date:
                         on_time_count += 1
                     else:
