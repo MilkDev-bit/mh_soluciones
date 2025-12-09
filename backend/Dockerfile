@@ -33,5 +33,4 @@ EXPOSE 8000
 # Internal HEALTHCHECK is not needed and can cause issues with dynamic ports
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-# Use shell form to allow PORT environment variable expansion
-CMD sh -c "daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"
+# CMD is not needed as entrypoint.sh directly starts Daphne with the configured PORT

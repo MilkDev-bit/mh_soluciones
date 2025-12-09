@@ -66,6 +66,7 @@ echo "✅ Variables de entorno exportadas correctamente."
 
 # Set PORT from environment or default
 export PORT=${PORT:-8000}
+echo "📊 Puerto configurado: $PORT"
 
 # Wait for database to be ready
 echo "⏳ Esperando a que la base de datos esté lista..."
@@ -131,4 +132,11 @@ echo "✅ Configuración completada"
 echo "🚀 Iniciando servidor Daphne en puerto $PORT..."
 echo "📍 Health check disponible en http://localhost:$PORT/health/"
 
-exec "$@"
+# Start Daphne with the configured PORT
+# If no command is provided or if "daphne" is explicitly requested,
+# use daphne with the configured PORT
+if [ $# -eq 0 ] || [ "$1" = "daphne" ]; then
+    exec daphne -b 0.0.0.0 -p "$PORT" config.asgi:application
+else
+    exec "$@"
+fi
