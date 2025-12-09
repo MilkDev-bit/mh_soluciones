@@ -26,7 +26,11 @@ from .serializers import (
     TaskEditHistorySerializer
 )
 from .permissions import IsOwnerOrAdmin, CanInteractWithTask
-from utils.email_notifications import send_task_assignment_notification, send_task_reopened_notification
+from utils.email_notifications import (
+    send_task_assignment_notification, 
+    send_task_reopened_notification,
+    send_task_returned_notification
+)
 
 logger = logging.getLogger(__name__)
 
@@ -334,11 +338,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         """
         Calificar una entrega de tarea.
         Solo TEACHER y ADMIN pueden calificar.
+        Envía notificación por email si la tarea es devuelta para revisión.
         """
         if request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para calificar entregas.")
         
         submission = self.get_object()
+        task = submission.task
         serializer = TaskSubmissionGradeSerializer(
             submission,
             data=request.data,
@@ -347,11 +353,34 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         
+        # Check if submission is being returned for revision
+        # A submission is considered "returned" if:
+        # 1. It has teacher feedback and is not approved, or
+        # 2. Status is not 'GRADED', or
+        # 3. Score is below passing (e.g., < 70% of max_score)
+        is_returned = False
+        new_status = request.data.get('status', submission.status)
+        new_score = request.data.get('score')
+        has_feedback = bool(request.data.get('teacher_feedback'))
+        
+        if has_feedback and new_status != 'GRADED':
+            is_returned = True
+        elif new_score is not None and task.max_score:
+            # Consider it returned if score is less than 70% of max score
+            passing_score = float(task.max_score) * 0.7
+            if float(new_score) < passing_score:
+                is_returned = True
+        
         # Update submission with grading data
-        submission.status = 'GRADED'
+        if new_status == 'GRADED':
+            submission.status = 'GRADED'
         submission.graded_by = request.user
         submission.graded_at = timezone.now()
-        serializer.save()
+        submission = serializer.save()
+        
+        # Send email notification if task is returned for revision
+        if is_returned and has_feedback:
+            send_task_returned_notification(task, submission)
         
         return Response({
             'message': 'Entrega calificada exitosamente',

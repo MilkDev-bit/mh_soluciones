@@ -276,3 +276,13 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# Celery Beat Schedule for periodic tasks
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'send-task-due-reminders': {
+        'task': 'apps.tasks.tasks.send_task_due_reminders',
+        'schedule': crontab(hour=8, minute=0),  # Run daily at 8:00 AM
+    },
+}
