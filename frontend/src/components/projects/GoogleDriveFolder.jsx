@@ -10,6 +10,13 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Validate Google Drive file ID format (alphanumeric and some special chars)
+  const isValidDriveFileId = (fileId) => {
+    if (!fileId || typeof fileId !== 'string') return false;
+    // Google Drive file IDs are typically 28-33 characters, alphanumeric with hyphens and underscores
+    return /^[a-zA-Z0-9_-]+$/.test(fileId) && fileId.length >= 20 && fileId.length <= 50;
+  };
+
   useEffect(() => {
     const fetchFolder = async () => {
       if (!projectId) return;
@@ -126,9 +133,10 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
                     <span>Ver</span>
                   </a>
                   {/* Google Drive download URL uses the file ID to create a direct download link */}
-                  {doc.drive_file_id && (
+                  {/* Only create download link if file ID is valid */}
+                  {doc.drive_file_id && isValidDriveFileId(doc.drive_file_id) && (
                     <a
-                      href={`https://drive.google.com/uc?export=download&id=${doc.drive_file_id}`}
+                      href={`https://drive.google.com/uc?export=download&id=${encodeURIComponent(doc.drive_file_id)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-action btn-download"

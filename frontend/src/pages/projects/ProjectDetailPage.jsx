@@ -18,6 +18,7 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { ROLE_GROUPS, ROLES, isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
@@ -56,7 +57,7 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
 
   const canEditOrDelete =
     currentUser?.id === comment?.user?.id ||
-    ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser?.role);
+    (currentUser?.role && isAdmin(currentUser.role));
 
   useEffect(() => {
     setEditedText(comment?.comment || '');
@@ -144,7 +145,7 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
 
   const canEditOrDelete =
     currentUser?.id === submission?.submitted_by?.id ||
-    ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser?.role);
+    (currentUser?.role && isAdmin(currentUser.role));
 
   const user = submission?.submitted_by || {};
 
@@ -320,7 +321,7 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
               <span className="member-role">{member?.role ? member.role.replace('_', ' ') : 'Miembro'}</span>
             </div>
             {currentUser &&
-              ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) &&
+              isAdmin(currentUser.role) &&
               user.id !== project?.created_by && (
                 <button
                   className="btn btn-danger btn-sm"
@@ -691,7 +692,7 @@ const ProjectDetailPage = () => {
 
       {selectedTask && (
         <Modal
-          title={currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) ? 'Editar Tarea' : 'Detalles de la Tarea'}
+          title={currentUser && isAdmin(currentUser.role) ? 'Editar Tarea' : 'Detalles de la Tarea'}
           onClose={() => setSelectedTask(null)}
           size="large"
         >
@@ -734,7 +735,7 @@ const ProjectDetailPage = () => {
             <p className="project-description-detail">{project?.description || 'Sin descripción'}</p>
           </div>
           <div className="page-header-actions">
-            {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
+            {currentUser && isAdmin(currentUser.role) && (
               <>
                 <button className="btn btn-secondary" onClick={handleEditProject}>
                   <FiEdit2 /> Editar
@@ -755,15 +756,15 @@ const ProjectDetailPage = () => {
           <div className="main-column">
             <ProjectProgressCharts projectId={projectId} />
 
-            {/* Student Performance - visible to admins and CLIENT */}
-            {currentUser && (['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'CLIENT', 'DIRECTOR', 'PROFESSOR'].includes(currentUser.role)) && (
+            {/* Student Performance - visible to analytics viewers */}
+            {currentUser && canViewAnalytics(currentUser.role) && (
               <div className="glass-card">
                 <StudentPerformance projectId={projectId} />
               </div>
             )}
 
             {/* Google Drive Folder - visible to admins and CLIENT */}
-            {currentUser && (['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'CLIENT'].includes(currentUser.role)) && (
+            {currentUser && canAccessDrive(currentUser.role) && (
               <div className="glass-card">
                 <GoogleDriveFolder projectId={projectId} userRole={currentUser.role} />
               </div>
@@ -776,7 +777,7 @@ const ProjectDetailPage = () => {
                   <h2>
                     {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${tasks.length})`}
                   </h2>
-                  {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
+                  {currentUser && isAdmin(currentUser.role) && (
                     <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
                       <FiPlus /> Nueva Tarea
                     </button>
@@ -845,7 +846,7 @@ const ProjectDetailPage = () => {
                     )}
                   </div>
 
-                  {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR'].includes(currentUser.role) && (
+                  {currentUser && canSubmit(currentUser.role) && (
                     <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
                       <h4>Añadir nueva entrega</h4>
                       <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
@@ -889,7 +890,7 @@ const ProjectDetailPage = () => {
                 <div className="glass-card">
                   <div className="section-header">
                     <h3>Miembros ({membersList.length})</h3>
-                    {currentUser && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(currentUser.role) && (
+                    {currentUser && isAdmin(currentUser.role) && (
                       <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
                         <FiPlus />
                       </button>

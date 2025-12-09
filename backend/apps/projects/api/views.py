@@ -207,6 +207,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Accessible by admins and CLIENT role (if they are the project client).
         """
         project = self.get_object()
+        user = request.user
+        
+        # Check if user is CLIENT and if they are the client for this project
+        if user.role == 'CLIENT':
+            if not project.client or project.client.id != user.id:
+                raise PermissionDenied("No tienes acceso al desempeño de este proyecto.")
         
         # Import here to avoid circular dependency
         from apps.tasks.models import TaskSubmission
@@ -252,9 +258,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 task = submission.task
                 # Check if submission was on time
                 if task.due_date and submission.created_at:
-                    # Ensure both dates are date objects for proper comparison
-                    submission_date = submission.created_at.date() if hasattr(submission.created_at, 'date') else submission.created_at
-                    # task.due_date is already a date field from the model
+                    # Convert datetime to date for comparison if needed
+                    # created_at is a DateTimeField, so we need to extract the date
+                    from datetime import datetime, date
+                    if isinstance(submission.created_at, datetime):
+                        submission_date = submission.created_at.date()
+                    elif isinstance(submission.created_at, date):
+                        submission_date = submission.created_at
+                    else:
+                        # Skip if unable to determine date
+                        continue
+                    
+                    # Compare dates (task.due_date is a DateField)
                     if submission_date <= task.due_date:
                         on_time_count += 1
                     else:
