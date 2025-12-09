@@ -1,5 +1,40 @@
 import api from './api';
 
+/**
+ * Utility function to get WebSocket base URL from environment variables
+ * Converts HTTP(S) URLs to WS(S) URLs
+ * 
+ * Note: Environment variables in Vite are resolved at build time, not runtime.
+ * This means the URL cannot change after the application is built.
+ */
+function getWebSocketBaseURL() {
+  // Use explicit WebSocket URL if provided
+  if (import.meta.env.VITE_WS_URL_BASE) {
+    return import.meta.env.VITE_WS_URL_BASE;
+  }
+  
+  // Otherwise, derive from API URL
+  const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
+  
+  // Extract base URL without /api/v1 suffix
+  // Note: This assumes VITE_API_URL_BASE includes '/api/v1' at the end
+  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+  
+  // Convert HTTP(S) to WS(S)
+  if (baseUrl.startsWith('https://')) {
+    return baseUrl.replace('https://', 'wss://');
+  } else if (baseUrl.startsWith('http://')) {
+    return baseUrl.replace('http://', 'ws://');
+  }
+  
+  // Fallback to localhost WebSocket
+  return 'ws://localhost:8000';
+}
+
+// Cache the WebSocket base URL at module load time
+// This is safe because Vite environment variables are resolved at build time
+const WS_BASE_URL = getWebSocketBaseURL();
+
 class NotificationService {
   constructor() {
     this.socket = null;
@@ -14,13 +49,14 @@ class NotificationService {
     // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('WebSocket token:', token ? 'Present' : 'Missing');
+      console.log('WebSocket base URL:', WS_BASE_URL);
     }
     
     if (token) {
-      return `wss://app.mhsolucionesempresariales.com/ws/notifications/?token=${encodeURIComponent(token)}`;
+      return `${WS_BASE_URL}/ws/notifications/?token=${encodeURIComponent(token)}`;
     }
     
-    return 'wss://app.mhsolucionesempresariales.com/ws/notifications/';
+    return `${WS_BASE_URL}/ws/notifications/`;
   }
 
   connectWebSocket(userId, onNewNotifications = null) {

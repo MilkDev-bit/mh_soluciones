@@ -36,6 +36,9 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './HRPage.scss';
 
+// Get API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
+
 const HRPage = () => {
   const [documents, setDocuments] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -121,7 +124,7 @@ const HRPage = () => {
   const handleDownloadDocument = async (document) => {
   try {
     console.log('Iniciando descarga para documento:', document.id);
-    const downloadUrl = `http://localhost:8000/api/v1/hr/employee-documents/${document.id}/download/`;
+    const downloadUrl = `${API_BASE_URL}/hr/employee-documents/${document.id}/download/`;
     const token = localStorage.getItem('access_token');
     
     const headers = new Headers();
@@ -186,7 +189,7 @@ const HRPage = () => {
     
     try {
       const token = localStorage.getItem('access_token');
-      const url = `http://localhost:8000/api/v1/hr/employee-documents/${document.id}/download/`;
+      const url = `${API_BASE_URL}/hr/employee-documents/${document.id}/download/`;
       
       if (token) {
         window.open(`${url}?token=${token}`, '_blank');

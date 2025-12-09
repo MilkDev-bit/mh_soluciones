@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://app.mhsolucionesempresariales.com/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
 
 // Only log in development mode
 if (import.meta.env.DEV) {
