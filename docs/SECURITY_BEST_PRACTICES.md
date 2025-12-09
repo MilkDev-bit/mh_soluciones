@@ -205,5 +205,5 @@ Si se detecta una exposición de credenciales:
 
 ---
 
-**Última actualización**: 2025-12-09
+**Última actualización**: Diciembre 2024
 **Mantenido por**: Equipo de Desarrollo MH Soluciones
