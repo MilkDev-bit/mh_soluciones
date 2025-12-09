@@ -289,6 +289,18 @@ const HRPage = () => {
     return statusMap[status] || status;
   };
 
+  const getAttendanceStatusClass = (status) => {
+    const classMap = {
+      'PRESENT': 'status-present',
+      'ABSENT': 'status-absent',
+      'LATE': 'status-late',
+      'SICK_LEAVE': 'status-sick_leave',
+      'VACATION': 'status-vacation',
+      'REMOTE': 'status-remote'
+    };
+    return classMap[status] || 'status-default';
+  };
+
   if (loading) {
     return <Loading fullscreen />;
   }
@@ -481,7 +493,7 @@ const HRPage = () => {
                         {format(parseISO(attendance.date), 'dd MMM yyyy', { locale: es })}
                       </span>
                       <div className="attendance-details">
-                        <span className={`status-badge status-${attendance.status.toLowerCase()}`}>
+                        <span className={`status-badge ${getAttendanceStatusClass(attendance.status)}`}>
                           {getAttendanceStatusText(attendance.status)}
                         </span>
                         {attendance.check_in_time && (
