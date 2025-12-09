@@ -15,8 +15,27 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """
         Asegura que cada usuario solo pueda ver sus propias notificaciones.
+        Por defecto, solo muestra las notificaciones no leídas y recientes.
         """
-        return self.request.user.notifications.all()
+        # Ordenar por fecha de creación (más recientes primero)
+        queryset = self.request.user.notifications.all().order_by('-created_at')
+        
+        # Por defecto, solo mostrar notificaciones no leídas
+        include_read = self.request.query_params.get('include_read', 'false').lower() == 'true'
+        if not include_read:
+            queryset = queryset.filter(is_read=False)
+        
+        # Limitar a las 50 notificaciones más recientes para optimizar rendimiento
+        try:
+            limit = int(self.request.query_params.get('limit', 50))
+            # Validar que el límite esté en un rango razonable
+            limit = max(1, min(limit, 100))  # Entre 1 y 100
+        except (ValueError, TypeError):
+            limit = 50  # Valor por defecto si hay error
+        
+        queryset = queryset[:limit]
+        
+        return queryset
 
     @action(detail=False, methods=['get'])
     def unread_count(self, request):

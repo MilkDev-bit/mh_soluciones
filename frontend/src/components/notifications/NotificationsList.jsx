@@ -7,6 +7,16 @@ const NotificationsList = () => {
 
   if (loading) return <div>Cargando notificaciones...</div>;
 
+  if (notifications.length === 0) {
+    return (
+      <div className="notifications-list">
+        <div className="empty-state">
+          <p>No tienes notificaciones sin leer</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="notifications-list">
       {notifications.map(notification => (
