@@ -1,0 +1,19 @@
+Nueva Tarea Asignada: {{ task.title }}
+
+Se te ha asignado una nueva tarea en el proyecto {{ project.name }}.
+
+Detalles de la Tarea:
+- Título: {{ task.title }}
+- Descripción: {{ task.description }}
+- Prioridad: {{ task.get_priority_display }}
+- Estado: {{ task.get_status_display }}
+{% if task.due_date %}
+- Fecha de vencimiento: {{ task.due_date|date:"d/m/Y" }}
+{% endif %}
+
+Puedes ver más detalles y trabajar en la tarea en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}

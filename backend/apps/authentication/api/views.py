@@ -10,13 +10,15 @@ from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_otp import devices_for_user
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from django.shortcuts import redirect
 from django.urls import reverse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
+from django.db.models import Q
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from ..models import GoogleApiCredentials, CustomUser, LoginActivity
 from .permissions import IsSuperAdmin
@@ -36,6 +38,9 @@ if settings.DEBUG:
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('first_name', 'last_name')
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['username', 'first_name', 'last_name', 'email']
+    ordering_fields = ['first_name', 'last_name', 'email', 'created_at']
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -54,6 +59,23 @@ class UserViewSet(viewsets.ModelViewSet):
         user.is_active = False
         user.save(update_fields=['is_active'])
         return Response({'message': 'Usuario desactivado correctamente.'}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsSuperAdmin])
+    def change_password(self, request, pk=None):
+        """Change password for a user by superadmin"""
+        user = self.get_object()
+        new_password = request.data.get('new_password')
+        
+        if not new_password:
+            return Response({'error': 'La nueva contraseña es requerida.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(new_password) < 8:
+            return Response({'error': 'La contraseña debe tener al menos 8 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({'message': 'Contraseña actualizada correctamente.'}, status=status.HTTP_200_OK)
 
 class UserProfileAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]

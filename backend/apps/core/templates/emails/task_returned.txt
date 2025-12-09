@@ -1,0 +1,22 @@
+Tarea Devuelta para Revisión: {{ task.title }}
+
+Tu entrega de la tarea "{{ task.title }}" ha sido devuelta para revisión.
+
+Detalles de la Tarea:
+- Título: {{ task.title }}
+- Proyecto: {{ project.name }}
+- Descripción: {{ task.description }}
+
+{% if submission.teacher_feedback %}
+Retroalimentación del profesor:
+{{ submission.teacher_feedback }}
+{% endif %}
+
+Por favor, revisa los comentarios y realiza las correcciones necesarias.
+
+Puedes ver más detalles y hacer una nueva entrega en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}

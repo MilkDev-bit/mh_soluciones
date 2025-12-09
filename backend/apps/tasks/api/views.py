@@ -26,6 +26,7 @@ from .serializers import (
     TaskEditHistorySerializer
 )
 from .permissions import IsOwnerOrAdmin, CanInteractWithTask
+from utils.email_notifications import send_task_assignment_notification, send_task_reopened_notification
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,11 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
-        serializer.save(created_by=self.request.user)
+        task = serializer.save(created_by=self.request.user)
+        
+        # Send email notification if task is assigned
+        if task.assigned_to or task.assigned_students.exists():
+            send_task_assignment_notification(task)
 
     def perform_update(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
@@ -152,6 +157,9 @@ class TaskViewSet(viewsets.ModelViewSet):
                 id__in=serializer.validated_data['specific_students']
             )
             reopen_log.specific_students.set(students)
+        
+        # Send email notification
+        send_task_reopened_notification(task, reopen_log)
         
         return Response({
             'message': 'Tarea reabierta exitosamente',
