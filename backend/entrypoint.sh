@@ -133,4 +133,10 @@ echo "🚀 Iniciando servidor Daphne en puerto $PORT..."
 echo "📍 Health check disponible en http://localhost:$PORT/health/"
 
 # Start Daphne with the configured PORT
-exec daphne -b 0.0.0.0 -p "$PORT" config.asgi:application
+# If no command is provided or if "daphne" is explicitly requested,
+# use daphne with the configured PORT
+if [ $# -eq 0 ] || [ "$1" = "daphne" ]; then
+    exec daphne -b 0.0.0.0 -p "$PORT" config.asgi:application
+else
+    exec "$@"
+fi
