@@ -31,6 +31,15 @@ ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
 
+    def _validate_client_access(self, user, project):
+        """
+        Validates that a CLIENT user has access to the project.
+        Raises PermissionDenied if user is CLIENT but not assigned to this project.
+        """
+        if user.role == 'CLIENT' and user.is_authenticated:
+            if not project.client or project.client.id != user.id:
+                raise PermissionDenied("No tienes acceso a este proyecto.")
+
     def get_queryset(self):
         user = self.request.user
 
@@ -212,10 +221,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project = self.get_object()
         user = request.user
         
-        # Check if user is CLIENT and if they are the client for this project
-        if user.role == 'CLIENT':
-            if not project.client or project.client.id != user.id:
-                raise PermissionDenied("No tienes acceso al desempeño de este proyecto.")
+        # Validate CLIENT access
+        self._validate_client_access(user, project)
         
         # Get all students assigned to tasks in this project
         student_ids = project.tasks.filter(
@@ -310,11 +317,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project = self.get_object()
         user = request.user
         
-        # Check if user is CLIENT and if they are the client for this project
-        # Also handle case where project has no client assigned
-        if user.role == 'CLIENT':
-            if not project.client or project.client.id != user.id:
-                raise PermissionDenied("No tienes acceso a la carpeta de este proyecto.")
+        # Validate CLIENT access
+        self._validate_client_access(user, project)
         
         # Get all documents for this project
         

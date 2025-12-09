@@ -18,7 +18,7 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
-import { ROLE_GROUPS, ROLES, isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
+import { ROLES, isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
