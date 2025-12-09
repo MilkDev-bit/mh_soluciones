@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, date
 
 from django.db import IntegrityError
 from django.db.models import Q, Count, Case, When, IntegerField
@@ -8,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from apps.authentication.models import CustomUser
+from apps.tasks.models import TaskSubmission
+from apps.documents.models import Document
 from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
 from .serializers import (
     ProjectSerializer,
@@ -214,9 +217,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             if not project.client or project.client.id != user.id:
                 raise PermissionDenied("No tienes acceso al desempeño de este proyecto.")
         
-        # Import here to avoid circular dependency
-        from apps.tasks.models import TaskSubmission
-        
         # Get all students assigned to tasks in this project
         student_ids = project.tasks.filter(
             assigned_students__role='STUDENT'
@@ -227,8 +227,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             assigned_to__role='STUDENT'
         ).values_list('assigned_to__id', flat=True).distinct()
         
-        # Combine both sets of student IDs
-        all_student_ids = set(list(student_ids) + list(individual_student_ids))
+        # Combine both sets of student IDs efficiently
+        all_student_ids = set(student_ids) | set(individual_student_ids)
         
         if not all_student_ids:
             return Response({
@@ -260,7 +260,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 if task.due_date and submission.created_at:
                     # Convert datetime to date for comparison if needed
                     # created_at is a DateTimeField, so we need to extract the date
-                    from datetime import datetime, date
                     if isinstance(submission.created_at, datetime):
                         submission_date = submission.created_at.date()
                     elif isinstance(submission.created_at, date):
@@ -318,7 +317,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("No tienes acceso a la carpeta de este proyecto.")
         
         # Get all documents for this project
-        from apps.documents.models import Document
         
         documents = Document.objects.filter(
             project=project,

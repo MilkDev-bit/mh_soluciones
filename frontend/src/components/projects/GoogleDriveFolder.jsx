@@ -5,6 +5,11 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './GoogleDriveFolder.scss';
 
+// Constants for Google Drive file ID validation
+const DRIVE_FILE_ID_MIN_LENGTH = 20;
+const DRIVE_FILE_ID_MAX_LENGTH = 50;
+const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
 const GoogleDriveFolder = ({ projectId, userRole }) => {
   const [folderData, setFolderData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +19,11 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
   const isValidDriveFileId = (fileId) => {
     if (!fileId || typeof fileId !== 'string') return false;
     // Google Drive file IDs are typically 28-33 characters, alphanumeric with hyphens and underscores
-    return /^[a-zA-Z0-9_-]+$/.test(fileId) && fileId.length >= 20 && fileId.length <= 50;
+    return (
+      DRIVE_FILE_ID_PATTERN.test(fileId) &&
+      fileId.length >= DRIVE_FILE_ID_MIN_LENGTH &&
+      fileId.length <= DRIVE_FILE_ID_MAX_LENGTH
+    );
   };
 
   useEffect(() => {
