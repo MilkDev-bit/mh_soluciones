@@ -39,6 +39,9 @@ ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 TEACHER_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
 EDITOR_ROLES = TEACHER_ROLES
 
+# Task grading constants
+PASSING_SCORE_THRESHOLD = 0.7  # 70% of max score is considered passing
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     """
@@ -363,7 +366,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         # A submission is considered "returned" if:
         # 1. It has teacher feedback and is not approved, or
         # 2. Status is not 'GRADED', or
-        # 3. Score is below passing (e.g., < 70% of max_score)
+        # 3. Score is below passing threshold (default 70% of max_score)
         is_returned = False
         new_status = request.data.get('status', submission.status)
         new_score = request.data.get('score')
@@ -372,9 +375,10 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         if has_feedback and new_status != 'GRADED':
             is_returned = True
         elif new_score is not None and task.max_score:
-            # Consider it returned if score is less than 70% of max score
-            passing_score = float(task.max_score) * 0.7
-            if float(new_score) < passing_score:
+            # Consider it returned if score is less than passing threshold
+            score_value = float(new_score)
+            passing_score = float(task.max_score) * PASSING_SCORE_THRESHOLD
+            if score_value < passing_score:
                 is_returned = True
         
         # Update submission with grading data
