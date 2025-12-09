@@ -1,5 +1,35 @@
 import api from './api';
 
+/**
+ * Utility function to get WebSocket base URL from environment variables
+ * Converts HTTP(S) URLs to WS(S) URLs
+ */
+function getWebSocketBaseURL() {
+  // Use explicit WebSocket URL if provided
+  if (import.meta.env.VITE_WS_URL_BASE) {
+    return import.meta.env.VITE_WS_URL_BASE;
+  }
+  
+  // Otherwise, derive from API URL
+  const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
+  
+  // Extract base URL without /api/v1 suffix
+  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+  
+  // Convert HTTP(S) to WS(S)
+  if (baseUrl.startsWith('https://')) {
+    return baseUrl.replace('https://', 'wss://');
+  } else if (baseUrl.startsWith('http://')) {
+    return baseUrl.replace('http://', 'ws://');
+  }
+  
+  // Fallback to localhost WebSocket
+  return 'ws://localhost:8000';
+}
+
+// Cache the WebSocket base URL to avoid repeated computation
+const WS_BASE_URL = getWebSocketBaseURL();
+
 class NotificationService {
   constructor() {
     this.socket = null;
@@ -14,21 +44,14 @@ class NotificationService {
     // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('WebSocket token:', token ? 'Present' : 'Missing');
+      console.log('WebSocket base URL:', WS_BASE_URL);
     }
-    
-    // Get WebSocket base URL from environment variable
-    // Convert HTTP(S) API URL to WS(S) URL if WS_URL_BASE is not set
-    const wsBaseUrl = import.meta.env.VITE_WS_URL_BASE || 
-      (import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000')
-        .replace('https://', 'wss://')
-        .replace('http://', 'ws://')
-        .replace('/api/v1', '');
     
     if (token) {
-      return `${wsBaseUrl}/ws/notifications/?token=${encodeURIComponent(token)}`;
+      return `${WS_BASE_URL}/ws/notifications/?token=${encodeURIComponent(token)}`;
     }
     
-    return `${wsBaseUrl}/ws/notifications/`;
+    return `${WS_BASE_URL}/ws/notifications/`;
   }
 
   connectWebSocket(userId, onNewNotifications = null) {
