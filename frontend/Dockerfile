@@ -31,8 +31,8 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Railway assigns PORT dynamically
-EXPOSE 8080
+# Railway assigns PORT dynamically, defaults to 80
+EXPOSE 80
 
 # Note: Railway uses external health checks via healthcheckPath in railway.json
 # Internal HEALTHCHECK is not needed
