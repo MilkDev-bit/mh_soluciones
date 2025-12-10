@@ -228,7 +228,7 @@
   justify-content: flex-end;
   margin-top: $spacing-6;
   padding-top: $spacing-5;
-  border-top: 1px solid rgba(var(--border-color), 0.8);
+  border-top: 1px solid var(--border-color);
 
   .btn {
     position: relative;
