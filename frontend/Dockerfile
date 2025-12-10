@@ -18,8 +18,8 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Install wget for optional healthcheck
-RUN apk add --no-cache wget
+# Install wget for optional healthcheck and sed for config processing
+RUN apk add --no-cache wget sed
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
@@ -35,11 +35,11 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 # PORT Configuration:
-# - Railway sets PORT environment variable dynamically (typically 80 for frontend)
+# - Railway sets PORT environment variable dynamically (8080 for frontend per railway.json)
 # - docker-entrypoint.sh reads $PORT and configures nginx accordingly
 # - nginx binds to 0.0.0.0:$PORT to accept connections from Railway's proxy
-# - Default fallback is port 80 if PORT is not set
-EXPOSE 80
+# - Default fallback is port 8080 if PORT is not set
+EXPOSE 8080
 
 # Health Check:
 # - Railway uses external health checks via healthcheckPath in railway.json

@@ -7,7 +7,7 @@ set -x
 
 echo "🚀 Starting Frontend..."
 echo "🔍 Environment Detection:"
-echo "   - PORT: ${PORT:-80}"
+echo "   - PORT: ${PORT:-8080}"
 echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
 echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 echo "   - PWD: $(pwd)"
@@ -32,8 +32,8 @@ fi
 
 echo "✅ Pre-flight checks passed"
 
-# Get PORT from environment or default to 80
-PORT="${PORT:-80}"
+# Get PORT from environment or default to 8080 (matches Railway configuration)
+PORT="${PORT:-8080}"
 
 echo "📍 Configuring nginx to listen on port $PORT"
 echo "📍 nginx will bind to 0.0.0.0:$PORT and [::]:$PORT"
@@ -52,14 +52,19 @@ fi
 echo "📝 Writing nginx configuration to /etc/nginx/conf.d/default.conf..."
 
 # Create nginx configuration with the correct port
-# Variable substitution happens in the heredoc because we use unquoted EOF
-cat > /etc/nginx/conf.d/default.conf << EOF
+# Using quoted EOF to prevent variable expansion, then manually substitute PORT
+cat > /etc/nginx/conf.d/default.conf << 'NGINXCONF'
 server {
-    listen ${PORT};
-    listen [::]:${PORT};
+    listen PORT_PLACEHOLDER;
+    listen [::]:PORT_PLACEHOLDER;
     server_name _;
+    
     root /usr/share/nginx/html;
     index index.html index.htm;
+    
+    # Enable error logging
+    error_log /var/log/nginx/error.log warn;
+    access_log /var/log/nginx/access.log;
 
     # Gzip compression
     gzip on;
@@ -67,6 +72,7 @@ server {
     gzip_min_length 1024;
     gzip_proxied expired no-cache no-store private auth;
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json;
+    gzip_disable "msie6";
 
     # Security headers
     server_tokens off;
@@ -75,41 +81,50 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    # Health check endpoint for Railway
-    location /health {
+    # Health check endpoint for Railway (exact match, highest priority)
+    location = /health {
         access_log off;
         return 200 "healthy\n";
         add_header Content-Type text/plain;
     }
 
-    # Cache static assets (JS, CSS, images, fonts)
+    # Block sensitive files (regex match)
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+
+    location ~* \.(env|git|htaccess|htpasswd)$ {
+        deny all;
+        return 404;
+    }
+
+    # Cache static assets (regex match for file extensions)
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        access_log off;
     }
 
-    # Cache assets folder
+    # Cache assets folder (prefix match)
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        access_log off;
     }
 
-    # Block sensitive files
-    location ~ /\. {
-        deny all;
-    }
-
-    location ~* (\.env|\.git|\.htaccess|\.htpasswd) {
-        deny all;
-    }
-
-    # SPA routing - serve index.html for all other routes
+    # SPA routing - serve index.html for all other routes (fallback)
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
     }
 }
-EOF
+NGINXCONF
+
+# Replace PORT_PLACEHOLDER with actual PORT value
+sed -i "s/PORT_PLACEHOLDER/${PORT}/g" /etc/nginx/conf.d/default.conf
 
 # Validate that the configuration file was created
 if [ ! -f "/etc/nginx/conf.d/default.conf" ]; then
@@ -142,6 +157,13 @@ echo "📍 Document root: /usr/share/nginx/html"
 echo "📂 Files in document root:"
 ls -lah /usr/share/nginx/html/ || echo "⚠️  Could not list document root"
 
+# Verify nginx master configuration
+echo "🔍 Nginx version and configuration:"
+nginx -V 2>&1 | head -5
+
 # Start nginx in the foreground
 echo "🎬 Executing: nginx -g 'daemon off;'"
+echo "📊 If nginx crashes, check /var/log/nginx/error.log"
+
+# Use exec to replace the shell with nginx, so signals are properly handled
 exec nginx -g "daemon off;"
