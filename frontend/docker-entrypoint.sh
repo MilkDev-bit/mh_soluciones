@@ -5,9 +5,6 @@ set -e
 # Enable verbose logging to track execution
 set -x
 
-# Ensure output is not buffered
-export PYTHONUNBUFFERED=1
-
 echo "🚀 Starting Frontend..."
 echo "🔍 Environment Detection:"
 echo "   - PORT: ${PORT:-80}"
@@ -54,7 +51,8 @@ fi
 
 echo "📝 Writing nginx configuration to /etc/nginx/conf.d/default.conf..."
 
-# Create nginx configuration with the correct port using sed for substitution
+# Create nginx configuration with the correct port
+# Variable substitution happens in the heredoc because we use unquoted EOF
 cat > /etc/nginx/conf.d/default.conf << EOF
 server {
     listen ${PORT};
