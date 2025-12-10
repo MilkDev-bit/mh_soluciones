@@ -81,9 +81,30 @@ class LoginSerializer(serializers.Serializer):
         if not (username and password):
             raise serializers.ValidationError('Debe incluir "usuario" y "contraseña".', code='authorization')
 
+        # Intentar obtener el usuario primero
+        try:
+            user_obj = CustomUser.objects.get(username=username)
+            
+            # Verificar si la cuenta está bloqueada antes de autenticar
+            if user_obj.is_account_locked():
+                raise serializers.ValidationError(
+                    'Cuenta bloqueada temporalmente por múltiples intentos fallidos. '
+                    'Intente nuevamente más tarde.',
+                    code='account_locked'
+                )
+        except CustomUser.DoesNotExist:
+            pass
+        
         user = authenticate(request=request, username=username, password=password)
 
         if not user:
+            # Incrementar intentos fallidos si el usuario existe
+            try:
+                user_obj = CustomUser.objects.get(username=username)
+                user_obj.increment_failed_login()
+            except CustomUser.DoesNotExist:
+                pass
+            
             raise serializers.ValidationError('No se puede iniciar sesión con las credenciales proporcionadas.', code='authorization')
         
         if not user.is_active:

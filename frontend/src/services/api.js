@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getCsrfToken } from '../utils/security';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
 
@@ -22,6 +23,15 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Agregar CSRF token para métodos que modifican datos
+    if (['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        config.headers['X-CSRFToken'] = csrfToken;
+      }
+    }
+    
     return config;
   },
   (error) => {

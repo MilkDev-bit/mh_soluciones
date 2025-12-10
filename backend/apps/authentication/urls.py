@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
+from .api.views import (
     UserViewSet,
     LoginAPIView,
     TwoFactorVerifyAPIView,
@@ -20,7 +20,7 @@ urlpatterns = [
     
     path('profile/', UserProfileAPIView.as_view(), name='api_profile'),
     
-    path('profile/change-password/', PasswordChangeAPIView.as_gview(), name='api_password_change'),
+    path('profile/change-password/', PasswordChangeAPIView.as_view(), name='api_password_change'),
 
     path('google/auth/', GoogleAuthRedirectView.as_view(), name='google-auth-redirect'),
 

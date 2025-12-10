@@ -3,8 +3,12 @@ import AppRoutes from './routes';
 import Loading from './components/common/Loading';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import useInactivityLogout from './hooks/useInactivityLogout';
 
 function App() {
+  // Hook para auto-logout por inactividad
+  useInactivityLogout();
+  
   return (
     <Suspense fallback={<Loading fullscreen />}>
       <AppRoutes />
