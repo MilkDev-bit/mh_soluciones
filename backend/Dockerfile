@@ -26,11 +26,17 @@ RUN SECRET_KEY=dummy DJANGO_SETTINGS_MODULE=config.settings.base python manage.p
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Railway assigns PORT dynamically, expose common port for reference
+# PORT Configuration:
+# - Railway sets PORT environment variable dynamically
+# - entrypoint.sh reads $PORT and starts Daphne on that port
+# - Daphne binds to 0.0.0.0:$PORT to accept connections from Railway's proxy
+# - Default fallback is port 8000 if PORT is not set
 EXPOSE 8000
 
-# Note: Railway uses external health checks via healthcheckPath in railway.json
-# Internal HEALTHCHECK is not needed and can cause issues with dynamic ports
+# Health Check:
+# - Railway uses external health checks via healthcheckPath in railway.json
+# - Endpoint: GET /health/ returns 200 with Django health check response
+# - Internal HEALTHCHECK directive is not needed and can cause issues with dynamic ports
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 # CMD is not needed as entrypoint.sh directly starts Daphne with the configured PORT

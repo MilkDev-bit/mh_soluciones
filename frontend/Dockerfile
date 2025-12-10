@@ -31,11 +31,17 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Railway assigns PORT dynamically, defaults to 80
+# PORT Configuration:
+# - Railway sets PORT environment variable dynamically (typically 80 for frontend)
+# - docker-entrypoint.sh reads $PORT and configures nginx accordingly
+# - nginx binds to 0.0.0.0:$PORT to accept connections from Railway's proxy
+# - Default fallback is port 80 if PORT is not set
 EXPOSE 80
 
-# Note: Railway uses external health checks via healthcheckPath in railway.json
-# Internal HEALTHCHECK is not needed
+# Health Check:
+# - Railway uses external health checks via healthcheckPath in railway.json
+# - Endpoint: GET /health returns 200 "healthy"
+# - Internal HEALTHCHECK directive is not needed
 
-# Start with our custom entrypoint that configures the port
+# Start with our custom entrypoint that configures nginx with the correct port
 ENTRYPOINT ["/docker-entrypoint.sh"]
