@@ -472,15 +472,14 @@
     background: rgba($neutral-800, 0.5);
     border-top-color: rgba($neutral-700, 0.8);
   }
-}
-  
+
   .modal-with-image {
     .modal-header {
       .modal-title {
         background: linear-gradient(transparent, rgba($neutral-900, 0.9));
       }
       
-      .modal-close {
+      .modal-close-btn {
         background: rgba($neutral-800, 0.7);
         
         &:hover {
@@ -545,7 +544,7 @@
     animation: none;
   }
   
-  .modal-close {
+  .modal-close-btn {
     transition: none;
   }
 }
