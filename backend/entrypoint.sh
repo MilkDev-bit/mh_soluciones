@@ -65,7 +65,7 @@ fi
 echo "✅ Variables de entorno exportadas correctamente."
 
 # Set PORT from environment or default
-export PORT=${PORT:-8000}
+export PORT=${PORT:-8080}
 echo "📊 Puerto configurado: $PORT"
 echo "📍 Daphne will bind to 0.0.0.0:$PORT"
 echo "🔍 Environment:"

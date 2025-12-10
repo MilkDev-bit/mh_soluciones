@@ -30,8 +30,8 @@ RUN chmod +x /app/entrypoint.sh
 # - Railway sets PORT environment variable dynamically
 # - entrypoint.sh reads $PORT and starts Daphne on that port
 # - Daphne binds to 0.0.0.0:$PORT to accept connections from Railway's proxy
-# - Default fallback is port 8000 if PORT is not set
-EXPOSE 8000
+# - Default fallback is port 8080 if PORT is not set
+EXPOSE 8080
 
 # Health Check:
 # - Railway uses external health checks via healthcheckPath in railway.json
