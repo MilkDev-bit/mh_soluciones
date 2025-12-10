@@ -4,12 +4,23 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from cryptography.fernet import Fernet
 import base64
+from .constants import PASSWORD_EXPIRY_DAYS, MAX_FAILED_LOGIN_ATTEMPTS, ACCOUNT_LOCKOUT_MINUTES
 
 
 def get_encryption_key():
-    """Obtiene la clave de encriptación desde settings"""
+    """
+    Obtiene la clave de encriptación desde settings.
+    IMPORTANTE: En producción, usar una clave dedicada y segura
+    almacenada en variables de entorno.
+    """
     from django.conf import settings
-    key = settings.SECRET_KEY[:32].encode()  # Usar los primeros 32 caracteres
+    
+    # En producción, usar una clave dedicada: ENCRYPTION_KEY
+    # Aquí usamos SECRET_KEY solo como fallback para desarrollo
+    encryption_key = getattr(settings, 'ENCRYPTION_KEY', settings.SECRET_KEY)
+    
+    # Asegurar que la clave tenga 32 bytes para Fernet
+    key = encryption_key[:32].encode() if isinstance(encryption_key, str) else encryption_key[:32]
     return base64.urlsafe_b64encode(key.ljust(32)[:32])
 
 
@@ -20,9 +31,16 @@ class EncryptedCharField(models.TextField):
         if value is None or value == '':
             return value
         
-        fernet = Fernet(get_encryption_key())
-        encrypted_value = fernet.encrypt(value.encode())
-        return encrypted_value.decode()
+        try:
+            fernet = Fernet(get_encryption_key())
+            encrypted_value = fernet.encrypt(value.encode())
+            return encrypted_value.decode()
+        except Exception as e:
+            # En caso de error, loggear pero no fallar la operación
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error encrypting field: {e}")
+            return value
     
     def from_db_value(self, value, expression, connection):
         if value is None or value == '':
@@ -32,7 +50,12 @@ class EncryptedCharField(models.TextField):
             fernet = Fernet(get_encryption_key())
             decrypted_value = fernet.decrypt(value.encode())
             return decrypted_value.decode()
-        except Exception:
+        except Exception as e:
+            # Si no se puede desencriptar, retornar el valor original
+            # Esto puede pasar si la clave cambió o el valor no estaba encriptado
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error decrypting field: {e}")
             return value
     
     def to_python(self, value):
@@ -109,14 +132,14 @@ class CustomUser(AbstractUser):
     )
     
     def is_password_expired(self):
-        """Verifica si la contraseña ha expirado (90 días)"""
+        """Verifica si la contraseña ha expirado"""
         from django.utils import timezone
         from datetime import timedelta
         
         if not self.password_changed_at:
             return False
         
-        expiry_date = self.password_changed_at + timedelta(days=90)
+        expiry_date = self.password_changed_at + timedelta(days=PASSWORD_EXPIRY_DAYS)
         return timezone.now() > expiry_date
     
     def is_account_locked(self):
@@ -135,7 +158,7 @@ class CustomUser(AbstractUser):
         self.save(update_fields=['account_locked_until', 'failed_login_attempts'])
         return False
     
-    def lock_account(self, minutes=30):
+    def lock_account(self, minutes=ACCOUNT_LOCKOUT_MINUTES):
         """Bloquea la cuenta por un tiempo específico"""
         from django.utils import timezone
         from datetime import timedelta
@@ -147,9 +170,9 @@ class CustomUser(AbstractUser):
         """Incrementa el contador de intentos fallidos y bloquea si es necesario"""
         self.failed_login_attempts += 1
         
-        # Bloquear después de 5 intentos fallidos
-        if self.failed_login_attempts >= 5:
-            self.lock_account(30)  # Bloquear por 30 minutos
+        # Bloquear después de MAX_FAILED_LOGIN_ATTEMPTS intentos fallidos
+        if self.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+            self.lock_account()
         
         self.save(update_fields=['failed_login_attempts'])
     

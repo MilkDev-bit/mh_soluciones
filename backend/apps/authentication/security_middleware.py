@@ -6,15 +6,19 @@ from django.utils.deprecation import MiddlewareMixin
 from datetime import timedelta
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+import logging
+from .constants import SESSION_INACTIVITY_MINUTES
+
+logger = logging.getLogger(__name__)
 
 
 class SessionSecurityMiddleware(MiddlewareMixin):
     """
     Middleware que rastrea la actividad del usuario y fuerza logout por inactividad.
-    Tiempo de inactividad permitido: 15 minutos
+    Tiempo de inactividad permitido: configurado en constants.py
     """
     
-    INACTIVITY_TIMEOUT = timedelta(minutes=15)
+    INACTIVITY_TIMEOUT = timedelta(minutes=SESSION_INACTIVITY_MINUTES)
     
     def process_request(self, request):
         # Solo procesar para usuarios autenticados con JWT
@@ -45,9 +49,12 @@ class SessionSecurityMiddleware(MiddlewareMixin):
                 user.last_activity = timezone.now()
                 user.save(update_fields=['last_activity'])
                 
-        except (AuthenticationFailed, Exception):
-            # No hacer nada si la autenticación falla, dejar que otros middlewares manejen
-            pass
+        except AuthenticationFailed:
+            # Re-raise authentication failures
+            raise
+        except Exception as e:
+            # Log otros errores pero permitir que el request continúe
+            logger.warning(f"Error in SessionSecurityMiddleware: {e}")
         
         return None
 

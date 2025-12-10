@@ -322,9 +322,3 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Rate Limiting Configuration
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
-
-# Django Defender (opcional - protección contra fuerza bruta)
-DEFENDER_LOGIN_FAILURE_LIMIT = 5
-DEFENDER_COOLOFF_TIME = 1800  # 30 minutos en segundos
-DEFENDER_LOCKOUT_TEMPLATE = None  # API retorna JSON
-DEFENDER_REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')

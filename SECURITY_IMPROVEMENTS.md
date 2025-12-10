@@ -181,9 +181,18 @@ No se requieren dependencias adicionales (todo implementado con código nativo)
 ### Variables de Entorno
 ```bash
 SECRET_KEY=<clave-secreta-fuerte>  # Mínimo 50 caracteres aleatorios
+ENCRYPTION_KEY=<clave-dedicada-para-encriptacion>  # Clave dedicada para encriptar datos sensibles (32+ caracteres)
 DEBUG=False                         # En producción
 REDIS_URL=redis://localhost:6379/0 # Para rate limiting
 ```
+
+**IMPORTANTE sobre ENCRYPTION_KEY:**
+- En producción, se recomienda encarecidamente usar una variable de entorno `ENCRYPTION_KEY` dedicada
+- Esta clave se usa para encriptar tokens de Google OAuth2 y otros datos sensibles
+- NO debe ser la misma que `SECRET_KEY`
+- Debe ser una clave de al menos 32 caracteres generada aleatoriamente
+- Una vez establecida, NO debe cambiarse o los datos encriptados no podrán descifrarse
+- Ejemplo de generación: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
 
 ### Base de Datos
 Ejecutar migración:

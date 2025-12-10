@@ -87,14 +87,6 @@ export const getCsrfToken = () => {
 export const isSafeUrl = (url) => {
   if (!url) return false;
   
-  // Solo permitir URLs relativas o del mismo dominio
-  const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-    '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
-    '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-    '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-    '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-  
   // Si comienza con / es una URL relativa y es segura
   if (url.startsWith('/')) return true;
   

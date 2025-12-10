@@ -1,3 +1,4 @@
+import os
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -35,7 +36,6 @@ from .serializers import (
 
 User = get_user_model()
 
-import os
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 

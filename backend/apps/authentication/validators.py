@@ -4,6 +4,11 @@ Custom password validators for enhanced security.
 import re
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
+from .constants import (
+    SPECIAL_CHARS_PATTERN, 
+    PASSWORD_MIN_LENGTH,
+    PASSWORD_EXPIRY_DAYS
+)
 
 
 class StrongPasswordValidator:
@@ -17,9 +22,9 @@ class StrongPasswordValidator:
     """
     
     def validate(self, password, user=None):
-        if len(password) < 12:
+        if len(password) < PASSWORD_MIN_LENGTH:
             raise ValidationError(
-                _("La contraseña debe tener al menos 12 caracteres."),
+                _(f"La contraseña debe tener al menos {PASSWORD_MIN_LENGTH} caracteres."),
                 code='password_too_short',
             )
         
@@ -41,7 +46,7 @@ class StrongPasswordValidator:
                 code='password_no_digit',
             )
         
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;~`]', password):
+        if not re.search(SPECIAL_CHARS_PATTERN, password):
             raise ValidationError(
                 _("La contraseña debe contener al menos un carácter especial (!@#$%^&*, etc.)."),
                 code='password_no_special',
@@ -49,7 +54,7 @@ class StrongPasswordValidator:
     
     def get_help_text(self):
         return _(
-            "Tu contraseña debe tener al menos 12 caracteres, incluyendo "
+            f"Tu contraseña debe tener al menos {PASSWORD_MIN_LENGTH} caracteres, incluyendo "
             "mayúsculas, minúsculas, números y caracteres especiales."
         )
 
@@ -65,7 +70,7 @@ class PasswordExpiryValidator:
         pass
     
     def get_help_text(self):
-        return _("Las contraseñas deben cambiarse cada 90 días por seguridad.")
+        return _(f"Las contraseñas deben cambiarse cada {PASSWORD_EXPIRY_DAYS} días por seguridad.")
 
 
 class CompromisedPasswordValidator:
