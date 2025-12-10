@@ -1,4 +1,3 @@
-import os
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -19,6 +18,9 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from django.db.models import Q
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+from datetime import timedelta
 
 from ..models import GoogleApiCredentials, CustomUser, LoginActivity
 from .permissions import IsSuperAdmin
@@ -33,6 +35,7 @@ from .serializers import (
 
 User = get_user_model()
 
+import os
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
@@ -91,6 +94,7 @@ class UserProfileAPIView(generics.RetrieveUpdateAPIView):
         return UserSerializer
 
 
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
 class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -103,24 +107,55 @@ class LoginAPIView(APIView):
         
         client_ip, _ = get_client_ip(request)
         
+        # Verificar si la cuenta está bloqueada
+        if user.is_account_locked():
+            LoginActivity.objects.create(
+                user=user, 
+                ip_address=client_ip, 
+                successful=False,
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+            return Response(
+                {
+                    'error': 'Cuenta bloqueada temporalmente por múltiples intentos fallidos. '
+                    f'Intente nuevamente después de {user.account_locked_until.strftime("%H:%M")}.'
+                }, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Verificar si se requiere cambio de contraseña
+        if user.force_password_change or user.is_password_expired():
+            return Response(
+                {
+                    'error': 'Su contraseña ha expirado. Debe cambiarla antes de continuar.',
+                    'requires_password_change': True,
+                    'user_pk': user.pk
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Verificar IPs permitidas
         if user.allowed_ips:
             allowed_ips = [ip.strip() for ip in user.allowed_ips.split(',')]
             if client_ip not in allowed_ips and client_ip != '127.0.0.1':
+                user.increment_failed_login()
                 LoginActivity.objects.create(
                     user=user, 
                     ip_address=client_ip, 
                     successful=False,
-                    user_agent=request.META.get('HTTP_USER_AGENT', ''),
-                    reason='IP no autorizada'
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
                 )
                 return Response(
                     {'error': 'Acceso no autorizado desde esta IP'}, 
                     status=status.HTTP_403_FORBIDDEN
                 )
         
+        # Login exitoso - resetear intentos fallidos
+        user.reset_failed_login()
         user.last_login = timezone.now()
         user.last_login_ip = client_ip
-        user.save(update_fields=['last_login', 'last_login_ip'])
+        user.last_activity = timezone.now()
+        user.save(update_fields=['last_login', 'last_login_ip', 'last_activity'])
         
         LoginActivity.objects.create(
             user=user, 
@@ -186,7 +221,9 @@ class PasswordChangeAPIView(APIView):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user.set_password(serializer.validated_data['new_password'])
-        user.save()
+        user.password_changed_at = timezone.now()
+        user.force_password_change = False
+        user.save(update_fields=['password', 'password_changed_at', 'force_password_change'])
         return Response({"message": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
 
 

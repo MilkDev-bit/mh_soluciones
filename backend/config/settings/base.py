@@ -123,6 +123,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_otp.middleware.OTPMiddleware',
+    'apps.authentication.security_middleware.SessionSecurityMiddleware',
+    'apps.authentication.security_middleware.PasswordExpiryMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -159,9 +161,11 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 12}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'apps.authentication.validators.StrongPasswordValidator'},
+    {'NAME': 'apps.authentication.validators.CompromisedPasswordValidator'},
 ]
 
 LANGUAGE_CODE = 'es-mx'
@@ -285,3 +289,42 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=8, minute=0),  # Run daily at 8:00 AM
     },
 }
+
+# ============================================
+# SECURITY SETTINGS - Enhanced for Production
+# ============================================
+
+# Security Headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# HSTS (HTTP Strict Transport Security) - Enforce HTTPS
+# En producción, estas deben estar habilitadas
+# SECURE_HSTS_SECONDS = 31536000  # 1 año
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+# SECURE_SSL_REDIRECT = True  # Redirigir HTTP a HTTPS
+
+# Content Security Policy (CSP)
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net")
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
+CSP_IMG_SRC = ("'self'", "data:", "https:")
+CSP_CONNECT_SRC = ("'self'", "https:")
+
+# Session Security
+SESSION_COOKIE_AGE = 900  # 15 minutos
+SESSION_SAVE_EVERY_REQUEST = True  # Renovar sesión en cada request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Rate Limiting Configuration
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+
+# Django Defender (opcional - protección contra fuerza bruta)
+DEFENDER_LOGIN_FAILURE_LIMIT = 5
+DEFENDER_COOLOFF_TIME = 1800  # 30 minutos en segundos
+DEFENDER_LOCKOUT_TEMPLATE = None  # API retorna JSON
+DEFENDER_REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
