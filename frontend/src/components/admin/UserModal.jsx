@@ -107,4 +107,5 @@ const UserModal = ({ userToEdit, onClose, onUserSaved }) => {
   );
 };
 
+
 export default UserModal;
