@@ -1,5 +1,26 @@
+@import '../../assets/styles/variables';
+
 .user-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem 1.5rem;
+  gap: $spacing-4 $spacing-5;
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+    gap: $spacing-4;
+  }
+}
+
+// Enhanced form styles for UserModal
+.form-group {
+  position: relative;
+
+  .form-input,
+  .form-select {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:focus {
+      transform: translateY(-1px);
+    }
+  }
 }
