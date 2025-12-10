@@ -2,16 +2,22 @@
 set -e
 
 echo "🚀 Starting Frontend..."
+echo "🔍 Environment Detection:"
+echo "   - PORT: ${PORT:-80}"
+echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
+echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 
 # Get PORT from environment or default to 80
 PORT="${PORT:-80}"
 
 echo "📍 Configuring nginx to listen on port $PORT"
+echo "📍 nginx will bind to 0.0.0.0:$PORT and [::]:$PORT"
 
 # Create nginx configuration with the correct port
 cat > /etc/nginx/conf.d/default.conf << EOF
 server {
     listen ${PORT};
+    listen [::]:${PORT};
     server_name _;
     root /usr/share/nginx/html;
     index index.html index.htm;

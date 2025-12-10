@@ -67,6 +67,10 @@ echo "✅ Variables de entorno exportadas correctamente."
 # Set PORT from environment or default
 export PORT=${PORT:-8000}
 echo "📊 Puerto configurado: $PORT"
+echo "📍 Daphne will bind to 0.0.0.0:$PORT"
+echo "🔍 Environment:"
+echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
+echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 
 # Wait for database to be ready
 echo "⏳ Esperando a que la base de datos esté lista..."
