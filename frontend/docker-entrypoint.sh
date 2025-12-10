@@ -7,7 +7,7 @@ set -x
 
 echo "🚀 Starting Frontend..."
 echo "🔍 Environment Detection:"
-echo "   - PORT: ${PORT:-80}"
+echo "   - PORT: ${PORT:-8080}"
 echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
 echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 echo "   - PWD: $(pwd)"
