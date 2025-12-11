@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import AppRoutes from './routes';
 import Loading from './components/common/Loading';
+import InstallPWA from './components/common/InstallPWA';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import useInactivityLogout from './hooks/useInactivityLogout';
@@ -25,6 +26,8 @@ function App() {
         pauseOnHover
         theme="colored"
       />
+      
+      <InstallPWA />
     </Suspense>
   );
 }
