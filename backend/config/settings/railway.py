@@ -106,9 +106,9 @@ else:
     print("⚠️ Redis no configurado - usando InMemoryChannelLayer")
 
 # Security settings
-SECURE_SSL_REDIRECT = True
-# Allow /health/ without HTTPS redirect (for Railway internal health checks)
-SECURE_REDIRECT_EXEMPT = [r'^health/$']
+# Railway handles SSL termination at the proxy level
+# The internal connection from Railway proxy to Django is HTTP, but external is HTTPS
+SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

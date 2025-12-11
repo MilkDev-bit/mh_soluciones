@@ -8,12 +8,22 @@ DEBUG = False
 # Detect Railway environment
 IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
 
-SECURE_SSL_REDIRECT = True 
+# Trust the X-Forwarded-Proto header from the proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Disable SSL redirect - The proxy (Railway/ALB) handles SSL termination
+# The internal connection from proxy to Django is HTTP, but the external connection is HTTPS
+SECURE_SSL_REDIRECT = False
+
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Keep cookies secure
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Database configuration - supports both Railway PostgreSQL and AWS RDS
 if 'DATABASE_URL' in os.environ:
