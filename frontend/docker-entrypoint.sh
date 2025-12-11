@@ -61,10 +61,22 @@ fi
 
 # Extract hostname for DNS resolution check (remove :port)
 BACKEND_HOST=$(echo "$BACKEND_PROXY_URL" | sed 's/:[0-9]*$//')
-BACKEND_PORT=$(echo "$BACKEND_PROXY_URL" | grep -oE '[0-9]+$' || echo "8080")
+
+# If BACKEND_HOST equals BACKEND_PROXY_URL, no port was found - use default
+if [ "$BACKEND_HOST" = "$BACKEND_PROXY_URL" ]; then
+    BACKEND_PORT="8080"
+    echo "⚠️  No port found in BACKEND_PROXY_URL, using default: 8080"
+else
+    BACKEND_PORT=$(echo "$BACKEND_PROXY_URL" | grep -oE '[0-9]+$')
+    if [ -z "$BACKEND_PORT" ]; then
+        BACKEND_PORT="8080"
+        echo "⚠️  Could not extract port, using default: 8080"
+    fi
+fi
 
 echo "📍 Backend host: $BACKEND_HOST"
 echo "📍 Backend port: $BACKEND_PORT"
+echo "📍 Backend full URL: http://${BACKEND_PROXY_URL}"
 
 # ============================================================================
 # DNS RESOLUTION CHECK
@@ -77,6 +89,7 @@ echo "🔍 Checking DNS resolution for backend host: $BACKEND_HOST"
 
 MAX_DNS_RETRIES=10
 DNS_RETRY_DELAY=2
+MAX_DNS_RETRY_DELAY=30
 dns_attempt=0
 
 while [ $dns_attempt -lt $MAX_DNS_RETRIES ]; do
@@ -104,10 +117,10 @@ while [ $dns_attempt -lt $MAX_DNS_RETRIES ]; do
     if [ $dns_attempt -lt $MAX_DNS_RETRIES ]; then
         echo "⚠️  DNS resolution failed, retrying in ${DNS_RETRY_DELAY}s..."
         sleep $DNS_RETRY_DELAY
-        # Exponential backoff
+        # Exponential backoff with cap
         DNS_RETRY_DELAY=$((DNS_RETRY_DELAY * 2))
-        if [ $DNS_RETRY_DELAY -gt 30 ]; then
-            DNS_RETRY_DELAY=30
+        if [ $DNS_RETRY_DELAY -gt $MAX_DNS_RETRY_DELAY ]; then
+            DNS_RETRY_DELAY=$MAX_DNS_RETRY_DELAY
         fi
     else
         echo "⚠️  WARNING: DNS resolution failed after $MAX_DNS_RETRIES attempts"
@@ -137,16 +150,19 @@ while [ $health_attempt -lt $MAX_HEALTH_RETRIES ]; do
     health_attempt=$((health_attempt + 1))
     echo "🏥 Health check attempt $health_attempt/$MAX_HEALTH_RETRIES..."
     
+    # Construct health check URL (BACKEND_PROXY_URL already includes port)
+    HEALTH_URL="http://${BACKEND_PROXY_URL}/health/"
+    
     # Try to connect to backend health endpoint using wget
     if command -v wget > /dev/null 2>&1; then
-        if wget -q -O - --timeout=5 "http://${BACKEND_PROXY_URL}/health/" > /dev/null 2>&1; then
-            echo "✅ Backend is reachable at http://${BACKEND_PROXY_URL}/health/"
+        if wget -q -O - --timeout=5 "$HEALTH_URL" > /dev/null 2>&1; then
+            echo "✅ Backend is reachable at $HEALTH_URL"
             backend_reachable=1
             break
         fi
     elif command -v curl > /dev/null 2>&1; then
-        if curl -f -s --max-time 5 "http://${BACKEND_PROXY_URL}/health/" > /dev/null 2>&1; then
-            echo "✅ Backend is reachable at http://${BACKEND_PROXY_URL}/health/"
+        if curl -f -s --max-time 5 "$HEALTH_URL" > /dev/null 2>&1; then
+            echo "✅ Backend is reachable at $HEALTH_URL"
             backend_reachable=1
             break
         fi
