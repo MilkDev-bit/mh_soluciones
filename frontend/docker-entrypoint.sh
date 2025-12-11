@@ -139,11 +139,12 @@ server {
     location /api/ {
         proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/api/;
         
-        # Forward the original Host header to the backend
-        proxy_set_header Host BACKEND_ORIGIN_PLACEHOLDER;
+        # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
+        proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
         
         # Proxy timeouts
         proxy_connect_timeout 60s;
@@ -162,11 +163,12 @@ server {
     location /media/ {
         proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/media/;
         
-        # Forward the original Host header to the backend
-        proxy_set_header Host BACKEND_ORIGIN_PLACEHOLDER;
+        # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
+        proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
         
         # Proxy timeouts
         proxy_connect_timeout 60s;
