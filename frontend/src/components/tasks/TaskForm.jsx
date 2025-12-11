@@ -165,238 +165,258 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="form">
-      <div className="form-group">
-        <label className="form-label" htmlFor="title">Título de la Tarea *</label>
-        <input
-          id="title"
-          type="text"
-          className="form-input"
-          {...register('title', { 
-            required: 'El título es obligatorio',
-            minLength: {
-              value: 3,
-              message: 'El título debe tener al menos 3 caracteres'
-            },
-            maxLength: {
-              value: 255,
-              message: 'El título no puede exceder los 255 caracteres'
-            }
-          })}
-        />
-        {errors.title && <span className="error-message">{errors.title.message}</span>}
-      </div>
-
-      <div className="form-group">
-        <label className="form-label" htmlFor="description">Descripción</label>
-        <textarea
-          id="description"
-          className="form-input"
-          rows="3"
-          {...register('description', {
-            maxLength: {
-              value: 1000,
-              message: 'La descripción no puede exceder los 1000 caracteres'
-            }
-          })}
-        ></textarea>
-        {errors.description && <span className="error-message">{errors.description.message}</span>}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+    <form onSubmit={handleSubmit(onSubmit)} className="form task-form">
+      <div className="form-section">
+        <h3 className="form-section-title">Información Básica</h3>
+        
         <div className="form-group">
-          <label className="form-label" htmlFor="due_date">Fecha de Vencimiento</label>
-          <input 
-            id="due_date" 
-            type="date" 
-            className="form-input" 
-            {...register('due_date')} 
-            min={new Date().toISOString().split('T')[0]}
+          <label className="form-label" htmlFor="title">Título de la Tarea *</label>
+          <input
+            id="title"
+            type="text"
+            className="form-input"
+            {...register('title', { 
+              required: 'El título es obligatorio',
+              minLength: {
+                value: 3,
+                message: 'El título debe tener al menos 3 caracteres'
+              },
+              maxLength: {
+                value: 255,
+                message: 'El título no puede exceder los 255 caracteres'
+              }
+            })}
           />
+          {errors.title && <span className="error-message">{errors.title.message}</span>}
         </div>
 
         <div className="form-group">
-          <label className="form-label">Asignar a</label>
-          
-          <input
-            type="hidden"
-            {...register('assigned_to')}
-          />
-          
-          <div className="custom-select" ref={dropdownRef}>
-            <div 
-              className="select-trigger"
-              onClick={handleDropdownToggle}
-            >
-              {selectedMember ? (
-                <div className="selected-member">
-                  <span>
-                    {selectedMember.first_name} {selectedMember.last_name}
-                    {selectedMember.email ? ` (${selectedMember.email})` : ''}
-                  </span>
-                  <button 
-                    type="button"
-                    className="clear-selection"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveSelection();
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <span className="placeholder">Seleccionar miembro...</span>
-              )}
-              <span className="dropdown-arrow">▼</span>
-            </div>
+          <label className="form-label" htmlFor="description">Descripción</label>
+          <textarea
+            id="description"
+            className="form-input"
+            rows="3"
+            {...register('description', {
+              maxLength: {
+                value: 1000,
+                message: 'La descripción no puede exceder los 1000 caracteres'
+              }
+            })}
+          ></textarea>
+          {errors.description && <span className="error-message">{errors.description.message}</span>}
+        </div>
+      </div>
+
+      <div className="form-section">
+        <h3 className="form-section-title">Asignación y Fechas</h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="due_date">Fecha de Vencimiento</label>
+            <input 
+              id="due_date" 
+              type="date" 
+              className="form-input" 
+              {...register('due_date')} 
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Asignar a</label>
             
-            {isDropdownOpen && (
-              <div className="dropdown-menu">
-                <div className="search-container">
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Buscar por nombre o email..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    className="search-input"
-                  />
-                </div>
-                
-                <div className="dropdown-options">
-                  {filteredMembers.length > 0 ? (
-                    filteredMembers.map(member => (
-                      <div
-                        key={member.id}
-                        className={`dropdown-option ${
-                          selectedMember?.id === member.id ? 'selected' : ''
-                        }`}
-                        onClick={() => handleSelectMember(member)}
-                      >
-                        {member.first_name} {member.last_name}
-                        {member.email ? ` (${member.email})` : ''}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="dropdown-option disabled">
-                      {searchTerm ? 'No se encontraron miembros' : 'No hay miembros disponibles'}
-                    </div>
-                  )}
-                </div>
+            <input
+              type="hidden"
+              {...register('assigned_to')}
+            />
+            
+            <div className="custom-select" ref={dropdownRef}>
+              <div 
+                className="select-trigger"
+                onClick={handleDropdownToggle}
+              >
+                {selectedMember ? (
+                  <div className="selected-member">
+                    <span>
+                      {selectedMember.first_name} {selectedMember.last_name}
+                      {selectedMember.email ? ` (${selectedMember.email})` : ''}
+                    </span>
+                    <button 
+                      type="button"
+                      className="clear-selection"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveSelection();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <span className="placeholder">Seleccionar miembro...</span>
+                )}
+                <span className="dropdown-arrow">▼</span>
               </div>
-            )}
+              
+              {isDropdownOpen && (
+                <div className="dropdown-menu">
+                  <div className="search-container">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Buscar por nombre o email..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      className="search-input"
+                    />
+                  </div>
+                  
+                  <div className="dropdown-options">
+                    {filteredMembers.length > 0 ? (
+                      filteredMembers.map(member => (
+                        <div
+                          key={member.id}
+                          className={`dropdown-option ${
+                            selectedMember?.id === member.id ? 'selected' : ''
+                          }`}
+                          onClick={() => handleSelectMember(member)}
+                        >
+                          {member.first_name} {member.last_name}
+                          {member.email ? ` (${member.email})` : ''}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="dropdown-option disabled">
+                        {searchTerm ? 'No se encontraron miembros' : 'No hay miembros disponibles'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* New Teams-style fields */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div className="form-group">
-          <label className="form-label" htmlFor="open_date">Fecha de Apertura</label>
-          <input 
-            id="open_date" 
-            type="datetime-local" 
-            className="form-input" 
-            {...register('open_date')} 
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="close_date">Fecha de Cierre *</label>
-          <input 
-            id="close_date" 
-            type="datetime-local" 
-            className="form-input" 
-            {...register('close_date', {
-              required: 'La fecha de cierre es obligatoria'
-            })} 
-          />
-          {errors.close_date && <span className="error-message">{errors.close_date.message}</span>}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div className="form-group">
-          <label className="form-label" htmlFor="max_score">Puntuación Máxima</label>
-          <input 
-            id="max_score" 
-            type="number" 
-            step="0.01"
-            min="0"
-            max="100"
-            className="form-input" 
-            {...register('max_score')} 
-            defaultValue="100"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="days_after_close">Días Adicionales (Entregas Tardías)</label>
-          <input 
-            id="days_after_close" 
-            type="number" 
-            min="0"
-            className="form-input" 
-            {...register('days_after_close')} 
-            defaultValue="0"
-          />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div className="form-group">
-          <label className="form-label">
+      <div className="form-section">
+        <h3 className="form-section-title">Configuración de Entregas</h3>
+        
+        {/* New Teams-style fields */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="open_date">Fecha de Apertura</label>
             <input 
-              type="checkbox" 
-              {...register('allow_late_submissions')} 
-              style={{ marginRight: '0.5rem' }}
+              id="open_date" 
+              type="datetime-local" 
+              className="form-input" 
+              {...register('open_date')} 
             />
-            Permitir Entregas Tardías
-          </label>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="close_date">Fecha de Cierre *</label>
+            <input 
+              id="close_date" 
+              type="datetime-local" 
+              className="form-input" 
+              {...register('close_date', {
+                required: 'La fecha de cierre es obligatoria'
+              })} 
+            />
+            {errors.close_date && <span className="error-message">{errors.close_date.message}</span>}
+          </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="max_score">Puntuación Máxima</label>
             <input 
-              type="checkbox" 
-              {...register('accept_after_close')} 
-              style={{ marginRight: '0.5rem' }}
+              id="max_score" 
+              type="number" 
+              step="0.01"
+              min="0"
+              max="100"
+              className="form-input" 
+              {...register('max_score')} 
+              defaultValue="100"
             />
-            Aceptar Entregas Después del Cierre
-          </label>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="days_after_close">Días Adicionales (Entregas Tardías)</label>
+            <input 
+              id="days_after_close" 
+              type="number" 
+              min="0"
+              className="form-input" 
+              {...register('days_after_close')} 
+              defaultValue="0"
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label checkbox-label">
+              <input 
+                type="checkbox" 
+                {...register('allow_late_submissions')} 
+                style={{ marginRight: '0.5rem' }}
+              />
+              Permitir Entregas Tardías
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label checkbox-label">
+              <input 
+                type="checkbox" 
+                {...register('accept_after_close')} 
+                style={{ marginRight: '0.5rem' }}
+              />
+              Aceptar Entregas Después del Cierre
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="form-group">
-        <label className="form-label" htmlFor="attachment">Archivo Adjunto</label>
-        <input 
-          id="attachment" 
-          type="file" 
-          className="form-input" 
-          {...register('attachment')}
-          accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
-        />
-        <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-          Formatos permitidos: PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR (máx. 100MB)
-        </small>
+      <div className="form-section">
+        <h3 className="form-section-title">Recursos Adicionales</h3>
+        
+        <div className="form-group">
+          <label className="form-label" htmlFor="attachment">Archivo Adjunto</label>
+          <input 
+            id="attachment" 
+            type="file" 
+            className="form-input file-input" 
+            {...register('attachment')}
+            accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
+          />
+          <small style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem', display: 'block' }}>
+            Formatos permitidos: PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR (máx. 100MB)
+          </small>
+        </div>
       </div>
 
       {isEditMode && (
-        <div className="form-group">
-          <label className="form-label" htmlFor="status">Estado</label>
-          <select id="status" className="form-select" {...register('status')}>
-            <option value="DRAFT">Borrador</option>
-            <option value="OPEN">Abierta</option>
-            <option value="IN_REVIEW">En Revisión</option>
-            <option value="CLOSED">Cerrada</option>
-            <option value="REOPENED">Reabierta</option>
-            {/* Legacy statuses */}
-            <option value="PENDING">Pendiente</option>
-            <option value="IN_PROGRESS">En Progreso</option>
-            <option value="FOR_REVIEW">En Revisión</option>
-            <option value="COMPLETED">Completada</option>
-          </select>
+        <div className="form-section">
+          <h3 className="form-section-title">Estado</h3>
+          
+          <div className="form-group">
+            <label className="form-label" htmlFor="status">Estado de la Tarea</label>
+            <select id="status" className="form-select" {...register('status')}>
+              <option value="DRAFT">Borrador</option>
+              <option value="OPEN">Abierta</option>
+              <option value="IN_REVIEW">En Revisión</option>
+              <option value="CLOSED">Cerrada</option>
+              <option value="REOPENED">Reabierta</option>
+              {/* Legacy statuses */}
+              <option value="PENDING">Pendiente</option>
+              <option value="IN_PROGRESS">En Progreso</option>
+              <option value="FOR_REVIEW">En Revisión</option>
+              <option value="COMPLETED">Completada</option>
+            </select>
+          </div>
         </div>
       )}
       
@@ -414,10 +434,10 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       </div>
 
       {project && (
-        <div className="form-info" style={{ marginTop: '20px' }}>
-          <p><strong>Proyecto:</strong> {project.name}</p>
+        <div className="form-info" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+          <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}><strong>Proyecto:</strong> {project.name}</p>
           {project.description && (
-            <p><strong>Descripción del proyecto:</strong> {project.description}</p>
+            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}><strong>Descripción del proyecto:</strong> {project.description}</p>
           )}
         </div>
       )}
