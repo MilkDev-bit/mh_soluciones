@@ -274,6 +274,7 @@
 
     input[type="checkbox"] {
       cursor: pointer;
+      margin-right: 0.5rem;
     }
   }
 
@@ -296,6 +297,44 @@
         border-color: #3b82f6;
         color: #3b82f6;
       }
+    }
+  }
+
+  .form-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .file-helper-text {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: block;
+  }
+
+  .form-info {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+
+    p {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .project-description {
+      color: #6b7280;
     }
   }
 }

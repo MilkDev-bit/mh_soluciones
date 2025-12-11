@@ -165,7 +165,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="form task-form">
+    <form onSubmit={handleSubmit(onSubmit)} className="task-form">
       <div className="form-section">
         <h3 className="form-section-title">Información Básica</h3>
         
@@ -210,7 +210,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       <div className="form-section">
         <h3 className="form-section-title">Asignación y Fechas</h3>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2col">
           <div className="form-group">
             <label className="form-label" htmlFor="due_date">Fecha de Vencimiento</label>
             <input 
@@ -302,7 +302,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         <h3 className="form-section-title">Configuración de Entregas</h3>
         
         {/* New Teams-style fields */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2col">
           <div className="form-group">
             <label className="form-label" htmlFor="open_date">Fecha de Apertura</label>
             <input 
@@ -327,7 +327,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2col">
           <div className="form-group">
             <label className="form-label" htmlFor="max_score">Puntuación Máxima</label>
             <input 
@@ -355,13 +355,12 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="form-grid-2col">
           <div className="form-group">
             <label className="form-label checkbox-label">
               <input 
                 type="checkbox" 
                 {...register('allow_late_submissions')} 
-                style={{ marginRight: '0.5rem' }}
               />
               Permitir Entregas Tardías
             </label>
@@ -372,7 +371,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
               <input 
                 type="checkbox" 
                 {...register('accept_after_close')} 
-                style={{ marginRight: '0.5rem' }}
               />
               Aceptar Entregas Después del Cierre
             </label>
@@ -392,7 +390,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
             {...register('attachment')}
             accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png,.zip,.rar"
           />
-          <small style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.5rem', display: 'block' }}>
+          <small className="file-helper-text">
             Formatos permitidos: PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR (máx. 100MB)
           </small>
         </div>
@@ -434,10 +432,10 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       </div>
 
       {project && (
-        <div className="form-info" style={{ marginTop: '20px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}><strong>Proyecto:</strong> {project.name}</p>
+        <div className="form-info">
+          <p><strong>Proyecto:</strong> {project.name}</p>
           {project.description && (
-            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}><strong>Descripción del proyecto:</strong> {project.description}</p>
+            <p className="project-description"><strong>Descripción del proyecto:</strong> {project.description}</p>
           )}
         </div>
       )}
