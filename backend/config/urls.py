@@ -7,6 +7,7 @@ from drf_yasg import openapi
 from rest_framework import permissions
 from django.views.static import serve
 from django.http import JsonResponse
+from config.views import api_root, favicon
 
 admin.site.site_title = 'Portal de Administración MH'
 admin.site.site_header = "" 
@@ -26,6 +27,13 @@ def health_check(request):
     return JsonResponse({'status': 'healthy'}, status=200)
 
 urlpatterns = [
+    # API root view
+    path('', api_root, name='root'),
+    
+    # Favicon (prevents 502)
+    path('favicon.ico', favicon, name='favicon'),
+    
+    # Existing routes
     path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/v1/', include('config.api_urls')),
