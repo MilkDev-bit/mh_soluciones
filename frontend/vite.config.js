@@ -102,6 +102,8 @@ export default defineConfig({
             }
           },
           {
+            // API cache strategy - matches the backend API base path
+            // Update this pattern if API version or base path changes
             urlPattern: /\/api\/v1\/.*/i,
             handler: 'NetworkFirst',
             options: {

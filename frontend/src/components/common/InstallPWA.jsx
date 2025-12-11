@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { FiDownload, FiX } from 'react-icons/fi';
 import './InstallPWA.scss';
 
+// Constants
+const DAYS_TO_WAIT_AFTER_DISMISS = 7;
+const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+const INSTALL_PROMPT_DELAY_MS = 3000;
+
 const InstallPWA = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -15,9 +20,9 @@ const InstallPWA = () => {
     // Check if user has dismissed the prompt before
     const dismissedDate = localStorage.getItem('pwa-install-dismissed');
     if (dismissedDate) {
-      const daysSinceDismissed = (Date.now() - parseInt(dismissedDate)) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        return; // Don't show again for 7 days
+      const daysSinceDismissed = (Date.now() - parseInt(dismissedDate)) / MILLISECONDS_PER_DAY;
+      if (daysSinceDismissed < DAYS_TO_WAIT_AFTER_DISMISS) {
+        return; // Don't show again for configured days
       }
     }
 
@@ -29,7 +34,7 @@ const InstallPWA = () => {
       // Show install prompt after a short delay
       setTimeout(() => {
         setShowInstallPrompt(true);
-      }, 3000);
+      }, INSTALL_PROMPT_DELAY_MS);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
