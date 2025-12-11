@@ -47,10 +47,8 @@ if [ -z "$VITE_API_URL_BASE" ]; then
 fi
 
 # Extract backend domain from VITE_API_URL_BASE
-# Remove protocol (https:// or http://)
-BACKEND_ORIGIN=$(echo "$VITE_API_URL_BASE" | sed 's|^https\?://||')
-# Remove /api/v1 or /api/* suffix
-BACKEND_ORIGIN=$(echo "$BACKEND_ORIGIN" | sed 's|/api/.*$||' | sed 's|/api$||')
+# Remove protocol (https:// or http://) and everything after the first /
+BACKEND_ORIGIN=$(echo "$VITE_API_URL_BASE" | sed 's|^https\?://\([^/]*\).*|\1|')
 
 if [ -z "$BACKEND_ORIGIN" ]; then
     echo "❌ ERROR: Could not extract BACKEND_ORIGIN from VITE_API_URL_BASE"
