@@ -38,6 +38,16 @@ echo "✅ Pre-flight checks passed"
 # Get PORT from environment or default to 8080 (matches Railway configuration)
 PORT="${PORT:-8080}"
 
+# Configuration constants
+DEFAULT_BACKEND_PORT="8080"
+DEFAULT_BACKEND_HOST="backend.railway.internal"
+MAX_DNS_RETRIES=10
+DNS_RETRY_DELAY_INITIAL=2
+MAX_DNS_RETRY_DELAY=30
+MAX_HEALTH_RETRIES=5
+HEALTH_RETRY_DELAY=3
+HEALTH_CHECK_TIMEOUT=5
+
 # ============================================================================
 # BACKEND SERVICE DISCOVERY
 # ============================================================================
@@ -52,10 +62,10 @@ if [ -n "$BACKEND_URL" ]; then
     BACKEND_PROXY_URL="$BACKEND_URL"
     echo "📍 Using BACKEND_URL from environment: $BACKEND_PROXY_URL"
 elif [ -n "$BACKEND_SERVICE_NAME" ]; then
-    BACKEND_PROXY_URL="${BACKEND_SERVICE_NAME}.railway.internal:8080"
+    BACKEND_PROXY_URL="${BACKEND_SERVICE_NAME}.railway.internal:${DEFAULT_BACKEND_PORT}"
     echo "📍 Constructed backend URL from BACKEND_SERVICE_NAME: $BACKEND_PROXY_URL"
 else
-    BACKEND_PROXY_URL="backend.railway.internal:8080"
+    BACKEND_PROXY_URL="${DEFAULT_BACKEND_HOST}:${DEFAULT_BACKEND_PORT}"
     echo "📍 Using default backend URL: $BACKEND_PROXY_URL"
 fi
 
@@ -64,13 +74,13 @@ BACKEND_HOST=$(echo "$BACKEND_PROXY_URL" | sed 's/:[0-9]*$//')
 
 # If BACKEND_HOST equals BACKEND_PROXY_URL, no port was found - use default
 if [ "$BACKEND_HOST" = "$BACKEND_PROXY_URL" ]; then
-    BACKEND_PORT="8080"
-    echo "⚠️  No port found in BACKEND_PROXY_URL, using default: 8080"
+    BACKEND_PORT="$DEFAULT_BACKEND_PORT"
+    echo "⚠️  No port found in BACKEND_PROXY_URL, using default: $DEFAULT_BACKEND_PORT"
 else
     BACKEND_PORT=$(echo "$BACKEND_PROXY_URL" | grep -oE '[0-9]+$')
     if [ -z "$BACKEND_PORT" ]; then
-        BACKEND_PORT="8080"
-        echo "⚠️  Could not extract port, using default: 8080"
+        BACKEND_PORT="$DEFAULT_BACKEND_PORT"
+        echo "⚠️  Could not extract port, using default: $DEFAULT_BACKEND_PORT"
     fi
 fi
 
@@ -87,9 +97,7 @@ echo "📍 Backend full URL: http://${BACKEND_PROXY_URL}"
 
 echo "🔍 Checking DNS resolution for backend host: $BACKEND_HOST"
 
-MAX_DNS_RETRIES=10
-DNS_RETRY_DELAY=2
-MAX_DNS_RETRY_DELAY=30
+DNS_RETRY_DELAY=$DNS_RETRY_DELAY_INITIAL
 dns_attempt=0
 
 while [ $dns_attempt -lt $MAX_DNS_RETRIES ]; do
@@ -141,8 +149,6 @@ done
 # ============================================================================
 
 echo "🏥 Checking backend connectivity..."
-MAX_HEALTH_RETRIES=5
-HEALTH_RETRY_DELAY=3
 health_attempt=0
 backend_reachable=0
 
@@ -155,13 +161,13 @@ while [ $health_attempt -lt $MAX_HEALTH_RETRIES ]; do
     
     # Try to connect to backend health endpoint using wget
     if command -v wget > /dev/null 2>&1; then
-        if wget -q -O - --timeout=5 "$HEALTH_URL" > /dev/null 2>&1; then
+        if wget -q -O - --timeout=$HEALTH_CHECK_TIMEOUT "$HEALTH_URL" > /dev/null 2>&1; then
             echo "✅ Backend is reachable at $HEALTH_URL"
             backend_reachable=1
             break
         fi
     elif command -v curl > /dev/null 2>&1; then
-        if curl -f -s --max-time 5 "$HEALTH_URL" > /dev/null 2>&1; then
+        if curl -f -s --max-time $HEALTH_CHECK_TIMEOUT "$HEALTH_URL" > /dev/null 2>&1; then
             echo "✅ Backend is reachable at $HEALTH_URL"
             backend_reachable=1
             break
