@@ -36,8 +36,8 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './HRPage.scss';
 
-// Get API base URL from environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
+// API base URL is handled by the api service - no need to define it here
+// The downloadDocument function below uses relative URLs via the api service
 
 const HRPage = () => {
   const [documents, setDocuments] = useState([]);

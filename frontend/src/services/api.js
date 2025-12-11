@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { getCsrfToken } from '../utils/security';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
+// Use relative URL for API base - Nginx proxy will handle routing to backend
+// In production: /api/v1 -> proxied to backend by Nginx
+// In development: /api/v1 -> requires proxy in vite.config.js or full URL
+const API_BASE_URL = import.meta.env.DEV 
+  ? (import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1')
+  : '/api/v1';
 
 // Only log in development mode
 if (import.meta.env.DEV) {

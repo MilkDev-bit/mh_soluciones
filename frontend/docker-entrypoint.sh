@@ -8,6 +8,7 @@ set -x
 echo "🚀 Starting Frontend..."
 echo "🔍 Environment Detection:"
 echo "   - PORT: ${PORT:-8080}"
+echo "   - BACKEND_ORIGIN: ${BACKEND_ORIGIN:-not set}"
 echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
 echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 echo "   - PWD: $(pwd)"
@@ -35,6 +36,16 @@ echo "✅ Pre-flight checks passed"
 # Get PORT from environment or default to 8080 (matches Railway configuration)
 PORT="${PORT:-8080}"
 
+# Validate BACKEND_ORIGIN is set (required for proxy configuration)
+if [ -z "$BACKEND_ORIGIN" ]; then
+    echo "❌ ERROR: BACKEND_ORIGIN environment variable is not set!"
+    echo "   This variable should reference the backend service domain"
+    echo "   Example: BACKEND_ORIGIN=\${Backend.RAILWAY_PUBLIC_DOMAIN}"
+    exit 1
+fi
+
+echo "📍 Backend proxy will forward to: https://$BACKEND_ORIGIN"
+
 echo "📍 Configuring nginx to listen on port $PORT"
 echo "📍 nginx will bind to 0.0.0.0:$PORT and [::]:$PORT"
 
@@ -52,8 +63,26 @@ fi
 echo "📝 Writing nginx configuration to /etc/nginx/conf.d/default.conf..."
 
 # Create nginx configuration with the correct port
-# Using quoted EOF to prevent variable expansion, then manually substitute PORT
+# Using quoted EOF to prevent variable expansion, then manually substitute PORT and BACKEND_ORIGIN
 cat > /etc/nginx/conf.d/default.conf << 'NGINXCONF'
+# ============================================================================
+# REVERSE PROXY CONFIGURATION
+# ============================================================================
+# This Nginx configuration implements a reverse proxy to the backend service.
+# 
+# Purpose:
+# - Eliminates exposure of backend URLs in client-side code
+# - All API and media requests go through /api/ and /media/ paths
+# - Frontend code uses relative URLs (e.g., '/api/v1/...') instead of absolute URLs
+# - Backend domain is configured via BACKEND_ORIGIN environment variable
+# - No hardcoded URLs in the repository
+#
+# Security Benefits:
+# - Backend URL not exposed to clients
+# - Centralized proxy configuration
+# - Proper security headers forwarded
+# ============================================================================
+
 server {
     listen PORT_PLACEHOLDER;
     listen [::]:PORT_PLACEHOLDER;
@@ -86,6 +115,50 @@ server {
         access_log off;
         return 200 "healthy\n";
         add_header Content-Type text/plain;
+    }
+
+    # ========================================================================
+    # REVERSE PROXY: API requests to backend
+    # ========================================================================
+    # Proxies /api/* requests to the backend service
+    # Frontend code uses relative URLs like '/api/v1/auth/login'
+    # This prevents exposing the backend domain in client code
+    location /api/ {
+        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER;
+        
+        # Forward original request headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Proxy timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Disable buffering for real-time responses
+        proxy_buffering off;
+    }
+
+    # ========================================================================
+    # REVERSE PROXY: Media files from backend
+    # ========================================================================
+    # Proxies /media/* requests to the backend service
+    # Allows serving user-uploaded files through the frontend domain
+    location /media/ {
+        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER;
+        
+        # Forward original request headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Proxy timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 
     # Block sensitive files (regex match)
@@ -125,6 +198,9 @@ NGINXCONF
 
 # Replace PORT_PLACEHOLDER with actual PORT value
 sed -i "s/PORT_PLACEHOLDER/${PORT}/g" /etc/nginx/conf.d/default.conf
+
+# Replace BACKEND_ORIGIN_PLACEHOLDER with actual BACKEND_ORIGIN value
+sed -i "s|BACKEND_ORIGIN_PLACEHOLDER|${BACKEND_ORIGIN}|g" /etc/nginx/conf.d/default.conf
 
 # Validate that the configuration file was created
 if [ ! -f "/etc/nginx/conf.d/default.conf" ]; then

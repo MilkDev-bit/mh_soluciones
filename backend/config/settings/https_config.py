@@ -39,27 +39,20 @@ def get_allowed_hosts():
 
 ALLOWED_HOSTS = get_allowed_hosts()
 
-CORS_ALLOWED_ORIGINS = [
-    'https://app.mhsolucionesempresariales.com',
-    'https://mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com',
-    'http://localhost:3000',
-    'http://localhost:5173',
-]
+# CORS and CSRF configurations are now handled in base.py
+# They support CORS_ORIGINS and CSRF_ORIGINS environment variables
+# No duplication needed here - base.py handles it
 
 CORS_ALLOW_ALL_ORIGINS = False
-
-CSRF_TRUSTED_ORIGINS = [
-    'https://app.mhsolucionesempresariales.com',
-    'https://mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com',
-]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-BACKEND_URL = 'https://app.mhsolucionesempresariales.com'
-FRONTEND_URL = 'https://app.mhsolucionesempresariales.com'
+# BACKEND_URL and FRONTEND_URL are now read from environment variables in base.py
+# They should be configured via Railway environment variables or .env file
+# No hardcoded values here to avoid exposing production URLs in the repository
 
 print("=" * 60)
 print("✅ CONFIGURACIÓN SEGURA Y DEFINITIVA")

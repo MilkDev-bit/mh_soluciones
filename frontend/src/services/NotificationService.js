@@ -4,8 +4,9 @@ import api from './api';
  * Utility function to get WebSocket base URL from environment variables
  * Converts HTTP(S) URLs to WS(S) URLs
  * 
- * Note: Environment variables in Vite are resolved at build time, not runtime.
- * This means the URL cannot change after the application is built.
+ * Note: In production with Nginx proxy, WebSocket connections should use
+ * the same domain as the frontend with /ws/ path (to be proxied by Nginx).
+ * In development, we use the backend URL directly.
  */
 function getWebSocketBaseURL() {
   // Use explicit WebSocket URL if provided
@@ -13,11 +14,18 @@ function getWebSocketBaseURL() {
     return import.meta.env.VITE_WS_URL_BASE;
   }
   
-  // Otherwise, derive from API URL
+  // In production, use relative WebSocket URL (same domain via Nginx proxy)
+  // In development, use localhost backend
+  if (!import.meta.env.DEV) {
+    // Production: use current domain with wss://
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+  }
+  
+  // Development: derive from API URL or use localhost
   const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
   
   // Extract base URL without /api/v1 suffix
-  // Note: This assumes VITE_API_URL_BASE includes '/api/v1' at the end
   const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
   
   // Convert HTTP(S) to WS(S)

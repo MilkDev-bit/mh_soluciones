@@ -199,9 +199,46 @@ def get_cors_origins():
     if railway_domain:
         origins.append(f"https://{railway_domain}")
     
-    return origins
+    # Add custom CORS origins from environment variable (comma-separated)
+    cors_origins_env = config('CORS_ORIGINS', default='')
+    if cors_origins_env:
+        env_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+        origins.extend(env_origins)
+    
+    return list(set(origins))  # Remove duplicates
 
 CORS_ALLOWED_ORIGINS = get_cors_origins()
+
+# Build CSRF trusted origins based on environment
+def get_csrf_origins():
+    """Get CSRF trusted origins based on environment"""
+    origins = [
+        "https://app.mhsolucionesempresariales.com",
+    ]
+    
+    # Add Railway frontend URL if available
+    frontend_url = config('FRONTEND_URL', default='')
+    if frontend_url and frontend_url not in origins:
+        # CSRF trusted origins should be full URLs with scheme
+        if not frontend_url.startswith('http'):
+            frontend_url = f"https://{frontend_url}"
+        origins.append(frontend_url)
+    
+    # Add Railway public domain
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if railway_domain:
+        origins.append(f"https://{railway_domain}")
+    
+    # Add custom CSRF origins from environment variable (comma-separated)
+    csrf_origins_env = config('CSRF_ORIGINS', default='')
+    if csrf_origins_env:
+        env_origins = [origin.strip() for origin in csrf_origins_env.split(',') if origin.strip()]
+        origins.extend(env_origins)
+    
+    return list(set(origins))  # Remove duplicates
+
+# Set CSRF_TRUSTED_ORIGINS for Django
+CSRF_TRUSTED_ORIGINS = get_csrf_origins()
 
 # Allow CORS from Railway subdomains when in Railway environment
 if IS_RAILWAY:
