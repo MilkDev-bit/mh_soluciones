@@ -27,13 +27,13 @@ def health_check(request):
     return JsonResponse({'status': 'healthy'}, status=200)
 
 urlpatterns = [
-    # Vista raíz de la API
+    # API root view
     path('', api_root, name='root'),
     
-    # Favicon (evita 502)
+    # Favicon (prevents 502)
     path('favicon.ico', favicon, name='favicon'),
     
-    # Rutas existentes
+    # Existing routes
     path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/v1/', include('config.api_urls')),

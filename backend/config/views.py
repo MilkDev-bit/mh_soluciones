@@ -5,8 +5,8 @@ from django.views.decorators.http import require_http_methods
 @require_http_methods(["GET"])
 def api_root(request):
     """
-    Vista raíz de la API.
-    Proporciona información básica sobre la API y enlaces a endpoints principales.
+    API root view.
+    Provides basic API information and links to main endpoints.
     """
     return JsonResponse({
         "message": "MH Soluciones Empresariales API",
@@ -24,7 +24,7 @@ def api_root(request):
 @require_http_methods(["GET"])
 def favicon(request):
     """
-    Vista para favicon.ico - evita 502 en requests del navegador.
-    Devuelve 204 No Content.
+    Favicon view - prevents 502 errors on browser requests.
+    Returns 204 No Content.
     """
     return HttpResponse(status=204)
