@@ -229,10 +229,20 @@ cat /etc/nginx/conf.d/default.conf
 echo "----------------------------------------"
 
 echo "🔍 Testing nginx configuration syntax..."
-if ! nginx -t 2>&1; then
-    echo "❌ ERROR: nginx configuration test failed!"
+echo "📝 Running: nginx -t"
+NGINX_TEST_OUTPUT=$(nginx -t 2>&1)
+NGINX_TEST_EXIT=$?
+
+echo "📋 Nginx test output:"
+echo "$NGINX_TEST_OUTPUT"
+echo "📊 Nginx test exit code: $NGINX_TEST_EXIT"
+
+if [ $NGINX_TEST_EXIT -ne 0 ]; then
+    echo "❌ ERROR: nginx configuration test failed with exit code $NGINX_TEST_EXIT"
     echo "Configuration file contents:"
     cat /etc/nginx/conf.d/default.conf
+    echo "Full nginx test output:"
+    echo "$NGINX_TEST_OUTPUT"
     exit 1
 fi
 
