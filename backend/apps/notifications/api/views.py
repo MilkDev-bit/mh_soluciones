@@ -42,7 +42,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Obtener el número de notificaciones no leídas
         """
-        count = self.get_queryset().filter(is_read=False).count()
+        # Get base queryset without limit to avoid "Cannot filter a query once a slice has been taken" error
+        count = request.user.notifications.filter(is_read=False).count()
         return Response({'unread_count': count})
 
     @action(detail=False, methods=['post'])
@@ -50,7 +51,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Marcar todas las notificaciones como leídas
         """
-        updated_count = self.get_queryset().filter(is_read=False).update(is_read=True)
+        # Get base queryset without limit to avoid "Cannot filter a query once a slice has been taken" error
+        updated_count = request.user.notifications.filter(is_read=False).update(is_read=True)
         return Response({'marked_read': updated_count})
 
     @action(detail=True, methods=['post'])
