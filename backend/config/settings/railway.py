@@ -18,15 +18,26 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '.railway.app',
+    '.railway.internal',  # Railway private networking
+    'backend.railway.internal',  # Legacy format
 ]
 
+# Add Railway public domain
 if RAILWAY_PUBLIC_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
+
+# Add Railway private domain (new format: backend-production-xxx.railway.internal)
+RAILWAY_PRIVATE_DOMAIN = os.environ.get('RAILWAY_PRIVATE_DOMAIN', '')
+if RAILWAY_PRIVATE_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PRIVATE_DOMAIN)
 
 # Parse ALLOWED_HOSTS from environment if provided
 env_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
 if env_allowed_hosts:
     ALLOWED_HOSTS.extend([h.strip() for h in env_allowed_hosts.split(',') if h.strip()])
+
+# Remove duplicates while preserving order
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 
 # CORS settings for Railway
 CORS_ALLOWED_ORIGINS = [

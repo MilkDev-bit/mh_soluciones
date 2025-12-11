@@ -16,6 +16,9 @@ def get_allowed_hosts():
         'mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com',
         'localhost',
         '127.0.0.1',
+        '.railway.app',           # Railway public domains
+        '.railway.internal',      # Railway private networking
+        'backend.railway.internal',  # Specific backend internal domain
         '.us-east-2.elb.amazonaws.com',
         '.compute.internal',              
         '.ec2.internal',                  
