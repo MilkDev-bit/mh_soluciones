@@ -57,7 +57,7 @@ if [ -z "$BACKEND_ORIGIN" ]; then
 fi
 
 echo "📍 Derived BACKEND_ORIGIN from VITE_API_URL_BASE: $BACKEND_ORIGIN"
-echo "📍 Backend proxy will forward to: https://$BACKEND_ORIGIN"
+echo "📍 Backend proxy will forward to Railway private network: http://backend.railway.internal:8080"
 
 echo "📍 Configuring nginx to listen on port $PORT"
 echo "📍 nginx will bind to 0.0.0.0:$PORT and [::]:$PORT"
@@ -137,7 +137,7 @@ server {
     # Frontend code uses relative URLs like '/api/v1/auth/login'
     # This prevents exposing the backend domain in client code
     location /api/ {
-        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/api/;
+        proxy_pass http://backend.railway.internal:8080/api/;
         
         # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
         proxy_set_header Host $host;
@@ -161,7 +161,7 @@ server {
     # Proxies /media/* requests to the backend service
     # Allows serving user-uploaded files through the frontend domain
     location /media/ {
-        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/media/;
+        proxy_pass http://backend.railway.internal:8080/media/;
         
         # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
         proxy_set_header Host $host;
