@@ -17,6 +17,7 @@
   },
   "env": {
     "PORT": "8080",
-    "FRONTEND_URL": "https://${{mh_soluciones.RAILWAY_PUBLIC_DOMAIN}}"
+    "FRONTEND_URL": "https://${{Frontend.RAILWAY_PUBLIC_DOMAIN}}",
+    "RAILWAY_PUBLIC_DOMAIN": "${{RAILWAY_PUBLIC_DOMAIN}}"
   }
 }
