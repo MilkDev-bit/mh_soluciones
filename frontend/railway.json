@@ -16,8 +16,6 @@
     "restartPolicyMaxRetries": 3
   },
   "env": {
-    "PORT": "8080",
-    "BACKEND_ORIGIN": "${{Backend.RAILWAY_PUBLIC_DOMAIN}}",
-    "RAILWAY_PUBLIC_DOMAIN": "${{RAILWAY_PUBLIC_DOMAIN}}"
+    "VITE_API_URL_BASE": "https://${{Backend.RAILWAY_PUBLIC_DOMAIN}}/api/v1"
   }
 }

@@ -8,7 +8,7 @@ set -x
 echo "🚀 Starting Frontend..."
 echo "🔍 Environment Detection:"
 echo "   - PORT: ${PORT:-8080}"
-echo "   - BACKEND_ORIGIN: ${BACKEND_ORIGIN:-not set}"
+echo "   - VITE_API_URL_BASE: ${VITE_API_URL_BASE:-not set}"
 echo "   - RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
 echo "   - RAILWAY_SERVICE_NAME: ${RAILWAY_SERVICE_NAME:-not set}"
 echo "   - PWD: $(pwd)"
@@ -36,14 +36,27 @@ echo "✅ Pre-flight checks passed"
 # Get PORT from environment or default to 8080 (matches Railway configuration)
 PORT="${PORT:-8080}"
 
-# Validate BACKEND_ORIGIN is set (required for proxy configuration)
-if [ -z "$BACKEND_ORIGIN" ]; then
-    echo "❌ ERROR: BACKEND_ORIGIN environment variable is not set!"
-    echo "   This variable should reference the backend service domain"
-    echo "   Example: BACKEND_ORIGIN=\${Backend.RAILWAY_PUBLIC_DOMAIN}"
+# Derive BACKEND_ORIGIN from VITE_API_URL_BASE
+# VITE_API_URL_BASE format: https://backend-domain/api/v1
+# We need to extract: backend-domain (without the /api/v1 part)
+if [ -z "$VITE_API_URL_BASE" ]; then
+    echo "❌ ERROR: VITE_API_URL_BASE environment variable is not set!"
+    echo "   This variable should contain the backend API URL"
+    echo "   Example: VITE_API_URL_BASE=https://backend.railway.app/api/v1"
     exit 1
 fi
 
+# Extract backend domain from VITE_API_URL_BASE
+# Remove protocol (https:// or http://) and everything after the first /
+BACKEND_ORIGIN=$(echo "$VITE_API_URL_BASE" | sed 's|^https\?://\([^/]*\).*|\1|')
+
+if [ -z "$BACKEND_ORIGIN" ]; then
+    echo "❌ ERROR: Could not extract BACKEND_ORIGIN from VITE_API_URL_BASE"
+    echo "   VITE_API_URL_BASE: $VITE_API_URL_BASE"
+    exit 1
+fi
+
+echo "📍 Derived BACKEND_ORIGIN from VITE_API_URL_BASE: $BACKEND_ORIGIN"
 echo "📍 Backend proxy will forward to: https://$BACKEND_ORIGIN"
 
 echo "📍 Configuring nginx to listen on port $PORT"
@@ -124,10 +137,10 @@ server {
     # Frontend code uses relative URLs like '/api/v1/auth/login'
     # This prevents exposing the backend domain in client code
     location /api/ {
-        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER;
+        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/api/;
         
-        # Forward original request headers
-        proxy_set_header Host $host;
+        # Forward the original Host header to the backend
+        proxy_set_header Host BACKEND_ORIGIN_PLACEHOLDER;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -147,10 +160,10 @@ server {
     # Proxies /media/* requests to the backend service
     # Allows serving user-uploaded files through the frontend domain
     location /media/ {
-        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER;
+        proxy_pass https://BACKEND_ORIGIN_PLACEHOLDER/media/;
         
-        # Forward original request headers
-        proxy_set_header Host $host;
+        # Forward the original Host header to the backend
+        proxy_set_header Host BACKEND_ORIGIN_PLACEHOLDER;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
