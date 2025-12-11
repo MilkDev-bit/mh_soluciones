@@ -101,7 +101,7 @@ server {
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/rss+xml application/json application/javascript;
     
     # ===========================================================================
     # API PROXY - Routes /api/* to backend service via Railway private network
@@ -115,6 +115,7 @@ server {
         proxy_pass http://backend.railway.internal:8080/api/;
         
         # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
+        # Note: Headers are duplicated between /api/ and /media/ for clarity and independence
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
