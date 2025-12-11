@@ -39,45 +39,11 @@ def get_allowed_hosts():
 
 ALLOWED_HOSTS = get_allowed_hosts()
 
-# CORS Configuration - Base origins plus optional environment variable
-def get_cors_origins():
-    """Get CORS allowed origins from base list and environment variable"""
-    base_origins = [
-        'https://app.mhsolucionesempresariales.com',
-        'https://mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com',
-        'http://localhost:3000',
-        'http://localhost:5173',
-    ]
-    
-    # Add origins from environment variable if present
-    cors_origins_env = os.environ.get('CORS_ORIGINS', '')
-    if cors_origins_env:
-        env_origins = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
-        base_origins.extend(env_origins)
-    
-    return list(set(base_origins))  # Remove duplicates
-
-CORS_ALLOWED_ORIGINS = get_cors_origins()
+# CORS and CSRF configurations are now handled in base.py
+# They support CORS_ORIGINS and CSRF_ORIGINS environment variables
+# No duplication needed here - base.py handles it
 
 CORS_ALLOW_ALL_ORIGINS = False
-
-# CSRF Configuration - Base origins plus optional environment variable
-def get_csrf_origins():
-    """Get CSRF trusted origins from base list and environment variable"""
-    base_origins = [
-        'https://app.mhsolucionesempresariales.com',
-        'https://mh-soluciones-alb-nuevo-473372556.us-east-2.elb.amazonaws.com',
-    ]
-    
-    # Add origins from environment variable if present
-    csrf_origins_env = os.environ.get('CSRF_ORIGINS', '')
-    if csrf_origins_env:
-        env_origins = [origin.strip() for origin in csrf_origins_env.split(',') if origin.strip()]
-        base_origins.extend(env_origins)
-    
-    return list(set(base_origins))  # Remove duplicates
-
-CSRF_TRUSTED_ORIGINS = get_csrf_origins()
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False
@@ -91,7 +57,5 @@ CSRF_COOKIE_SECURE = True
 print("=" * 60)
 print("✅ CONFIGURACIÓN SEGURA Y DEFINITIVA")
 print(f"✅ ALLOWED_HOSTS: {len(ALLOWED_HOSTS)} hosts específicos")
-print(f"✅ CORS_ALLOWED_ORIGINS: {len(CORS_ALLOWED_ORIGINS)} orígenes")
-print(f"✅ CSRF_TRUSTED_ORIGINS: {len(CSRF_TRUSTED_ORIGINS)} orígenes")
 print(f"❌ SIN RANGOS CIDR (Django no los soporta)")
 print("=" * 60)
