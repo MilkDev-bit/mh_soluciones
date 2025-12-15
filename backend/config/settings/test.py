@@ -14,20 +14,10 @@ DATABASES = {
 # Disable debug for tests
 DEBUG = False
 
-# Use a simpler password hasher for faster tests
+# Use a faster password hasher for tests (but still secure)
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.MD5PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 ]
-
-# Disable migrations for faster tests
-class DisableMigrations:
-    def __contains__(self, item):
-        return True
-    
-    def __getitem__(self, item):
-        return None
-
-# MIGRATION_MODULES = DisableMigrations()
 
 # Set required secret key for tests
 SECRET_KEY = 'test-secret-key-for-testing-only'
