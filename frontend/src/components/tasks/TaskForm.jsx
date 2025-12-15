@@ -166,9 +166,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           formData.append('assigned_students', studentId);
         });
         
-        if (data.status) {
-          formData.append('status', data.status);
-        }
+        // Set status with default to PENDING if not provided
+        formData.append('status', data.status || 'PENDING');
         taskData = formData;
       } else {
         taskData = {
@@ -183,6 +182,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
           assigned_students: assignedStudentsList,
+          status: data.status || 'PENDING',  // Set default status to PENDING
         };
         
         // Remove attachment field completely if it's empty or an empty object
@@ -461,27 +461,26 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         </div>
       </div>
 
-      {isEditMode && (
-        <div className="form-section">
-          <h3 className="form-section-title">Estado</h3>
-          
-          <div className="form-group">
-            <label className="form-label" htmlFor="status">Estado de la Tarea</label>
-            <select id="status" className="form-select" {...register('status')}>
-              <option value="DRAFT">Borrador</option>
-              <option value="OPEN">Abierta</option>
-              <option value="IN_REVIEW">En Revisión</option>
-              <option value="CLOSED">Cerrada</option>
-              <option value="REOPENED">Reabierta</option>
-              {/* Legacy statuses */}
-              <option value="PENDING">Pendiente</option>
-              <option value="IN_PROGRESS">En Progreso</option>
-              <option value="FOR_REVIEW">En Revisión</option>
-              <option value="COMPLETED">Completada</option>
-            </select>
-          </div>
+      <div className="form-section">
+        <h3 className="form-section-title">Estado</h3>
+        
+        <div className="form-group">
+          <label className="form-label" htmlFor="status">Estado de la Tarea</label>
+          <select id="status" className="form-select" {...register('status')} defaultValue="PENDING">
+            {/* Legacy statuses - most commonly used */}
+            <option value="PENDING">Pendiente</option>
+            <option value="IN_PROGRESS">En Progreso</option>
+            <option value="FOR_REVIEW">Para Revisión</option>
+            <option value="COMPLETED">Completada</option>
+            {/* New statuses */}
+            <option value="DRAFT">Borrador</option>
+            <option value="OPEN">Abierta</option>
+            <option value="IN_REVIEW">En Revisión</option>
+            <option value="CLOSED">Cerrada</option>
+            <option value="REOPENED">Reabierta</option>
+          </select>
         </div>
-      )}
+      </div>
       
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
