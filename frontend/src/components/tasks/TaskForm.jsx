@@ -103,6 +103,12 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         const openDate = new Date(data.open_date);
         const closeDate = new Date(data.close_date);
         
+        // Check if dates are valid
+        if (isNaN(openDate.getTime()) || isNaN(closeDate.getTime())) {
+          toast.error('❌ Las fechas proporcionadas no son válidas');
+          return;
+        }
+        
         if (closeDate <= openDate) {
           toast.error('❌ La fecha de cierre debe ser posterior a la fecha de apertura');
           return;
@@ -170,22 +176,23 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       let errorMessage = 'No se pudo guardar la tarea.';
       
       if (error.response?.data) {
+        const responseData = error.response.data;
         // Handle validation errors from DRF (can be object with field names)
-        if (typeof error.response.data === 'object' && !Array.isArray(error.response.data)) {
-          const errors = Object.entries(error.response.data)
+        if (typeof responseData === 'object' && !Array.isArray(responseData)) {
+          const errors = Object.entries(responseData)
             .map(([field, messages]) => {
               const fieldName = field === 'non_field_errors' ? '' : `${field}: `;
               const message = Array.isArray(messages) ? messages.join(', ') : messages;
               return `${fieldName}${message}`;
             })
             .join('\n');
-          errorMessage = errors;
-        } else if (error.response.data.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
+          errorMessage = errors || errorMessage;
+        } else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (typeof responseData === 'string') {
+          errorMessage = responseData;
         }
       }
       
