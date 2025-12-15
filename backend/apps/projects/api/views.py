@@ -237,12 +237,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
             
             # Get students who are members of the project
             try:
+                # project.members returns CustomUser objects (not ProjectMember)
+                # Filter directly on CustomUser.role field
                 project_member_student_ids = project.members.filter(
-                    user__role='STUDENT'
-                ).values_list('user__id', flat=True).distinct()
-            except (AttributeError, ValueError) as e:
-                # project is already defined, so safe to use project.id
-                logger.warning(f"Error al obtener miembros estudiantes del proyecto {project.id}: {str(e)}")
+                    role='STUDENT'
+                ).values_list('id', flat=True).distinct()
+            except Exception as e:
+                logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
                 project_member_student_ids = []
             
             # Combine all sets of student IDs efficiently
