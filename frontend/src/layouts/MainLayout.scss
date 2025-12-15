@@ -10,6 +10,7 @@
   &.sidebar-collapsed {
     .sidebar {
       transform: translateX(-100%);
+
       
       @media (min-width: $breakpoint-lg) {
         transform: translateX(0);
