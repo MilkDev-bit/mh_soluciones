@@ -113,6 +113,20 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
       }
 
+      // Helper function to build assigned students list including assigned_to user
+      const buildAssignedStudentsList = (assignedStudents, assignedUserId) => {
+        const studentsList = assignedStudents && Array.isArray(assignedStudents) 
+          ? [...assignedStudents] 
+          : [];
+        
+        // Add assigned_to to assigned_students if not already included
+        if (assignedUserId && !studentsList.includes(assignedUserId)) {
+          studentsList.push(assignedUserId);
+        }
+        
+        return studentsList;
+      };
+
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
@@ -125,6 +139,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                      fileInput.files[0] instanceof File;
       
       const assignedUserId = data.assigned_to ? parseInt(data.assigned_to) : null;
+      const assignedStudentsList = buildAssignedStudentsList(data.assigned_students, assignedUserId);
       
       if (hasFile) {
         const formData = new FormData();
@@ -141,16 +156,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', fileInput.files[0]);
         
-        // Handle assigned_students: include existing students + assigned_to user
-        const assignedStudentsList = data.assigned_students && Array.isArray(data.assigned_students) 
-          ? data.assigned_students 
-          : [];
-        
-        // Add assigned_to to assigned_students if not already included
-        if (assignedUserId && !assignedStudentsList.includes(assignedUserId)) {
-          assignedStudentsList.push(assignedUserId);
-        }
-        
         assignedStudentsList.forEach(studentId => {
           formData.append('assigned_students', studentId);
         });
@@ -160,16 +165,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
         taskData = formData;
       } else {
-        // Build assigned_students array: include existing students + assigned_to user
-        let assignedStudentsList = data.assigned_students && Array.isArray(data.assigned_students) 
-          ? [...data.assigned_students] 
-          : [];
-        
-        // Add assigned_to to assigned_students if not already included
-        if (assignedUserId && !assignedStudentsList.includes(assignedUserId)) {
-          assignedStudentsList.push(assignedUserId);
-        }
-        
         taskData = {
           ...data,
           project: project.id,
