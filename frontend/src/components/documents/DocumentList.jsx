@@ -8,6 +8,7 @@ const DocumentList = ({ documents, onDeleteDocument, canDelete = false }) => {
     window.open(document.file, '_blank');
   };
 
+  
   const handleDelete = (documentId) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este documento?')) {
       onDeleteDocument(documentId);
