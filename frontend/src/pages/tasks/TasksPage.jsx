@@ -53,9 +53,27 @@ const TasksPage = () => {
 
       // For students, additionally filter to only show their assigned tasks
       if (userData.role === 'STUDENT') {
-        filteredTasks = filteredTasks.filter(task => 
-          task.assigned_to?.id === userData.id
-        );
+        console.log(`[TasksPage] Filtering tasks for student: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
+        console.log(`[TasksPage] Total tasks before filter: ${filteredTasks.length}`);
+        
+        filteredTasks = filteredTasks.filter(task => {
+          // Check if assigned via assigned_to field
+          const isAssignedTo = task.assigned_to?.id === userData.id;
+          
+          // Check if assigned via assigned_students_data array
+          const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
+            task.assigned_students_data.some(student => student.id === userData.id);
+          
+          const isAssigned = isAssignedTo || isInAssignedStudents;
+          
+          if (isAssigned) {
+            console.log(`[TasksPage] ✓ Task "${task.title}" (ID: ${task.id}) - assigned_to: ${isAssignedTo}, in assigned_students: ${isInAssignedStudents}`);
+          }
+          
+          return isAssigned;
+        });
+        
+        console.log(`[TasksPage] Total tasks after filter: ${filteredTasks.length}`);
       }
 
       setTasks(filteredTasks);
