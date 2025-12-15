@@ -182,11 +182,11 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           const errors = Object.entries(responseData)
             .map(([field, messages]) => {
               const fieldName = field === 'non_field_errors' ? '' : `${field}: `;
-              const message = Array.isArray(messages) ? messages.join(', ') : messages;
+              const message = Array.isArray(messages) ? messages.join(', ') : String(messages || '');
               return `${fieldName}${message}`;
             })
             .join('\n');
-          errorMessage = errors || errorMessage;
+          errorMessage = errors.length > 0 ? errors : errorMessage;
         } else if (responseData.detail) {
           errorMessage = responseData.detail;
         } else if (responseData.message) {
