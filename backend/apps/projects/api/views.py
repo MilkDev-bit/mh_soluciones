@@ -241,7 +241,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     user__role='STUDENT'
                 ).values_list('user__id', flat=True).distinct()
             except Exception as e:
-                logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
+                logger.warning(f"Error al obtener miembros estudiantes del proyecto {project.id}: {str(e)}")
                 project_member_student_ids = []
             
             # Combine all sets of student IDs efficiently
@@ -320,7 +320,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Re-raise permission errors
             raise
         except Exception as e:
-            logger.error(f"Error inesperado en student_performance para proyecto {pk}: {str(e)}", exc_info=True)
+            logger.error(f"Error inesperado en student_performance para proyecto {project.id if 'project' in locals() else pk}: {str(e)}", exc_info=True)
             return Response({
                 'error': f'Error al obtener desempeño de estudiantes: {str(e)}',
                 'students': [],
