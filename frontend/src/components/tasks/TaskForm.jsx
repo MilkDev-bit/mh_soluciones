@@ -115,9 +115,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
-      // Check if there's a real file selected
+      // More robust file detection that works with react-hook-form
+      // react-hook-form may return a FileList, FileList-like object, or plain object
       const hasFile = data.attachment && 
-                     data.attachment instanceof FileList && 
                      data.attachment.length > 0 && 
                      data.attachment[0] instanceof File;
       
