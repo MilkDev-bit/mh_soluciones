@@ -9,6 +9,7 @@ from .models import Task
 
 User = get_user_model()
 
+
 @receiver(post_save, sender=Task)
 def create_task_assignment_notification(sender, instance, created, **kwargs):
     """
