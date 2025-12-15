@@ -53,8 +53,10 @@ const TasksPage = () => {
 
       // For students, additionally filter to only show their assigned tasks
       if (userData.role === 'STUDENT') {
-        console.log(`[TasksPage] Filtering tasks for student: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
-        console.log(`[TasksPage] Total tasks before filter: ${filteredTasks.length}`);
+        if (import.meta.env.DEV) {
+          console.log(`[TasksPage] Filtering tasks for student: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
+          console.log(`[TasksPage] Total tasks before filter: ${filteredTasks.length}`);
+        }
         
         filteredTasks = filteredTasks.filter(task => {
           // Check if assigned via assigned_to field
@@ -66,14 +68,16 @@ const TasksPage = () => {
           
           const isAssigned = isAssignedTo || isInAssignedStudents;
           
-          if (isAssigned) {
+          if (import.meta.env.DEV && isAssigned) {
             console.log(`[TasksPage] ✓ Task "${task.title}" (ID: ${task.id}) - assigned_to: ${isAssignedTo}, in assigned_students: ${isInAssignedStudents}`);
           }
           
           return isAssigned;
         });
         
-        console.log(`[TasksPage] Total tasks after filter: ${filteredTasks.length}`);
+        if (import.meta.env.DEV) {
+          console.log(`[TasksPage] Total tasks after filter: ${filteredTasks.length}`);
+        }
       }
 
       setTasks(filteredTasks);
