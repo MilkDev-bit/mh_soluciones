@@ -241,10 +241,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     user__role='STUDENT'
                 ).values_list('user__id', flat=True).distinct()
             except (AttributeError, ValueError) as e:
-                try:
-                    logger.warning(f"Error al obtener miembros estudiantes del proyecto {project.id}: {str(e)}")
-                except (NameError, AttributeError):
-                    logger.warning(f"Error al obtener miembros estudiantes del proyecto: {str(e)}")
+                # project is already defined, so safe to use project.id
+                logger.warning(f"Error al obtener miembros estudiantes del proyecto {project.id}: {str(e)}")
                 project_member_student_ids = []
             
             # Combine all sets of student IDs efficiently
