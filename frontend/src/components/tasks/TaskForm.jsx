@@ -187,7 +187,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
               const message = Array.isArray(messages) ? messages.join(', ') : String(messages || '');
               return `${fieldName}${message}`;
             })
-            .filter(msg => msg.trim().length > 0);
+            .filter(msg => msg.trim());
           
           errorMessage = errors.length > 0 ? errors.join('\n') : errorMessage;
         } else if (responseData.detail) {
