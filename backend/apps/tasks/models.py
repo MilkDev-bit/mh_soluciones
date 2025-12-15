@@ -5,6 +5,7 @@ from apps.core.models import TimeStampedModel
 from apps.projects.models import Project
 from apps.core.utils import get_document_upload_path
 
+
 class Task(TimeStampedModel):
     """
     Representa una tarea específica dentro de un proyecto.
