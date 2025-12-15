@@ -147,9 +147,13 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
         close_date = data.get('close_date', getattr(self.instance, 'close_date', None))
         
         if open_date and close_date and close_date <= open_date:
-            raise serializers.ValidationError(
-                "La fecha de cierre debe ser posterior a la fecha de apertura."
-            )
+            raise serializers.ValidationError({
+                "non_field_errors": ["La fecha de cierre debe ser posterior a la fecha de apertura."]
+            })
+        
+        # Ensure assigned_students exists (empty list by default)
+        if 'assigned_students' not in data:
+            data['assigned_students'] = []
         
         return data
 
