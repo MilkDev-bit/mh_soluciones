@@ -12,6 +12,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   const [selectedMember, setSelectedMember] = useState(null);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const isEditMode = Boolean(task);
 
   const assignedToValue = watch('assigned_to');
@@ -115,11 +116,13 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
-      // More robust file detection that works with react-hook-form
-      // react-hook-form may return a FileList, FileList-like object, or plain object
-      const hasFile = data.attachment && 
-                     data.attachment.length > 0 && 
-                     data.attachment[0] instanceof File;
+      // Access file directly from DOM instead of relying on react-hook-form
+      // react-hook-form has known issues with file inputs
+      const fileInput = fileInputRef.current;
+      const hasFile = fileInput && 
+                     fileInput.files && 
+                     fileInput.files.length > 0 && 
+                     fileInput.files[0] instanceof File;
       
       if (hasFile) {
         const formData = new FormData();
@@ -134,7 +137,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('allow_late_submissions', data.allow_late_submissions || false);
         formData.append('accept_after_close', data.accept_after_close || false);
         formData.append('days_after_close', data.days_after_close || 0);
-        formData.append('attachment', data.attachment[0]);
+        formData.append('attachment', fileInput.files[0]);
         
         if (data.assigned_students && Array.isArray(data.assigned_students) && data.assigned_students.length > 0) {
           data.assigned_students.forEach(studentId => {
@@ -424,6 +427,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         <div className="form-group">
           <label className="form-label" htmlFor="attachment">Archivo Adjunto</label>
           <input 
+            ref={fileInputRef}
             id="attachment" 
             type="file" 
             className="form-input file-input" 
