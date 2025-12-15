@@ -218,99 +218,114 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Shows on-time vs late submissions for students (STUDENT role) in the project.
         Accessible by admins and CLIENT role (if they are the project client).
         """
-        project = self.get_object()
-        user = request.user
-        
-        # Validate CLIENT access
-        self._validate_client_access(user, project)
-        
-        # Get all students assigned to tasks in this project
-        student_ids = project.tasks.filter(
-            assigned_students__role='STUDENT'
-        ).values_list('assigned_students__id', flat=True).distinct()
-        
-        # Also get students assigned to individual tasks
-        individual_student_ids = project.tasks.filter(
-            assigned_to__role='STUDENT'
-        ).values_list('assigned_to__id', flat=True).distinct()
-        
-        # Get students who are members of the project
-        project_member_student_ids = project.members.filter(
-            user__role='STUDENT'
-        ).values_list('user__id', flat=True).distinct()
-
-        # Combine all sets of student IDs efficiently
-        all_student_ids = set(student_ids) | set(individual_student_ids) | set(project_member_student_ids)
-        
-        if not all_student_ids:
-            return Response({
-                'students': [],
-                'message': 'No hay estudiantes asignados a este proyecto'
-            }, status=status.HTTP_200_OK)
-        
-        students_data = []
-        
-        for student_id in all_student_ids:
+        try:
+            project = self.get_object()
+            user = request.user
+            
+            # Validate CLIENT access
+            self._validate_client_access(user, project)
+            
+            # Get all students assigned to tasks in this project
+            student_ids = project.tasks.filter(
+                assigned_students__role='STUDENT'
+            ).values_list('assigned_students__id', flat=True).distinct()
+            
+            # Also get students assigned to individual tasks
+            individual_student_ids = project.tasks.filter(
+                assigned_to__role='STUDENT'
+            ).values_list('assigned_to__id', flat=True).distinct()
+            
+            # Get students who are members of the project
             try:
-                student = CustomUser.objects.get(id=student_id, role='STUDENT')
-            except CustomUser.DoesNotExist:
-                continue
+                project_member_student_ids = project.members.filter(
+                    user__role='STUDENT'
+                ).values_list('user__id', flat=True).distinct()
+            except Exception as e:
+                logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
+                project_member_student_ids = []
             
-            # Get all submissions for this student in this project
-            submissions = TaskSubmission.objects.filter(
-                task__project=project,
-                submitted_by=student
-            ).select_related('task')
+            # Combine all sets of student IDs efficiently
+            all_student_ids = set(student_ids) | set(individual_student_ids) | set(project_member_student_ids)
             
-            total_submissions = submissions.count()
-            on_time_count = 0
-            late_count = 0
+            if not all_student_ids:
+                return Response({
+                    'students': [],
+                    'message': 'No hay estudiantes asignados a este proyecto'
+                }, status=status.HTTP_200_OK)
             
-            for submission in submissions:
-                task = submission.task
-                # Check if submission was on time
-                if task.due_date and submission.created_at:
-                    # Convert datetime to date for comparison if needed
-                    # created_at is a DateTimeField, so we need to extract the date
-                    if isinstance(submission.created_at, datetime):
-                        submission_date = submission.created_at.date()
-                    elif isinstance(submission.created_at, date):
-                        submission_date = submission.created_at
+            students_data = []
+            
+            for student_id in all_student_ids:
+                try:
+                    student = CustomUser.objects.get(id=student_id, role='STUDENT')
+                except CustomUser.DoesNotExist:
+                    logger.warning(f"Estudiante con ID {student_id} no encontrado o no tiene rol STUDENT")
+                    continue
+                
+                # Get all submissions for this student in this project
+                submissions = TaskSubmission.objects.filter(
+                    task__project=project,
+                    submitted_by=student
+                ).select_related('task')
+                
+                total_submissions = submissions.count()
+                on_time_count = 0
+                late_count = 0
+                
+                for submission in submissions:
+                    task = submission.task
+                    # Check if submission was on time
+                    if task.due_date and submission.created_at:
+                        # Convert datetime to date for comparison if needed
+                        if isinstance(submission.created_at, datetime):
+                            submission_date = submission.created_at.date()
+                        elif isinstance(submission.created_at, date):
+                            submission_date = submission.created_at
+                        else:
+                            continue
+                        
+                        # Compare dates (task.due_date is a DateField)
+                        if submission_date <= task.due_date:
+                            on_time_count += 1
+                        else:
+                            late_count += 1
                     else:
-                        # Skip if unable to determine date
-                        continue
-                    
-                    # Compare dates (task.due_date is a DateField)
-                    if submission_date <= task.due_date:
+                        # If no due date, count as on time
                         on_time_count += 1
-                    else:
-                        late_count += 1
-                else:
-                    # If no due date, count as on time
-                    on_time_count += 1
+                
+                # Calculate on-time percentage
+                on_time_percentage = 0
+                if total_submissions > 0:
+                    on_time_percentage = round((on_time_count / total_submissions) * 100)
+                
+                students_data.append({
+                    'id': student.id,
+                    'name': f"{student.first_name} {student.last_name}",
+                    'email': student.email,
+                    'total_submissions': total_submissions,
+                    'on_time_submissions': on_time_count,
+                    'late_submissions': late_count,
+                    'on_time_percentage': on_time_percentage
+                })
             
-            # Calculate on-time percentage
-            on_time_percentage = 0
-            if total_submissions > 0:
-                on_time_percentage = round((on_time_count / total_submissions) * 100)
+            # Sort by on_time_percentage descending
+            students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
             
-            students_data.append({
-                'id': student.id,
-                'name': f"{student.first_name} {student.last_name}",
-                'email': student.email,
-                'total_submissions': total_submissions,
-                'on_time_submissions': on_time_count,
-                'late_submissions': late_count,
-                'on_time_percentage': on_time_percentage
-            })
-        
-        # Sort by on_time_percentage descending
-        students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
-        
-        return Response({
-            'students': students_data,
-            'total_students': len(students_data)
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'students': students_data,
+                'total_students': len(students_data)
+            }, status=status.HTTP_200_OK)
+            
+        except PermissionDenied:
+            # Re-raise permission errors
+            raise
+        except Exception as e:
+            logger.error(f"Error inesperado en student_performance para proyecto {pk}: {str(e)}", exc_info=True)
+            return Response({
+                'error': f'Error al obtener desempeño de estudiantes: {str(e)}',
+                'students': [],
+                'total_students': 0
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'], url_path='drive-folder')
     def drive_folder(self, request, pk=None):

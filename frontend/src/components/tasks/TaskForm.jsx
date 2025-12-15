@@ -132,6 +132,14 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('accept_after_close', data.accept_after_close || false);
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', data.attachment[0]);
+        
+        // Add assigned_students field (empty array if not provided)
+        if (data.assigned_students && Array.isArray(data.assigned_students) && data.assigned_students.length > 0) {
+          data.assigned_students.forEach(studentId => {
+            formData.append('assigned_students', studentId);
+          });
+        }
+        
         if (data.status) {
           formData.append('status', data.status);
         }
@@ -148,6 +156,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
+          assigned_students: data.assigned_students || [],  // Add empty array by default
         };
         delete taskData.attachment; // Remove empty attachment field
       }
