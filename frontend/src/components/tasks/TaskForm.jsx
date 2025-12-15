@@ -180,24 +180,36 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       }
       
     } catch (error) {
-      console.error('Error completo al guardar tarea:', error);
-      console.error('Respuesta del error:', error.response?.data);
+      console.error('=== ERROR AL GUARDAR TAREA ===');
+      console.error('Error completo:', error);
+      console.error('Respuesta del servidor:', error.response?.data);
+      console.error('Status code:', error.response?.status);
+      console.error('Headers:', error.response?.headers);
       
       // Better error handling for DRF validation errors
       let errorMessage = 'No se pudo guardar la tarea.';
       
       if (error.response?.data) {
         const responseData = error.response.data;
+        
+        console.log('=== PROCESANDO ERROR ===');
+        console.log('Tipo de responseData:', typeof responseData);
+        console.log('Es array:', Array.isArray(responseData));
+        console.log('Contenido completo:', JSON.stringify(responseData, null, 2));
+        
         // Handle validation errors from DRF (can be object with field names)
         if (typeof responseData === 'object' && !Array.isArray(responseData)) {
           const errors = Object.entries(responseData)
             .map(([field, messages]) => {
               const fieldName = field === 'non_field_errors' ? '' : `${field}: `;
               const message = Array.isArray(messages) ? messages.join(', ') : String(messages || '');
+              console.log(`Campo: ${field}, Mensajes: ${messages}`);
               return `${fieldName}${message}`;
             })
-            .join('\n');
-          errorMessage = errors.length > 0 ? errors : errorMessage;
+            .filter(msg => msg.trim());
+          
+          console.log('Errores formateados:', errors);
+          errorMessage = errors.length > 0 ? errors.join('\n') : errorMessage;
         } else if (responseData.detail) {
           errorMessage = responseData.detail;
         } else if (responseData.message) {
@@ -207,7 +219,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
       }
       
-      toast.error(errorMessage);
+      console.error('Mensaje final de error:', errorMessage);
+      toast.error(errorMessage, { duration: 5000 });
     }
   };
 
