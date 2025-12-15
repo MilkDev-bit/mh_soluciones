@@ -234,8 +234,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
             assigned_to__role='STUDENT'
         ).values_list('assigned_to__id', flat=True).distinct()
         
-        # Combine both sets of student IDs efficiently
-        all_student_ids = set(student_ids) | set(individual_student_ids)
+        # Get students who are members of the project
+        project_member_student_ids = project.members.filter(
+            user__role='STUDENT'
+        ).values_list('user__id', flat=True).distinct()
+
+        # Combine all sets of student IDs efficiently
+        all_student_ids = set(student_ids) | set(individual_student_ids) | set(project_member_student_ids)
         
         if not all_student_ids:
             return Response({
