@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -81,9 +81,41 @@ class TaskViewSet(viewsets.ModelViewSet):
             return TaskReopenSerializer
         return TaskSerializer
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to add detailed logging for validation errors
+        """
+        try:
+            logger.info(f"=== CREATE TASK REQUEST ===")
+            logger.info(f"User: {request.user.username} (ID: {request.user.id}, Role: {request.user.role})")
+            logger.info(f"Request data: {request.data}")
+            logger.info(f"Request content type: {request.content_type}")
+            
+            # Call parent create method
+            return super().create(request, *args, **kwargs)
+            
+        except serializers.ValidationError as e:
+            logger.error(f"=== VALIDATION ERROR ===")
+            logger.error(f"Validation errors: {e.detail}")
+            logger.error(f"Request data that failed: {request.data}")
+            # Re-raise to return proper error response to client
+            raise
+            
+        except Exception as e:
+            logger.error(f"=== UNEXPECTED ERROR ===")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error message: {str(e)}")
+            logger.error(f"Request data: {request.data}")
+            logger.exception("Full traceback:")
+            raise
+
     def perform_create(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
+        
+        # ✅ NUEVO: Log request data for debugging
+        logger.info(f"Attempting to create task with data: {self.request.data}")
+        logger.info(f"User creating task: {self.request.user.username} (role: {self.request.user.role})")
         
         # Get validated data to check for assigned users
         validated_data = serializer.validated_data
@@ -91,6 +123,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         has_assigned_students = 'assigned_students' in validated_data and validated_data.get('assigned_students')
         
         task = serializer.save(created_by=self.request.user)
+        
+        logger.info(f"Task created successfully: {task.id} - {task.title}")
         
         # Send email notification if task is assigned
         if has_assigned_to or has_assigned_students:
