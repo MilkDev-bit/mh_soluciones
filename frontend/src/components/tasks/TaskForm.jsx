@@ -90,11 +90,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
 
   const onSubmit = async (data) => {
     try {
-      console.log('Datos del formulario:', data);
-      
       if (!project || !project.id) {
         toast.error('No se puede crear la tarea: proyecto no seleccionado');
-        console.error('Project no definido:', project);
         return;
       }
 
@@ -118,7 +115,13 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
-      if (data.attachment && data.attachment.length > 0 && data.attachment[0]) {
+      // Check if there's a real file selected
+      const hasFile = data.attachment && 
+                     data.attachment instanceof FileList && 
+                     data.attachment.length > 0 && 
+                     data.attachment[0] instanceof File;
+      
+      if (hasFile) {
         const formData = new FormData();
         formData.append('title', data.title);
         formData.append('description', data.description || '');
@@ -133,9 +136,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', data.attachment[0]);
         
-        // Add assigned_students field to FormData (only if array has items)
-        // Note: FormData and JSON handle empty arrays differently - FormData omits empty arrays
-        // while JSON always includes the field. This is intentional to match Django's expectations.
         if (data.assigned_students && Array.isArray(data.assigned_students) && data.assigned_students.length > 0) {
           data.assigned_students.forEach(studentId => {
             formData.append('assigned_students', studentId);
@@ -158,57 +158,37 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
-          assigned_students: data.assigned_students || [],  // Add empty array by default
+          assigned_students: data.assigned_students || [],
         };
-        delete taskData.attachment; // Remove empty attachment field
+        
+        // Remove attachment field completely if it's empty or an empty object
+        delete taskData.attachment;
       }
-      
-      console.log('Datos enviados al servidor:', taskData);
 
       const savedTask = isEditMode
         ? await updateTask(task.id, taskData)
         : await createTask(taskData);
 
-      console.log('Respuesta del servidor:', savedTask);
-
       if (onTaskSaved) {
         onTaskSaved(savedTask, isEditMode);
         toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada!');
-      } else {
-        console.error('onTaskSaved no está definido!');
-        toast.success('Operación completada, pero no se actualizó la lista');
       }
       
     } catch (error) {
-      console.error('=== ERROR AL GUARDAR TAREA ===');
-      console.error('Error completo:', error);
-      console.error('Respuesta del servidor:', error.response?.data);
-      console.error('Status code:', error.response?.status);
-      console.error('Headers:', error.response?.headers);
-      
-      // Better error handling for DRF validation errors
       let errorMessage = 'No se pudo guardar la tarea.';
       
       if (error.response?.data) {
         const responseData = error.response.data;
         
-        console.log('=== PROCESANDO ERROR ===');
-        console.log('Tipo de responseData:', typeof responseData);
-        console.log('Es array:', Array.isArray(responseData));
-        console.log('Contenido completo:', JSON.stringify(responseData, null, 2));
-        
-        // Handle validation errors from DRF (can be object with field names)
         if (typeof responseData === 'object' && !Array.isArray(responseData)) {
           const errors = Object.entries(responseData)
             .map(([field, messages]) => {
               const fieldName = field === 'non_field_errors' ? '' : `${field}: `;
               const message = Array.isArray(messages) ? messages.join(', ') : String(messages || '');
-              console.log(`Campo: ${field}, Mensajes: ${messages}`);
               return `${fieldName}${message}`;
             })
-            .filter(msg => msg.trim());
+            .filter(msg => msg.trim().length > 0);
           
-          console.log('Errores formateados:', errors);
           errorMessage = errors.length > 0 ? errors.join('\n') : errorMessage;
         } else if (responseData.detail) {
           errorMessage = responseData.detail;
@@ -219,7 +199,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
       }
       
-      console.error('Mensaje final de error:', errorMessage);
       toast.error(errorMessage, { duration: 5000 });
     }
   };

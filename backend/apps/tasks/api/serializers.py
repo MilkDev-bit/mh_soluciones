@@ -140,13 +140,8 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
         ]
     
     def validate(self, data):
-        logger.info(f"=== TASK SERIALIZER VALIDATION ===")
-        logger.info(f"Received data: {data}")
-        logger.info(f"User from context: {self.context.get('request').user if 'request' in self.context else 'No request in context'}")
-        
         user = self.context['request'].user
         if user.role not in TEACHER_ROLES:
-            logger.warning(f"Permission denied for user {user.username} with role {user.role}")
             raise serializers.ValidationError(
                 "No tienes permisos para crear o editar tareas."
             )
@@ -155,22 +150,15 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
         open_date = data.get('open_date', getattr(self.instance, 'open_date', None))
         close_date = data.get('close_date', getattr(self.instance, 'close_date', None))
         
-        logger.info(f"Date validation - open_date: {open_date}, close_date: {close_date}")
-        
         if open_date and close_date and close_date <= open_date:
-            logger.error(f"Date validation failed: close_date ({close_date}) <= open_date ({open_date})")
             raise serializers.ValidationError({
                 "non_field_errors": ["La fecha de cierre debe ser posterior a la fecha de apertura."]
             })
         
         # Ensure assigned_students exists (empty list by default)
         if 'assigned_students' not in data:
-            logger.info("assigned_students not in data, setting to empty list")
             data['assigned_students'] = []
-        else:
-            logger.info(f"assigned_students received: {data['assigned_students']}")
         
-        logger.info("Validation completed successfully")
         return data
 
 
