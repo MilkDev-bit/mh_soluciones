@@ -206,7 +206,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
               console.log(`Campo: ${field}, Mensajes: ${messages}`);
               return `${fieldName}${message}`;
             })
-            .filter(msg => msg.trim().length > 0);
+            .filter(msg => msg.trim());
           
           console.log('Errores formateados:', errors);
           errorMessage = errors.length > 0 ? errors.join('\n') : errorMessage;
