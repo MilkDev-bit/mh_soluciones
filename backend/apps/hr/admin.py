@@ -16,7 +16,6 @@ class EmployeeDocumentAdmin(admin.ModelAdmin):
     
     list_per_page = 25
 
-
 @admin.register(PerformanceReview)
 class PerformanceReviewAdmin(admin.ModelAdmin):
     """
