@@ -171,8 +171,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
 
       if (onTaskSaved) {
         onTaskSaved(savedTask, isEditMode);
-        toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada!');
       }
+      
+      toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada!');
       
     } catch (error) {
       let errorMessage = 'No se pudo guardar la tarea.';
