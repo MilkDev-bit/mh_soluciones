@@ -133,7 +133,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', data.attachment[0]);
         
-        // Add assigned_students field (empty array if not provided)
+        // Add assigned_students field to FormData (only if array has items)
+        // Note: FormData and JSON handle empty arrays differently - FormData omits empty arrays
+        // while JSON always includes the field. This is intentional to match Django's expectations.
         if (data.assigned_students && Array.isArray(data.assigned_students) && data.assigned_students.length > 0) {
           data.assigned_students.forEach(studentId => {
             formData.append('assigned_students', studentId);

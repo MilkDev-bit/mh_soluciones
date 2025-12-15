@@ -240,7 +240,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 project_member_student_ids = project.members.filter(
                     user__role='STUDENT'
                 ).values_list('user__id', flat=True).distinct()
-            except Exception as e:
+            except (AttributeError, ValueError) as e:
                 logger.warning(f"Error al obtener miembros estudiantes del proyecto {project.id}: {str(e)}")
                 project_member_student_ids = []
             
@@ -320,7 +320,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Re-raise permission errors
             raise
         except Exception as e:
-            logger.error(f"Error inesperado en student_performance para proyecto {project.id if 'project' in locals() else pk}: {str(e)}", exc_info=True)
+            # If project was retrieved, use its ID; otherwise use the pk parameter
+            project_id = project.id if 'project' in dir() else (pk if pk else 'unknown')
+            logger.error(f"Error inesperado en student_performance para proyecto {project_id}: {str(e)}", exc_info=True)
             return Response({
                 'error': f'Error al obtener desempeño de estudiantes: {str(e)}',
                 'students': [],
