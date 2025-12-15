@@ -59,16 +59,26 @@ class TaskViewSet(viewsets.ModelViewSet):
                 base_queryset = Task.objects.all().select_related('project', 'assigned_to').prefetch_related('assigned_students')
             else:
                 # Students see only tasks assigned to them or their project tasks
+                # Using multiple conditions to ensure tasks are visible:
+                # 1. Student is a member of the project (through ProjectMember)
+                # 2. Task is directly assigned to the student
+                # 3. Student is in assigned_students field
+                # 4. Student created the task
                 base_queryset = Task.objects.filter(
-                    Q(project__members=user) |
-                    Q(assigned_to=user) |
-                    Q(assigned_students=user) |
-                    Q(created_by=user)
+                    Q(project__projectmember__user=user) |  # Student is member of project
+                    Q(assigned_to=user) |                    # Task assigned to student
+                    Q(assigned_students=user) |              # Student in assigned_students list
+                    Q(created_by=user)                       # Student created the task
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
+                
+                # Debug logging to help diagnose visibility issues
+                logger.info(f"Student {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
 
-        project_id = self.request.query_params.get('project', None)
+        project_id = getattr(self.request, 'query_params', self.request.GET).get('project', None)
         if project_id:
-            return base_queryset.filter(project_id=project_id)
+            filtered = base_queryset.filter(project_id=project_id)
+            logger.info(f"Filtered by project {project_id}: {filtered.count()} tasks (user: {user.username})")
+            return filtered
 
         return base_queryset
 
