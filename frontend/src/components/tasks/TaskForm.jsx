@@ -98,6 +98,17 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         return;
       }
 
+      // Validate dates on frontend before sending
+      if (data.open_date && data.close_date) {
+        const openDate = new Date(data.open_date);
+        const closeDate = new Date(data.close_date);
+        
+        if (closeDate <= openDate) {
+          toast.error('❌ La fecha de cierre debe ser posterior a la fecha de apertura');
+          return;
+        }
+      }
+
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
@@ -155,10 +166,28 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       console.error('Error completo al guardar tarea:', error);
       console.error('Respuesta del error:', error.response?.data);
       
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'No se pudo guardar la tarea.';
+      // Better error handling for DRF validation errors
+      let errorMessage = 'No se pudo guardar la tarea.';
+      
+      if (error.response?.data) {
+        // Handle validation errors from DRF (can be object with field names)
+        if (typeof error.response.data === 'object' && !Array.isArray(error.response.data)) {
+          const errors = Object.entries(error.response.data)
+            .map(([field, messages]) => {
+              const fieldName = field === 'non_field_errors' ? '' : `${field}: `;
+              const message = Array.isArray(messages) ? messages.join(', ') : messages;
+              return `${fieldName}${message}`;
+            })
+            .join('\n');
+          errorMessage = errors;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      }
       
       toast.error(errorMessage);
     }
