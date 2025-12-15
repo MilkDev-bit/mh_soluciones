@@ -321,10 +321,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Re-raise permission errors
             raise
         except Exception as e:
-            # Safely get project ID for logging
+            # Safely get project ID for logging (pk is a method parameter, always available)
             try:
                 project_id = project.id
             except (NameError, AttributeError):
+                # Fallback to pk parameter if project.id is not accessible
                 project_id = pk if pk else 'unknown'
             
             logger.error(f"Error inesperado en student_performance para proyecto {project_id}: {str(e)}", exc_info=True)
