@@ -113,6 +113,26 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
       }
 
+      // Helper function to build assigned students list including assigned_to user
+      /**
+       * Builds a list of assigned students, ensuring the assigned_to user is included.
+       * @param {number[]|undefined} assignedStudents - Array of student IDs already assigned to the task
+       * @param {number|null} assignedUserId - ID of the user assigned via assigned_to field
+       * @returns {number[]} Combined array of student IDs including the assigned_to user if specified
+       */
+      const buildAssignedStudentsList = (assignedStudents, assignedUserId) => {
+        const studentsList = assignedStudents && Array.isArray(assignedStudents) 
+          ? [...assignedStudents] 
+          : [];
+        
+        // Add assigned_to to assigned_students if not already included
+        if (assignedUserId && !studentsList.includes(assignedUserId)) {
+          studentsList.push(assignedUserId);
+        }
+        
+        return studentsList;
+      };
+
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
@@ -124,12 +144,15 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                      fileInput.files.length > 0 && 
                      fileInput.files[0] instanceof File;
       
+      const assignedUserId = data.assigned_to ? parseInt(data.assigned_to) : null;
+      const assignedStudentsList = buildAssignedStudentsList(data.assigned_students, assignedUserId);
+      
       if (hasFile) {
         const formData = new FormData();
         formData.append('title', data.title);
         formData.append('description', data.description || '');
         formData.append('project', project.id);
-        formData.append('assigned_to', data.assigned_to ? parseInt(data.assigned_to) : '');
+        formData.append('assigned_to', assignedUserId || '');
         formData.append('due_date', data.due_date || '');
         formData.append('open_date', data.open_date || '');
         formData.append('close_date', data.close_date || '');
@@ -139,11 +162,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', fileInput.files[0]);
         
-        if (data.assigned_students && Array.isArray(data.assigned_students) && data.assigned_students.length > 0) {
-          data.assigned_students.forEach(studentId => {
-            formData.append('assigned_students', studentId);
-          });
-        }
+        assignedStudentsList.forEach(studentId => {
+          formData.append('assigned_students', studentId);
+        });
         
         if (data.status) {
           formData.append('status', data.status);
@@ -153,7 +174,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         taskData = {
           ...data,
           project: project.id,
-          assigned_to: data.assigned_to ? parseInt(data.assigned_to) : null,
+          assigned_to: assignedUserId,
           due_date: data.due_date || null,
           open_date: data.open_date || null,
           close_date: data.close_date || null,
@@ -161,7 +182,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
-          assigned_students: data.assigned_students || [],
+          assigned_students: assignedStudentsList,
         };
         
         // Remove attachment field completely if it's empty or an empty object
