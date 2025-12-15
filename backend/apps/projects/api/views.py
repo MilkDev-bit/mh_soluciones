@@ -168,14 +168,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['get'], url_path='progress-stats')
+    @action(detail=True, methods=['get'], url_path='progress-stats', permission_classes=[permissions.IsAuthenticated])
     def progress_stats(self, request, pk=None):
         """
         Returns progress statistics for the project based on tasks.
+        Accessible to all authenticated users who are project members.
         Provides data for pie and bar charts showing project progress.
         Also includes submission count for informational purposes.
         """
         project = self.get_object()
+        user = request.user
+        
+        # Verify user is a project member (admins can access all projects)
+        if user.role not in ADMIN_ROLES:
+            is_member = ProjectMember.objects.filter(
+                project=project,
+                user=user
+            ).exists()
+            if not is_member:
+                raise PermissionDenied("No eres miembro de este proyecto.")
         tasks = project.tasks.all()
         submissions = project.submissions.all()
 
