@@ -49,3 +49,6 @@ db.sqlite3-journal
 .env
 .env.*
 node_modules/
+dist/
+.vite/
+build/
