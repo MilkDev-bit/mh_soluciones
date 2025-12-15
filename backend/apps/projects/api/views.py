@@ -238,8 +238,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             # Get students who are members of the project
             try:
                 from apps.authentication.models import CustomUser
-                # project.members is a ManyToManyField to CustomUser through ProjectMember
-                # So we filter directly on the role field of CustomUser
+                # project.members returns CustomUser objects (not ProjectMember)
+                # Filter directly on CustomUser.role field
                 project_member_student_ids = project.members.filter(
                     role='STUDENT'
                 ).values_list('id', flat=True).distinct()
