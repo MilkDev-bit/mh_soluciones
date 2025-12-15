@@ -114,6 +114,12 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       }
 
       // Helper function to build assigned students list including assigned_to user
+      /**
+       * Builds a list of assigned students, ensuring the assigned_to user is included.
+       * @param {number[]|undefined} assignedStudents - Array of student IDs already assigned to the task
+       * @param {number|null} assignedUserId - ID of the user assigned via assigned_to field
+       * @returns {number[]} Combined array of student IDs including the assigned_to user if specified
+       */
       const buildAssignedStudentsList = (assignedStudents, assignedUserId) => {
         const studentsList = assignedStudents && Array.isArray(assignedStudents) 
           ? [...assignedStudents] 
