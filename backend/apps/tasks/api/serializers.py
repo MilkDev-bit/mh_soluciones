@@ -106,7 +106,8 @@ class TaskSerializer(serializers.ModelSerializer):
             'id', 'title', 'status', 'status_display', 'priority', 
             'priority_display', 'due_date', 'assigned_to', 'project', 'project_name',
             'open_date', 'close_date', 'max_score', 'assigned_students', 
-            'assigned_students_data', 'allow_late_submissions', 'accept_after_close'
+            'assigned_students_data', 'allow_late_submissions', 'accept_after_close',
+            'created_at', 'updated_at'
         ]
 
 
