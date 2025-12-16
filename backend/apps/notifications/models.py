@@ -12,8 +12,17 @@ class Notification(TimeStampedModel):
     class NotificationType(models.TextChoices):
         INFO = 'INFO', _('Información')
         TASK_ASSIGNED = 'TASK_ASSIGNED', _('Tarea Asignada')
+        TASK_DUE = 'TASK_DUE', _('Tarea Próxima a Vencer')
+        TASK_OVERDUE = 'TASK_OVERDUE', _('Tarea Vencida')
+        TASK_COMPLETED = 'TASK_COMPLETED', _('Tarea Completada')
         PROJECT_UPDATE = 'PROJECT_UPDATE', _('Actualización de Proyecto')
         MENTION = 'MENTION', _('Mención')
+        COMMENT_REPLY = 'COMMENT_REPLY', _('Respuesta a Comentario')
+        FILE_UPLOADED = 'FILE_UPLOADED', _('Archivo Subido')
+        CALENDAR_EVENT = 'CALENDAR_EVENT', _('Evento de Calendario')
+        EVENT_REMINDER = 'EVENT_REMINDER', _('Recordatorio de Evento')
+        TEAM_INVITATION = 'TEAM_INVITATION', _('Invitación a Equipo')
+        ROLE_CHANGE = 'ROLE_CHANGE', _('Cambio de Rol')
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

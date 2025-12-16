@@ -64,6 +64,39 @@ class Project(TimeStampedModel):
         related_name='projects',
         verbose_name=_("Miembros")
     )
+    
+    # Campos adicionales para funcionalidad tipo Teams
+    icono = models.CharField(
+        max_length=50,
+        blank=True,
+        default='FiBriefcase',
+        verbose_name=_("Icono"),
+        help_text=_("Nombre del icono de react-icons")
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#2C74B3',
+        verbose_name=_("Color (Hex)"),
+        help_text=_("Color para visualización en la UI")
+    )
+    categoria = models.ForeignKey(
+        'CategoriaProyecto',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proyectos',
+        verbose_name=_("Categoría")
+    )
+    es_archivado = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Está Archivado?")
+    )
+    drive_folder_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name=_("ID de Carpeta en Google Drive")
+    )
 
     class Meta:
         verbose_name = _("Proyecto")
@@ -179,3 +212,207 @@ class ProjectSubmission(TimeStampedModel):
 
     def __str__(self):
         return f"Entrega de {self.submitted_by.username} para {self.project.name}"
+
+
+class CategoriaProyecto(TimeStampedModel):
+    """
+    Categorías para agrupar proyectos
+    """
+    nombre = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name=_("Nombre de la Categoría")
+    )
+    descripcion = models.TextField(
+        blank=True,
+        verbose_name=_("Descripción")
+    )
+    color = models.CharField(
+        max_length=7,
+        default='#2C74B3',
+        verbose_name=_("Color (Hex)"),
+        help_text=_("Color para visualización en la UI")
+    )
+    icono = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name=_("Icono"),
+        help_text=_("Nombre del icono de react-icons")
+    )
+
+    class Meta:
+        verbose_name = _("Categoría de Proyecto")
+        verbose_name_plural = _("Categorías de Proyectos")
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class Channel(TimeStampedModel):
+    """
+    Representa un canal dentro de un proyecto (similar a canales de Teams)
+    """
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='canales',
+        verbose_name=_("Proyecto")
+    )
+    nombre = models.CharField(
+        max_length=255,
+        verbose_name=_("Nombre del Canal")
+    )
+    descripcion = models.TextField(
+        blank=True,
+        verbose_name=_("Descripción")
+    )
+    es_general = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Es Canal General?"),
+        help_text=_("El canal general no se puede eliminar")
+    )
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='canales_creados',
+        verbose_name=_("Creado por")
+    )
+    miembros = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='canales_miembro',
+        blank=True,
+        verbose_name=_("Miembros del Canal")
+    )
+    es_privado = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Es Privado?")
+    )
+
+    class Meta:
+        verbose_name = _("Canal")
+        verbose_name_plural = _("Canales")
+        ordering = ['-es_general', 'nombre']
+        unique_together = [['project', 'nombre']]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.project.name})"
+
+
+class MensajeCanal(TimeStampedModel):
+    """
+    Representa un mensaje en un canal de proyecto
+    """
+    canal = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name='mensajes',
+        verbose_name=_("Canal")
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='mensajes_canal',
+        verbose_name=_("Usuario")
+    )
+    contenido = models.TextField(
+        verbose_name=_("Contenido del Mensaje")
+    )
+    mensaje_padre = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='respuestas',
+        verbose_name=_("Mensaje Padre (para hilos)")
+    )
+    archivos_adjuntos = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Archivos Adjuntos"),
+        help_text=_("Lista de objetos con name, url, drive_id")
+    )
+    menciones = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='menciones_mensajes',
+        blank=True,
+        verbose_name=_("Usuarios Mencionados")
+    )
+    editado = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Editado?")
+    )
+    editado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Fecha de Edición")
+    )
+    reacciones = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Reacciones"),
+        help_text=_("Objeto con emoji: [user_ids]")
+    )
+
+    class Meta:
+        verbose_name = _("Mensaje de Canal")
+        verbose_name_plural = _("Mensajes de Canal")
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Mensaje de {self.usuario.username} en {self.canal.nombre}"
+
+
+class RecursoFijado(TimeStampedModel):
+    """
+    Recursos fijados en un canal para acceso rápido
+    """
+    canal = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name='recursos_fijados',
+        verbose_name=_("Canal")
+    )
+    titulo = models.CharField(
+        max_length=255,
+        verbose_name=_("Título del Recurso")
+    )
+    descripcion = models.TextField(
+        blank=True,
+        verbose_name=_("Descripción")
+    )
+    url = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name=_("URL del Recurso")
+    )
+    tipo_recurso = models.CharField(
+        max_length=50,
+        choices=[
+            ('LINK', _('Enlace')),
+            ('FILE', _('Archivo')),
+            ('TASK', _('Tarea')),
+            ('EVENT', _('Evento'))
+        ],
+        default='LINK',
+        verbose_name=_("Tipo de Recurso")
+    )
+    fijado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name=_("Fijado por")
+    )
+    orden = models.IntegerField(
+        default=0,
+        verbose_name=_("Orden de Visualización")
+    )
+
+    class Meta:
+        verbose_name = _("Recurso Fijado")
+        verbose_name_plural = _("Recursos Fijados")
+        ordering = ['orden', '-created_at']
+
+    def __str__(self):
+        return f"{self.titulo} - {self.canal.nombre}"

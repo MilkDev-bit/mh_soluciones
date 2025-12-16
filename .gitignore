@@ -52,3 +52,7 @@ node_modules/
 dist/
 .vite/
 build/
+venv/
+env/
+ENV/
+*.pyc

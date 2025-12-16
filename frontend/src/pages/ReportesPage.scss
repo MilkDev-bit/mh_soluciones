@@ -1,0 +1,281 @@
+// Estilos para la página de reportes
+.reportes-page {
+  padding: 2rem;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 2rem;
+    flex-wrap: wrap;
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1e1e1e;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+      color: #666;
+      font-size: 1rem;
+    }
+
+    .header-acciones {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+
+      .rango-select {
+        padding: 0.625rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.875rem;
+        
+        &:focus {
+          outline: none;
+          border-color: #ff7c15;
+        }
+      }
+
+      .btn-exportar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        background: #ff7c15;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background: #ff6b00;
+        }
+
+        svg {
+          font-size: 1.125rem;
+        }
+      }
+    }
+  }
+
+  .tarjetas-estadisticas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+
+    .tarjeta-estadistica {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .tarjeta-icono {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+      }
+
+      .tarjeta-contenido {
+        flex: 1;
+
+        h3 {
+          font-size: 0.875rem;
+          color: #666;
+          margin-bottom: 0.5rem;
+          font-weight: 500;
+        }
+
+        .tarjeta-valor {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #1e1e1e;
+        }
+      }
+    }
+  }
+
+  .graficos-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+
+    .grafico-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      h3 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1e1e1e;
+        margin-bottom: 1.5rem;
+      }
+
+      .grafico {
+        height: 300px;
+      }
+
+      &.grafico-grande {
+        grid-column: span 2;
+      }
+
+      .progreso-general {
+        .progreso-circulo {
+          position: relative;
+          width: 200px;
+          height: 200px;
+          margin: 2rem auto;
+
+          svg {
+            transform: scaleX(-1);
+          }
+
+          .progreso-texto {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+
+            .progreso-porcentaje {
+              display: block;
+              font-size: 2.5rem;
+              font-weight: 700;
+              color: #ff7c15;
+              line-height: 1;
+              margin-bottom: 0.5rem;
+            }
+
+            .progreso-etiqueta {
+              display: block;
+              font-size: 0.875rem;
+              color: #666;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .cargando {
+    text-align: center;
+    padding: 4rem 2rem;
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #f0f0f0;
+      border-top-color: #ff7c15;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    p {
+      color: #666;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .reportes-page {
+    .graficos-container {
+      grid-template-columns: 1fr;
+
+      .grafico-card.grafico-grande {
+        grid-column: span 1;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .reportes-page {
+    padding: 1rem;
+
+    .page-header {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .page-subtitle {
+        font-size: 0.875rem;
+      }
+
+      .header-acciones {
+        width: 100%;
+        flex-direction: column;
+
+        .rango-select,
+        .btn-exportar {
+          width: 100%;
+        }
+      }
+    }
+
+    .tarjetas-estadisticas {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+
+      .tarjeta-estadistica {
+        padding: 1rem;
+
+        .tarjeta-icono {
+          width: 48px;
+          height: 48px;
+          font-size: 1.25rem;
+        }
+
+        .tarjeta-contenido {
+          .tarjeta-valor {
+            font-size: 1.5rem;
+          }
+        }
+      }
+    }
+
+    .graficos-container {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+
+      .grafico-card {
+        padding: 1rem;
+
+        .grafico {
+          height: 250px;
+        }
+      }
+    }
+  }
+}
