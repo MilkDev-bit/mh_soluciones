@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { ROLE_GROUPS } from './constants/roles';
 
 import AuthLayout from './layouts/AuthLayout';
 import MainLayout from './layouts/MainLayout';
@@ -45,18 +46,18 @@ const AppRoutes = () => {
           <Route path="/archivos" element={<ArchivosPage />} />
           
           <Route path="/reportes" element={
-            <ProtectedRoute roles={['SUPERADMIN', 'ADMIN', 'DIRECTOR', 'PROFESSOR', 'CEO', 'RH']}>
+            <ProtectedRoute roles={ROLE_GROUPS.ANALYTICS_VIEWERS}>
               <ReportesPage />
             </ProtectedRoute>
           } />
           
           <Route path="/admin/users" element={
-            <ProtectedRoute roles={['SUPERADMIN']}>
+            <ProtectedRoute roles={ROLE_GROUPS.USER_MANAGERS}>
               <UsersPage />
             </ProtectedRoute>
           } />
           <Route path="/hr" element={
-            <ProtectedRoute roles={['RH']}>
+            <ProtectedRoute roles={['RH', 'SUPERADMIN']}>
               <HRPage />
             </ProtectedRoute>
           } />

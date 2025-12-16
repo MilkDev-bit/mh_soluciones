@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
+import { isAdmin } from '../../constants/roles';
 import ProjectCard from '../../components/projects/ProjectCard';
 import Loading from '../../components/common/Loading';
 import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
@@ -151,7 +152,7 @@ const ProjectsPage = () => {
             >
               <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
             </button>
-            {user && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) && (
+            {user && isAdmin(user.role) && (
               <button 
                 className="btn btn-primary" 
                 onClick={handleOpenModal}
@@ -178,7 +179,7 @@ const ProjectsPage = () => {
             <FiBriefcase className="empty-state-icon" />
             <h2>No hay proyectos</h2>
             <p>
-              {user && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) 
+              {user && isAdmin(user.role) 
                 ? 'Comienza creando tu primer proyecto haciendo clic en "Nuevo Proyecto"' 
                 : 'Aún no eres miembro de ningún proyecto. Contacta a tu administrador.'}
             </p>

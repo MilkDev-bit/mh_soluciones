@@ -26,6 +26,15 @@ export const ROLE_GROUPS = {
   
   // Roles that can submit project deliverables
   SUBMITTERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR'],
+  
+  // Roles that can manage users
+  USER_MANAGERS: ['SUPERADMIN', 'ADMIN', 'RH'],
+  
+  // Roles that can create tasks
+  TASK_CREATORS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'DIRECTOR', 'PROFESSOR'],
+  
+  // Roles that can grade tasks
+  TASK_GRADERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'DIRECTOR', 'PROFESSOR'],
 };
 
 // Helper functions to check role membership
@@ -34,3 +43,28 @@ export const canManageProjects = (role) => ROLE_GROUPS.PROJECT_MANAGERS.includes
 export const canViewAnalytics = (role) => ROLE_GROUPS.ANALYTICS_VIEWERS.includes(role);
 export const canAccessDrive = (role) => ROLE_GROUPS.DRIVE_ACCESS.includes(role);
 export const canSubmit = (role) => ROLE_GROUPS.SUBMITTERS.includes(role);
+export const canManageUsers = (role) => ROLE_GROUPS.USER_MANAGERS.includes(role);
+export const canCreateTasks = (role) => ROLE_GROUPS.TASK_CREATORS.includes(role);
+export const canGradeTasks = (role) => ROLE_GROUPS.TASK_GRADERS.includes(role);
+
+// New helper functions for specific permissions
+export const canEditUser = (userRole, targetRole) => {
+  if (userRole === 'SUPERADMIN') return true;
+  if (userRole === 'ADMIN' && targetRole !== 'SUPERADMIN') return true;
+  if (userRole === 'RH' && !['SUPERADMIN', 'ADMIN', 'CEO'].includes(targetRole)) return true;
+  return false;
+};
+
+export const canDeleteUser = (userRole, targetRole) => {
+  if (userRole === 'SUPERADMIN') return true;
+  if (userRole === 'ADMIN' && targetRole !== 'SUPERADMIN') return true;
+  if (userRole === 'RH' && !['SUPERADMIN', 'ADMIN', 'CEO'].includes(targetRole)) return true;
+  return false;
+};
+
+export const canViewReports = (role) => canViewAnalytics(role);
+
+export const canExportData = (role) => ROLE_GROUPS.ANALYTICS_VIEWERS.includes(role);
+
+export const isStudent = (role) => role === 'STUDENT';
+export const isClient = (role) => role === 'CLIENT';

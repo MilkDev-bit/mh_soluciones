@@ -5,6 +5,11 @@ import { ProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
 import GradesWidget from './GradesWidget';
 import { 
+  canManageUsers,
+  canViewReports,
+  isStudent
+} from '../../constants/roles';
+import { 
   FiGrid, 
   FiBriefcase, 
   FiCheckSquare, 
@@ -110,8 +115,11 @@ const Sidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
+  // Use role helper functions instead of hardcoded checks
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
-  const hasAdminAccess = ['SUPERADMIN', 'ADMIN', 'DIRECTOR', 'PROFESSOR', 'CEO', 'RH'].includes(user?.role);
+  const hasUserManagementAccess = canManageUsers(user.role);
+  const hasReportsAccess = canViewReports(user.role);
+  const isStudentUser = isStudent(user.role);
 
   return (
     <>
@@ -229,7 +237,7 @@ const Sidebar = () => {
               {!isCollapsed && <span>Archivos</span>}
             </NavLink>
             
-            {hasAdminAccess && (
+            {hasReportsAccess && (
               <NavLink 
                 to="/reportes" 
                 className="menu-item"
@@ -298,7 +306,7 @@ const Sidebar = () => {
               </div>
             </div>
 
-            {(user.role === 'SUPERADMIN' || user.role === 'ADMIN') && (
+            {hasUserManagementAccess && (
               <div className="menu-section">
                 <span className="menu-section-title">Gestión</span>
                 <div className="menu-items">
@@ -333,7 +341,7 @@ const Sidebar = () => {
           </nav>
 
           {/* Grades Widget for Students */}
-          {user.role === 'STUDENT' && (
+          {isStudentUser && (
             <GradesWidget isCollapsed={isCollapsed} />
           )}
 

@@ -1,0 +1,19 @@
+Tarea Calificada: {{ task.title }}
+
+Tu entrega para la tarea "{{ task.title }}" ha sido calificada.
+
+Detalles de la Calificación:
+- Tarea: {{ task.title }}
+- Proyecto: {{ project.name }}
+- Puntuación obtenida: {{ score }} / {{ max_score }}
+{% if feedback %}
+- Retroalimentación del profesor:
+{{ feedback }}
+{% endif %}
+
+Puedes ver los detalles completos en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}
