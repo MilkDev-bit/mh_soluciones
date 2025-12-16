@@ -1,4 +1,5 @@
 import os
+import logging
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -40,6 +41,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -308,9 +310,6 @@ class GoogleAuthRedirectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        import logging
-        logger = logging.getLogger(__name__)
-        
         try:
             redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
             
@@ -358,9 +357,6 @@ class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        import logging
-        logger = logging.getLogger(__name__)
-        
         try:
             state = request.GET.get('state')
             
