@@ -325,6 +325,30 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.tasks.tasks.send_task_due_reminders',
         'schedule': crontab(hour=8, minute=0),  # Run daily at 8:00 AM
     },
+    'verificar-recordatorios-vencimiento-tareas': {
+        'task': 'verificar_recordatorios_vencimiento_tareas',
+        'schedule': crontab(hour=9, minute=0),  # Ejecutar diariamente a las 9:00 AM
+    },
+    'verificar-tareas-vencidas': {
+        'task': 'verificar_tareas_vencidas',
+        'schedule': crontab(hour=10, minute=0),  # Ejecutar diariamente a las 10:00 AM
+    },
+    'verificar-recordatorios-eventos-calendario': {
+        'task': 'verificar_recordatorios_eventos_calendario',
+        'schedule': crontab(minute='*/30'),  # Ejecutar cada 30 minutos
+    },
+    'generar-resumen-actividad-diario': {
+        'task': 'generar_resumen_actividad_diario',
+        'schedule': crontab(hour=18, minute=0),  # Ejecutar diariamente a las 18:00
+    },
+    'generar-resumen-actividad-semanal': {
+        'task': 'generar_resumen_actividad_semanal',
+        'schedule': crontab(hour=9, minute=0, day_of_week=1),  # Ejecutar los lunes a las 9:00 AM
+    },
+    'limpiar-notificaciones-antiguas': {
+        'task': 'limpiar_notificaciones_antiguas',
+        'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Ejecutar los domingos a las 2:00 AM
+    },
 }
 
 # ============================================

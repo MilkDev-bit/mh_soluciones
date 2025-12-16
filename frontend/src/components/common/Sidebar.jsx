@@ -19,7 +19,12 @@ import {
   FiAward,
   FiFileText,
   FiRefreshCw,
-  FiCheckCircle
+  FiCheckCircle,
+  FiActivity,
+  FiMessageSquare,
+  FiFile,
+  FiBarChart2,
+  FiBell
 } from 'react-icons/fi';
 import './Sidebar.scss';
 
@@ -171,12 +176,30 @@ const Sidebar = () => {
             </NavLink>
             
             <NavLink 
+              to="/actividad" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiActivity />
+              {!isCollapsed && <span>Actividad</span>}
+            </NavLink>
+            
+            <NavLink 
+              to="/notificaciones" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiBell />
+              {!isCollapsed && <span>Notificaciones</span>}
+            </NavLink>
+            
+            <NavLink 
               to="/projects" 
               className="menu-item"
               onClick={closeMobileMenu}
             >
               <FiBriefcase />
-              {!isCollapsed && <span>Proyectos</span>}
+              {!isCollapsed && <span>Equipos</span>}
             </NavLink>
             
             <NavLink 
@@ -207,6 +230,26 @@ const Sidebar = () => {
               <FiCalendar />
               {!isCollapsed && <span>Calendario</span>}
             </NavLink>
+            
+            <NavLink 
+              to="/archivos" 
+              className="menu-item"
+              onClick={closeMobileMenu}
+            >
+              <FiFile />
+              {!isCollapsed && <span>Archivos</span>}
+            </NavLink>
+            
+            {hasAdminAccess && (
+              <NavLink 
+                to="/reportes" 
+                className="menu-item"
+                onClick={closeMobileMenu}
+              >
+                <FiBarChart2 />
+                {!isCollapsed && <span>Reportes</span>}
+              </NavLink>
+            )}
           </div>
         </div>
 

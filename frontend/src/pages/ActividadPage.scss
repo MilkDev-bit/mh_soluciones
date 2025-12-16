@@ -1,0 +1,221 @@
+// Estilos para la página de feed de actividad
+.actividad-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  .page-header {
+    margin-bottom: 2rem;
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1e1e1e;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+      color: #666;
+      font-size: 1rem;
+    }
+  }
+
+  .actividad-filtros {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+
+    .filtro-btn {
+      padding: 0.625rem 1.25rem;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      color: #666;
+
+      &:hover {
+        border-color: #ff7c15;
+        color: #ff7c15;
+      }
+
+      &.activo {
+        background: #ff7c15;
+        border-color: #ff7c15;
+        color: white;
+      }
+    }
+  }
+
+  .actividad-lista {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+
+    .actividad-item {
+      display: flex;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background-color 0.2s ease;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: #f9f9f9;
+      }
+
+      .actividad-icono {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+      }
+
+      .actividad-contenido {
+        flex: 1;
+        min-width: 0;
+
+        .actividad-header {
+          margin-bottom: 0.5rem;
+
+          .actividad-usuario {
+            font-weight: 600;
+            color: #1e1e1e;
+            margin-right: 0.5rem;
+          }
+
+          .actividad-descripcion {
+            color: #666;
+          }
+        }
+
+        .actividad-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: #999;
+
+          .actividad-proyecto {
+            color: #ff7c15;
+            font-weight: 500;
+          }
+
+          .actividad-separador {
+            color: #ddd;
+          }
+
+          .actividad-fecha {
+            color: #999;
+          }
+        }
+      }
+    }
+  }
+
+  .cargando {
+    text-align: center;
+    padding: 4rem 2rem;
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #f0f0f0;
+      border-top-color: #ff7c15;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    p {
+      color: #666;
+    }
+  }
+
+  .sin-actividades {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #999;
+
+    svg {
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    p {
+      font-size: 1.125rem;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .actividad-page {
+    padding: 1rem;
+
+    .page-header {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .page-subtitle {
+        font-size: 0.875rem;
+      }
+    }
+
+    .actividad-filtros {
+      gap: 0.5rem;
+
+      .filtro-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+      }
+    }
+
+    .actividad-lista {
+      .actividad-item {
+        padding: 1rem;
+
+        .actividad-icono {
+          width: 32px;
+          height: 32px;
+          font-size: 1rem;
+        }
+
+        .actividad-contenido {
+          .actividad-header {
+            flex-direction: column;
+
+            .actividad-usuario {
+              margin-right: 0;
+              margin-bottom: 0.25rem;
+            }
+          }
+
+          .actividad-meta {
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+          }
+        }
+      }
+    }
+  }
+}
