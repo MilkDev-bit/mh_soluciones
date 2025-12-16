@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import './FormInput.scss';
 
+
 const FormInput = ({
   label,
   name,
