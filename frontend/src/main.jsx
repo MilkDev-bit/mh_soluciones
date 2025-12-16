@@ -10,6 +10,19 @@ import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import './assets/styles/main.scss';
 
+// Register Service Worker for Push Notifications
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/custom-sw.js', { scope: '/' })
+      .then((registration) => {
+        console.log('Service Worker registered:', registration);
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
+      });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
