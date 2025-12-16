@@ -41,7 +41,7 @@ from .serializers import (
 )
 
 User = get_user_model()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('authentication.google_oauth')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -357,6 +357,10 @@ class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
+        from google.auth.exceptions import GoogleAuthError
+        from oauthlib.oauth2.rfc6749.errors import OAuth2Error
+        from django.db import DatabaseError
+        
         try:
             state = request.GET.get('state')
             
@@ -364,10 +368,13 @@ class GoogleAuthCallbackView(APIView):
                 logger.error("Google OAuth callback: No state parameter provided")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
             
+            # Log only first 8 characters of state for security
+            state_prefix = state[:8] if len(state) > 8 else state
+            
             user_id = cache.get(state)
 
             if not user_id:
-                logger.error(f"Google OAuth callback: State {state} not found in cache or expired")
+                logger.error(f"Google OAuth callback: State {state_prefix}... not found in cache or expired")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
 
             try:
@@ -422,8 +429,14 @@ class GoogleAuthCallbackView(APIView):
                 
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
                 
+            except (GoogleAuthError, OAuth2Error) as e:
+                logger.error(f"Google OAuth callback: OAuth/Auth error for user {user_id}: {str(e)}", exc_info=True)
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
+            except DatabaseError as e:
+                logger.error(f"Google OAuth callback: Database error saving credentials for user {user_id}: {str(e)}", exc_info=True)
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except Exception as e:
-                logger.error(f"Google OAuth callback: Error during token exchange or credential save for user {user_id}: {str(e)}", exc_info=True)
+                logger.error(f"Google OAuth callback: Unexpected error during token exchange for user {user_id}: {str(e)}", exc_info=True)
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
                 
         except Exception as e:
