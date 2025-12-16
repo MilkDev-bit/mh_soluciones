@@ -50,3 +50,48 @@ class Notification(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
+
+class PushSubscription(TimeStampedModel):
+    """
+    Modelo para almacenar suscripciones de web push notifications.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions',
+        verbose_name=_("Usuario")
+    )
+    endpoint = models.URLField(
+        max_length=500,
+        verbose_name=_("Endpoint"),
+        help_text=_("URL del endpoint de push del navegador")
+    )
+    p256dh = models.CharField(
+        max_length=255,
+        verbose_name=_("Clave p256dh"),
+        help_text=_("Clave de cifrado p256dh")
+    )
+    auth = models.CharField(
+        max_length=255,
+        verbose_name=_("Clave auth"),
+        help_text=_("Clave de autenticación")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Activa"),
+        help_text=_("Si la suscripción está activa")
+    )
+
+    class Meta:
+        verbose_name = _("Suscripción Push")
+        verbose_name_plural = _("Suscripciones Push")
+        ordering = ['-created_at']
+        unique_together = [['user', 'endpoint']]
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['endpoint']),
+        ]
+
+    def __str__(self):
+        return f"Push subscription for {self.user.username} - {self.endpoint[:50]}..."
