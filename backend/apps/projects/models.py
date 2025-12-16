@@ -179,3 +179,172 @@ class ProjectSubmission(TimeStampedModel):
 
     def __str__(self):
         return f"Entrega de {self.submitted_by.username} para {self.project.name}"
+
+
+class Channel(TimeStampedModel):
+    """
+    Representa un canal de comunicación dentro de un proyecto/equipo.
+    Similar a los canales en Microsoft Teams.
+    """
+    class ChannelType(models.TextChoices):
+        GENERAL = 'GENERAL', _('General')
+        ANNOUNCEMENTS = 'ANNOUNCEMENTS', _('Anuncios')
+        CUSTOM = 'CUSTOM', _('Personalizado')
+    
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='channels',
+        verbose_name=_("Proyecto")
+    )
+    name = models.CharField(
+        max_length=100,
+        verbose_name=_("Nombre del Canal")
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name=_("Descripción")
+    )
+    channel_type = models.CharField(
+        max_length=20,
+        choices=ChannelType.choices,
+        default=ChannelType.CUSTOM,
+        verbose_name=_("Tipo de Canal")
+    )
+    is_private = models.BooleanField(
+        default=False,
+        verbose_name=_("Canal Privado")
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_channels',
+        verbose_name=_("Creado por")
+    )
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='channels',
+        verbose_name=_("Miembros"),
+        help_text=_("Solo para canales privados")
+    )
+    
+    class Meta:
+        verbose_name = _("Canal")
+        verbose_name_plural = _("Canales")
+        ordering = ['created_at']
+        unique_together = [['project', 'name']]
+    
+    def __str__(self):
+        return f"{self.name} - {self.project.name}"
+
+
+class ChannelMessage(TimeStampedModel):
+    """
+    Representa un mensaje o publicación en un canal.
+    """
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name=_("Canal")
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='channel_messages',
+        verbose_name=_("Autor")
+    )
+    content = models.TextField(
+        verbose_name=_("Contenido")
+    )
+    parent_message = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name=_("Mensaje Padre")
+    )
+    attachments = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Archivos Adjuntos"),
+        help_text=_("Lista de objetos con: name, url, size, mime_type")
+    )
+    mentions = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='mentioned_in_messages',
+        verbose_name=_("Menciones")
+    )
+    is_edited = models.BooleanField(
+        default=False,
+        verbose_name=_("Editado")
+    )
+    edited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Fecha de Edición")
+    )
+    reactions = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Reacciones"),
+        help_text=_("Objeto con emoji: [user_ids]")
+    )
+    
+    class Meta:
+        verbose_name = _("Mensaje de Canal")
+        verbose_name_plural = _("Mensajes de Canal")
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Mensaje de {self.author.username} en {self.channel.name}"
+
+
+class ChannelFile(TimeStampedModel):
+    """
+    Representa un archivo compartido en un canal.
+    """
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name='files',
+        verbose_name=_("Canal")
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='uploaded_channel_files',
+        verbose_name=_("Subido por")
+    )
+    file = models.FileField(
+        upload_to='channel_files/',
+        verbose_name=_("Archivo")
+    )
+    file_name = models.CharField(
+        max_length=255,
+        verbose_name=_("Nombre del Archivo")
+    )
+    file_size = models.BigIntegerField(
+        verbose_name=_("Tamaño del Archivo (bytes)")
+    )
+    mime_type = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Tipo MIME")
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name=_("Descripción")
+    )
+    
+    class Meta:
+        verbose_name = _("Archivo de Canal")
+        verbose_name_plural = _("Archivos de Canal")
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.file_name} en {self.channel.name}"

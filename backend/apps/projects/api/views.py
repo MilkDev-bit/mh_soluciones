@@ -11,14 +11,20 @@ from rest_framework.exceptions import PermissionDenied
 from apps.authentication.models import CustomUser
 from apps.tasks.models import TaskSubmission
 from apps.documents.models import Document
-from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
+from ..models import (
+    Project, ProjectMember, ProjectComment, ProjectSubmission,
+    Channel, ChannelMessage, ChannelFile
+)
 from .serializers import (
     ProjectSerializer,
     ProjectDetailSerializer,
     ProjectCreateUpdateSerializer,
     AddMembersSerializer,
     ProjectCommentSerializer,
-    ProjectSubmissionSerializer
+    ProjectSubmissionSerializer,
+    ChannelSerializer,
+    ChannelMessageSerializer,
+    ChannelFileSerializer
 )
 from .permissions import IsOwnerOrAdmin, IsProjectMemberOrAdmin, CanInteractInProject, IsAdminRole
 
@@ -438,4 +444,197 @@ class ProjectSubmissionViewSet(viewsets.ModelViewSet):
         serializer.save(
             submitted_by=self.request.user, 
             project_id=self.kwargs['project_pk']
+        )
+
+
+class ChannelViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar los canales de un proyecto.
+    """
+    serializer_class = ChannelSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
+    
+    def get_queryset(self):
+        """Filtra canales por proyecto."""
+        project_pk = self.kwargs.get('project_pk')
+        queryset = Channel.objects.filter(project_id=project_pk)
+        
+        # Filtrar canales privados
+        user = self.request.user
+        if user.role not in ADMIN_ROLES:
+            queryset = queryset.filter(
+                Q(is_private=False) | Q(members=user)
+            ).distinct()
+        
+        return queryset.select_related('created_by', 'project')
+    
+    def perform_create(self, serializer):
+        """Crea un canal en el proyecto especificado."""
+        project_pk = self.kwargs.get('project_pk')
+        project = Project.objects.get(pk=project_pk)
+        
+        # Validar permisos
+        if self.request.user.role not in ADMIN_ROLES:
+            if not ProjectMember.objects.filter(project=project, user=self.request.user).exists():
+                raise PermissionDenied("No tienes permisos para crear canales en este proyecto.")
+        
+        serializer.save(
+            project=project,
+            created_by=self.request.user
+        )
+    
+    @action(detail=True, methods=['post'], url_path='add-members')
+    def add_members(self, request, project_pk=None, pk=None):
+        """Añade miembros a un canal privado."""
+        channel = self.get_object()
+        
+        if not channel.is_private:
+            return Response(
+                {'error': 'Solo se pueden añadir miembros a canales privados.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user_ids = request.data.get('user_ids', [])
+        if not user_ids:
+            return Response(
+                {'error': 'Debe proporcionar al menos un usuario.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        users = CustomUser.objects.filter(id__in=user_ids)
+        channel.members.add(*users)
+        
+        return Response(
+            {'message': f'{len(users)} miembro(s) añadido(s) al canal.'},
+            status=status.HTTP_200_OK
+        )
+
+
+class ChannelMessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar los mensajes de un canal.
+    """
+    serializer_class = ChannelMessageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
+    
+    def get_queryset(self):
+        """Filtra mensajes por canal."""
+        channel_pk = self.kwargs.get('channel_pk')
+        return ChannelMessage.objects.filter(
+            channel_id=channel_pk
+        ).select_related('author', 'channel').prefetch_related('mentions', 'replies')
+    
+    def perform_create(self, serializer):
+        """Crea un mensaje en el canal especificado."""
+        channel_pk = self.kwargs.get('channel_pk')
+        channel = Channel.objects.get(pk=channel_pk)
+        
+        # Validar acceso al canal
+        user = self.request.user
+        if channel.is_private:
+            if user.role not in ADMIN_ROLES and not channel.members.filter(id=user.id).exists():
+                raise PermissionDenied("No tienes acceso a este canal privado.")
+        
+        # Extraer menciones del contenido
+        content = serializer.validated_data.get('content', '')
+        mention_ids = self._extract_mentions(content)
+        
+        message = serializer.save(
+            channel=channel,
+            author=self.request.user
+        )
+        
+        # Añadir menciones
+        if mention_ids:
+            mentioned_users = CustomUser.objects.filter(id__in=mention_ids)
+            message.mentions.add(*mentioned_users)
+        
+        return message
+    
+    def _extract_mentions(self, content):
+        """Extrae IDs de usuarios mencionados del contenido."""
+        import re
+        # Buscar patrones como @[Usuario](id:123)
+        pattern = r'@\[.*?\]\(id:(\d+)\)'
+        matches = re.findall(pattern, content)
+        return [int(match) for match in matches]
+    
+    @action(detail=True, methods=['post'], url_path='react')
+    def react(self, request, project_pk=None, channel_pk=None, pk=None):
+        """Añade o quita una reacción a un mensaje."""
+        message = self.get_object()
+        emoji = request.data.get('emoji')
+        
+        if not emoji:
+            return Response(
+                {'error': 'Debe proporcionar un emoji.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        reactions = message.reactions or {}
+        user_id = str(request.user.id)
+        
+        if emoji not in reactions:
+            reactions[emoji] = []
+        
+        if user_id in reactions[emoji]:
+            # Quitar reacción
+            reactions[emoji].remove(user_id)
+            if not reactions[emoji]:
+                del reactions[emoji]
+        else:
+            # Añadir reacción
+            reactions[emoji].append(user_id)
+        
+        message.reactions = reactions
+        message.save()
+        
+        return Response(
+            ChannelMessageSerializer(message, context={'request': request}).data,
+            status=status.HTTP_200_OK
+        )
+
+
+class ChannelFileViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar los archivos de un canal.
+    """
+    serializer_class = ChannelFileSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
+    
+    def get_queryset(self):
+        """Filtra archivos por canal."""
+        channel_pk = self.kwargs.get('channel_pk')
+        return ChannelFile.objects.filter(
+            channel_id=channel_pk
+        ).select_related('uploaded_by', 'channel')
+    
+    def perform_create(self, serializer):
+        """Sube un archivo al canal especificado."""
+        channel_pk = self.kwargs.get('channel_pk')
+        channel = Channel.objects.get(pk=channel_pk)
+        
+        # Validar acceso al canal
+        user = self.request.user
+        if channel.is_private:
+            if user.role not in ADMIN_ROLES and not channel.members.filter(id=user.id).exists():
+                raise PermissionDenied("No tienes acceso a este canal privado.")
+        
+        # Obtener información del archivo
+        file = self.request.FILES.get('file')
+        if file:
+            file_name = file.name
+            file_size = file.size
+            mime_type = file.content_type
+        else:
+            file_name = serializer.validated_data.get('file_name', '')
+            file_size = 0
+            mime_type = ''
+        
+        serializer.save(
+            channel=channel,
+            uploaded_by=self.request.user,
+            file_name=file_name,
+            file_size=file_size,
+            mime_type=mime_type
         )

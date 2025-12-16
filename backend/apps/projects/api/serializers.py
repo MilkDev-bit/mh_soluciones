@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
+from ..models import (
+    Project, ProjectMember, ProjectComment, ProjectSubmission,
+    Channel, ChannelMessage, ChannelFile
+)
 from apps.authentication.models import CustomUser
 from apps.authentication.api.serializers import UserSerializer
 
@@ -176,3 +179,78 @@ class AddMembersSerializer(serializers.Serializer):
             raise serializers.ValidationError("No se pueden añadir más de 100 miembros a la vez.")
         
         return value
+
+
+class ChannelSerializer(serializers.ModelSerializer):
+    """
+    Serializador para los canales de un proyecto.
+    """
+    created_by = UserSerializer(read_only=True)
+    message_count = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Channel
+        fields = [
+            'id', 'project', 'name', 'description', 'channel_type',
+            'is_private', 'created_by', 'created_at', 'updated_at',
+            'message_count', 'unread_count'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
+    
+    def get_message_count(self, obj):
+        """Devuelve la cantidad de mensajes en el canal."""
+        return obj.messages.count()
+    
+    def get_unread_count(self, obj):
+        """Devuelve la cantidad de mensajes no leídos (placeholder)."""
+        # TODO: Implementar lógica de mensajes leídos/no leídos
+        return 0
+
+
+class ChannelMessageSerializer(serializers.ModelSerializer):
+    """
+    Serializador para los mensajes de un canal.
+    """
+    author = UserSerializer(read_only=True)
+    mentions = UserSerializer(many=True, read_only=True)
+    reply_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChannelMessage
+        fields = [
+            'id', 'channel', 'author', 'content', 'parent_message',
+            'attachments', 'mentions', 'is_edited', 'edited_at',
+            'reactions', 'created_at', 'updated_at', 'reply_count'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'author', 'is_edited', 'edited_at']
+    
+    def get_reply_count(self, obj):
+        """Devuelve la cantidad de respuestas al mensaje."""
+        return obj.replies.count()
+
+
+class ChannelFileSerializer(serializers.ModelSerializer):
+    """
+    Serializador para los archivos de un canal.
+    """
+    uploaded_by = UserSerializer(read_only=True)
+    file_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ChannelFile
+        fields = [
+            'id', 'channel', 'uploaded_by', 'file', 'file_name',
+            'file_size', 'mime_type', 'description', 'created_at',
+            'file_url'
+        ]
+        read_only_fields = ['id', 'created_at', 'uploaded_by', 'file_size', 'mime_type']
+    
+    def get_file_url(self, obj):
+        """Devuelve la URL completa del archivo."""
+        request = self.context.get('request')
+        if obj.file and hasattr(obj.file, 'url'):
+            if request is not None:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
