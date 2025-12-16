@@ -6,6 +6,19 @@
 // Service Worker version - increment to force update
 const SW_VERSION = '1.0.0';
 
+// Helper function to safely convert Uint8Array to base64
+function uint8ArrayToBase64(uint8Array) {
+  const CHUNK_SIZE = 0x8000; // 32KB chunks
+  const chunks = [];
+  
+  for (let i = 0; i < uint8Array.length; i += CHUNK_SIZE) {
+    const chunk = uint8Array.subarray(i, Math.min(i + CHUNK_SIZE, uint8Array.length));
+    chunks.push(String.fromCharCode.apply(null, chunk));
+  }
+  
+  return btoa(chunks.join(''));
+}
+
 // Install event - cache static assets if needed
 self.addEventListener('install', (event) => {
   console.log(`Service Worker ${SW_VERSION} installing...`);
@@ -115,7 +128,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   })
   .then((subscription) => {
     console.log('Resubscribed to push notifications');
-    // Here you would send the new subscription to your server
+    // Send the new subscription to the server
     return fetch('/api/v1/notifications/push/subscriptions/', {
       method: 'POST',
       headers: {
@@ -123,8 +136,8 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       },
       body: JSON.stringify({
         endpoint: subscription.endpoint,
-        p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))),
-        auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))))
+        p256dh: uint8ArrayToBase64(new Uint8Array(subscription.getKey('p256dh'))),
+        auth: uint8ArrayToBase64(new Uint8Array(subscription.getKey('auth')))
       })
     });
   })

@@ -2,6 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 from apps.notifications.models import Notification, PushSubscription
 from .serializers import NotificationSerializer, PushSubscriptionSerializer, SendPushNotificationSerializer
 from apps.notifications.push_utils import vapid_config, send_notification_to_user, send_notification_to_multiple_users
@@ -14,10 +16,12 @@ User = get_user_model()
 
 @api_view(['GET'])
 @permission_classes([])  # Public endpoint
+@ratelimit(key='ip', rate='30/m', method='GET')
 def get_vapid_public_key(request):
     """
     Retorna la clave pública VAPID para suscripciones push.
     Este endpoint es público y solo retorna la clave pública (seguro).
+    Rate limited to prevent abuse.
     """
     public_key = vapid_config.get_public_key()
     

@@ -4,9 +4,12 @@ Utilidades para Web Push Notifications con VAPID.
 import os
 import json
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, TYPE_CHECKING
 from pywebpush import webpush, WebPushException
 from django.conf import settings
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +120,7 @@ def send_push_notification(
         return False
 
 
-def send_notification_to_user(user, notification_data: Dict) -> int:
+def send_notification_to_user(user: 'User', notification_data: Dict) -> int:
     """
     Envía una notificación push a todas las suscripciones activas de un usuario.
     
@@ -173,7 +176,7 @@ def send_notification_to_user(user, notification_data: Dict) -> int:
     return sent_count
 
 
-def send_notification_to_multiple_users(users: List, notification_data: Dict) -> Dict:
+def send_notification_to_multiple_users(users: List['User'], notification_data: Dict) -> Dict:
     """
     Envía una notificación push a múltiples usuarios.
     

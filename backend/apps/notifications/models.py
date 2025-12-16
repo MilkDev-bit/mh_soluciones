@@ -87,7 +87,9 @@ class PushSubscription(TimeStampedModel):
         verbose_name = _("Suscripción Push")
         verbose_name_plural = _("Suscripciones Push")
         ordering = ['-created_at']
-        unique_together = [['user', 'endpoint']]
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'endpoint'], name='unique_user_endpoint')
+        ]
         indexes = [
             models.Index(fields=['user', 'is_active']),
             models.Index(fields=['endpoint']),

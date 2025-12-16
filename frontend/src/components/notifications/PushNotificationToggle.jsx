@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './PushNotificationToggle.scss';
 import {
   isPushNotificationSupported,
@@ -17,11 +17,7 @@ const PushNotificationToggle = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
-  useEffect(() => {
-    checkSupport();
-  }, []);
-
-  const checkSupport = async () => {
+  const checkSupport = useCallback(async () => {
     setIsLoading(true);
     try {
       const supported = isPushNotificationSupported();
@@ -37,11 +33,15 @@ const PushNotificationToggle = () => {
         }
       }
     } catch (error) {
-      console.error('Error verificando soporte de notificaciones:', error);
+      console.error('Error checking notification support:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkSupport();
+  }, [checkSupport]);
 
   const handleToggle = async () => {
     if (!isSupported) {

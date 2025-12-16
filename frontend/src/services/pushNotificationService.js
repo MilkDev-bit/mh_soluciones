@@ -29,16 +29,16 @@ const urlBase64ToUint8Array = (base64String) => {
 // Request notification permission from user
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) {
-    console.log('Este navegador no soporta notificaciones');
+    console.log('This browser does not support notifications');
     return 'denied';
   }
 
   try {
     const permission = await Notification.requestPermission();
-    console.log('Permiso de notificaciones:', permission);
+    console.log('Notification permission:', permission);
     return permission;
   } catch (error) {
-    console.error('Error solicitando permiso de notificaciones:', error);
+    console.error('Error requesting notification permission:', error);
     return 'denied';
   }
 };
@@ -54,7 +54,7 @@ export const getNotificationPermission = () => {
 // Register service worker
 export const registerServiceWorker = async () => {
   if (!('serviceWorker' in navigator)) {
-    throw new Error('Service Workers no soportados en este navegador');
+    throw new Error('Service Workers not supported in this browser');
   }
 
   try {
@@ -62,14 +62,14 @@ export const registerServiceWorker = async () => {
       scope: '/'
     });
 
-    console.log('Service Worker registrado:', registration);
+    console.log('Service Worker registered:', registration);
 
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
 
     return registration;
   } catch (error) {
-    console.error('Error registrando Service Worker:', error);
+    console.error('Error registering Service Worker:', error);
     throw error;
   }
 };
@@ -80,7 +80,7 @@ export const getVapidPublicKey = async () => {
     const response = await api.get('/notifications/push/vapid-public-key/');
     return response.data.public_key;
   } catch (error) {
-    console.error('Error obteniendo clave pública VAPID:', error);
+    console.error('Error getting VAPID public key:', error);
     throw error;
   }
 };
@@ -88,14 +88,14 @@ export const getVapidPublicKey = async () => {
 // Subscribe to push notifications
 export const subscribeToPush = async () => {
   if (!isPushNotificationSupported()) {
-    throw new Error('Push notifications no soportadas en este navegador');
+    throw new Error('Push notifications not supported in this browser');
   }
 
   try {
     // Check permission
     const permission = await requestNotificationPermission();
     if (permission !== 'granted') {
-      throw new Error('Permiso de notificaciones denegado');
+      throw new Error('Notification permission denied');
     }
 
     // Get service worker registration
@@ -114,14 +114,14 @@ export const subscribeToPush = async () => {
       applicationServerKey: convertedVapidKey
     });
 
-    console.log('Suscripción push creada:', subscription);
+    console.log('Push subscription created:', subscription);
 
     // Send subscription to server
     await sendSubscriptionToServer(subscription);
 
     return subscription;
   } catch (error) {
-    console.error('Error suscribiendo a push notifications:', error);
+    console.error('Error subscribing to push notifications:', error);
     throw error;
   }
 };
@@ -138,10 +138,10 @@ export const sendSubscriptionToServer = async (subscription) => {
     };
 
     const response = await api.post('/notifications/push/subscriptions/', data);
-    console.log('Suscripción enviada al servidor:', response.data);
+    console.log('Subscription sent to server:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error enviando suscripción al servidor:', error);
+    console.error('Error sending subscription to server:', error);
     throw error;
   }
 };
@@ -173,14 +173,14 @@ export const unsubscribeFromPush = async () => {
           endpoint: subscription.endpoint
         });
       } catch (error) {
-        console.error('Error notificando desuscripción al servidor:', error);
+        console.error('Error notifying server of unsubscription:', error);
       }
     }
 
-    console.log('Desuscripción exitosa:', unsubscribed);
+    console.log('Unsubscription successful:', unsubscribed);
     return unsubscribed;
   } catch (error) {
-    console.error('Error desuscribiendo de push notifications:', error);
+    console.error('Error unsubscribing from push notifications:', error);
     throw error;
   }
 };
@@ -200,7 +200,7 @@ export const isPushSubscribed = async () => {
     const subscription = await registration.pushManager.getSubscription();
     return subscription !== null;
   } catch (error) {
-    console.error('Error verificando suscripción:', error);
+    console.error('Error checking subscription:', error);
     return false;
   }
 };
@@ -219,7 +219,7 @@ export const getPushSubscription = async () => {
 
     return await registration.pushManager.getSubscription();
   } catch (error) {
-    console.error('Error obteniendo suscripción:', error);
+    console.error('Error getting subscription:', error);
     return null;
   }
 };
@@ -228,10 +228,10 @@ export const getPushSubscription = async () => {
 export const sendTestPushNotification = async () => {
   try {
     const response = await api.post('/notifications/push/subscriptions/send_test/');
-    console.log('Notificación de prueba enviada:', response.data);
+    console.log('Test notification sent:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error enviando notificación de prueba:', error);
+    console.error('Error sending test notification:', error);
     throw error;
   }
 };
