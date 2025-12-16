@@ -296,6 +296,25 @@
   }
 }
 
+.task-actions {
+  display: flex;
+  gap: $spacing-3;
+  margin-top: $spacing-5;
+  padding-top: $spacing-4;
+  border-top: 2px solid $neutral-200;
+  flex-wrap: wrap;
+
+  @media (max-width: $breakpoint-md) {
+    flex-direction: column;
+    
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+
 .edit-form {
   background: $neutral-50;
   border-radius: $border-radius;
