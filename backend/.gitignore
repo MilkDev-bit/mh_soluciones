@@ -6,3 +6,6 @@ __pycache__/
 mediafiles/
 staticfiles/
 .DS_Store
+venv/
+env/
+*.sqlite3
