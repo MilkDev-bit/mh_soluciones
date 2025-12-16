@@ -308,83 +308,131 @@ class GoogleAuthRedirectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
-        flow = Flow.from_client_config(
-            client_config={
-                "web": {
-                    "client_id": settings.GOOGLE_CLIENT_ID,
-                    "project_id": "mhsoluciones",
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uris": [redirect_uri]
-                }
-            },
-            scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/drive', 'openid'],
-            redirect_uri=redirect_uri
-        )
-        authorization_url, state = flow.authorization_url(
-            access_type='offline', prompt='consent', include_granted_scopes='true'
-        )
+        import logging
+        logger = logging.getLogger(__name__)
         
-        cache.set(state, request.user.id, timeout=300)
-        
-        return Response({'authorization_url': authorization_url})
+        try:
+            redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            
+            # Validate Google OAuth configuration
+            if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+                logger.error("Google OAuth: Client ID or Client Secret not configured")
+                return Response(
+                    {'error': 'Google OAuth is not properly configured'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            flow = Flow.from_client_config(
+                client_config={
+                    "web": {
+                        "client_id": settings.GOOGLE_CLIENT_ID,
+                        "project_id": "mhsoluciones",
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                        "redirect_uris": [redirect_uri]
+                    }
+                },
+                scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/drive', 'openid'],
+                redirect_uri=redirect_uri
+            )
+            authorization_url, state = flow.authorization_url(
+                access_type='offline', prompt='consent', include_granted_scopes='true'
+            )
+            
+            # Store user ID in cache with 5 minute timeout
+            cache.set(state, request.user.id, timeout=300)
+            logger.info(f"Google OAuth: Generated authorization URL for user {request.user.id}")
+            
+            return Response({'authorization_url': authorization_url})
+        except Exception as e:
+            logger.error(f"Google OAuth redirect error: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to generate Google authorization URL'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        state = request.GET.get('state')
+        import logging
+        logger = logging.getLogger(__name__)
         
-        user_id = cache.get(state)
-
-        if not user_id:
-            return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
-
         try:
-            user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
+            state = request.GET.get('state')
+            
+            if not state:
+                logger.error("Google OAuth callback: No state parameter provided")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
+            
+            user_id = cache.get(state)
 
-        redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
-        flow = Flow.from_client_config(
-            client_config={
-                "web": {
-                    "client_id": settings.GOOGLE_CLIENT_ID,
-                    "project_id": "mhsoluciones",
-                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uris": [redirect_uri],
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                }
-            },
-            scopes=['https://www.googleapis.com/auth/drive', 'openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
-            state=state,
-            redirect_uri=redirect_uri
-        )
-        
-        full_url = request.build_absolute_uri()
-        flow.fetch_token(authorization_response=full_url)
-        
-        credentials = flow.credentials
+            if not user_id:
+                logger.error(f"Google OAuth callback: State {state} not found in cache or expired")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
 
-        GoogleApiCredentials.objects.update_or_create(
-            user=user,
-            defaults={
-                'access_token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': ' '.join(credentials.scopes),
-            }
-        )
+            try:
+                user = User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                logger.error(f"Google OAuth callback: User {user_id} does not exist")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
 
-        return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
+            redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            
+            try:
+                flow = Flow.from_client_config(
+                    client_config={
+                        "web": {
+                            "client_id": settings.GOOGLE_CLIENT_ID,
+                            "project_id": "mhsoluciones",
+                            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                            "redirect_uris": [redirect_uri],
+                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                            "token_uri": "https://oauth2.googleapis.com/token",
+                            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                        }
+                    },
+                    scopes=['https://www.googleapis.com/auth/drive', 'openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
+                    state=state,
+                    redirect_uri=redirect_uri
+                )
+                
+                full_url = request.build_absolute_uri()
+                logger.info(f"Google OAuth callback: Fetching token for user {user_id}")
+                
+                # This is the critical call that can fail - add proper error handling
+                flow.fetch_token(authorization_response=full_url)
+                
+                credentials = flow.credentials
+
+                GoogleApiCredentials.objects.update_or_create(
+                    user=user,
+                    defaults={
+                        'access_token': credentials.token,
+                        'refresh_token': credentials.refresh_token,
+                        'token_uri': credentials.token_uri,
+                        'client_id': credentials.client_id,
+                        'client_secret': credentials.client_secret,
+                        'scopes': ' '.join(credentials.scopes),
+                    }
+                )
+                
+                logger.info(f"Google OAuth callback: Successfully saved credentials for user {user_id}")
+                # Clear the state from cache after successful authentication
+                cache.delete(state)
+                
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
+                
+            except Exception as e:
+                logger.error(f"Google OAuth callback: Error during token exchange or credential save for user {user_id}: {str(e)}", exc_info=True)
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
+                
+        except Exception as e:
+            logger.error(f"Google OAuth callback: Unexpected error: {str(e)}", exc_info=True)
+            return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error")
 
 
 class GoogleConnectionStatusView(APIView):
