@@ -300,4 +300,11 @@ class NotificationService {
 }
 
 const notificationService = new NotificationService();
+
+// Export both the class instance and convenience functions
 export default notificationService;
+
+export const getNotifications = (params) => notificationService.getNotifications(params);
+export const markAsRead = (notificationId) => notificationService.markAsRead(notificationId);
+export const markAllAsRead = () => notificationService.markAllAsRead();
+export const getUnreadCount = () => notificationService.getUnreadCount();

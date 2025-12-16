@@ -16,6 +16,8 @@ import {
 } from 'react-icons/fi';
 import { AuthContext } from '../contexts/AuthContext';
 import { useDropzone } from 'react-dropzone';
+import { getAllDocuments, uploadDocument, deleteDocument, getFileUrl } from '../services/documentService';
+import toast from 'react-hot-toast';
 import './ArchivosPage.scss';
 
 const ArchivosPage = () => {
@@ -25,60 +27,30 @@ const ArchivosPage = () => {
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
   const [filtroTipo, setFiltroTipo] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
-  const [carpetaActual, setCarpetaActual] = useState('raiz');
   const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarArchivos();
-  }, [carpetaActual, filtroTipo]);
+  }, [filtroTipo]);
 
   const cargarArchivos = async () => {
     try {
       setCargando(true);
-      // TODO: Implementar llamada a la API
-      // const response = await fetch(`/api/archivos/?carpeta=${carpetaActual}&tipo=${filtroTipo}`);
-      // const data = await response.json();
+      setError(null);
       
-      // Datos de ejemplo
-      const archivosEjemplo = [
-        {
-          id: 1,
-          nombre: 'Diseño_UI_Dashboard.pdf',
-          tipo: 'application/pdf',
-          tamano: 2457600,
-          fecha: new Date(Date.now() - 86400000),
-          subidoPor: 'Juan Pérez',
-          estadoDrive: 'COMPLETE',
-          driveUrl: 'https://drive.google.com/file/ejemplo1',
-          proyecto: 'Sistema de Gestión'
-        },
-        {
-          id: 2,
-          nombre: 'Presentacion_Cliente.pptx',
-          tipo: 'application/vnd.ms-powerpoint',
-          tamano: 5242880,
-          fecha: new Date(Date.now() - 172800000),
-          subidoPor: 'María González',
-          estadoDrive: 'UPLOADING',
-          driveUrl: null,
-          proyecto: 'Marketing Digital'
-        },
-        {
-          id: 3,
-          nombre: 'Imagen_Logo.png',
-          tipo: 'image/png',
-          tamano: 102400,
-          fecha: new Date(Date.now() - 259200000),
-          subidoPor: 'Carlos Ruiz',
-          estadoDrive: 'COMPLETE',
-          driveUrl: 'https://drive.google.com/file/ejemplo3',
-          proyecto: 'Branding'
-        }
-      ];
+      // Build query params
+      const params = {};
+      if (filtroTipo !== 'TODOS') {
+        params.folder_type = filtroTipo;
+      }
       
-      setArchivos(archivosEjemplo);
+      const documentos = await getAllDocuments(params);
+      setArchivos(documentos);
     } catch (error) {
       console.error('Error cargando archivos:', error);
+      setError('No se pudieron cargar los archivos. Por favor, intenta de nuevo.');
+      toast.error('Error al cargar archivos');
     } finally {
       setCargando(false);
     }
@@ -86,26 +58,75 @@ const ArchivosPage = () => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
+      if (archivosAceptados.length === 0) return;
+      
       setSubiendo(true);
       try {
-        // TODO: Implementar subida de archivos
-        console.log('Archivos a subir:', archivosAceptados);
+        // Upload each file
+        const promises = archivosAceptados.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('folder_type', filtroTipo !== 'TODOS' ? filtroTipo : 'DOCUMENTOS');
+          
+          return uploadDocument(formData);
+        });
         
-        // Simular subida
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await Promise.all(promises);
+        
+        toast.success(`${archivosAceptados.length} archivo(s) subido(s) correctamente`);
         
         // Recargar archivos después de la subida
         await cargarArchivos();
       } catch (error) {
         console.error('Error subiendo archivos:', error);
+        toast.error('Error al subir algunos archivos');
       } finally {
         setSubiendo(false);
       }
+    },
+    maxSize: 40 * 1024 * 1024, // 40MB
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/zip': ['.zip'],
+      'application/x-rar-compressed': ['.rar'],
+      'image/*': ['.jpg', '.jpeg', '.png', '.gif'],
+      'text/plain': ['.txt']
     }
   });
 
+  const handleDeleteArchivo = async (archivoId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
+      return;
+    }
+
+    try {
+      await deleteDocument(archivoId);
+      toast.success('Archivo eliminado correctamente');
+      await cargarArchivos();
+    } catch (error) {
+      console.error('Error eliminando archivo:', error);
+      toast.error('Error al eliminar el archivo');
+    }
+  };
+
+  const handleDownloadArchivo = async (archivo) => {
+    try {
+      // If file has a direct URL, open it
+      if (archivo.file_url) {
+        window.open(getFileUrl(archivo.file_url), '_blank');
+      } else {
+        toast.error('URL de archivo no disponible');
+      }
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      toast.error('Error al descargar el archivo');
+    }
+  };
+
   const formatearTamano = (bytes) => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const tamaños = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -113,6 +134,7 @@ const ArchivosPage = () => {
   };
 
   const obtenerIconoArchivo = (tipo) => {
+    if (!tipo) return '📁';
     if (tipo.startsWith('image/')) return '🖼️';
     if (tipo.includes('pdf')) return '📄';
     if (tipo.includes('word')) return '📝';
@@ -130,15 +152,32 @@ const ArchivosPage = () => {
         return <span className="estado-badge subiendo"><FiClock /> Subiendo...</span>;
       case 'FAILED':
         return <span className="estado-badge fallido"><FiAlertCircle /> Fallo</span>;
+      case 'PENDING':
+        return <span className="estado-badge pendiente"><FiClock /> Pendiente</span>;
       default:
         return <span className="estado-badge pendiente"><FiClock /> Pendiente</span>;
     }
   };
 
   const archivosFiltrados = archivos.filter(archivo => {
-    const coincideBusqueda = archivo.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                             archivo.proyecto.toLowerCase().includes(busqueda.toLowerCase());
-    const coincideTipo = filtroTipo === 'TODOS' || archivo.tipo.startsWith(filtroTipo.toLowerCase());
+    const nombreArchivo = archivo.name || '';
+    const proyectoNombre = archivo.project?.name || '';
+    
+    const coincideBusqueda = nombreArchivo.toLowerCase().includes(busqueda.toLowerCase()) ||
+                             proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
+    
+    // Filter by file type based on file_type field
+    let coincideTipo = true;
+    if (filtroTipo !== 'TODOS') {
+      if (filtroTipo === 'image') {
+        coincideTipo = archivo.file_type?.startsWith('image/');
+      } else if (filtroTipo === 'application/pdf') {
+        coincideTipo = archivo.file_type?.includes('pdf');
+      } else if (filtroTipo === 'application') {
+        coincideTipo = archivo.file_type?.startsWith('application/') && !archivo.file_type?.includes('pdf');
+      }
+    }
+    
     return coincideBusqueda && coincideTipo;
   });
 
@@ -215,6 +254,14 @@ const ArchivosPage = () => {
           <div className="spinner"></div>
           <p>Cargando archivos...</p>
         </div>
+      ) : error ? (
+        <div className="error-container">
+          <FiFile size={48} />
+          <p>{error}</p>
+          <button onClick={cargarArchivos} className="btn-reintentar">
+            Reintentar
+          </button>
+        </div>
       ) : (
         <div className={`archivos-contenedor ${vistaTipo}`}>
           {archivosFiltrados.length === 0 ? (
@@ -226,33 +273,45 @@ const ArchivosPage = () => {
             archivosFiltrados.map(archivo => (
               <div key={archivo.id} className="archivo-item">
                 <div className="archivo-icono">
-                  <span className="icono-tipo">{obtenerIconoArchivo(archivo.tipo)}</span>
+                  <span className="icono-tipo">{obtenerIconoArchivo(archivo.file_type)}</span>
                 </div>
                 <div className="archivo-info">
-                  <h4 className="archivo-nombre">{archivo.nombre}</h4>
+                  <h4 className="archivo-nombre">{archivo.name}</h4>
                   <div className="archivo-meta">
-                    <span>{formatearTamano(archivo.tamano)}</span>
+                    <span>{formatearTamano(archivo.file_size)}</span>
                     <span>•</span>
-                    <span>{archivo.subidoPor}</span>
-                    <span>•</span>
-                    <span>{archivo.proyecto}</span>
+                    <span>{archivo.uploaded_by?.username || 'Usuario'}</span>
+                    {archivo.project?.name && (
+                      <>
+                        <span>•</span>
+                        <span>{archivo.project.name}</span>
+                      </>
+                    )}
                   </div>
-                  {obtenerEstadoDrive(archivo.estadoDrive)}
+                  {obtenerEstadoDrive(archivo.upload_status)}
                 </div>
                 <div className="archivo-acciones">
-                  {archivo.driveUrl && (
+                  {archivo.drive_file_url && (
                     <button 
                       className="btn-icono"
                       title="Ver en Drive"
-                      onClick={() => window.open(archivo.driveUrl, '_blank')}
+                      onClick={() => window.open(archivo.drive_file_url, '_blank')}
                     >
                       <FiExternalLink />
                     </button>
                   )}
-                  <button className="btn-icono" title="Descargar">
+                  <button 
+                    className="btn-icono" 
+                    title="Descargar"
+                    onClick={() => handleDownloadArchivo(archivo)}
+                  >
                     <FiDownload />
                   </button>
-                  <button className="btn-icono btn-peligro" title="Eliminar">
+                  <button 
+                    className="btn-icono btn-peligro" 
+                    title="Eliminar"
+                    onClick={() => handleDeleteArchivo(archivo.id)}
+                  >
                     <FiTrash2 />
                   </button>
                 </div>

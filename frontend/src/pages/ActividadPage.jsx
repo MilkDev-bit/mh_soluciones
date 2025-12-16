@@ -7,9 +7,12 @@ import {
   FiMessageSquare,
   FiFolder,
   FiUpload,
-  FiEdit
+  FiEdit,
+  FiBell
 } from 'react-icons/fi';
 import { AuthContext } from '../contexts/AuthContext';
+import { getNotifications } from '../services/NotificationService';
+import toast from 'react-hot-toast';
 import './ActividadPage.scss';
 
 const ActividadPage = () => {
@@ -17,6 +20,7 @@ const ActividadPage = () => {
   const [actividades, setActividades] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState('TODAS');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     cargarActividades();
@@ -25,47 +29,65 @@ const ActividadPage = () => {
   const cargarActividades = async () => {
     try {
       setCargando(true);
-      // TODO: Implementar llamada a la API para cargar actividades
-      // const response = await fetch(`/api/actividades/?tipo=${filtroTipo}`);
-      // const data = await response.json();
+      setError(null);
       
-      // Datos de ejemplo por ahora
-      const actividadesEjemplo = [
-        {
-          id: 1,
-          tipo: 'TAREA_CREADA',
-          usuario: { nombre: 'Juan Pérez', avatar: null },
-          descripcion: 'creó la tarea "Implementar dashboard"',
-          proyecto: 'Sistema de Gestión',
-          fecha: new Date(Date.now() - 3600000),
-          icono: 'checkSquare'
-        },
-        {
-          id: 2,
-          tipo: 'ARCHIVO_SUBIDO',
-          usuario: { nombre: 'María González', avatar: null },
-          descripcion: 'subió el archivo "reporte_mensual.pdf"',
-          proyecto: 'Reportes Financieros',
-          fecha: new Date(Date.now() - 7200000),
-          icono: 'upload'
-        },
-        {
-          id: 3,
-          tipo: 'COMENTARIO_AGREGADO',
-          usuario: { nombre: 'Carlos Ruiz', avatar: null },
-          descripcion: 'comentó en la tarea "Revisión de código"',
-          proyecto: 'Desarrollo Web',
-          fecha: new Date(Date.now() - 10800000),
-          icono: 'messageSquare'
-        }
-      ];
+      // Fetch real notifications from the API with all read/unread
+      const notificaciones = await getNotifications({ include_read: true, limit: 100 });
       
-      setActividades(actividadesEjemplo);
+      // Transform notifications to activity format
+      const actividadesTransformadas = notificaciones.map(notif => ({
+        id: notif.id,
+        tipo: notif.notification_type,
+        titulo: notif.title,
+        descripcion: notif.message,
+        fecha: new Date(notif.created_at),
+        leida: notif.is_read,
+        icono: getIconoParaTipo(notif.notification_type)
+      }));
+      
+      // Filter by type if needed
+      let actividadesFiltradas = actividadesTransformadas;
+      if (filtroTipo !== 'TODAS') {
+        actividadesFiltradas = actividadesTransformadas.filter(
+          act => mapTipoAFiltro(act.tipo) === filtroTipo
+        );
+      }
+      
+      setActividades(actividadesFiltradas);
     } catch (error) {
       console.error('Error cargando actividades:', error);
+      setError('No se pudieron cargar las actividades. Por favor, intenta de nuevo.');
+      toast.error('Error al cargar actividades');
     } finally {
       setCargando(false);
     }
+  };
+
+  const getIconoParaTipo = (tipo) => {
+    const mapeo = {
+      'TASK_ASSIGNED': 'checkSquare',
+      'TASK_DUE': 'checkSquare',
+      'TASK_OVERDUE': 'checkSquare',
+      'TASK_COMPLETED': 'checkSquare',
+      'FILE_UPLOADED': 'upload',
+      'COMMENT_REPLY': 'messageSquare',
+      'CALENDAR_EVENT': 'calendar',
+      'EVENT_REMINDER': 'calendar',
+      'TEAM_INVITATION': 'users',
+      'PROJECT_UPDATE': 'folder',
+      'MENTION': 'messageSquare',
+      'ROLE_CHANGE': 'edit',
+      'INFO': 'bell'
+    };
+    return mapeo[tipo] || 'bell';
+  };
+
+  const mapTipoAFiltro = (tipo) => {
+    if (tipo.includes('TASK')) return 'TAREAS';
+    if (tipo.includes('FILE')) return 'ARCHIVOS';
+    if (tipo.includes('CALENDAR') || tipo.includes('EVENT')) return 'CALENDARIO';
+    if (tipo.includes('TEAM') || tipo.includes('ROLE')) return 'EQUIPOS';
+    return 'TODAS';
   };
 
   const obtenerIconoActividad = (icono) => {
@@ -77,9 +99,10 @@ const ActividadPage = () => {
       users: <FiUsers />,
       folder: <FiFolder />,
       edit: <FiEdit />,
-      fileText: <FiFileText />
+      fileText: <FiFileText />,
+      bell: <FiBell />
     };
-    return iconos[icono] || <FiFileText />;
+    return iconos[icono] || <FiBell />;
   };
 
   const formatearFecha = (fecha) => {
@@ -135,6 +158,14 @@ const ActividadPage = () => {
             <div className="spinner"></div>
             <p>Cargando actividades...</p>
           </div>
+        ) : error ? (
+          <div className="error-container">
+            <FiFileText size={48} />
+            <p>{error}</p>
+            <button onClick={cargarActividades} className="btn-reintentar">
+              Reintentar
+            </button>
+          </div>
         ) : actividades.length === 0 ? (
           <div className="sin-actividades">
             <FiFileText size={48} />
@@ -142,22 +173,26 @@ const ActividadPage = () => {
           </div>
         ) : (
           actividades.map(actividad => (
-            <div key={actividad.id} className="actividad-item">
+            <div 
+              key={actividad.id} 
+              className={`actividad-item ${!actividad.leida ? 'no-leida' : ''}`}
+            >
               <div className="actividad-icono">
                 {obtenerIconoActividad(actividad.icono)}
               </div>
               <div className="actividad-contenido">
                 <div className="actividad-header">
-                  <span className="actividad-usuario">
-                    {actividad.usuario.nombre}
+                  <span className="actividad-titulo">
+                    {actividad.titulo}
                   </span>
-                  <span className="actividad-descripcion">
-                    {actividad.descripcion}
-                  </span>
+                  {!actividad.leida && (
+                    <span className="badge-nuevo">Nuevo</span>
+                  )}
                 </div>
+                <p className="actividad-descripcion">
+                  {actividad.descripcion}
+                </p>
                 <div className="actividad-meta">
-                  <span className="actividad-proyecto">{actividad.proyecto}</span>
-                  <span className="actividad-separador">•</span>
                   <span className="actividad-fecha">
                     {formatearFecha(actividad.fecha)}
                   </span>
