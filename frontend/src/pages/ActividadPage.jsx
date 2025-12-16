@@ -9,7 +9,7 @@ import {
   FiUpload,
   FiEdit
 } from 'react-icons/fi';
-import { AuthContext } from '../../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 import './ActividadPage.scss';
 
 const ActividadPage = () => {

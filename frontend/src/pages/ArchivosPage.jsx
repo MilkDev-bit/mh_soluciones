@@ -14,7 +14,7 @@ import {
   FiAlertCircle,
   FiExternalLink
 } from 'react-icons/fi';
-import { AuthContext } from '../../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContext';
 import { useDropzone } from 'react-dropzone';
 import './ArchivosPage.scss';
 

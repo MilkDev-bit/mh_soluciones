@@ -10,12 +10,20 @@ import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
-import { FiCheckSquare, FiFilter, FiPaperclip, FiRefreshCw } from 'react-icons/fi';
-import { format, parseISO } from 'date-fns';
+import { 
+  FiCheckSquare, 
+  FiFilter, 
+  FiRefreshCw,
+  FiClock,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiCalendar,
+  FiUser,
+  FiPaperclip
+} from 'react-icons/fi';
+import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
-import { getFileUrl } from '../../services/documentService';
-
 
 const TasksPage = () => {
   const [user, setUser] = useState(null);
@@ -48,36 +56,15 @@ const TasksPage = () => {
       setUser(userData);
       const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
       
-      // Filter out completed tasks first
-      let filteredTasks = tasksList.filter(task => task.status !== 'COMPLETED');
-
-      // For students, additionally filter to only show their assigned tasks
+      // For students, filter to only show their assigned tasks
+      let filteredTasks = tasksList;
       if (userData.role === 'STUDENT') {
-        if (import.meta.env.DEV) {
-          console.log(`[TasksPage] Filtering tasks for student: ${userData.first_name} ${userData.last_name} (ID: ${userData.id})`);
-          console.log(`[TasksPage] Total tasks before filter: ${filteredTasks.length}`);
-        }
-        
-        filteredTasks = filteredTasks.filter(task => {
-          // Check if assigned via assigned_to field
+        filteredTasks = tasksList.filter(task => {
           const isAssignedTo = task.assigned_to?.id === userData.id;
-          
-          // Check if assigned via assigned_students_data array
           const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
             task.assigned_students_data.some(student => student.id === userData.id);
-          
-          const isAssigned = isAssignedTo || isInAssignedStudents;
-          
-          if (import.meta.env.DEV && isAssigned) {
-            console.log(`[TasksPage] ✓ Task "${task.title}" (ID: ${task.id}) - assigned_to: ${isAssignedTo}, in assigned_students: ${isInAssignedStudents}`);
-          }
-          
-          return isAssigned;
+          return isAssignedTo || isInAssignedStudents;
         });
-        
-        if (import.meta.env.DEV) {
-          console.log(`[TasksPage] Total tasks after filter: ${filteredTasks.length}`);
-        }
       }
 
       setTasks(filteredTasks);
@@ -123,7 +110,6 @@ const TasksPage = () => {
     fetchData();
   }, [fetchData]);
 
-  // Listen for task updates from other components
   useEffect(() => {
     if (tasksUpdated) {
       fetchData(true);
@@ -131,7 +117,6 @@ const TasksPage = () => {
     }
   }, [tasksUpdated, fetchData, consumeTasksUpdate]);
 
-  // Listen for external task update events
   useEffect(() => {
     const handleTaskChange = () => {
       fetchData(true);
@@ -175,13 +160,9 @@ const TasksPage = () => {
   }, [notifyTaskChange]);
 
   const handleTaskUpdated = useCallback((updatedTask) => {
-    if (updatedTask.status === 'COMPLETED') {
-      setTasks(prev => prev.filter(task => task.id !== updatedTask.id));
-    } else {
-      setTasks(prev => prev.map(task => 
-        task.id === updatedTask.id ? updatedTask : task
-      ));
-    }
+    setTasks(prev => prev.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    ));
     notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
   }, [notifyTaskChange]);
 
@@ -191,14 +172,124 @@ const TasksPage = () => {
     notifyTaskChange(taskId, null, 'delete');
   }, [notifyTaskChange]);
 
-  const filteredTasks =
-    selectedProject === 'all'
-      ? tasks
-      : tasks.filter((task) => task.project === parseInt(selectedProject));
+  // Categorize tasks based on Microsoft Teams style
+  // Tasks are categorized into 3 groups:
+  // - Upcoming: Tasks due within the next 7 days (configurable)
+  // - Overdue: Tasks past their due date
+  // - Completed: All completed tasks
+  const UPCOMING_DAYS_THRESHOLD = 7;
+  
+  const categorizeTasks = (tasksList) => {
+    const now = new Date();
+    const soon = addDays(now, UPCOMING_DAYS_THRESHOLD);
+
+    return {
+      upcoming: tasksList.filter(task => {
+        if (!task.due_date || task.status === 'COMPLETED') return false;
+        const dueDate = parseISO(task.due_date);
+        // Include all future tasks (not just within 7 days) to ensure no tasks are hidden
+        return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
+      }),
+      overdue: tasksList.filter(task => {
+        if (!task.due_date || task.status === 'COMPLETED') return false;
+        const dueDate = parseISO(task.due_date);
+        return isPast(dueDate);
+      }),
+      completed: tasksList.filter(task => task.status === 'COMPLETED')
+    };
+  };
+
+  const filteredTasks = selectedProject === 'all'
+    ? tasks
+    : tasks.filter((task) => task.project === parseInt(selectedProject));
+
+  const categorizedTasks = categorizeTasks(filteredTasks);
 
   if (loading || !user) {
     return <Loading fullscreen text="Cargando tareas..." />;
   }
+
+  const TaskCard = ({ task }) => {
+    const documents = taskDocuments[task.id] || [];
+    
+    return (
+      <div
+        className="task-card"
+        onClick={() => setSelectedTask(task)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setSelectedTask(task);
+          }
+        }}
+      >
+        <div className="task-card-header">
+          <div className="task-icon">
+            <FiCheckSquare />
+          </div>
+          <h3 className="task-title">{task.title}</h3>
+        </div>
+        
+        <div className="task-card-body">
+          {task.description && (
+            <p className="task-description">{task.description}</p>
+          )}
+          
+          <div className="task-meta">
+            <div className="task-project-badge">
+              {task.project_name}
+            </div>
+            
+            {task.due_date && (
+              <div className="task-deadline">
+                <FiCalendar />
+                <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+              </div>
+            )}
+            
+            {task.assigned_to && (
+              <div className="task-assignee">
+                <FiUser />
+                <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+              </div>
+            )}
+            
+            {documents.length > 0 && (
+              <div className="task-documents">
+                <FiPaperclip />
+                <span>{documents.length} archivo(s)</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const TaskColumn = ({ title, icon: Icon, tasks, emptyMessage, color }) => (
+    <div className="task-column">
+      <div className="task-column-header" style={{ borderColor: color }}>
+        <Icon style={{ color }} />
+        <h2>{title}</h2>
+        <span className="task-count" style={{ backgroundColor: color }}>
+          {tasks.length}
+        </span>
+      </div>
+      
+      <div className="task-column-content">
+        {tasks.length > 0 ? (
+          tasks.map(task => <TaskCard key={task.id} task={task} />)
+        ) : (
+          <div className="empty-state">
+            <Icon size={48} />
+            <p>{emptyMessage}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -210,7 +301,6 @@ const TasksPage = () => {
         <Modal 
           title="Nueva Tarea" 
           onClose={() => setIsModalOpen(false)}
-          aria-labelledby="modal-title"
         >
           {selectedProject !== 'all' ? (
             <TaskForm
@@ -221,7 +311,7 @@ const TasksPage = () => {
             />
           ) : (
             <div className="p-4">
-              <p className="text-warning" role="alert">Por favor selecciona un proyecto primero</p>
+              <p className="text-warning">Por favor selecciona un proyecto primero</p>
               <button 
                 className="btn btn-secondary" 
                 onClick={() => setIsModalOpen(false)}
@@ -235,11 +325,7 @@ const TasksPage = () => {
 
       {selectedTask && (
         <Modal
-          title={
-            user && ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role)
-              ? 'Editar Tarea'
-              : 'Detalles de la Tarea'
-          }
+          title="Detalles de la Tarea"
           onClose={() => setSelectedTask(null)}
           size="large"
         >
@@ -268,9 +354,9 @@ const TasksPage = () => {
 
       <div className="tasks-page animate-slide-up">
         <div className="page-header">
-          <h1>
-            {user.role === 'STUDENT' ? 'Mis Tareas' : 'Gestor de Tareas'}
-          </h1>
+          <div className="header-content">
+            <h1>{user.role === 'STUDENT' ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
+          </div>
           <div className="header-actions">
             {isRefreshing && (
               <Loading inline size="small" text="Actualizando..." />
@@ -290,7 +376,6 @@ const TasksPage = () => {
                 onClick={() => setIsModalOpen(true)}
                 disabled={selectedProject === 'all'}
                 title={selectedProject === 'all' ? 'Selecciona un proyecto primero' : 'Crear nueva tarea'}
-                aria-label="Crear nueva tarea"
               >
                 + Nueva Tarea
               </button>
@@ -301,14 +386,13 @@ const TasksPage = () => {
         <div className="glass-card">
           <div className="filters-bar">
             <div className="filter-group">
-              <FiFilter aria-hidden="true" />
-              <label htmlFor="project-filter" id="project-filter-label">Filtrar por Proyecto:</label>
+              <FiFilter />
+              <label htmlFor="project-filter">Filtrar por Proyecto:</label>
               <select
                 id="project-filter"
                 className="form-select"
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                aria-labelledby="project-filter-label"
               >
                 <option value="all">Todos los Proyectos</option>
                 {Array.isArray(projects) &&
@@ -321,68 +405,30 @@ const TasksPage = () => {
             </div>
           </div>
 
-          <div className="tasks-list-container" role="list" aria-label="Lista de tareas">
-            {Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => {
-                const documents = taskDocuments[task.id] || [];
-                
-                return (
-                  <div
-                    key={task.id}
-                    className={`task-list-item ${task._isOptimistic ? 'optimistic-item' : ''}`}
-                    onClick={() => setSelectedTask(task)}
-                    role="listitem"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedTask(task);
-                      }
-                    }}
-                    aria-label={`Tarea: ${task.title}, Estado: ${task.status}`}
-                  >
-                    <FiCheckSquare
-                      className={`task-status-icon status-${task.status.toLowerCase()}`}
-                      aria-hidden="true"
-                    />
-                    <div className="task-list-info">
-                      <p className="task-title">{task.title}</p>
-                      <span className="task-project-name">{task.project_name}</span>
-                      {documents.length > 0 && (
-                        <div className="task-documents-badge" aria-label={`${documents.length} documentos adjuntos`}>
-                          <FiPaperclip size={12} aria-hidden="true" />
-                          <span>{documents.length} documento(s)</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="task-list-details">
-                      {task.due_date && (
-                        <span className="task-due-date">
-                          Vence:{' '}
-                          {format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}
-                        </span>
-                      )}
-                      {task.assigned_to && (
-                        <img
-                          src={
-                            task.assigned_to.profile_picture ||
-                            `https://ui-avatars.com/api/?name=${task.assigned_to.first_name}+${task.assigned_to.last_name}&background=f97316&color=fff`
-                          }
-                          alt={`Asignada a ${task.assigned_to.first_name}`}
-                          className="task-assignee-avatar"
-                          title={`Asignada a ${task.assigned_to.first_name}`}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="empty-list-message" role="status">
-                <h2>No hay tareas</h2>
-                <p>No se encontraron tareas que coincidan con el filtro seleccionado.</p>
-              </div>
-            )}
+          <div className="tasks-board">
+            <TaskColumn
+              title="Próximamente"
+              icon={FiClock}
+              tasks={categorizedTasks.upcoming}
+              emptyMessage="No hay tareas próximas"
+              color="#f59e0b"
+            />
+            
+            <TaskColumn
+              title="Vencidas"
+              icon={FiAlertCircle}
+              tasks={categorizedTasks.overdue}
+              emptyMessage="No hay tareas vencidas"
+              color="#ef4444"
+            />
+            
+            <TaskColumn
+              title="Completadas"
+              icon={FiCheckCircle}
+              tasks={categorizedTasks.completed}
+              emptyMessage="No hay tareas completadas"
+              color="#10b981"
+            />
           </div>
         </div>
       </div>
