@@ -32,7 +32,7 @@ const ActividadPage = () => {
       toast.error('Error al cargar actividades');
     },
     staleTime: 30000, // 30 seconds
-    cacheTime: 60000, // 1 minute
+    gcTime: 60000, // 1 minute (formerly cacheTime in v4)
   });
 
   // Transform notifications to activity format
@@ -154,6 +154,11 @@ const ActividadPage = () => {
 
   // Use virtual scrolling for large lists (> 20 items)
   const useVirtualScrolling = actividades.length > 20;
+  
+  // Calculate responsive height for virtual list (viewport height - header - padding)
+  const virtualListHeight = typeof window !== 'undefined' 
+    ? Math.min(window.innerHeight - 300, 800) 
+    : 600;
 
   return (
     <div className="actividad-page">
@@ -194,7 +199,7 @@ const ActividadPage = () => {
           </div>
         ) : useVirtualScrolling ? (
           <ReactWindow.FixedSizeList
-            height={600}
+            height={virtualListHeight}
             itemCount={actividades.length}
             itemSize={120}
             width="100%"

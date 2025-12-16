@@ -30,11 +30,7 @@ const DashboardPage = () => {
   // Use React Query for data fetching
   const { data, isLoading: loading, error } = useQuery({
     queryKey: ['dashboard'],
-    queryFn: async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) throw new Error('No authentication token found');
-      return await getDashboardData();
-    },
+    queryFn: () => getDashboardData(),
     onError: (error) => {
       if (error.response?.status === 401) {
         toast.error('Sesión expirada.');
