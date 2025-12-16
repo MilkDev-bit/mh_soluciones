@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/milkdev/mh_soluciones_empreariales/mh_soluciones_gestion/mh_soluciones/venv
+set -gx VIRTUAL_ENV /home/runner/work/mh_soluciones/mh_soluciones/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

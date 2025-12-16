@@ -48,6 +48,54 @@ class CalendarEvent(TimeStampedModel):
         default=EventColor.BLUE,
         verbose_name=_("Color del Evento")
     )
+    
+    # Campos adicionales para funcionalidad tipo Teams
+    participantes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='eventos_participando',
+        blank=True,
+        verbose_name=_("Participantes")
+    )
+    ubicacion = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Ubicación"),
+        help_text=_("Ubicación física o enlace virtual")
+    )
+    es_recurrente = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Es Evento Recurrente?")
+    )
+    regla_recurrencia = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Regla de Recurrencia"),
+        help_text=_("Configuración de recurrencia (frecuencia, intervalo, días)")
+    )
+    recordatorios = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Recordatorios"),
+        help_text=_("Lista de recordatorios: [{tipo: 'email', minutos_antes: 60}]")
+    )
+    evento_todo_dia = models.BooleanField(
+        default=False,
+        verbose_name=_("¿Evento de Todo el Día?")
+    )
+    zona_horaria = models.CharField(
+        max_length=50,
+        default='America/Mexico_City',
+        verbose_name=_("Zona Horaria")
+    )
+    enlace_reunion = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name=_("Enlace de Reunión Virtual")
+    )
+    notas = models.TextField(
+        blank=True,
+        verbose_name=_("Notas Adicionales")
+    )
 
     class Meta:
         verbose_name = _("Evento de Calendario")
