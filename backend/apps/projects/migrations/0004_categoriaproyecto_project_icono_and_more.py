@@ -73,7 +73,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Canal',
                 'verbose_name_plural': 'Canales',
                 'ordering': ['-es_general', 'nombre'],
-                'unique_together': {('project', 'nombre')},
+                'unique_together': [('project', 'nombre')],
             },
         ),
         migrations.CreateModel(
