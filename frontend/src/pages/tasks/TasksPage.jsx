@@ -6,6 +6,7 @@ import { getProjects, getProjectMembers } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { isStudent, canCreateTasks } from '../../constants/roles';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
@@ -294,7 +295,7 @@ const TasksPage = () => {
   return (
     <>
       <Helmet>
-        <title>{user.role === 'STUDENT' ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
+        <title>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
       </Helmet>
 
       {isModalOpen && (
@@ -355,7 +356,7 @@ const TasksPage = () => {
       <div className="tasks-page animate-slide-up">
         <div className="page-header">
           <div className="header-content">
-            <h1>{user.role === 'STUDENT' ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
+            <h1>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
           </div>
           <div className="header-actions">
             {isRefreshing && (
@@ -370,7 +371,7 @@ const TasksPage = () => {
             >
               <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
             </button>
-            {['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user.role) && (
+            {canCreateTasks(user.role) && (
               <button 
                 className="btn btn-primary" 
                 onClick={() => setIsModalOpen(true)}
