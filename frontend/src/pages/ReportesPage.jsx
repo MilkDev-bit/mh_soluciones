@@ -11,6 +11,8 @@ import {
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement } from 'chart.js';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import { AuthContext } from '../contexts/AuthContext';
+import { getStatistics } from '../services/reportService';
+import toast from 'react-hot-toast';
 import './ReportesPage.scss';
 
 // Registrar componentes de Chart.js
@@ -29,24 +31,11 @@ const ReportesPage = () => {
   const cargarEstadisticas = async () => {
     try {
       setCargando(true);
-      // TODO: Implementar llamada a la API para cargar estadísticas
-      // const response = await fetch(`/api/reportes/estadisticas/?rango=${rangoFecha}`);
-      // const data = await response.json();
-      
-      // Datos de ejemplo
-      const datosEjemplo = {
-        tareasTotales: 145,
-        tareasCompletadas: 98,
-        tareasEnProgreso: 32,
-        tareasVencidas: 15,
-        proyectosActivos: 12,
-        usuariosActivos: 24,
-        porcentajeCompletado: 67.6
-      };
-      
-      setEstadisticas(datosEjemplo);
+      const data = await getStatistics(rangoFecha);
+      setEstadisticas(data);
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
+      toast.error('Error al cargar las estadísticas');
     } finally {
       setCargando(false);
     }
@@ -76,7 +65,7 @@ const ReportesPage = () => {
     datasets: [
       {
         label: 'Tareas Completadas',
-        data: [20, 25, 28, 25],
+        data: estadisticas?.tendenciaSemanal || [0, 0, 0, 0],
         borderColor: '#ff7c15',
         backgroundColor: 'rgba(255, 124, 21, 0.1)',
         tension: 0.4
@@ -85,11 +74,11 @@ const ReportesPage = () => {
   };
 
   const datosGraficoProyectos = {
-    labels: ['Proyecto A', 'Proyecto B', 'Proyecto C', 'Proyecto D', 'Proyecto E'],
+    labels: estadisticas?.tareasPorProyecto?.map(p => p.project_name) || [],
     datasets: [
       {
         label: 'Tareas por Proyecto',
-        data: [30, 25, 20, 15, 10],
+        data: estadisticas?.tareasPorProyecto?.map(p => p.task_count) || [],
         backgroundColor: '#ff7c15'
       }
     ]

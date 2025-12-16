@@ -9,6 +9,17 @@ export const getDashboardData = async () => {
   }
 };
 
+export const getStatistics = async (rango = '30_dias') => {
+  try {
+    const response = await api.get('/reports/statistics/', {
+      params: { rango }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const globalSearch = async (query) => {
   try {
     const response = await api.get('/reports/search/', {
