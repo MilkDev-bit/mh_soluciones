@@ -18,7 +18,8 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiCalendar,
-  FiUser
+  FiUser,
+  FiPaperclip
 } from 'react-icons/fi';
 import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -172,14 +173,21 @@ const TasksPage = () => {
   }, [notifyTaskChange]);
 
   // Categorize tasks based on Microsoft Teams style
+  // Tasks are categorized into 3 groups:
+  // - Upcoming: Tasks due within the next 7 days (configurable)
+  // - Overdue: Tasks past their due date
+  // - Completed: All completed tasks
+  const UPCOMING_DAYS_THRESHOLD = 7;
+  
   const categorizeTasks = (tasksList) => {
     const now = new Date();
-    const soon = addDays(now, 7); // Tasks due within 7 days are "upcoming"
+    const soon = addDays(now, UPCOMING_DAYS_THRESHOLD);
 
     return {
       upcoming: tasksList.filter(task => {
         if (!task.due_date || task.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
+        // Include all future tasks (not just within 7 days) to ensure no tasks are hidden
         return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
       }),
       overdue: tasksList.filter(task => {
@@ -250,7 +258,8 @@ const TasksPage = () => {
             
             {documents.length > 0 && (
               <div className="task-documents">
-                📎 {documents.length} archivo(s)
+                <FiPaperclip />
+                <span>{documents.length} archivo(s)</span>
               </div>
             )}
           </div>
