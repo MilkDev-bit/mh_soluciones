@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import * as ReactWindow from 'react-window';
 import { 
   FiCheckSquare, 
   FiFileText, 
@@ -10,58 +12,44 @@ import {
   FiEdit,
   FiBell
 } from 'react-icons/fi';
-import { AuthContext } from '../contexts/AuthContext';
 import { getNotifications } from '../services/NotificationService';
 import toast from 'react-hot-toast';
+import ActivitySkeleton from '../components/skeletons/ActivitySkeleton';
 import './ActividadPage.scss';
 
 const ActividadPage = () => {
-  const { user } = useContext(AuthContext);
-  const [actividades, setActividades] = useState([]);
-  const [cargando, setCargando] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState('TODAS');
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    cargarActividades();
-  }, [filtroTipo]);
-
-  const cargarActividades = async () => {
-    try {
-      setCargando(true);
-      setError(null);
-      
-      // Fetch real notifications from the API with all read/unread
-      const notificaciones = await getNotifications({ include_read: true, limit: 100 });
-      
-      // Transform notifications to activity format
-      const actividadesTransformadas = notificaciones.map(notif => ({
-        id: notif.id,
-        tipo: notif.notification_type,
-        titulo: notif.title,
-        descripcion: notif.message,
-        fecha: new Date(notif.created_at),
-        leida: notif.is_read,
-        icono: getIconoParaTipo(notif.notification_type)
-      }));
-      
-      // Filter by type if needed
-      let actividadesFiltradas = actividadesTransformadas;
-      if (filtroTipo !== 'TODAS') {
-        actividadesFiltradas = actividadesTransformadas.filter(
-          act => mapTipoAFiltro(act.tipo) === filtroTipo
-        );
-      }
-      
-      setActividades(actividadesFiltradas);
-    } catch (error) {
-      console.error('Error cargando actividades:', error);
-      setError('No se pudieron cargar las actividades. Por favor, intenta de nuevo.');
+  // Use React Query for data fetching with caching
+  const { data: notificaciones = [], isLoading: cargando, error, refetch } = useQuery({
+    queryKey: ['activities', filtroTipo],
+    queryFn: async () => {
+      const data = await getNotifications({ include_read: true, limit: 100 });
+      return data;
+    },
+    onError: (err) => {
+      console.error('Error cargando actividades:', err);
       toast.error('Error al cargar actividades');
-    } finally {
-      setCargando(false);
-    }
-  };
+    },
+    staleTime: 30000, // 30 seconds
+    gcTime: 60000, // 1 minute (formerly cacheTime in v4)
+  });
+
+  // Transform notifications to activity format
+  const actividadesTransformadas = notificaciones.map(notif => ({
+    id: notif.id,
+    tipo: notif.notification_type,
+    titulo: notif.title,
+    descripcion: notif.message,
+    fecha: new Date(notif.created_at),
+    leida: notif.is_read,
+    icono: getIconoParaTipo(notif.notification_type)
+  }));
+
+  // Filter by type if needed
+  const actividades = filtroTipo !== 'TODAS'
+    ? actividadesTransformadas.filter(act => mapTipoAFiltro(act.tipo) === filtroTipo)
+    : actividadesTransformadas;
 
   const getIconoParaTipo = (tipo) => {
     const mapeo = {
@@ -131,6 +119,47 @@ const ActividadPage = () => {
     { valor: 'EQUIPOS', etiqueta: 'Equipos' }
   ];
 
+  // Virtual list row renderer for performance with large lists
+  const ActivityRow = ({ index, style }) => {
+    const actividad = actividades[index];
+    return (
+      <div 
+        style={style}
+        className={`actividad-item ${!actividad.leida ? 'no-leida' : ''}`}
+      >
+        <div className="actividad-icono">
+          {obtenerIconoActividad(actividad.icono)}
+        </div>
+        <div className="actividad-contenido">
+          <div className="actividad-header">
+            <span className="actividad-titulo">
+              {actividad.titulo}
+            </span>
+            {!actividad.leida && (
+              <span className="badge-nuevo">Nuevo</span>
+            )}
+          </div>
+          <p className="actividad-descripcion">
+            {actividad.descripcion}
+          </p>
+          <div className="actividad-meta">
+            <span className="actividad-fecha">
+              {formatearFecha(actividad.fecha)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Use virtual scrolling for large lists (> 20 items)
+  const useVirtualScrolling = actividades.length > 20;
+  
+  // Calculate responsive height for virtual list (viewport height - header - padding)
+  const virtualListHeight = typeof window !== 'undefined' 
+    ? Math.min(window.innerHeight - 300, 800) 
+    : 600;
+
   return (
     <div className="actividad-page">
       <div className="page-header">
@@ -154,15 +183,12 @@ const ActividadPage = () => {
 
       <div className="actividad-lista">
         {cargando ? (
-          <div className="cargando">
-            <div className="spinner"></div>
-            <p>Cargando actividades...</p>
-          </div>
+          <ActivitySkeleton />
         ) : error ? (
           <div className="error-container">
             <FiFileText size={48} />
-            <p>{error}</p>
-            <button onClick={cargarActividades} className="btn-reintentar">
+            <p>{error.message || 'No se pudieron cargar las actividades. Por favor, intenta de nuevo.'}</p>
+            <button onClick={() => refetch()} className="btn-reintentar">
               Reintentar
             </button>
           </div>
@@ -171,6 +197,15 @@ const ActividadPage = () => {
             <FiFileText size={48} />
             <p>No hay actividades recientes</p>
           </div>
+        ) : useVirtualScrolling ? (
+          <ReactWindow.FixedSizeList
+            height={virtualListHeight}
+            itemCount={actividades.length}
+            itemSize={120}
+            width="100%"
+          >
+            {ActivityRow}
+          </ReactWindow.FixedSizeList>
         ) : (
           actividades.map(actividad => (
             <div 

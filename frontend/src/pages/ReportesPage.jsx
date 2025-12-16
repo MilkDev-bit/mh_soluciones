@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useContext } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   FiCheckSquare, 
   FiClock, 
@@ -13,6 +14,7 @@ import { Pie, Bar, Line } from 'react-chartjs-2';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
 import toast from 'react-hot-toast';
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import './ReportesPage.scss';
 
 // Registrar componentes de Chart.js
@@ -20,26 +22,18 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 
 const ReportesPage = () => {
   const { user } = useContext(AuthContext);
-  const [cargando, setCargando] = useState(true);
-  const [estadisticas, setEstadisticas] = useState(null);
   const [rangoFecha, setRangoFecha] = useState('30_dias');
 
-  useEffect(() => {
-    cargarEstadisticas();
-  }, [rangoFecha]);
-
-  const cargarEstadisticas = async () => {
-    try {
-      setCargando(true);
-      const data = await getStatistics(rangoFecha);
-      setEstadisticas(data);
-    } catch (error) {
+  // Use React Query for statistics
+  const { data: estadisticas, isLoading: cargando } = useQuery({
+    queryKey: ['statistics', rangoFecha],
+    queryFn: () => getStatistics(rangoFecha),
+    onError: (error) => {
       console.error('Error cargando estadísticas:', error);
       toast.error('Error al cargar las estadísticas');
-    } finally {
-      setCargando(false);
-    }
-  };
+    },
+    staleTime: 60000, // 1 minute
+  });
 
   const datosGraficoTareas = {
     labels: ['Completadas', 'En Progreso', 'Vencidas'],
@@ -162,10 +156,7 @@ const ReportesPage = () => {
       </div>
 
       {cargando ? (
-        <div className="cargando">
-          <div className="spinner"></div>
-          <p>Cargando estadísticas...</p>
-        </div>
+        <DashboardSkeleton />
       ) : (
         <>
           <div className="tarjetas-estadisticas">

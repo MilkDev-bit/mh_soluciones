@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardData } from '../services/reportService';
-import Loading from '../components/common/Loading';
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import StatsCard from '../components/dashboard/StatsCard';
 import RecentProjects from '../components/dashboard/RecentProjects';
 import MyTasks from '../components/dashboard/MyTasks';
@@ -22,40 +23,25 @@ const ICONS = {
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+  
   // Dashboard items state
   const [items, setItems] = useState([]);
 
-  // Fetch logic
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const token = localStorage.getItem('access_token');
-        if (!token) throw new Error('No authentication token found');
-
-        const response = await getDashboardData();
-        setData(response);
-      } catch (error) {
-        if (error.response?.status === 401) {
-          setError('Error de autenticación.');
-          toast.error('Sesión expirada.');
-          setTimeout(() => window.location.href = '/login', 2000);
-        } else {
-          setError('No se pudieron cargar los datos.');
-          toast.error("Error cargando dashboard");
-        }
-      } finally {
-        setLoading(false);
+  // Use React Query for data fetching
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => getDashboardData(),
+    onError: (error) => {
+      if (error.response?.status === 401) {
+        toast.error('Sesión expirada.');
+        setTimeout(() => window.location.href = '/login', 2000);
+      } else {
+        toast.error("Error cargando dashboard");
       }
-    };
-    fetchData();
-  }, []);
+    },
+    staleTime: 60000, // 1 minute
+    retry: 1,
+  });
 
   const displayData = useMemo(() => {
     if (data) return data;
@@ -190,7 +176,7 @@ const DashboardPage = () => {
     return `${greeting}, ${user?.first_name || user?.username || 'Usuario'}!`;
   };
 
-  if (loading) return <Loading fullscreen text="Cargando dashboard..." />;
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <>
