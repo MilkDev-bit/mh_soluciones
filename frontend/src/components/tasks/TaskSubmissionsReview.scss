@@ -1,0 +1,484 @@
+@import '../../assets/styles/variables';
+
+.task-submissions-review {
+  padding: 1.5rem;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  .review-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid $neutral-200;
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $neutral-900;
+      margin-bottom: 0.75rem;
+    }
+
+    .task-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .task-name {
+      font-weight: 600;
+      color: $neutral-700;
+    }
+
+    .submissions-count {
+      background: $primary-100;
+      color: $primary-800;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: $neutral-500;
+
+    svg {
+      color: $neutral-400;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1rem;
+      margin: 0;
+    }
+  }
+
+  .students-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .student-card {
+    background: $white;
+    border: 2px solid $neutral-200;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+
+    &:hover {
+      border-color: $neutral-300;
+      box-shadow: $shadow-md;
+    }
+
+    &.expanded {
+      border-color: $primary-300;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1), $shadow-lg;
+    }
+  }
+
+  .student-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: $neutral-50;
+    }
+  }
+
+  .student-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .student-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+    color: $white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .student-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .student-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $neutral-900;
+    margin: 0;
+  }
+
+  .student-email {
+    font-size: 0.875rem;
+    color: $neutral-600;
+  }
+
+  .submission-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .submission-status {
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &.status-submitted {
+      background: $info-light;
+      color: $info-dark;
+    }
+
+    &.status-graded {
+      background: $success-light;
+      color: $success-dark;
+    }
+
+    &.status-late {
+      background: $warning-light;
+      color: $warning-dark;
+    }
+
+    &.status-pending {
+      background: $neutral-100;
+      color: $neutral-600;
+    }
+  }
+
+  .submission-score {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background: linear-gradient(135deg, $primary-50 0%, $primary-100 100%);
+    border: 2px solid $primary-200;
+    border-radius: 8px;
+    font-weight: 700;
+    color: $primary-800;
+    font-size: 0.9375rem;
+
+    svg {
+      color: $primary-600;
+    }
+  }
+
+  .submission-version {
+    padding: 0.375rem 0.75rem;
+    background: $neutral-100;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $neutral-700;
+  }
+
+  .student-submissions {
+    padding: 1.5rem;
+    background: $neutral-50;
+    border-top: 2px solid $neutral-200;
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: $neutral-900;
+      margin: 0 0 1rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid $neutral-200;
+    }
+  }
+
+  .submission-item {
+    background: $white;
+    border: 2px solid $neutral-200;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $neutral-300;
+      box-shadow: $shadow-sm;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .submission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .submission-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .submission-version-badge {
+    padding: 0.375rem 0.75rem;
+    background: linear-gradient(135deg, $secondary-50 0%, $secondary-100 100%);
+    border: 1px solid $secondary-200;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $secondary-800;
+  }
+
+  .submission-date {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: $neutral-600;
+
+    svg {
+      color: $neutral-500;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  .submission-notes {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: $neutral-50;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+
+    svg {
+      color: $neutral-500;
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+    }
+
+    p {
+      margin: 0;
+      color: $neutral-700;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+  }
+
+  .submission-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: $info-light;
+    border-left: 4px solid $info;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+
+    svg {
+      color: $info-dark;
+      flex-shrink: 0;
+    }
+
+    a {
+      color: $info-dark;
+      font-weight: 500;
+      text-decoration: none;
+      font-size: 0.9375rem;
+      word-break: break-all;
+      flex: 1;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .submission-files {
+    margin-bottom: 1rem;
+
+    h5 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: $neutral-800;
+      margin: 0 0 0.75rem 0;
+    }
+
+    .files-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: $neutral-50;
+      border: 1px solid $neutral-200;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: $primary-300;
+        background: $primary-50;
+      }
+
+      svg:first-child {
+        color: $primary-600;
+        flex-shrink: 0;
+      }
+
+      .file-name {
+        flex: 1;
+        font-size: 0.9375rem;
+        color: $neutral-800;
+        font-weight: 500;
+      }
+
+      .file-download {
+        color: $primary-600;
+        padding: 0.375rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+
+        &:hover {
+          background: $primary-100;
+          color: $primary-700;
+        }
+      }
+    }
+  }
+
+  .grading-info {
+    padding: 1.25rem;
+    background: linear-gradient(135deg, $success-light 0%, rgba($success-light, 0.5) 100%);
+    border: 2px solid $success;
+    border-radius: 10px;
+    margin-top: 1rem;
+
+    .grade-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba($success, 0.3);
+
+      .grade-icon {
+        color: $success-dark;
+        width: 20px;
+        height: 20px;
+      }
+
+      h5 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: $success-dark;
+        margin: 0;
+      }
+    }
+
+    .grade-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .grade-score {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      strong {
+        color: $neutral-800;
+        font-size: 0.9375rem;
+      }
+
+      .score-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $success-dark;
+      }
+    }
+
+    .grade-feedback {
+      background: $white;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba($success, 0.3);
+
+      strong {
+        display: block;
+        color: $neutral-800;
+        font-size: 0.9375rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        margin: 0;
+        color: $neutral-700;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+      }
+    }
+
+    .grade-date {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: $neutral-600;
+
+      svg {
+        color: $neutral-500;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+
+    .student-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .submission-summary {
+      width: 100%;
+    }
+
+    .submission-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+}

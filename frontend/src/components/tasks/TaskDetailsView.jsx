@@ -15,8 +15,11 @@ import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/d
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
-  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw
+  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers
 } from 'react-icons/fi';
+import TaskSubmissionsReview from './TaskSubmissionsReview';
+import TaskSubmissionForm from './TaskSubmissionForm';
+import Modal from '../common/Modal';
 import './TaskDetailsView.scss';
 
 const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
@@ -37,6 +40,8 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
   const [taskComments, setTaskComments] = useState([]);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isReassigning, setIsReassigning] = useState(false);
+  const [showSubmissionsReview, setShowSubmissionsReview] = useState(false);
+  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
 
   const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
   const { register: submissionRegister, handleSubmit: submissionHandleSubmit, reset: submissionReset } = useForm();
@@ -360,8 +365,40 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     toast.success('Datos actualizados');
   };
 
+  const handleSubmissionComplete = async () => {
+    setShowSubmissionForm(false);
+    await fetchSubmissions();
+  };
+
   return (
     <div className="task-details-view">
+      {showSubmissionsReview && (
+        <Modal
+          title="Revisar Entregas"
+          onClose={() => setShowSubmissionsReview(false)}
+          size="large"
+        >
+          <TaskSubmissionsReview
+            task={task}
+            onClose={() => setShowSubmissionsReview(false)}
+          />
+        </Modal>
+      )}
+
+      {showSubmissionForm && (
+        <Modal
+          title="Entregar Tarea"
+          onClose={() => setShowSubmissionForm(false)}
+          size="medium"
+        >
+          <TaskSubmissionForm
+            task={task}
+            onSubmissionComplete={handleSubmissionComplete}
+            onCancel={() => setShowSubmissionForm(false)}
+          />
+        </Modal>
+      )}
+
       {showModal && selectedFile && (
         <div className="file-modal-overlay" onClick={() => setShowModal(false)}>
           <div className="file-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -501,6 +538,29 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
               {task?.assigned_to && (<div className="meta-item"><FiUser className="meta-icon" /><span><strong>Asignada a:</strong> {task.assigned_to.first_name} {task.assigned_to.last_name}</span></div>)}
               {task?.created_by && (<div className="meta-item"><FiUser className="meta-icon" /><span><strong>Creada por:</strong> {task.created_by.first_name} {task.created_by.last_name}</span></div>)}
               <div className="meta-item"><FiCalendar className="meta-icon" /><span><strong>Creada:</strong> {formatCreatedAt()}</span></div>
+            </div>
+
+            {/* Teams-like action buttons */}
+            <div className="task-actions">
+              {canCompleteTask && (
+                <button
+                  className="btn btn-primary btn-icon"
+                  onClick={() => setShowSubmissionsReview(true)}
+                >
+                  <FiUsers />
+                  Ver Entregas de Estudiantes
+                </button>
+              )}
+              
+              {isStudent && (
+                <button
+                  className="btn btn-success btn-icon"
+                  onClick={() => setShowSubmissionForm(true)}
+                >
+                  <FiUpload />
+                  Entregar Tarea
+                </button>
+              )}
             </div>
 
             {canInteract && (

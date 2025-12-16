@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { ProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
+import GradesWidget from './GradesWidget';
 import { 
   FiGrid, 
   FiBriefcase, 
@@ -330,6 +331,11 @@ const Sidebar = () => {
             )}
 
           </nav>
+
+          {/* Grades Widget for Students */}
+          {user.role === 'STUDENT' && (
+            <GradesWidget isCollapsed={isCollapsed} />
+          )}
 
           <div className="sidebar-footer">
             <div className="user-profile">
