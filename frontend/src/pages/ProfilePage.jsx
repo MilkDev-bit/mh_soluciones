@@ -7,6 +7,7 @@ import { changePassword, setupTwoFactor, confirmTwoFactor } from '../services/au
 import { updateProfile } from '../services/userService';
 import { FiUser, FiShield, FiKey, FiCamera, FiCheck, FiEdit2, FiGrid } from 'react-icons/fi';
 import GoogleDriveConnect from '../components/auth/GoogleDriveConnect';
+import PushNotificationToggle from '../components/notifications/PushNotificationToggle';
 import { QRCodeCanvas } from 'qrcode.react';
 import Modal from '../components/common/Modal';
 import './ProfilePage.scss';
@@ -434,6 +435,9 @@ const ProfilePage = () => {
                         </button>
                       )}
                     </div>
+
+                    {/* Push Notifications Section */}
+                    <PushNotificationToggle />
 
                     <div className="security-tips">
                       <h4>Consejos de Seguridad</h4>
