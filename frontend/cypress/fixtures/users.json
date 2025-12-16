@@ -1,0 +1,22 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "Admin123!",
+    "role": "ADMIN"
+  },
+  "professor": {
+    "username": "profesor",
+    "password": "Prof123!",
+    "role": "PROFESSOR"
+  },
+  "student": {
+    "username": "estudiante",
+    "password": "Student123!",
+    "role": "STUDENT"
+  },
+  "client": {
+    "username": "cliente",
+    "password": "Client123!",
+    "role": "CLIENT"
+  }
+}
