@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { createTask, updateTask } from '../../services/taskService';
+import { FiPlus, FiTrash2, FiAward } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 import './TaskForm.scss';
 
@@ -10,12 +11,14 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [gradingCriteria, setGradingCriteria] = useState([]);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const isEditMode = Boolean(task);
 
   const assignedToValue = watch('assigned_to');
+  const maxScore = watch('max_score') || 100;
 
   useEffect(() => {
     if (isEditMode && task) {
@@ -24,9 +27,20 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       setValue('due_date', task.due_date);
       setValue('assigned_to', task.assigned_to?.id || '');
       setValue('status', task.status);
+      setValue('open_date', task.open_date);
+      setValue('close_date', task.close_date);
+      setValue('max_score', task.max_score || 100);
+      setValue('allow_late_submissions', task.allow_late_submissions || false);
+      setValue('accept_after_close', task.accept_after_close || false);
+      setValue('days_after_close', task.days_after_close || 0);
       
       if (task.assigned_to) {
         setSelectedMember(task.assigned_to);
+      }
+      
+      // Load grading criteria if available
+      if (task.grading_criteria && Array.isArray(task.grading_criteria)) {
+        setGradingCriteria(task.grading_criteria);
       }
     }
   }, [task, isEditMode, setValue]);
@@ -87,6 +101,25 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         searchInputRef.current?.focus();
       }, 100);
     }
+  };
+
+  // Grading criteria management
+  const addCriterion = () => {
+    setGradingCriteria([...gradingCriteria, { name: '', description: '', points: 0 }]);
+  };
+
+  const removeCriterion = (index) => {
+    setGradingCriteria(gradingCriteria.filter((_, i) => i !== index));
+  };
+
+  const updateCriterion = (index, field, value) => {
+    const updated = [...gradingCriteria];
+    updated[index][field] = field === 'points' ? parseFloat(value) || 0 : value;
+    setGradingCriteria(updated);
+  };
+
+  const getTotalCriteriaPoints = () => {
+    return gradingCriteria.reduce((sum, criterion) => sum + (parseFloat(criterion.points) || 0), 0);
   };
 
   const onSubmit = async (data) => {
@@ -161,6 +194,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('accept_after_close', data.accept_after_close || false);
         formData.append('days_after_close', data.days_after_close || 0);
         formData.append('attachment', fileInput.files[0]);
+        formData.append('grading_criteria', JSON.stringify(gradingCriteria));
         
         assignedStudentsList.forEach(studentId => {
           formData.append('assigned_students', studentId);
@@ -181,6 +215,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
+          grading_criteria: gradingCriteria,
           assigned_students: assignedStudentsList,
           status: data.status || 'PENDING',  // Set default status to PENDING
         };
@@ -440,6 +475,94 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
             </label>
           </div>
         </div>
+      </div>
+
+      <div className="form-section">
+        <div className="section-header">
+          <h3 className="form-section-title">
+            <FiAward style={{ marginRight: '0.5rem', color: '#f97316' }} />
+            Criterios de Calificación
+          </h3>
+          <button 
+            type="button" 
+            className="btn btn-sm btn-secondary"
+            onClick={addCriterion}
+          >
+            <FiPlus /> Agregar Criterio
+          </button>
+        </div>
+        
+        {gradingCriteria.length > 0 && (
+          <div className="grading-criteria-list">
+            {gradingCriteria.map((criterion, index) => (
+              <div key={index} className="criterion-item">
+                <div className="criterion-header">
+                  <span className="criterion-number">Criterio {index + 1}</span>
+                  <button
+                    type="button"
+                    className="btn-icon btn-danger-ghost"
+                    onClick={() => removeCriterion(index)}
+                    aria-label="Eliminar criterio"
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
+                
+                <div className="criterion-fields">
+                  <div className="form-group">
+                    <label className="form-label">Nombre del Criterio *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={criterion.name}
+                      onChange={(e) => updateCriterion(index, 'name', e.target.value)}
+                      placeholder="ej. Contenido, Presentación, Ortografía"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Descripción</label>
+                    <textarea
+                      className="form-input"
+                      rows="2"
+                      value={criterion.description}
+                      onChange={(e) => updateCriterion(index, 'description', e.target.value)}
+                      placeholder="Breve descripción del criterio"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Puntos *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="form-input"
+                      value={criterion.points}
+                      onChange={(e) => updateCriterion(index, 'points', e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="criteria-summary">
+              <strong>Total de Puntos en Criterios:</strong> {getTotalCriteriaPoints()}
+              {maxScore && getTotalCriteriaPoints() !== parseFloat(maxScore) && (
+                <span className="criteria-warning">
+                  ⚠️ La suma de criterios ({getTotalCriteriaPoints()}) no coincide con la puntuación máxima ({maxScore})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {gradingCriteria.length === 0 && (
+          <div className="empty-criteria">
+            <p>No hay criterios de calificación definidos. Los criterios te permiten evaluar diferentes aspectos de la entrega.</p>
+          </div>
+        )}
       </div>
 
       <div className="form-section">
