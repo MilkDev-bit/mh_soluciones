@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarea Calificada</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #047857 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+        .content { background: #ffffff; padding: 30px; border: 1px solid #e5e5e5; }
+        .score-card { background: #f0fdf4; padding: 25px; border-radius: 12px; margin: 20px 0; border: 2px solid #10b981; text-align: center; }
+        .score { font-size: 48px; font-weight: 700; color: #10b981; margin: 10px 0; }
+        .score-label { color: #047857; font-weight: 600; }
+        .feedback-section { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+        .feedback-section h3 { margin-top: 0; color: #3b82f6; }
+        .button { display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+        .footer { text-align: center; padding: 20px; color: #737373; font-size: 14px; border-top: 1px solid #e5e5e5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 24px;">🎓 Tarea Calificada</h1>
+        </div>
+        <div class="content">
+            <p>Hola,</p>
+            <p>Tu entrega para la tarea <strong>"{{ task.title }}"</strong> ha sido calificada.</p>
+            
+            <div class="score-card">
+                <div class="score-label">Puntuación Obtenida</div>
+                <div class="score">{{ score }}</div>
+                <div style="color: #525252; font-size: 18px;">de {{ max_score }} puntos</div>
+            </div>
+            
+            {% if feedback %}
+            <div class="feedback-section">
+                <h3>💬 Retroalimentación del Profesor</h3>
+                <p style="white-space: pre-wrap;">{{ feedback }}</p>
+            </div>
+            {% endif %}
+            
+            <p style="text-align: center;">
+                <a href="{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}" class="button">
+                    Ver Detalles Completos
+                </a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>MH Soluciones - Sistema de Gestión de Proyectos</p>
+            <p><a href="{{ frontend_url }}" style="color: #10b981;">{{ frontend_url }}</a></p>
+        </div>
+    </div>
+</body>
+</html>

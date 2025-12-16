@@ -1,0 +1,19 @@
+Nueva Entrega de Tarea: {{ task.title }}
+
+{{ student.get_full_name }} ha entregado la tarea "{{ task.title }}" en el proyecto {{ project.name }}.
+
+Detalles de la Entrega:
+- Estudiante: {{ student.get_full_name }} ({{ student.username }})
+- Tarea: {{ task.title }}
+- Proyecto: {{ project.name }}
+- Fecha de entrega: {{ submission.created_at|date:"d/m/Y H:i" }}
+{% if submission.notes %}
+- Notas del estudiante: {{ submission.notes }}
+{% endif %}
+
+Puedes revisar y calificar la entrega en:
+{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}
+
+---
+MH Soluciones
+{{ frontend_url }}
