@@ -25,7 +25,8 @@ const ActividadPage = () => {
     queryKey: ['activities', filtroTipo],
     queryFn: async () => {
       const data = await getNotifications({ include_read: true, limit: 100 });
-      return data;
+      // Ensure we always return an array
+      return Array.isArray(data) ? data : [];
     },
     onError: (err) => {
       console.error('Error cargando actividades:', err);

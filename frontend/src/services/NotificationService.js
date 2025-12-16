@@ -247,7 +247,10 @@ class NotificationService {
   async getNotifications(params = {}) {
     try {
       const response = await api.get('/notifications/', { params });
-      return response.data;
+      // Handle paginated response - return results array or empty array
+      return Array.isArray(response.data.results) 
+        ? response.data.results 
+        : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       throw error;
     }
