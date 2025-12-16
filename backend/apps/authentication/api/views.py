@@ -23,8 +23,13 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from datetime import timedelta
 
+from apps.core.permissions import IsSuperAdmin, CanManageUsers
+from apps.core.utils import (
+    success_response, error_response, created_response,
+    updated_response, deleted_response, validation_error_response,
+    forbidden_response, unauthorized_response
+)
 from ..models import GoogleApiCredentials, CustomUser, LoginActivity
-from .permissions import IsSuperAdmin
 from .serializers import (
     LoginSerializer, 
     PasswordChangeSerializer,
@@ -40,6 +45,14 @@ if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar usuarios.
+    
+    Permissions:
+    - SUPERADMIN: Full CRUD access
+    - ADMIN: Read-only access
+    - Others: Cannot access
+    """
     queryset = User.objects.all().order_by('first_name', 'last_name')
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['username', 'first_name', 'last_name', 'email']
@@ -52,8 +65,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
+            # ADMIN can read, but only SUPERADMIN can write
             self.permission_classes = [permissions.IsAuthenticated]
         else:
+            # Only SUPERADMIN can create, update, delete users
             self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
         return super().get_permissions()
     

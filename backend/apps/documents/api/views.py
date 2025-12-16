@@ -4,15 +4,17 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from apps.core.permissions import ADMIN_ROLES
+from apps.core.utils import (
+    success_response, error_response, created_response,
+    validation_error_response
+)
 from ..models import Document
 from ..tasks import upload_document_to_drive
 from .permissions import IsOwnerOrAdminReadOnly
 from .serializers import DocumentSerializer
 
 logger = logging.getLogger(__name__)
-
-# Admin roles constant
-ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 
 
 class DocumentViewSet(viewsets.ModelViewSet):

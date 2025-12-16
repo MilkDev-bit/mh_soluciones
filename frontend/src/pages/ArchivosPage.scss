@@ -1,20 +1,44 @@
-// Estilos para la página de archivos
+// Estilos para la página de archivos - Mobile-first responsive design
 .archivos-page {
-  padding: 2rem;
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding: 2rem;
+  }
 
   .page-header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+
+    @media (min-width: 768px) {
+      margin-bottom: 2rem;
+    }
 
     h1 {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: #1e1e1e;
       margin-bottom: 0.5rem;
+
+      @media (min-width: 768px) {
+        font-size: 1.75rem;
+      }
+
+      @media (min-width: 1024px) {
+        font-size: 2rem;
+      }
     }
 
     .page-subtitle {
       color: #666;
-      font-size: 1rem;
+      font-size: 0.875rem;
+
+      @media (min-width: 768px) {
+        font-size: 1rem;
+      }
     }
   }
 
@@ -22,14 +46,26 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    gap: 1rem;
+    margin-bottom: 1.5rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
+
+    @media (min-width: 768px) {
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
 
     .toolbar-izquierda {
       display: flex;
-      gap: 1rem;
+      gap: 0.75rem;
       flex: 1;
+      flex-wrap: wrap;
+      width: 100%;
+
+      @media (min-width: 768px) {
+        gap: 1rem;
+        width: auto;
+      }
 
       .busqueda-container {
         display: flex;
@@ -40,10 +76,16 @@
         border: 1px solid #ddd;
         border-radius: 8px;
         flex: 1;
-        max-width: 400px;
+        min-width: 200px;
+        max-width: 100%;
+
+        @media (min-width: 768px) {
+          max-width: 400px;
+        }
 
         svg {
           color: #999;
+          flex-shrink: 0;
         }
 
         input {
@@ -51,6 +93,7 @@
           outline: none;
           flex: 1;
           font-size: 0.875rem;
+          min-width: 0;
 
           &::placeholder {
             color: #999;
@@ -65,9 +108,20 @@
         background: white;
         cursor: pointer;
         font-size: 0.875rem;
+        flex: 1;
+        min-width: 150px;
+
+        @media (min-width: 768px) {
+          flex: 0 0 auto;
+        }
 
         &:focus {
-          outline: none;
+          outline: 2px solid #ff7c15;
+          outline-offset: 2px;
+          border-color: #ff7c15;
+        }
+
+        &:hover {
           border-color: #ff7c15;
         }
       }
@@ -93,8 +147,13 @@
             border-right: 1px solid #ddd;
           }
 
-          &:hover {
+          &:hover:not(.activo) {
             background: #f9f9f9;
+          }
+
+          &:focus {
+            outline: 2px solid #ff7c15;
+            outline-offset: -2px;
           }
 
           &.activo {
@@ -107,16 +166,24 @@
   }
 
   .zona-subida {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     cursor: pointer;
+
+    @media (min-width: 768px) {
+      margin-bottom: 2rem;
+    }
 
     .zona-contenido {
       background: white;
       border: 2px dashed #ddd;
       border-radius: 12px;
-      padding: 3rem 2rem;
+      padding: 2rem 1rem;
       text-align: center;
       transition: all 0.2s ease;
+
+      @media (min-width: 768px) {
+        padding: 3rem 2rem;
+      }
 
       &.arrastrando {
         border-color: #ff7c15;
@@ -127,18 +194,37 @@
         border-color: #ff7c15;
       }
 
+      &:focus-within {
+        outline: 2px solid #ff7c15;
+        outline-offset: 2px;
+      }
+
       svg {
         color: #ff7c15;
         margin-bottom: 1rem;
+        font-size: 2rem;
+
+        @media (min-width: 768px) {
+          font-size: 3rem;
+        }
       }
 
       p {
         color: #666;
         margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+
+        @media (min-width: 768px) {
+          font-size: 1rem;
+        }
 
         &.zona-ayuda {
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           color: #999;
+
+          @media (min-width: 768px) {
+            font-size: 0.875rem;
+          }
         }
       }
     }
@@ -147,28 +233,51 @@
   .archivos-contenedor {
     &.grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+
+      @media (min-width: 480px) {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.25rem;
+      }
+
+      @media (min-width: 768px) {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
 
       .archivo-item {
         background: white;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1.25rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         transition: all 0.2s ease;
         display: flex;
         flex-direction: column;
+
+        @media (min-width: 768px) {
+          padding: 1.5rem;
+        }
 
         &:hover {
           transform: translateY(-4px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
+        &:focus-within {
+          outline: 2px solid #ff7c15;
+          outline-offset: 2px;
+        }
+
         .archivo-icono {
           margin-bottom: 1rem;
 
           .icono-tipo {
-            font-size: 3rem;
+            font-size: 2.5rem;
+
+            @media (min-width: 768px) {
+              font-size: 3rem;
+            }
           }
         }
 
@@ -177,11 +286,17 @@
           margin-bottom: 1rem;
 
           .archivo-nombre {
-            font-size: 1rem;
+            font-size: 0.9375rem;
             font-weight: 600;
             color: #1e1e1e;
             margin-bottom: 0.5rem;
             word-break: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.4;
+
+            @media (min-width: 768px) {
+              font-size: 1rem;
+            }
           }
 
           .archivo-meta {
@@ -228,6 +343,7 @@
           display: flex;
           gap: 0.5rem;
           justify-content: flex-end;
+          flex-wrap: wrap;
 
           .btn-icono {
             padding: 0.5rem;
@@ -237,14 +353,26 @@
             cursor: pointer;
             color: #666;
             transition: all 0.2s ease;
+            flex-shrink: 0;
 
-            &:hover {
+            &:hover:not(:disabled) {
               background: #f9f9f9;
               border-color: #ff7c15;
               color: #ff7c15;
+              transform: translateY(-1px);
             }
 
-            &.btn-peligro:hover {
+            &:focus {
+              outline: 2px solid #ff7c15;
+              outline-offset: 2px;
+            }
+
+            &:disabled {
+              cursor: not-allowed;
+              opacity: 0.5;
+            }
+
+            &.btn-peligro:hover:not(:disabled) {
               background: #fee2e2;
               border-color: #ef4444;
               color: #ef4444;
@@ -355,37 +483,88 @@
     }
   }
 
-  .cargando {
-    text-align: center;
-    padding: 4rem 2rem;
-
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid #f0f0f0;
-      border-top-color: #ff7c15;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    p {
-      color: #666;
-    }
-  }
-
+  .cargando,
+  .error-container,
   .sin-archivos {
     text-align: center;
-    padding: 4rem 2rem;
-    color: #999;
+    padding: 3rem 1rem;
+
+    @media (min-width: 768px) {
+      padding: 4rem 2rem;
+    }
 
     svg {
       margin-bottom: 1rem;
       opacity: 0.5;
     }
 
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f0f0f0;
+      border-top-color: #ff7c15;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+
+      @media (min-width: 768px) {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
     p {
-      font-size: 1.125rem;
+      color: #666;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+
+      @media (min-width: 768px) {
+        font-size: 1rem;
+      }
+    }
+  }
+
+  .error-container {
+    .btn-reintentar {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: #ff7c15;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      font-size: 0.875rem;
+
+      @media (min-width: 768px) {
+        font-size: 1rem;
+      }
+
+      &:hover {
+        background: #e66d0c;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 124, 21, 0.2);
+      }
+
+      &:focus {
+        outline: 2px solid #ff7c15;
+        outline-offset: 2px;
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  .sin-archivos {
+    p {
+      font-size: 1rem;
+
+      @media (min-width: 768px) {
+        font-size: 1.125rem;
+      }
     }
   }
 }
@@ -396,62 +575,32 @@
   }
 }
 
-// Responsive
-@media (max-width: 768px) {
+// Large desktop (1440px+)
+@media (min-width: 1440px) {
   .archivos-page {
-    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
 
-    .page-header {
-      h1 {
-        font-size: 1.5rem;
-      }
+// 4K and ultra-wide screens
+@media (min-width: 2560px) {
+  .archivos-page {
+    max-width: 1800px;
+    padding: 3rem;
 
-      .page-subtitle {
-        font-size: 0.875rem;
-      }
+    .page-header h1 {
+      font-size: 2.5rem;
     }
 
-    .archivos-toolbar {
-      flex-direction: column;
-      align-items: stretch;
+    .archivos-contenedor.grid {
+      gap: 2rem;
 
-      .toolbar-izquierda {
-        flex-direction: column;
-
-        .busqueda-container {
-          max-width: none;
-        }
-      }
-    }
-
-    .zona-subida {
-      .zona-contenido {
-        padding: 2rem 1rem;
-
-        svg {
-          font-size: 2rem;
-        }
-
-        p {
-          font-size: 0.875rem;
-        }
-      }
-    }
-
-    .archivos-contenedor {
-      &.grid {
-        grid-template-columns: 1fr;
-      }
-
-      &.list {
-        .archivo-item {
-          flex-direction: column;
-          align-items: flex-start;
-
-          .archivo-acciones {
-            width: 100%;
-            justify-content: flex-start;
-          }
+      .archivo-item {
+        padding: 2rem;
+        
+        .archivo-icono .icono-tipo {
+          font-size: 3.5rem;
         }
       }
     }
