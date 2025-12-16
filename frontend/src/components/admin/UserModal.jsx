@@ -1,22 +1,27 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 import Modal from '../common/Modal';
 import './UserModal.scss';
 import { createUser, updateUser } from '../../services/userService';
+import { userSchema, userUpdateSchema } from '../../schemas';
 import '../../assets/styles/_buttons.scss';
 
 const UserModal = ({ userToEdit, onClose, onUserSaved }) => {
   const isEditMode = Boolean(userToEdit);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(isEditMode ? userUpdateSchema : userSchema),
     defaultValues: isEditMode ? {
       username: userToEdit.username,
       first_name: userToEdit.first_name,
       last_name: userToEdit.last_name,
       email: userToEdit.email,
       role: userToEdit.role,
-    } : {},
+    } : {
+      role: 'STUDENT',
+    },
   });
 
   const onSubmit = async (data) => {
@@ -42,7 +47,20 @@ const UserModal = ({ userToEdit, onClose, onUserSaved }) => {
       onUserSaved(savedUser, isEditMode);
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.username?.[0] || 'No se pudo guardar el usuario.');
+      console.error('Error saving user:', error);
+      if (error.response?.data) {
+        // Show backend validation errors
+        const backendErrors = error.response.data;
+        Object.keys(backendErrors).forEach(key => {
+          if (Array.isArray(backendErrors[key])) {
+            toast.error(`${key}: ${backendErrors[key].join(', ')}`);
+          } else {
+            toast.error(`${key}: ${backendErrors[key]}`);
+          }
+        });
+      } else {
+        toast.error('No se pudo guardar el usuario.');
+      }
     }
   };
 
@@ -50,40 +68,81 @@ const UserModal = ({ userToEdit, onClose, onUserSaved }) => {
     <Modal title={isEditMode ? 'Editar Usuario' : 'Crear Nuevo Usuario'} onClose={onClose}>
       <form onSubmit={handleSubmit(onSubmit)} className="form">
         <div className="form-group">
-          <label className="form-label" htmlFor="username">Nombre de Usuario</label>
-          <input className="form-input" id="username" type="text" {...register('username', { required: 'El nombre de usuario es obligatorio' })} />
+          <label className="form-label" htmlFor="username">Nombre de Usuario *</label>
+          <input 
+            className={`form-input ${errors.username ? 'input-error' : ''}`} 
+            id="username" 
+            type="text" 
+            {...register('username')} 
+          />
           {errors.username && <span className="error-message">{errors.username.message}</span>}
         </div>
         
         <div className="form-group">
-          <label className="form-label" htmlFor="first_name">Nombre</label>
-          <input className="form-input" id="first_name" type="text" {...register('first_name', { required: 'El nombre es obligatorio' })} />
+          <label className="form-label" htmlFor="first_name">Nombre *</label>
+          <input 
+            className={`form-input ${errors.first_name ? 'input-error' : ''}`} 
+            id="first_name" 
+            type="text" 
+            {...register('first_name')} 
+          />
           {errors.first_name && <span className="error-message">{errors.first_name.message}</span>}
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="last_name">Apellidos</label>
-          <input className="form-input" id="last_name" type="text" {...register('last_name', { required: 'El apellido es obligatorio' })} />
+          <label className="form-label" htmlFor="last_name">Apellidos *</label>
+          <input 
+            className={`form-input ${errors.last_name ? 'input-error' : ''}`} 
+            id="last_name" 
+            type="text" 
+            {...register('last_name')} 
+          />
           {errors.last_name && <span className="error-message">{errors.last_name.message}</span>}
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="email">Email</label>
-          <input className="form-input" id="email" type="email" {...register('email', { required: 'El email es obligatorio' })} />
+          <label className="form-label" htmlFor="email">Email *</label>
+          <input 
+            className={`form-input ${errors.email ? 'input-error' : ''}`} 
+            id="email" 
+            type="email" 
+            {...register('email')} 
+          />
           {errors.email && <span className="error-message">{errors.email.message}</span>}
         </div>
         
         {!isEditMode && (
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">Contraseña</label>
-            <input className="form-input" id="password" type="password" {...register('password', { required: 'La contraseña es obligatoria' })} />
-            {errors.password && <span className="error-message">{errors.password.message}</span>}
-          </div>
+          <>
+            <div className="form-group">
+              <label className="form-label" htmlFor="password">Contraseña *</label>
+              <input 
+                className={`form-input ${errors.password ? 'input-error' : ''}`} 
+                id="password" 
+                type="password" 
+                {...register('password')} 
+              />
+              {errors.password && <span className="error-message">{errors.password.message}</span>}
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="password_confirm">Confirmar Contraseña *</label>
+              <input 
+                className={`form-input ${errors.password_confirm ? 'input-error' : ''}`} 
+                id="password_confirm" 
+                type="password" 
+                {...register('password_confirm')} 
+              />
+              {errors.password_confirm && <span className="error-message">{errors.password_confirm.message}</span>}
+            </div>
+          </>
         )}
 
         <div className="form-group">
-          <label className="form-label" htmlFor="role">Rol</label>
-          <select className="form-select" id="role" {...register('role', { required: 'El rol es obligatorio' })}>
+          <label className="form-label" htmlFor="role">Rol *</label>
+          <select 
+            className={`form-select ${errors.role ? 'input-error' : ''}`} 
+            id="role" 
+            {...register('role')}
+          >
             <option value="STUDENT">Alumno / Empleado</option>
             <option value="PROFESSOR">Profesor</option>
             <option value="DIRECTOR">Director</option>

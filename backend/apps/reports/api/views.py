@@ -137,6 +137,96 @@ class DashboardDataAPIView(APIView):
         }
 
 
+class StatisticsAPIView(APIView):
+    """
+    Vista de API que devuelve estadísticas detalladas para la página de reportes.
+    Incluye distribución de tareas, tendencias y datos por proyecto.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        rango = request.query_params.get('rango', '30_dias')
+        
+        # Calculate date range based on parameter
+        now = timezone.now()
+        if rango == '7_dias':
+            start_date = now - timedelta(days=7)
+            weeks = 1
+        elif rango == '90_dias':
+            start_date = now - timedelta(days=90)
+            weeks = 13
+        elif rango == '12_meses':
+            start_date = now - timedelta(days=365)
+            weeks = 52
+        else:  # 30_dias default
+            start_date = now - timedelta(days=30)
+            weeks = 4
+        
+        # Get tasks based on user role
+        if user.role in ADMIN_ROLES:
+            tasks = Task.objects.all()
+            projects = Project.objects.all()
+            users = CustomUser.objects.filter(is_active=True).exclude(role='CLIENT')
+        elif user.role == 'CLIENT':
+            projects = Project.objects.filter(client=user)
+            tasks = Task.objects.filter(project__in=projects)
+            users = CustomUser.objects.none()
+        else:
+            projects = user.projects.all()
+            tasks = Task.objects.filter(project__in=projects)
+            users = CustomUser.objects.none()
+        
+        # Filter by date range
+        tasks_in_range = tasks.filter(created_at__gte=start_date)
+        
+        # Basic statistics
+        total_tasks = tasks_in_range.count()
+        completed_tasks = tasks_in_range.filter(status=Task.TaskStatus.COMPLETED).count()
+        in_progress_tasks = tasks_in_range.filter(status=Task.TaskStatus.IN_PROGRESS).count()
+        overdue_tasks = tasks_in_range.filter(
+            due_date__lt=timezone.now().date(),
+            status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]
+        ).count()
+        
+        active_projects = projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
+        active_users = users.count() if users.exists() else 0
+        completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
+        
+        # Weekly trend data
+        weekly_data = []
+        week_delta = timedelta(days=7)
+        for i in range(min(weeks, 4)):  # Limit to 4 weeks for chart
+            week_start = now - week_delta * (i + 1)
+            week_end = now - week_delta * i
+            week_completed = tasks.filter(
+                status=Task.TaskStatus.COMPLETED,
+                updated_at__gte=week_start,
+                updated_at__lt=week_end
+            ).count()
+            weekly_data.insert(0, week_completed)
+        
+        # Tasks per project (top 5)
+        project_task_counts = []
+        for project in projects.annotate(task_count=Count('tasks')).order_by('-task_count')[:5]:
+            project_task_counts.append({
+                'project_name': project.name,
+                'task_count': project.task_count
+            })
+        
+        return Response({
+            'tareasTotales': total_tasks,
+            'tareasCompletadas': completed_tasks,
+            'tareasEnProgreso': in_progress_tasks,
+            'tareasVencidas': overdue_tasks,
+            'proyectosActivos': active_projects,
+            'usuariosActivos': active_users,
+            'porcentajeCompletado': completion_percentage,
+            'tendenciaSemanal': weekly_data,
+            'tareasPorProyecto': project_task_counts,
+        })
+
+
 class GlobalSearchAPIView(APIView):
     """
     Vista de API para una búsqueda global a través de Proyectos, Tareas y Usuarios.
