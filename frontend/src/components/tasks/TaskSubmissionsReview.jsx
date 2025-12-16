@@ -3,7 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { getSubmissionsByStudent } from '../../services/taskService';
-import { FiUser, FiCalendar, FiAward, FiMessageSquare, FiFile, FiDownload, FiClock } from 'react-icons/fi';
+import { FiUser, FiCalendar, FiAward, FiMessageSquare, FiFile, FiDownload, FiClock, FiLink } from 'react-icons/fi';
 import GradeSubmissionForm from './GradeSubmissionForm';
 import Modal from '../common/Modal';
 import Loading from '../common/Loading';
@@ -172,8 +172,9 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
 
                         {submission.link && (
                           <div className="submission-link">
+                            <FiLink />
                             <a href={submission.link} target="_blank" rel="noopener noreferrer">
-                              🔗 {submission.link}
+                              {submission.link}
                             </a>
                           </div>
                         )}

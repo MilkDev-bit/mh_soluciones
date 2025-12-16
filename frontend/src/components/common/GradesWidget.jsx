@@ -27,7 +27,11 @@ const GradesWidget = ({ isCollapsed }) => {
 
       gradedTasks.forEach(task => {
         if (task.submissions && task.submissions.length > 0) {
-          const latestSubmission = task.submissions[task.submissions.length - 1];
+          // Find the latest submission by version (most reliable)
+          const latestSubmission = task.submissions.reduce((latest, current) => {
+            return (current.version > latest.version) ? current : latest;
+          });
+          
           if (latestSubmission.score !== null && latestSubmission.score !== undefined) {
             gradesData.push({
               taskTitle: task.title,

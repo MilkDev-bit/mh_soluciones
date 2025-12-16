@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { createTask, updateTask } from '../../services/taskService';
-import { FiPlus, FiTrash2, FiAward } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiAward, FiAlertCircle } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 import './TaskForm.scss';
 
@@ -551,7 +551,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
               <strong>Total de Puntos en Criterios:</strong> {getTotalCriteriaPoints()}
               {maxScore && getTotalCriteriaPoints() !== parseFloat(maxScore) && (
                 <span className="criteria-warning">
-                  ⚠️ La suma de criterios ({getTotalCriteriaPoints()}) no coincide con la puntuación máxima ({maxScore})
+                  <FiAlertCircle style={{ marginRight: '0.25rem' }} />
+                  La suma de criterios ({getTotalCriteriaPoints()}) no coincide con la puntuación máxima ({maxScore})
                 </span>
               )}
             </div>
