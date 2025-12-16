@@ -10,6 +10,14 @@ from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from apps.core.permissions import (
+    ADMIN_ROLES, TEACHER_ROLES, EDITOR_ROLES,
+    IsTeacherRole, check_role_permission
+)
+from apps.core.utils import (
+    success_response, error_response, created_response,
+    updated_response, validation_error_response
+)
 from apps.documents.services import GoogleDriveService
 from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
 from django.db.models import F, Avg
@@ -34,11 +42,6 @@ from utils.email_notifications import (
 
 logger = logging.getLogger(__name__)
 
-# Role constants to avoid repetition
-ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
-TEACHER_ROLES = ADMIN_ROLES + ('PROFESSOR', 'DIRECTOR')
-EDITOR_ROLES = TEACHER_ROLES
-
 # Task grading constants
 PASSING_SCORE_THRESHOLD = 0.7  # 70% of max score is considered passing
 
@@ -46,6 +49,10 @@ PASSING_SCORE_THRESHOLD = 0.7  # 70% of max score is considered passing
 class TaskViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar Tareas.
+    
+    Permissions:
+    - TEACHER_ROLES: Can create, update, delete tasks
+    - STUDENT: Can view assigned tasks only (read-only)
     """
     permission_classes = [permissions.IsAuthenticated]
 

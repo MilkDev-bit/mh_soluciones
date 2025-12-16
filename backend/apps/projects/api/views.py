@@ -8,6 +8,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
+from apps.core.permissions import ADMIN_ROLES, CanManageProjects
+from apps.core.utils import (
+    success_response, error_response, created_response,
+    updated_response, validation_error_response
+)
 from apps.authentication.models import CustomUser
 from apps.tasks.models import TaskSubmission
 from apps.documents.models import Document
@@ -24,11 +29,16 @@ from .permissions import IsOwnerOrAdmin, IsProjectMemberOrAdmin, CanInteractInPr
 
 logger = logging.getLogger(__name__)
 
-# Admin roles constant to avoid repetition
-ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
-
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar Proyectos.
+    
+    Permissions:
+    - DIRECTOR: Can create projects and assign members
+    - ADMIN_ROLES: Full access
+    - Others: Based on project membership
+    """
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
 
     def _validate_client_access(self, user, project):
