@@ -19,7 +19,6 @@ import {
   FiAward,
   FiFileText,
   FiRefreshCw,
-  FiCheckCircle,
   FiActivity,
   FiMessageSquare,
   FiFile,
@@ -210,17 +209,6 @@ const Sidebar = () => {
               <FiCheckSquare />
               {!isCollapsed && <span>Tareas</span>}
             </NavLink>
-            
-            {hasAdminAccess && (
-              <NavLink 
-                to="/completed-tasks" 
-                className="menu-item"
-                onClick={closeMobileMenu}
-              >
-                <FiCheckCircle />
-                {!isCollapsed && <span>Tareas Finalizadas</span>}
-              </NavLink>
-            )}
             
             <NavLink 
               to="/calendar" 
