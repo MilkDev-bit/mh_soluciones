@@ -53,11 +53,8 @@ export const getDocumentsByTask = async (taskId) => {
 
 export const uploadDocument = async (formData) => {
   try {
-    const response = await api.post('/documents/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+    // Let the browser set Content-Type with boundary automatically
+    const response = await api.post('/documents/', formData);
     return response.data;
   } catch (error) {
     // Try alternative format only if the error is specifically about 'task' field
@@ -77,11 +74,7 @@ export const uploadDocument = async (formData) => {
         newFormData.append('task_id', parseInt(taskId, 10));
       }
 
-      const response2 = await api.post('/documents/', newFormData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response2 = await api.post('/documents/', newFormData);
       return response2.data;
     }
 
@@ -113,6 +106,12 @@ export const deleteDocument = async (documentId) => {
   }
 };
 
+/**
+ * Download a document by ID
+ * @param {number} documentId - The ID of the document to download
+ * @returns {Promise<Blob>} The document file as a Blob
+ * @throws {Error} If download fails
+ */
 export const downloadDocument = async (documentId) => {
   try {
     const response = await api.get(`/documents/${documentId}/`, {

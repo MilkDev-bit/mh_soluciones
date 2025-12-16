@@ -162,21 +162,18 @@ def updated_response(data=None, message="Actualizado exitosamente"):
 def deleted_response(message="Eliminado exitosamente"):
     """
     Create a standardized response for resource deletion.
+    Uses 200 OK with response body for better client compatibility.
     
     Args:
         message: Success message
     
     Returns:
-        Response: DRF Response object with 204 status
+        Response: DRF Response object with 200 status
     """
-    return Response(
-        {
-            'success': True,
-            'data': None,
-            'error': None,
-            'message': message
-        },
-        status=status.HTTP_204_NO_CONTENT
+    return success_response(
+        data=None,
+        message=message,
+        status_code=status.HTTP_200_OK
     )
 
 

@@ -16,16 +16,25 @@ import {
 } from 'react-icons/fi';
 import { AuthContext } from '../contexts/AuthContext';
 import { useDropzone } from 'react-dropzone';
-import { getAllDocuments, uploadDocument, deleteDocument, getFileUrl } from '../services/documentService';
+import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
 import toast from 'react-hot-toast';
 import './ArchivosPage.scss';
+
+// Filter type constants
+const FILTER_TYPES = {
+  ALL: 'TODOS',
+  IMAGES: 'IMAGENES',
+  DOCUMENTS: 'DOCUMENTOS',
+  VIDEOS: 'VIDEOS',
+  FILES: 'ARCHIVOS'
+};
 
 const ArchivosPage = () => {
   const { user } = useContext(AuthContext);
   const [archivos, setArchivos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
-  const [filtroTipo, setFiltroTipo] = useState('TODOS');
+  const [filtroTipo, setFiltroTipo] = useState(FILTER_TYPES.ALL);
   const [busqueda, setBusqueda] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
@@ -39,9 +48,10 @@ const ArchivosPage = () => {
       setCargando(true);
       setError(null);
       
-      // Build query params
+      // Build query params based on folder_type mapping
       const params = {};
-      if (filtroTipo !== 'TODOS') {
+      if (filtroTipo !== FILTER_TYPES.ALL) {
+        // Use folder_type from backend model instead of file_type
         params.folder_type = filtroTipo;
       }
       
@@ -66,7 +76,8 @@ const ArchivosPage = () => {
         const promises = archivosAceptados.map(async (file) => {
           const formData = new FormData();
           formData.append('file', file);
-          formData.append('folder_type', filtroTipo !== 'TODOS' ? filtroTipo : 'DOCUMENTOS');
+          // Use folder_type matching the backend model choices
+          formData.append('folder_type', filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
           
           return uploadDocument(formData);
         });
@@ -115,7 +126,7 @@ const ArchivosPage = () => {
     try {
       // If file has a direct URL, open it
       if (archivo.file_url) {
-        window.open(getFileUrl(archivo.file_url), '_blank');
+        window.open(archivo.file_url, '_blank');
       } else {
         toast.error('URL de archivo no disponible');
       }
@@ -166,16 +177,11 @@ const ArchivosPage = () => {
     const coincideBusqueda = nombreArchivo.toLowerCase().includes(busqueda.toLowerCase()) ||
                              proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
     
-    // Filter by file type based on file_type field
+    // Filter by folder_type which matches backend model
     let coincideTipo = true;
-    if (filtroTipo !== 'TODOS') {
-      if (filtroTipo === 'image') {
-        coincideTipo = archivo.file_type?.startsWith('image/');
-      } else if (filtroTipo === 'application/pdf') {
-        coincideTipo = archivo.file_type?.includes('pdf');
-      } else if (filtroTipo === 'application') {
-        coincideTipo = archivo.file_type?.startsWith('application/') && !archivo.file_type?.includes('pdf');
-      }
+    if (filtroTipo !== FILTER_TYPES.ALL) {
+      // Match folder_type from backend
+      coincideTipo = archivo.folder_type === filtroTipo;
     }
     
     return coincideBusqueda && coincideTipo;
@@ -208,10 +214,11 @@ const ArchivosPage = () => {
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
           >
-            <option value="TODOS">Todos los tipos</option>
-            <option value="image">Imágenes</option>
-            <option value="application/pdf">PDF</option>
-            <option value="application">Documentos</option>
+            <option value={FILTER_TYPES.ALL}>Todos los tipos</option>
+            <option value={FILTER_TYPES.IMAGES}>Imágenes</option>
+            <option value={FILTER_TYPES.DOCUMENTS}>Documentos</option>
+            <option value={FILTER_TYPES.VIDEOS}>Videos</option>
+            <option value={FILTER_TYPES.FILES}>Archivos</option>
           </select>
         </div>
         <div className="toolbar-derecha">
