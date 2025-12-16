@@ -37,8 +37,7 @@ const ActividadPage = () => {
   });
 
   // Transform notifications to activity format
-  // Ensure notificaciones is an array before mapping
-  const actividadesTransformadas = Array.isArray(notificaciones) ? notificaciones.map(notif => ({
+  const actividadesTransformadas = notificaciones.map(notif => ({
     id: notif.id,
     tipo: notif.notification_type,
     titulo: notif.title,
@@ -46,7 +45,7 @@ const ActividadPage = () => {
     fecha: new Date(notif.created_at),
     leida: notif.is_read,
     icono: getIconoParaTipo(notif.notification_type)
-  })) : [];
+  }));
 
   // Filter by type if needed
   const actividades = filtroTipo !== 'TODAS'
