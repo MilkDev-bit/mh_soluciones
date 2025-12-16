@@ -18,7 +18,10 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
+from google.auth.exceptions import GoogleAuthError
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from django.db.models import Q
+from django.db import DatabaseError
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
@@ -357,10 +360,6 @@ class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        from google.auth.exceptions import GoogleAuthError
-        from oauthlib.oauth2.rfc6749.errors import OAuth2Error
-        from django.db import DatabaseError
-        
         try:
             state = request.GET.get('state')
             
@@ -434,9 +433,6 @@ class GoogleAuthCallbackView(APIView):
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
                 logger.error(f"Google OAuth callback: Database error saving credentials for user {user_id}: {str(e)}", exc_info=True)
-                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
-            except Exception as e:
-                logger.error(f"Google OAuth callback: Unexpected error during token exchange for user {user_id}: {str(e)}", exc_info=True)
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
                 
         except Exception as e:
