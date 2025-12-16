@@ -163,6 +163,11 @@ export default defineConfig({
         target: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
         changeOrigin: true,
         limit: '40mb'
+      },
+      '/ws': {
+        target: (process.env.VITE_BACKEND_URL || 'http://localhost:8000').replace(/^http/, 'ws'),
+        changeOrigin: true,
+        ws: true
       }
     }
   },

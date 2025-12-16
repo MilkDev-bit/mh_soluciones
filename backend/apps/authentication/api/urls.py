@@ -1,5 +1,5 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from .views import (
     LoginAPIView,
     UserProfileAPIView,
@@ -15,7 +15,7 @@ from .views import (
     GoogleConnectionStatusView
 )
 
-router = DefaultRouter()
+router = SimpleRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [

@@ -75,6 +75,69 @@ class NotificationService {
       this.startPolling(userId, onNewNotifications);
       return;
     }
+
+    // Close existing connection if any
+    if (this.socket) {
+      this.socket.close();
+    }
+
+    try {
+      const wsUrl = this.getWebSocketURL();
+      if (import.meta.env.DEV) {
+        console.log('Conectando WebSocket a:', wsUrl);
+      }
+
+      this.socket = new WebSocket(wsUrl);
+
+      this.socket.onopen = () => {
+        this.websocketEnabled = true;
+        if (import.meta.env.DEV) {
+          console.log('WebSocket conectado exitosamente');
+        }
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (import.meta.env.DEV) {
+            console.log('Mensaje WebSocket recibido:', data);
+          }
+
+          if (data.type === 'new_notification' && data.payload) {
+            // Show browser notification
+            this.showBrowserNotification(data.payload);
+            
+            // Call the callback if provided
+            if (onNewNotifications) {
+              onNewNotifications(data.payload);
+            }
+          }
+        } catch (error) {
+          console.error('Error procesando mensaje WebSocket:', error);
+        }
+      };
+
+      this.socket.onerror = (error) => {
+        console.error('Error en WebSocket:', error);
+        this.websocketEnabled = false;
+      };
+
+      this.socket.onclose = (event) => {
+        this.websocketEnabled = false;
+        if (import.meta.env.DEV) {
+          console.log('WebSocket cerrado:', event.code, event.reason);
+        }
+
+        // Fallback to polling if WebSocket connection fails
+        if (!event.wasClean) {
+          console.log('WebSocket cerrado inesperadamente, usando polling');
+          this.startPolling(userId, onNewNotifications);
+        }
+      };
+    } catch (error) {
+      console.error('Error creando conexión WebSocket:', error);
+      this.startPolling(userId, onNewNotifications);
+    }
   }
 
   startPolling(userId, onNewNotifications = null) {
@@ -128,6 +191,21 @@ class NotificationService {
     }
   }
 
+  sendWebSocketMessage(message) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
+      return true;
+    }
+    return false;
+  }
+
+  markAsReadViaWebSocket(notificationId) {
+    return this.sendWebSocketMessage({
+      type: 'mark_as_read',
+      notification_id: notificationId
+    });
+  }
+
   async showBrowserNotification(notificationData) {
     if (!('Notification' in window)) return;
     if (this.notificationPermission === null) {
@@ -177,7 +255,15 @@ class NotificationService {
 
   async markAsRead(notificationId) {
     try {
-      await api.patch(`/notifications/${notificationId}/mark_as_read/`);
+      // Try WebSocket first for real-time update
+      const sentViaWS = this.markAsReadViaWebSocket(notificationId);
+      
+      // Always call API as well to ensure persistence
+      await api.post(`/notifications/${notificationId}/mark_as_read/`);
+      
+      if (import.meta.env.DEV && sentViaWS) {
+        console.log(`Notificación ${notificationId} marcada como leída vía WebSocket y API`);
+      }
     } catch (error) {
       console.error('Error marcando notificación como leída:', error);
     }

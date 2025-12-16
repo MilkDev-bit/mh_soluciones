@@ -1,11 +1,8 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from . import views
 
-router = DefaultRouter()
+router = SimpleRouter()
 
 router.register(r'', views.DocumentViewSet, basename='document')
 
-urlpatterns = [
-    path('', include(router.urls)),
-]
+urlpatterns = router.urls
