@@ -17,6 +17,7 @@
     "@fullcalendar/interaction": "^6.1.10",
     "@fullcalendar/react": "^6.1.19",
     "@fullcalendar/timegrid": "^6.1.19",
+    "@hookform/resolvers": "^5.2.2",
     "@types/react-modal": "^3.16.3",
     "axios": "^1.5.0",
     "chart.js": "^4.5.1",
@@ -35,7 +36,8 @@
     "react-icons": "^4.10.1",
     "react-modal": "^3.16.3",
     "react-router-dom": "^6.20.0",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
