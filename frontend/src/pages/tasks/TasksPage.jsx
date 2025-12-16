@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { getTasks } from '../../services/taskService';
@@ -7,7 +8,7 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isStudent, canCreateTasks } from '../../constants/roles';
-import Loading from '../../components/common/Loading';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
