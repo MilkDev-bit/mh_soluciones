@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import { getDocumentsByTask } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isStudent, canCreateTasks } from '../../constants/roles';
 import TableSkeleton from '../../components/skeletons/TableSkeleton';
+import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
@@ -407,31 +408,106 @@ const TasksPage = () => {
             </div>
           </div>
 
-          <div className="tasks-board">
-            <TaskColumn
-              title="Próximamente"
-              icon={FiClock}
-              tasks={categorizedTasks.upcoming}
-              emptyMessage="No hay tareas próximas"
-              color="#f59e0b"
-            />
-            
-            <TaskColumn
-              title="Vencidas"
-              icon={FiAlertCircle}
-              tasks={categorizedTasks.overdue}
-              emptyMessage="No hay tareas vencidas"
-              color="#ef4444"
-            />
-            
-            <TaskColumn
-              title="Completadas"
-              icon={FiCheckCircle}
-              tasks={categorizedTasks.completed}
-              emptyMessage="No hay tareas completadas"
-              color="#10b981"
-            />
-          </div>
+          {isStudent(user.role) ? (
+            // Student view - Board with 3 columns
+            <div className="tasks-board">
+              <TaskColumn
+                title="Próximamente"
+                icon={FiClock}
+                tasks={categorizedTasks.upcoming}
+                emptyMessage="No hay tareas próximas"
+                color="#f59e0b"
+              />
+              
+              <TaskColumn
+                title="Vencidas"
+                icon={FiAlertCircle}
+                tasks={categorizedTasks.overdue}
+                emptyMessage="No hay tareas vencidas"
+                color="#ef4444"
+              />
+              
+              <TaskColumn
+                title="Completadas"
+                icon={FiCheckCircle}
+                tasks={categorizedTasks.completed}
+                emptyMessage="No hay tareas completadas"
+                color="#10b981"
+              />
+            </div>
+          ) : (
+            // Non-student view (Task creators/reviewers) - List view
+            <div className="tasks-list">
+              {filteredTasks.length > 0 ? (
+                <div className="tasks-list-container">
+                  {filteredTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className="task-list-item"
+                      onClick={() => setSelectedTask(task)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedTask(task);
+                        }
+                      }}
+                    >
+                      <div className="task-list-item-content">
+                        <div className="task-list-header">
+                          <div className="task-icon">
+                            <FiCheckSquare />
+                          </div>
+                          <h3 className="task-title">{task.title}</h3>
+                          <div className={`task-status-badge status-${task.status.toLowerCase()}`}>
+                            {task.status === 'COMPLETED' ? 'Completada' : 
+                             task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                          </div>
+                        </div>
+                        
+                        {task.description && (
+                          <p className="task-description">{task.description}</p>
+                        )}
+                        
+                        <div className="task-list-meta">
+                          <div className="task-project-badge">
+                            {task.project_name}
+                          </div>
+                          
+                          {task.due_date && (
+                            <div className="task-meta-item">
+                              <FiCalendar />
+                              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+                            </div>
+                          )}
+                          
+                          {task.assigned_to && (
+                            <div className="task-meta-item">
+                              <FiUser />
+                              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+                            </div>
+                          )}
+                          
+                          {taskDocuments[task.id] && taskDocuments[task.id].length > 0 && (
+                            <div className="task-meta-item">
+                              <FiPaperclip />
+                              <span>{taskDocuments[task.id].length} archivo(s)</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <FiCheckSquare size={48} />
+                  <p>No hay tareas disponibles</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>
