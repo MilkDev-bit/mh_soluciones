@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import * as ReactWindow from 'react-window';
 import { 
   FiCheckSquare, 
   FiFileText, 
@@ -118,6 +119,42 @@ const ActividadPage = () => {
     { valor: 'EQUIPOS', etiqueta: 'Equipos' }
   ];
 
+  // Virtual list row renderer for performance with large lists
+  const ActivityRow = ({ index, style }) => {
+    const actividad = actividades[index];
+    return (
+      <div 
+        style={style}
+        className={`actividad-item ${!actividad.leida ? 'no-leida' : ''}`}
+      >
+        <div className="actividad-icono">
+          {obtenerIconoActividad(actividad.icono)}
+        </div>
+        <div className="actividad-contenido">
+          <div className="actividad-header">
+            <span className="actividad-titulo">
+              {actividad.titulo}
+            </span>
+            {!actividad.leida && (
+              <span className="badge-nuevo">Nuevo</span>
+            )}
+          </div>
+          <p className="actividad-descripcion">
+            {actividad.descripcion}
+          </p>
+          <div className="actividad-meta">
+            <span className="actividad-fecha">
+              {formatearFecha(actividad.fecha)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Use virtual scrolling for large lists (> 20 items)
+  const useVirtualScrolling = actividades.length > 20;
+
   return (
     <div className="actividad-page">
       <div className="page-header">
@@ -155,6 +192,15 @@ const ActividadPage = () => {
             <FiFileText size={48} />
             <p>No hay actividades recientes</p>
           </div>
+        ) : useVirtualScrolling ? (
+          <ReactWindow.FixedSizeList
+            height={600}
+            itemCount={actividades.length}
+            itemSize={120}
+            width="100%"
+          >
+            {ActivityRow}
+          </ReactWindow.FixedSizeList>
         ) : (
           actividades.map(actividad => (
             <div 

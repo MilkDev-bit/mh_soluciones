@@ -40,6 +40,7 @@
     "react-modal": "^3.16.3",
     "react-router-dom": "^6.20.0",
     "react-toastify": "^11.0.5",
+    "react-window": "^2.2.3",
     "zod": "^4.2.1"
   },
   "devDependencies": {
