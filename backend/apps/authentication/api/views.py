@@ -365,6 +365,24 @@ class GoogleAuthRedirectView(APIView):
             )
 
 
+class GoogleOAuthDebugView(APIView):
+    """Debug endpoint to test OAuth callback routing"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        logger.info("🧪 OAuth Debug endpoint hit successfully")
+        logger.info(f"Query params: {dict(request.GET)}")
+        logger.info(f"Headers: {dict(request.headers)}")
+        
+        return Response({
+            'status': 'success',
+            'message': 'OAuth debug endpoint working',
+            'query_params': dict(request.GET),
+            'path': request.path,
+            'method': request.method
+        })
+
+
 class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
