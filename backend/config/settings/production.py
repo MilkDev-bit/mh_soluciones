@@ -10,6 +10,8 @@ IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILW
 
 # Trust the X-Forwarded-Proto header from the proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # Disable SSL redirect - The proxy (Railway/ALB) handles SSL termination
 # The internal connection from proxy to Django is HTTP, but the external connection is HTTPS
