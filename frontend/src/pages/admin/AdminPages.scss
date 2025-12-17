@@ -2,18 +2,18 @@
 
 .admin-page {
   padding: 0; // Remove duplicate padding - MainLayout already provides padding
-  max-width: 100%;
-  margin: 0;
+  max-width: 1400px; // Constrain width to prevent stretching
+  margin: 0 auto; // Center the content
   min-height: auto;
 
   .page-header {
     @include flex-between;
-    margin-bottom: $spacing-4;
+    margin-bottom: $spacing-3; // Reduced from $spacing-4
     flex-wrap: wrap;
-    gap: $spacing-4;
+    gap: $spacing-3; // Reduced from $spacing-4
 
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.375rem; // Reduced from 1.5rem
       font-weight: 700;
       color: var(--text-primary);
       margin: 0;
@@ -21,11 +21,11 @@
       line-height: 1.2;
       
       @media (max-width: $breakpoint-md) {
-        font-size: 1.375rem;
+        font-size: 1.25rem;
       }
 
       @media (max-width: $breakpoint-sm) {
-        font-size: 1.25rem;
+        font-size: 1.125rem;
       }
     }
   }
@@ -34,11 +34,11 @@
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: $border-radius-lg;
-    padding: $spacing-4;
+    padding: $spacing-3; // Reduced from $spacing-4
     box-shadow: var(--shadow-md);
     
     @media (max-width: $breakpoint-md) {
-      padding: $spacing-3;
+      padding: $spacing-2;
     }
   }
   .table-container {
@@ -63,17 +63,17 @@
     }
 
     th, td {
-      padding: $spacing-3 $spacing-4;
+      padding: $spacing-2 $spacing-3; // Reduced from $spacing-3 $spacing-4
       text-align: left;
       border-bottom: 1px solid var(--border-color);
 
       @media (max-width: $breakpoint-sm) {
-        padding: $spacing-2 $spacing-3;
+        padding: $spacing-2;
       }
     }
 
     thead th {
-      font-size: 0.875rem;
+      font-size: 0.8125rem; // Reduced from 0.875rem
       font-weight: 700;
       color: var(--text-secondary);
       text-transform: uppercase;
@@ -84,7 +84,7 @@
       z-index: 10;
 
       @media (max-width: $breakpoint-sm) {
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
       }
     }
 
@@ -102,10 +102,10 @@
 
     td {
       color: var(--text-primary);
-      font-size: 0.9375rem;
+      font-size: 0.875rem; // Reduced from 0.9375rem
 
       @media (max-width: $breakpoint-sm) {
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
       }
     }
 
@@ -116,7 +116,7 @@
 
       tr {
         display: block;
-        margin-bottom: $spacing-6;
+        margin-bottom: $spacing-4; // Reduced from $spacing-6
         border-radius: $border-radius-lg;
         box-shadow: var(--shadow-md);
         background: var(--bg-card);
@@ -133,7 +133,7 @@
       td {
         display: block;
         text-align: right;
-        padding: $spacing-4 $spacing-5 $spacing-4 50%;
+        padding: $spacing-3 $spacing-4 $spacing-3 50%; // Reduced padding
         position: relative;
         border-bottom: 1px solid var(--border-color-light);
         min-height: 44px; // Ensure minimum touch target
@@ -144,11 +144,11 @@
         &::before {
           content: attr(data-label);
           position: absolute;
-          left: $spacing-5;
+          left: $spacing-4;
           font-weight: 600;
           color: var(--text-secondary);
           text-align: left;
-          font-size: 0.8125rem;
+          font-size: 0.75rem; // Reduced from 0.8125rem
           text-transform: uppercase;
           letter-spacing: 0.03em;
         }
@@ -171,24 +171,24 @@
   .user-cell {
     display: flex;
     align-items: center;
-    gap: $spacing-4;
+    gap: $spacing-3; // Reduced from $spacing-4
 
     @media (max-width: $breakpoint-md) {
-      gap: $spacing-3;
+      gap: $spacing-2;
     }
   }
 
   .table-avatar {
-    width: 44px; // Minimum touch target
-    height: 44px;
+    width: 40px; // Reduced from 44px
+    height: 40px;
     border-radius: $border-radius-lg;
     object-fit: cover;
     flex-shrink: 0;
     box-shadow: var(--shadow-sm);
 
     @media (max-width: $breakpoint-sm) {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
     }
   }
 
@@ -200,29 +200,29 @@
   .user-cell-name {
     font-weight: 600;
     color: var(--text-primary);
-    font-size: 0.9375rem;
+    font-size: 0.875rem; // Reduced from 0.9375rem
     margin-bottom: $spacing-1;
     @include text-truncate;
 
     @media (max-width: $breakpoint-sm) {
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
     }
   }
 
   .user-cell-username {
-    font-size: 0.8125rem;
+    font-size: 0.75rem; // Reduced from 0.8125rem
     color: var(--text-secondary);
     @include text-truncate;
 
     @media (max-width: $breakpoint-sm) {
-      font-size: 0.75rem;
+      font-size: 0.6875rem;
     }
   }
 
   .role-badge, .status-badge {
-    padding: $spacing-2 $spacing-4;
+    padding: $spacing-1 $spacing-3; // Reduced from $spacing-2 $spacing-4
     border-radius: $border-radius-lg;
-    font-size: 0.75rem;
+    font-size: 0.6875rem; // Reduced from 0.75rem
     font-weight: 700;
     text-transform: capitalize;
     display: inline-flex;
@@ -232,8 +232,8 @@
     box-shadow: var(--shadow-sm);
 
     @media (max-width: $breakpoint-sm) {
-      padding: $spacing-1 $spacing-3;
-      font-size: 0.6875rem;
+      padding: $spacing-1 $spacing-2;
+      font-size: 0.625rem;
     }
   }
 
@@ -252,16 +252,16 @@
     flex-wrap: wrap;
 
     .action-btn {
-      padding: $spacing-3;
+      padding: $spacing-2; // Reduced from $spacing-3
       border: none;
       border-radius: $border-radius-lg;
       background: var(--bg-tertiary);
       cursor: pointer;
       transition: all $transition;
-      font-size: 1.125rem;
+      font-size: 1rem; // Reduced from 1.125rem
       color: var(--text-secondary);
-      min-width: 44px; // Touch target minimum
-      min-height: 44px;
+      min-width: 44px; // Keep accessible touch target
+      min-height: 44px; // Keep accessible touch target
       display: flex;
       align-items: center;
       justify-content: center;
@@ -292,23 +292,23 @@
 
       @media (max-width: $breakpoint-sm) {
         padding: $spacing-2;
-        font-size: 1rem;
-        min-width: 40px;
-        min-height: 40px;
+        font-size: 0.875rem;
+        min-width: 44px; // Maintain accessibility on mobile
+        min-height: 44px; // Maintain accessibility on mobile
       }
     }
   }
 
   .search-section {
-    margin-bottom: $spacing-4;
+    margin-bottom: $spacing-3; // Reduced from $spacing-4
     
     @media (max-width: $breakpoint-sm) {
-      margin-bottom: $spacing-3;
+      margin-bottom: $spacing-2;
     }
     
     .search-input-container {
       position: relative;
-      max-width: 400px;
+      max-width: 500px; // Increased from 400px for better usability
 
       @media (max-width: $breakpoint-md) {
         max-width: 100%;
@@ -316,24 +316,24 @@
       
       svg {
         position: absolute;
-        left: $spacing-4;
+        left: $spacing-3; // Reduced from $spacing-4
         top: 50%;
         transform: translateY(-50%);
         color: var(--text-secondary);
-        font-size: 1.125rem;
+        font-size: 1rem; // Reduced from 1.125rem
         pointer-events: none;
       }
       
       input {
         width: 100%;
-        padding: $spacing-4 $spacing-4 $spacing-4 calc($spacing-10 + $spacing-2);
+        padding: $spacing-3 $spacing-3 $spacing-3 calc($spacing-8 + $spacing-2); // Reduced padding
         border: 2px solid var(--border-color);
         border-radius: $border-radius-lg;
-        font-size: 0.9375rem;
+        font-size: 0.875rem; // Reduced from 0.9375rem
         color: var(--text-primary);
         background: var(--bg-input);
         transition: all $transition;
-        min-height: 48px; // Accessible input height
+        min-height: 44px; // Accessible input height
 
         &::placeholder {
           color: var(--text-muted);
@@ -346,8 +346,8 @@
         }
 
         @media (max-width: $breakpoint-sm) {
-          font-size: 0.875rem;
-          padding: $spacing-3 $spacing-3 $spacing-3 calc($spacing-8 + $spacing-3);
+          font-size: 0.8125rem;
+          padding: $spacing-2 $spacing-2 $spacing-2 calc($spacing-7 + $spacing-2);
         }
       }
     }
@@ -358,17 +358,17 @@
     justify-content: center;
     align-items: center;
     gap: $spacing-3;
-    margin-top: $spacing-6;
-    padding: $spacing-4;
+    margin-top: $spacing-4; // Reduced from $spacing-6
+    padding: $spacing-3; // Reduced from $spacing-4
     flex-wrap: wrap;
 
     @media (max-width: $breakpoint-sm) {
       gap: $spacing-2;
-      padding: $spacing-3;
+      padding: $spacing-2;
     }
     
     button {
-      padding: $spacing-3 $spacing-5;
+      padding: $spacing-2 $spacing-4; // Reduced from $spacing-3 $spacing-5
       min-width: 44px;
       min-height: 44px;
       border: 2px solid var(--border-color);
@@ -397,7 +397,7 @@
       }
 
       @media (max-width: $breakpoint-sm) {
-        padding: $spacing-2 $spacing-4;
+        padding: $spacing-2 $spacing-3;
         min-width: 40px;
         min-height: 40px;
         font-size: 0.875rem;
@@ -406,11 +406,11 @@
     
     span {
       color: var(--text-secondary);
-      font-size: 0.9375rem;
+      font-size: 0.875rem; // Reduced from 0.9375rem
       font-weight: 500;
 
       @media (max-width: $breakpoint-sm) {
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
       }
     }
   }

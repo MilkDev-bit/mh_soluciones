@@ -1,6 +1,7 @@
 import os
 import logging
 import socket
+import time
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -402,10 +403,11 @@ class GoogleAuthCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
+        start_time = time.time()
         try:
             # Log request URL with sanitized parameters (don't log code/state values)
             request_url = request.build_absolute_uri().split('?')[0]  # URL without query params
-            logger.info(f"📥 Google OAuth callback received - URL: {request_url}")
+            logger.info(f"🎯 OAUTH CALLBACK START - Request received at {request_url}")
             logger.info(f"Query parameters present: {list(request.GET.keys())}")
             
             state = request.GET.get('state')
@@ -416,6 +418,8 @@ class GoogleAuthCallbackView(APIView):
             if error:
                 logger.warning(f"❌ Google OAuth callback: User denied access or error occurred: {error}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=denied")
+            
+            logger.info(f"⏱️ Step 1: Initial validation (elapsed: {time.time() - start_time:.2f}s)")
             
             if not state:
                 logger.error("❌ Google OAuth callback: No state parameter provided")
@@ -430,6 +434,8 @@ class GoogleAuthCallbackView(APIView):
                 logger.error("❌ Google OAuth callback: No authorization code provided from Google")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_code")
             logger.info(f"✅ Authorization code present: {authorization_code[:8]}...")
+            
+            logger.info(f"⏱️ Step 2: Validating state in cache (elapsed: {time.time() - start_time:.2f}s)")
             
             # Log cache backend type
             cache_backend = cache.__class__.__name__
@@ -458,6 +464,7 @@ class GoogleAuthCallbackView(APIView):
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_expired")
             
             logger.info(f"✅ Cache lookup successful - found user_id: {user_id}")
+            logger.info(f"⏱️ Step 3: Cache validation complete (elapsed: {time.time() - start_time:.2f}s)")
 
             try:
                 user = User.objects.get(pk=user_id)
@@ -482,6 +489,8 @@ class GoogleAuthCallbackView(APIView):
             logger.info(f"Configuration status - BACKEND_URL: {'✅' if has_backend_url else '❌'}, "
                        f"GOOGLE_CLIENT_ID: {'✅' if has_client_id else '❌'}, "
                        f"GOOGLE_CLIENT_SECRET: {'✅' if has_client_secret else '❌'}")
+            
+            logger.info(f"⏱️ Step 4: Exchanging authorization code for token (elapsed: {time.time() - start_time:.2f}s)")
             
             try:
                 logger.info("Creating OAuth flow...")
@@ -522,11 +531,16 @@ class GoogleAuthCallbackView(APIView):
                 # doesn't expose a direct timeout parameter for fetch_token().
                 old_timeout = socket.getdefaulttimeout()
                 try:
-                    socket.setdefaulttimeout(10)  # 10 second timeout
+                    # Use configurable timeout from settings (default 20s)
+                    timeout = getattr(settings, 'GOOGLE_OAUTH_TOKEN_FETCH_TIMEOUT', 20)
+                    socket.setdefaulttimeout(timeout)
+                    fetch_start = time.time()
                     flow.fetch_token(authorization_response=full_url)
-                    logger.info("✅ Token fetched successfully!")
+                    logger.info(f"✅ Token fetched successfully in {time.time() - fetch_start:.2f}s!")
                 finally:
                     socket.setdefaulttimeout(old_timeout)
+                
+                logger.info(f"⏱️ Step 5: Token exchange complete (elapsed: {time.time() - start_time:.2f}s)")
                 
                 credentials = flow.credentials
                 
@@ -534,7 +548,10 @@ class GoogleAuthCallbackView(APIView):
                 has_refresh_token = bool(credentials.refresh_token)
                 logger.info(f"Token credentials obtained - Refresh token: {'✅ Present' if has_refresh_token else '❌ Not present'}")
 
+                logger.info(f"⏱️ Step 6: Saving credentials to database (elapsed: {time.time() - start_time:.2f}s)")
                 logger.info(f"💾 Saving credentials to database for user {user_id}...")
+                
+                db_start = time.time()
                 GoogleApiCredentials.objects.update_or_create(
                     user=user,
                     defaults={
@@ -546,32 +563,44 @@ class GoogleAuthCallbackView(APIView):
                         'scopes': ' '.join(credentials.scopes),
                     }
                 )
+                logger.info(f"✅ Database save completed in {time.time() - db_start:.2f}s")
                 
                 logger.info(f"✅ Google OAuth callback: Successfully saved credentials for user {user_id}")
                 # Clear the state from cache after successful authentication
                 cache.delete(state)
                 logger.info("🧹 State cleared from cache")
                 
+                total_time = time.time() - start_time
+                logger.info(f"✅ OAUTH CALLBACK COMPLETE (total: {total_time:.2f}s)")
+                
+                # Performance warning if taking too long
+                if total_time > 25:
+                    logger.warning(f"⚠️ OAuth callback took {total_time:.2f}s - approaching Railway's 30s timeout!")
+                
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
                 
             except (socket.timeout, RequestsTimeout):
-                logger.error(f"❌ Timeout while fetching token for user {user_id}")
+                elapsed = time.time() - start_time
+                logger.error(f"❌ Timeout while fetching token for user {user_id} after {elapsed:.2f}s")
                 logger.error(f"Debug Info: redirect_uri={redirect_uri}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_timeout")
             except (GoogleAuthError, OAuth2Error) as e:
-                logger.error(f"❌ Google OAuth callback: OAuth/Auth error for user {user_id}")
+                elapsed = time.time() - start_time
+                logger.error(f"❌ Google OAuth callback: OAuth/Auth error for user {user_id} after {elapsed:.2f}s")
                 logger.error(f"Error type: {type(e).__name__}, Error message: {str(e)}")
                 # Log detailed debug information
                 logger.error(f"Debug Info: redirect_uri={redirect_uri}")
                 logger.error(f"State: {state_prefix}..., Code present: {bool(authorization_code)}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
-                logger.error(f"❌ Google OAuth callback: Database error saving credentials for user {user_id}")
+                elapsed = time.time() - start_time
+                logger.error(f"❌ Google OAuth callback: Database error saving credentials for user {user_id} after {elapsed:.2f}s")
                 logger.error(f"Database error details: {str(e)}", exc_info=True)
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_db")
                 
         except Exception as e:
-            logger.error(f"❌ Google OAuth callback: Unexpected error")
+            elapsed = time.time() - start_time
+            logger.error(f"❌ Google OAuth callback: Unexpected error after {elapsed:.2f}s")
             logger.error(f"Exception type: {type(e).__name__}, Exception message: {str(e)}", exc_info=True)
             return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error")
 

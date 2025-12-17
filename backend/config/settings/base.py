@@ -357,6 +357,11 @@ GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 GOOGLE_PROJECT_ID = config('GOOGLE_PROJECT_ID', default='mhsoluciones')
 GOOGLE_DRIVE_ROOT_FOLDER_ID = config('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')
 
+# Google OAuth timeout configuration (in seconds)
+# This controls how long to wait for Google's token API response
+# Default is 20 seconds to leave buffer before Railway's 30s timeout
+GOOGLE_OAUTH_TOKEN_FETCH_TIMEOUT = config('GOOGLE_OAUTH_TOKEN_FETCH_TIMEOUT', default=20, cast=int)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
