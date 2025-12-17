@@ -371,13 +371,27 @@ class GoogleOAuthDebugView(APIView):
     
     def get(self, request, *args, **kwargs):
         logger.info("🧪 OAuth Debug endpoint hit successfully")
-        logger.info(f"Query params: {dict(request.GET)}")
-        logger.info(f"Headers: {dict(request.headers)}")
+        
+        # Filter sensitive query parameters
+        safe_query_params = {
+            k: v if k not in ['code', 'state', 'access_token', 'refresh_token'] else '[REDACTED]'
+            for k, v in request.GET.items()
+        }
+        logger.info(f"Query params (sanitized): {safe_query_params}")
+        
+        # Filter sensitive headers
+        safe_headers = {
+            k: v if k.lower() not in ['authorization', 'cookie', 'x-api-key'] else '[REDACTED]'
+            for k, v in dict(request.headers).items()
+        }
+        logger.info(f"Headers (sanitized): {safe_headers}")
         
         return Response({
             'status': 'success',
             'message': 'OAuth debug endpoint working',
-            'query_params': dict(request.GET),
+            'query_params_present': list(request.GET.keys()),
+            'has_code': 'code' in request.GET,
+            'has_state': 'state' in request.GET,
             'path': request.path,
             'method': request.method
         })

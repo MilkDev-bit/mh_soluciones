@@ -2,11 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 from django.views.decorators.csrf import csrf_exempt
 import logging
+import functools
 
 logger = logging.getLogger('authentication.google_oauth')
 
 def log_oauth_callback(view_func):
     """Wrapper to log OAuth callback reception before any processing"""
+    @functools.wraps(view_func)
     def wrapped_view(request, *args, **kwargs):
         logger.info("=" * 60)
         logger.info("🎯 OAUTH CALLBACK HIT - Request received by Django")
@@ -48,7 +50,10 @@ urlpatterns = [
     path('clients/', ClientListView.as_view(), name='client-list'),
 
     path('google/auth/', GoogleAuthRedirectView.as_view(), name='google-auth-redirect'),
-    path('google/callback/', csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_view())), name='google-auth-callback'),
+    # OAuth callback with CSRF exemption and pre-view logging
+    path('google/callback/', 
+         csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_view())), 
+         name='google-auth-callback'),
     path('google/status/', GoogleConnectionStatusView.as_view(), name='google-status'),
     path('google/debug/', GoogleOAuthDebugView.as_view(), name='google-oauth-debug'),
 ]
