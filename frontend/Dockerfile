@@ -19,8 +19,8 @@ ENV VITE_API_URL_BASE=$VITE_API_URL_BASE
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage - using specific version to avoid Docker Hub auth issues
+FROM nginx:1.25-alpine
 
 # Install wget for optional healthcheck and sed for config processing
 RUN apk add --no-cache wget sed
