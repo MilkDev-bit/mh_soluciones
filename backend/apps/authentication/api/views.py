@@ -405,7 +405,23 @@ class GoogleAuthCallbackView(APIView):
             user_id = cache.get(state)
 
             if not user_id:
-                logger.error(f"❌ Google OAuth callback: State {state_prefix}... not found in cache or expired")
+                # Enhanced cache debugging
+                logger.error(f"❌ Google OAuth callback: State {state_prefix}... not found in cache")
+                logger.error(f"Cache Backend: {cache_backend}")
+                
+                # Check if using LocMemCache (local memory) which won't work with multiple instances
+                is_local_cache = 'LocMemCache' in cache_backend or 'locmem' in str(type(cache))
+                logger.error(f"Is local cache (will fail with multiple instances): {is_local_cache}")
+                
+                # Try to get cache statistics (if available) to debug
+                try:
+                    if hasattr(cache, 'keys'):
+                        # Limit key retrieval to avoid performance issues on large Redis instances
+                        cache_keys = list(cache.keys('*'))[:100]  # Only first 100 keys
+                        logger.error(f"Cache key count (first 100 max): {len(cache_keys)}")
+                except Exception as debug_e:
+                    logger.error(f"Could not inspect cache keys: {str(debug_e)}")
+                
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_expired")
             
             logger.info(f"✅ Cache lookup successful - found user_id: {user_id}")
