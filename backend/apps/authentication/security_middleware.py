@@ -7,7 +7,7 @@ from datetime import timedelta
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 import logging
-from .constants import SESSION_INACTIVITY_MINUTES
+from .constants import SESSION_INACTIVITY_MINUTES, GOOGLE_OAUTH_CALLBACK_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,11 @@ class SessionSecurityMiddleware(MiddlewareMixin):
     INACTIVITY_TIMEOUT = timedelta(minutes=SESSION_INACTIVITY_MINUTES)
     
     def process_request(self, request):
+        # Exempt OAuth callback from session security checks
+        if request.path.startswith(GOOGLE_OAUTH_CALLBACK_PATH):
+            logger.info("🔓 OAuth callback - bypassing session security middleware")
+            return None
+        
         # Solo procesar para usuarios autenticados con JWT
         if not request.path.startswith('/api/'):
             return None
@@ -65,6 +70,11 @@ class PasswordExpiryMiddleware(MiddlewareMixin):
     """
     
     def process_request(self, request):
+        # Exempt OAuth callback from password expiry checks  
+        if request.path.startswith(GOOGLE_OAUTH_CALLBACK_PATH):
+            logger.info("🔓 OAuth callback - bypassing password expiry middleware")
+            return None
+        
         # Solo procesar para usuarios autenticados
         if not hasattr(request, 'user') or not request.user.is_authenticated:
             return None

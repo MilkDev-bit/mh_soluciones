@@ -36,6 +36,7 @@ from apps.core.utils import (
     forbidden_response, unauthorized_response
 )
 from ..models import GoogleApiCredentials, CustomUser, LoginActivity
+from ..constants import SENSITIVE_OAUTH_PARAMS, SENSITIVE_HEADERS
 from .serializers import (
     LoginSerializer, 
     PasswordChangeSerializer,
@@ -363,6 +364,38 @@ class GoogleAuthRedirectView(APIView):
                 {'error': 'Failed to generate Google authorization URL'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class GoogleOAuthDebugView(APIView):
+    """Debug endpoint to test OAuth callback routing"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        logger.info("🧪 OAuth Debug endpoint hit successfully")
+        
+        # Filter sensitive query parameters using constants
+        safe_query_params = {
+            k: v if k not in SENSITIVE_OAUTH_PARAMS else '[REDACTED]'
+            for k, v in request.GET.items()
+        }
+        logger.info(f"Query params (sanitized): {safe_query_params}")
+        
+        # Filter sensitive headers using constants
+        safe_headers = {
+            k: v if k.lower() not in SENSITIVE_HEADERS else '[REDACTED]'
+            for k, v in request.headers.items()
+        }
+        logger.info(f"Headers (sanitized): {safe_headers}")
+        
+        return Response({
+            'status': 'success',
+            'message': 'OAuth debug endpoint working',
+            'query_params_present': list(request.GET.keys()),
+            'has_code': 'code' in request.GET,
+            'has_state': 'state' in request.GET,
+            'path': request.path,
+            'method': request.method
+        })
 
 
 class GoogleAuthCallbackView(APIView):
