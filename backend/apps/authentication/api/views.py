@@ -516,6 +516,10 @@ class GoogleAuthCallbackView(APIView):
 
                 logger.info(f"🔄 Attempting to fetch token for user {user_id}...")
                 
+                # Construct authorization_response URL from code and state
+                # This mimics the full callback URL that Google would have used
+                authorization_response = f"{redirect_uri}?code={authorization_code}&state={state}"
+                
                 # Add timeout handling for token fetch
                 old_timeout = socket.getdefaulttimeout()
                 try:
@@ -523,7 +527,7 @@ class GoogleAuthCallbackView(APIView):
                     timeout = getattr(settings, 'GOOGLE_OAUTH_TOKEN_FETCH_TIMEOUT', 20)
                     socket.setdefaulttimeout(timeout)
                     fetch_start = time.time()
-                    flow.fetch_token(code=authorization_code)
+                    flow.fetch_token(authorization_response=authorization_response)
                     logger.info(f"✅ Token fetched successfully in {time.time() - fetch_start:.2f}s!")
                 finally:
                     socket.setdefaulttimeout(old_timeout)
