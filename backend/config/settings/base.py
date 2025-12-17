@@ -1,5 +1,5 @@
 import os
-import logging
+import logging  # Used by Django's LOGGING configuration
 from pathlib import Path
 from decouple import config
 from datetime import timedelta

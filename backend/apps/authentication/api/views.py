@@ -408,13 +408,17 @@ class GoogleAuthCallbackView(APIView):
                 # Enhanced cache debugging
                 logger.error(f"❌ Google OAuth callback: State {state_prefix}... not found in cache")
                 logger.error(f"Cache Backend: {cache_backend}")
-                logger.error(f"Is LocMemCache (will fail with multiple instances): {cache_backend == 'LocMemCache'}")
+                
+                # Check if using LocMemCache (local memory) which won't work with multiple instances
+                is_local_cache = 'LocMemCache' in cache_backend or 'locmem' in str(type(cache))
+                logger.error(f"Is local cache (will fail with multiple instances): {is_local_cache}")
                 
                 # Try to get cache statistics (if available) to debug
                 try:
                     if hasattr(cache, 'keys'):
-                        cache_keys = cache.keys('*')
-                        logger.error(f"Available cache keys: {len(cache_keys) if cache_keys else 0}")
+                        # Limit key retrieval to avoid performance issues on large Redis instances
+                        cache_keys = list(cache.keys('*'))[:100]  # Only first 100 keys
+                        logger.error(f"Sample cache keys (first 100): {len(cache_keys)}")
                 except Exception as debug_e:
                     logger.error(f"Could not inspect cache keys: {str(debug_e)}")
                 
