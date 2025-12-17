@@ -19,14 +19,16 @@ ENV VITE_API_URL_BASE=$VITE_API_URL_BASE
 # Build the application
 RUN npm run build
 
-# Production stage - using specific version to avoid Docker Hub auth issues
-FROM nginx:1.25-alpine
+# Production stage - using cgr.dev mirror to avoid Docker Hub issues
+FROM cgr.dev/chainguard/nginx:latest
+
+USER root
 
 # Install wget for optional healthcheck and sed for config processing
 RUN apk add --no-cache wget sed
 
 # Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
+RUN rm -f /etc/nginx/conf.d/default.conf
 
 # Clean nginx default HTML files before copying our build
 RUN rm -rf /usr/share/nginx/html/*
