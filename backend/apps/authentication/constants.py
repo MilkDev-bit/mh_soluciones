@@ -21,3 +21,10 @@ SESSION_WARNING_MINUTES = 14
 # Rate limiting
 RATE_LIMIT_LOGIN_ATTEMPTS = 5  # per minute
 RATE_LIMIT_WINDOW = '1m'  # 1 minute
+
+# OAuth paths
+GOOGLE_OAUTH_CALLBACK_PATH = '/api/v1/auth/google/callback'
+
+# Sensitive OAuth parameters and headers to redact in logs
+SENSITIVE_OAUTH_PARAMS = ['code', 'state', 'access_token', 'refresh_token', 'id_token']
+SENSITIVE_HEADERS = ['authorization', 'cookie', 'x-api-key', 'x-csrf-token']

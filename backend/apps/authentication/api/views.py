@@ -36,6 +36,7 @@ from apps.core.utils import (
     forbidden_response, unauthorized_response
 )
 from ..models import GoogleApiCredentials, CustomUser, LoginActivity
+from ..constants import SENSITIVE_OAUTH_PARAMS, SENSITIVE_HEADERS
 from .serializers import (
     LoginSerializer, 
     PasswordChangeSerializer,
@@ -372,16 +373,16 @@ class GoogleOAuthDebugView(APIView):
     def get(self, request, *args, **kwargs):
         logger.info("🧪 OAuth Debug endpoint hit successfully")
         
-        # Filter sensitive query parameters
+        # Filter sensitive query parameters using constants
         safe_query_params = {
-            k: v if k not in ['code', 'state', 'access_token', 'refresh_token'] else '[REDACTED]'
+            k: v if k not in SENSITIVE_OAUTH_PARAMS else '[REDACTED]'
             for k, v in request.GET.items()
         }
         logger.info(f"Query params (sanitized): {safe_query_params}")
         
-        # Filter sensitive headers
+        # Filter sensitive headers using constants
         safe_headers = {
-            k: v if k.lower() not in ['authorization', 'cookie', 'x-api-key'] else '[REDACTED]'
+            k: v if k.lower() not in SENSITIVE_HEADERS else '[REDACTED]'
             for k, v in dict(request.headers).items()
         }
         logger.info(f"Headers (sanitized): {safe_headers}")

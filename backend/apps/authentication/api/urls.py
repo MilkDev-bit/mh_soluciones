@@ -38,6 +38,11 @@ from .views import (
 router = SimpleRouter()
 router.register(r'users', UserViewSet, basename='user')
 
+# Prepare the OAuth callback view with decorators for better readability
+google_callback_view = GoogleAuthCallbackView.as_view()
+google_callback_view = log_oauth_callback(google_callback_view)
+google_callback_view = csrf_exempt(google_callback_view)
+
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginAPIView.as_view(), name='auth_login'),
@@ -50,10 +55,7 @@ urlpatterns = [
     path('clients/', ClientListView.as_view(), name='client-list'),
 
     path('google/auth/', GoogleAuthRedirectView.as_view(), name='google-auth-redirect'),
-    # OAuth callback with CSRF exemption and pre-view logging
-    path('google/callback/', 
-         csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_view())), 
-         name='google-auth-callback'),
+    path('google/callback/', google_callback_view, name='google-auth-callback'),
     path('google/status/', GoogleConnectionStatusView.as_view(), name='google-status'),
     path('google/debug/', GoogleOAuthDebugView.as_view(), name='google-oauth-debug'),
 ]
