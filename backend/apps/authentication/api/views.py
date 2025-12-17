@@ -452,11 +452,17 @@ class GoogleAuthCallbackView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Validate format of OAuth parameters (basic validation)
-            # OAuth codes and states should be alphanumeric with possible hyphens, underscores, and dots
+            # OAuth codes can include forward slashes, states are typically alphanumeric
             import re
-            oauth_param_pattern = re.compile(r'^[A-Za-z0-9._-]+$')
             
-            if not oauth_param_pattern.match(str(state)):
+            # State validation: alphanumeric, dots, hyphens, underscores (standard OAuth state)
+            state_pattern = re.compile(r'^[A-Za-z0-9._-]+$')
+            
+            # Code validation: More permissive - allows forward slashes and other URL-safe characters
+            # Google OAuth codes often start with patterns like "4/0..." which include slashes
+            code_pattern = re.compile(r'^[A-Za-z0-9._\-/~%+:=]+$')
+            
+            if not state_pattern.match(str(state)):
                 logger.error(f"❌ Google OAuth callback: Invalid state format")
                 return Response({
                     'success': False,
@@ -464,8 +470,9 @@ class GoogleAuthCallbackView(APIView):
                     'error_type': 'error_state'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            if not oauth_param_pattern.match(str(authorization_code)):
+            if not code_pattern.match(str(authorization_code)):
                 logger.error(f"❌ Google OAuth callback: Invalid authorization code format")
+                logger.error(f"Code snippet: {authorization_code[:20]}...")  # Log first 20 chars for debugging
                 return Response({
                     'success': False,
                     'error': 'Formato de código inválido',
