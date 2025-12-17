@@ -383,7 +383,7 @@ class GoogleOAuthDebugView(APIView):
         # Filter sensitive headers using constants
         safe_headers = {
             k: v if k.lower() not in SENSITIVE_HEADERS else '[REDACTED]'
-            for k, v in dict(request.headers).items()
+            for k, v in request.headers.items()
         }
         logger.info(f"Headers (sanitized): {safe_headers}")
         

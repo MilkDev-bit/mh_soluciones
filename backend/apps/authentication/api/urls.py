@@ -38,10 +38,9 @@ from .views import (
 router = SimpleRouter()
 router.register(r'users', UserViewSet, basename='user')
 
-# Prepare the OAuth callback view with decorators for better readability
-google_callback_view = GoogleAuthCallbackView.as_view()
-google_callback_view = log_oauth_callback(google_callback_view)
-google_callback_view = csrf_exempt(google_callback_view)
+# Prepare the OAuth callback view with decorators
+# Applied in order: view -> logging wrapper -> CSRF exemption
+google_callback_view = csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_view()))
 
 urlpatterns = [
     path('', include(router.urls)),
