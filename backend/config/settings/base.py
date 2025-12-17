@@ -1,8 +1,11 @@
 import os
+import logging
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
 from celery.schedules import crontab
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -158,6 +161,61 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# ============================================
+# CACHE CONFIGURATION
+# ============================================
+
+# Use Redis for caching in production/Railway to support multiple instances
+# Use local memory cache for development
+
+def get_cache_config():
+    """
+    Configure cache backend based on environment.
+    
+    For Railway/Production: Use Redis to share cache across multiple instances
+    For Development: Use local memory cache
+    
+    Redis is REQUIRED for Google OAuth to work properly when using multiple
+    backend instances, as the OAuth state must be shared across instances.
+    """
+    redis_url = config('REDIS_URL', default='')
+    
+    if redis_url:
+        # Production: Use Redis (shared cache for multiple instances)
+        logger.info("✅ Using Redis cache (shared across instances)")
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': redis_url,
+                'OPTIONS': {
+                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                    'CONNECTION_POOL_KWARGS': {
+                        'max_connections': 50,
+                        'retry_on_timeout': True,
+                    },
+                    'SOCKET_CONNECT_TIMEOUT': 5,
+                    'SOCKET_TIMEOUT': 5,
+                },
+                'KEY_PREFIX': 'mhsoluciones',
+                'TIMEOUT': 300,  # 5 minutes default
+            }
+        }
+    else:
+        # Development: Use local memory cache
+        # WARNING: This will NOT work with multiple backend instances
+        logger.warning("⚠️  Using local memory cache - OAuth may fail with multiple instances")
+        return {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'unique-snowflake',
+                'OPTIONS': {
+                    'MAX_ENTRIES': 1000
+                }
+            }
+        }
+
+CACHES = get_cache_config()
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
