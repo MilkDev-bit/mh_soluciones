@@ -12,6 +12,7 @@ const SortableItem = ({ id, children, className }) => {
     isDragging
   } = useSortable({ id });
 
+  
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
