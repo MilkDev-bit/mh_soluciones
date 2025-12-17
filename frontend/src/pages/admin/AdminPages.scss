@@ -260,8 +260,8 @@
       transition: all $transition;
       font-size: 1rem; // Reduced from 1.125rem
       color: var(--text-secondary);
-      min-width: 40px; // Reduced from 44px
-      min-height: 40px;
+      min-width: 44px; // Keep accessible touch target
+      min-height: 44px; // Keep accessible touch target
       display: flex;
       align-items: center;
       justify-content: center;
@@ -293,8 +293,8 @@
       @media (max-width: $breakpoint-sm) {
         padding: $spacing-2;
         font-size: 0.875rem;
-        min-width: 36px;
-        min-height: 36px;
+        min-width: 44px; // Maintain accessibility on mobile
+        min-height: 44px; // Maintain accessibility on mobile
       }
     }
   }

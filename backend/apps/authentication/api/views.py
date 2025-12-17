@@ -531,7 +531,9 @@ class GoogleAuthCallbackView(APIView):
                 # doesn't expose a direct timeout parameter for fetch_token().
                 old_timeout = socket.getdefaulttimeout()
                 try:
-                    socket.setdefaulttimeout(20)  # 20 second timeout (increased from 10)
+                    # Use configurable timeout from settings (default 20s)
+                    timeout = getattr(settings, 'GOOGLE_OAUTH_TOKEN_FETCH_TIMEOUT', 20)
+                    socket.setdefaulttimeout(timeout)
                     fetch_start = time.time()
                     flow.fetch_token(authorization_response=full_url)
                     logger.info(f"✅ Token fetched successfully in {time.time() - fetch_start:.2f}s!")
