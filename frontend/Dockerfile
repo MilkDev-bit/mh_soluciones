@@ -19,10 +19,8 @@ ENV VITE_API_URL_BASE=$VITE_API_URL_BASE
 # Build the application
 RUN npm run build
 
-# Production stage - using cgr.dev mirror to avoid Docker Hub issues
-FROM cgr.dev/chainguard/nginx:latest
-
-USER root
+# Production stage - using nginx:1.27-alpine (stable and compatible)
+FROM nginx:1.27-alpine
 
 # Install wget for optional healthcheck and sed for config processing
 RUN apk add --no-cache wget sed
