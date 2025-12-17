@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { FiCheckCircle, FiCloud } from 'react-icons/fi';
+import { FiCheckCircle, FiCloud, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const GoogleDriveConnect = () => {
@@ -22,10 +22,43 @@ const GoogleDriveConnect = () => {
     };
     checkStatus();
 
+    // Handle OAuth callback status
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('google_auth') === 'success') {
-      toast.success('¡Tu cuenta de Google se ha conectado exitosamente!');
+    const authStatus = urlParams.get('google_auth');
+    
+    if (authStatus) {
+      // Remove the query parameter from URL
       window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show appropriate message based on status
+      switch (authStatus) {
+        case 'success':
+          toast.success('¡Tu cuenta de Google se ha conectado exitosamente!');
+          setIsConnected(true);
+          break;
+        case 'denied':
+          toast.error('Acceso denegado. Debes autorizar el acceso a Google Drive para continuar.');
+          break;
+        case 'error_state':
+          toast.error('Error de seguridad. Por favor, intenta conectar nuevamente.');
+          break;
+        case 'error_expired':
+          toast.error('La sesión de autenticación expiró. Por favor, intenta conectar nuevamente.');
+          break;
+        case 'error_user':
+          toast.error('Error de usuario. Por favor, inicia sesión nuevamente.');
+          break;
+        case 'error_token':
+          toast.error('Error al obtener credenciales de Google. Por favor, intenta nuevamente.');
+          break;
+        case 'error_db':
+          toast.error('Error al guardar las credenciales. Por favor, contacta al administrador.');
+          break;
+        case 'error':
+        default:
+          toast.error('Ocurrió un error al conectar con Google. Por favor, intenta nuevamente.');
+          break;
+      }
     }
   }, []);
 

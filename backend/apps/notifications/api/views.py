@@ -54,16 +54,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         if not include_read:
             queryset = queryset.filter(is_read=False)
         
-        # Limitar a las 50 notificaciones más recientes para optimizar rendimiento
-        try:
-            limit = int(self.request.query_params.get('limit', 50))
-            # Validar que el límite esté en un rango razonable
-            limit = max(1, min(limit, 100))  # Entre 1 y 100
-        except (ValueError, TypeError):
-            limit = 50  # Valor por defecto si hay error
-        
-        queryset = queryset[:limit]
-        
+        # Don't slice the queryset here - let DRF's pagination handle it
+        # This ensures the response includes pagination metadata (results, count, next, previous)
         return queryset
 
     @action(detail=False, methods=['get'])

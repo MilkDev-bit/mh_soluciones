@@ -24,7 +24,7 @@ const ActividadPage = () => {
   const { data: notificaciones = [], isLoading: cargando, error, refetch } = useQuery({
     queryKey: ['activities', filtroTipo],
     queryFn: async () => {
-      const data = await getNotifications({ include_read: true, limit: 100 });
+      const data = await getNotifications({ include_read: true });
       // Ensure we always return an array
       return Array.isArray(data) ? data : [];
     },

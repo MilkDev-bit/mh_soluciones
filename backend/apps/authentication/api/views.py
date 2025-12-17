@@ -314,7 +314,14 @@ class GoogleAuthRedirectView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            # Build redirect URI using request if BACKEND_URL is not set or is localhost
+            if settings.BACKEND_URL and not settings.BACKEND_URL.startswith(('http://localhost', 'http://127.0.0.1')):
+                redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            else:
+                # Fallback to building from request (for development or when BACKEND_URL is not set)
+                redirect_uri = request.build_absolute_uri('/api/v1/auth/google/callback/')
+            
+            logger.info(f"Google OAuth: Using redirect URI: {redirect_uri}")
             
             # Validate Google OAuth configuration
             if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
@@ -343,9 +350,9 @@ class GoogleAuthRedirectView(APIView):
                 access_type='offline', prompt='consent', include_granted_scopes='true'
             )
             
-            # Store user ID in cache with 5 minute timeout
-            cache.set(state, request.user.id, timeout=300)
-            logger.info(f"Google OAuth: Generated authorization URL for user {request.user.id}")
+            # Store user ID in cache with 10 minute timeout (increased from 5)
+            cache.set(state, request.user.id, timeout=600)
+            logger.info(f"Google OAuth: Generated authorization URL for user {request.user.id}, state stored in cache")
             
             return Response({'authorization_url': authorization_url})
         except Exception as e:
@@ -362,6 +369,12 @@ class GoogleAuthCallbackView(APIView):
     def get(self, request, *args, **kwargs):
         try:
             state = request.GET.get('state')
+            error = request.GET.get('error')
+            
+            # Check if user denied access
+            if error:
+                logger.warning(f"Google OAuth callback: User denied access or error occurred: {error}")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=denied")
             
             if not state:
                 logger.error("Google OAuth callback: No state parameter provided")
@@ -374,7 +387,7 @@ class GoogleAuthCallbackView(APIView):
 
             if not user_id:
                 logger.error(f"Google OAuth callback: State {state_prefix}... not found in cache or expired")
-                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_expired")
 
             try:
                 user = User.objects.get(pk=user_id)
@@ -382,7 +395,14 @@ class GoogleAuthCallbackView(APIView):
                 logger.error(f"Google OAuth callback: User {user_id} does not exist")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
 
-            redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            # Build redirect URI using request if BACKEND_URL is not set or is localhost
+            if settings.BACKEND_URL and not settings.BACKEND_URL.startswith(('http://localhost', 'http://127.0.0.1')):
+                redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
+            else:
+                # Fallback to building from request (for development or when BACKEND_URL is not set)
+                redirect_uri = request.build_absolute_uri('/api/v1/auth/google/callback/')
+            
+            logger.info(f"Google OAuth callback: Using redirect URI: {redirect_uri}")
             
             try:
                 flow = Flow.from_client_config(
@@ -433,7 +453,7 @@ class GoogleAuthCallbackView(APIView):
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
                 logger.error(f"Google OAuth callback: Database error saving credentials for user {user_id}: {str(e)}", exc_info=True)
-                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_db")
                 
         except Exception as e:
             logger.error(f"Google OAuth callback: Unexpected error: {str(e)}", exc_info=True)
