@@ -4,7 +4,6 @@ import NotificationsList from '../components/notifications/NotificationsList';
 
 const NotificationsPage = () => {
   const { unreadCount, markAllAsRead } = useNotifications();
-
   return (
     <div className="notifications-page">
       <div className="page-header">
