@@ -1,36 +1,24 @@
 @import '../../assets/styles/variables';
 
 .admin-page {
-  padding: $spacing-6;
-  max-width: $max-width-7xl;
-  margin: 0 auto;
-  min-height: 100vh;
-  
-  @media (max-width: $breakpoint-md) {
-    padding: $spacing-4;
-  }
-  
-  @media (max-width: $breakpoint-sm) {
-    padding: $spacing-3;
-  }
+  padding: 0; // Remove duplicate padding - MainLayout already provides padding
+  max-width: 100%;
+  margin: 0;
+  min-height: auto;
 
   .page-header {
     @include flex-between;
-    margin-bottom: $spacing-6;
+    margin-bottom: $spacing-5;
     flex-wrap: wrap;
     gap: $spacing-4;
 
     h1 {
-      font-size: 2rem;
-      font-weight: 800;
+      font-size: 1.75rem;
+      font-weight: 700;
       color: var(--text-primary);
       margin: 0;
       letter-spacing: -0.02em;
       line-height: 1.2;
-      
-      @media (max-width: $breakpoint-md) {
-        font-size: 1.75rem;
-      }
       
       @media (max-width: $breakpoint-sm) {
         font-size: 1.5rem;
@@ -42,12 +30,8 @@
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: $border-radius-lg;
-    padding: $spacing-6;
+    padding: $spacing-5;
     box-shadow: var(--shadow-md);
-    
-    @media (max-width: $breakpoint-md) {
-      padding: $spacing-5;
-    }
     
     @media (max-width: $breakpoint-sm) {
       padding: $spacing-4;
@@ -75,13 +59,9 @@
     }
 
     th, td {
-      padding: $spacing-5 $spacing-6;
+      padding: $spacing-4 $spacing-5;
       text-align: left;
       border-bottom: 1px solid var(--border-color);
-
-      @media (max-width: $breakpoint-md) {
-        padding: $spacing-4 $spacing-5;
-      }
 
       @media (max-width: $breakpoint-sm) {
         padding: $spacing-3 $spacing-4;
