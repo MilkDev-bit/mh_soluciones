@@ -143,8 +143,9 @@ if [ $# -eq 0 ] || [ "$1" = "daphne" ]; then
     exec daphne -b 0.0.0.0 -p "$PORT" \
         --access-log - \
         --proxy-headers \
-        --timeout 300 \
-        --websocket-timeout 300 \
+        --application-close-timeout 300 \
+        --ping-interval 20 \
+        --ping-timeout 30 \
         config.asgi:application
 else
     exec "$@"
