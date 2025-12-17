@@ -1,5 +1,6 @@
 import os
 import logging
+import socket
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -26,6 +27,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from datetime import timedelta
+from requests.exceptions import Timeout as RequestsTimeout
 
 from apps.core.permissions import IsSuperAdmin, CanManageUsers
 from apps.core.utils import (
@@ -368,31 +370,51 @@ class GoogleAuthCallbackView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
+            # Log request URL with sanitized parameters (don't log code/state values)
+            request_url = request.build_absolute_uri().split('?')[0]  # URL without query params
+            logger.info(f"📥 Google OAuth callback received - URL: {request_url}")
+            logger.info(f"Query parameters present: {list(request.GET.keys())}")
+            
             state = request.GET.get('state')
             error = request.GET.get('error')
+            authorization_code = request.GET.get('code')
             
             # Check if user denied access
             if error:
-                logger.warning(f"Google OAuth callback: User denied access or error occurred: {error}")
+                logger.warning(f"❌ Google OAuth callback: User denied access or error occurred: {error}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=denied")
             
             if not state:
-                logger.error("Google OAuth callback: No state parameter provided")
+                logger.error("❌ Google OAuth callback: No state parameter provided")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_state")
             
             # Log only first 8 characters of state for security
             state_prefix = state[:8] if len(state) > 8 else state
+            logger.info(f"🔑 State parameter received: {state_prefix}...")
+            
+            # Check for authorization code
+            if not authorization_code:
+                logger.error("❌ Google OAuth callback: No authorization code provided from Google")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_code")
+            logger.info(f"✅ Authorization code present: {authorization_code[:8]}...")
+            
+            # Log cache backend type
+            cache_backend = cache.__class__.__name__
+            logger.info(f"Cache backend type: {cache_backend}")
             
             user_id = cache.get(state)
 
             if not user_id:
-                logger.error(f"Google OAuth callback: State {state_prefix}... not found in cache or expired")
+                logger.error(f"❌ Google OAuth callback: State {state_prefix}... not found in cache or expired")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_expired")
+            
+            logger.info(f"✅ Cache lookup successful - found user_id: {user_id}")
 
             try:
                 user = User.objects.get(pk=user_id)
+                logger.info(f"✅ User verified: {user.username} (ID: {user_id})")
             except User.DoesNotExist:
-                logger.error(f"Google OAuth callback: User {user_id} does not exist")
+                logger.error(f"❌ Google OAuth callback: User {user_id} does not exist")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
 
             # Build redirect URI using request if BACKEND_URL is not set or is localhost
@@ -402,9 +424,18 @@ class GoogleAuthCallbackView(APIView):
                 # Fallback to building from request (for development or when BACKEND_URL is not set)
                 redirect_uri = request.build_absolute_uri('/api/v1/auth/google/callback/')
             
-            logger.info(f"Google OAuth callback: Using redirect URI: {redirect_uri}")
+            logger.info(f"🔗 Redirect URI constructed: {redirect_uri}")
+            
+            # Log configuration status
+            has_backend_url = bool(settings.BACKEND_URL)
+            has_client_id = bool(getattr(settings, 'GOOGLE_CLIENT_ID', None))
+            has_client_secret = bool(getattr(settings, 'GOOGLE_CLIENT_SECRET', None))
+            logger.info(f"Configuration status - BACKEND_URL: {'✅' if has_backend_url else '❌'}, "
+                       f"GOOGLE_CLIENT_ID: {'✅' if has_client_id else '❌'}, "
+                       f"GOOGLE_CLIENT_SECRET: {'✅' if has_client_secret else '❌'}")
             
             try:
+                logger.info("Creating OAuth flow...")
                 flow = Flow.from_client_config(
                     client_config={
                         "web": {
@@ -421,21 +452,40 @@ class GoogleAuthCallbackView(APIView):
                     state=state,
                     redirect_uri=redirect_uri
                 )
+                logger.info("✅ OAuth flow created successfully")
                 
                 full_url = request.build_absolute_uri()
                 # Fix for Railway/Proxy: If we expect HTTPS (based on redirect_uri) but got HTTP (due to proxy stripping),
                 # force HTTPS in the full_url passed to fetch_token to satisfy OAUTHLIB match requirements.
                 if redirect_uri.startswith('https://') and full_url.startswith('http://'):
                     full_url = full_url.replace('http://', 'https://', 1)
-                    logger.info("Google OAuth callback: Upgraded callback URL scheme to HTTPS to match redirect_uri")
-
-                logger.info(f"Google OAuth callback: Fetching token for user {user_id}")
+                    logger.info("🔄 HTTP/HTTPS scheme fix: Upgraded callback URL scheme to HTTPS to match redirect_uri")
                 
-                # This is the critical call that can fail - add proper error handling
-                flow.fetch_token(authorization_response=full_url)
+                # Log sanitized callback URL (without query parameters)
+                full_url_path = full_url.split('?')[0]
+                logger.info(f"Full callback URL path (after scheme fix): {full_url_path}")
+
+                logger.info(f"🔄 Attempting to fetch token for user {user_id}...")
+                
+                # Add timeout handling for token fetch
+                # Note: Using socket.setdefaulttimeout() affects global timeout, but we restore it immediately
+                # in the finally block to minimize impact. This is done because google-auth-oauthlib.flow
+                # doesn't expose a direct timeout parameter for fetch_token().
+                old_timeout = socket.getdefaulttimeout()
+                try:
+                    socket.setdefaulttimeout(10)  # 10 second timeout
+                    flow.fetch_token(authorization_response=full_url)
+                    logger.info("✅ Token fetched successfully!")
+                finally:
+                    socket.setdefaulttimeout(old_timeout)
                 
                 credentials = flow.credentials
+                
+                # Log refresh token status
+                has_refresh_token = bool(credentials.refresh_token)
+                logger.info(f"Token credentials obtained - Refresh token: {'✅ Present' if has_refresh_token else '❌ Not present'}")
 
+                logger.info(f"💾 Saving credentials to database for user {user_id}...")
                 GoogleApiCredentials.objects.update_or_create(
                     user=user,
                     defaults={
@@ -448,23 +498,32 @@ class GoogleAuthCallbackView(APIView):
                     }
                 )
                 
-                logger.info(f"Google OAuth callback: Successfully saved credentials for user {user_id}")
+                logger.info(f"✅ Google OAuth callback: Successfully saved credentials for user {user_id}")
                 # Clear the state from cache after successful authentication
                 cache.delete(state)
+                logger.info("🧹 State cleared from cache")
                 
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
                 
+            except (socket.timeout, RequestsTimeout):
+                logger.error(f"❌ Timeout while fetching token for user {user_id}")
+                logger.error(f"Debug Info: redirect_uri={redirect_uri}")
+                return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_timeout")
             except (GoogleAuthError, OAuth2Error) as e:
-                logger.error(f"Google OAuth callback: OAuth/Auth error for user {user_id}: {str(e)}")
-                # Log usage details to help debugging
-                logger.error(f"Debug Info: redirect_uri={redirect_uri}, full_url={full_url}")
+                logger.error(f"❌ Google OAuth callback: OAuth/Auth error for user {user_id}")
+                logger.error(f"Error type: {type(e).__name__}, Error message: {str(e)}")
+                # Log detailed debug information
+                logger.error(f"Debug Info: redirect_uri={redirect_uri}")
+                logger.error(f"State: {state_prefix}..., Code present: {bool(authorization_code)}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
-                logger.error(f"Google OAuth callback: Database error saving credentials for user {user_id}: {str(e)}", exc_info=True)
+                logger.error(f"❌ Google OAuth callback: Database error saving credentials for user {user_id}")
+                logger.error(f"Database error details: {str(e)}", exc_info=True)
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_db")
                 
         except Exception as e:
-            logger.error(f"Google OAuth callback: Unexpected error: {str(e)}", exc_info=True)
+            logger.error(f"❌ Google OAuth callback: Unexpected error")
+            logger.error(f"Exception type: {type(e).__name__}, Exception message: {str(e)}", exc_info=True)
             return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error")
 
 
