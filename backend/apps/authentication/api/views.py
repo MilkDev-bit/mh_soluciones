@@ -405,7 +405,7 @@ class GoogleAuthCallbackView(APIView):
             user_id = cache.get(state)
 
             if not user_id:
-                # Enhanced cache debugging - reuse cache_backend from above
+                # Enhanced cache debugging
                 logger.error(f"❌ Google OAuth callback: State {state_prefix}... not found in cache")
                 logger.error(f"Cache Backend: {cache_backend}")
                 logger.error(f"Is LocMemCache (will fail with multiple instances): {cache_backend == 'LocMemCache'}")
