@@ -10,6 +10,7 @@ export const ROLES = {
   CLIENT: 'CLIENT',
 };
 
+
 // Role groups for common permission checks
 export const ROLE_GROUPS = {
   // Admin roles that have full access to most features
