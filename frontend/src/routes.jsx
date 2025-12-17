@@ -8,6 +8,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const TwoFactorPage = lazy(() => import('./pages/auth/TwoFactorPage'));
+const GoogleCallbackPage = lazy(() => import('./pages/auth/GoogleCallbackPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ProjectsPage = lazy(() => import('./pages/projects/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
@@ -31,6 +32,9 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/verify-2fa" element={<TwoFactorPage />} />
       </Route>
+
+      {/* Google OAuth Callback - Public route */}
+      <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
