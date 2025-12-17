@@ -59,7 +59,7 @@ const GoogleCallbackPage = () => {
           // Redirect to profile with success message
           setTimeout(() => {
             navigate('/profile?google_auth=success');
-          }, 1500);
+          }, REDIRECT_DELAY);
         } else {
           setStatus('error');
           setErrorMessage(response.data.error || 'Error desconocido');

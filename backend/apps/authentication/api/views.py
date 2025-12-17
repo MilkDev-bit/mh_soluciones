@@ -2,6 +2,7 @@ import os
 import logging
 import socket
 import time
+from urllib.parse import urlencode
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -401,6 +402,15 @@ class GoogleAuthCallbackView(APIView):
     def post(self, request, *args, **kwargs):
         start_time = time.time()
         try:
+            # Validate request has data
+            if not request.data:
+                logger.error("❌ Google OAuth callback: Empty request body")
+                return Response({
+                    'success': False,
+                    'error': 'Datos de solicitud faltantes',
+                    'error_type': 'error_request'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             # Get parameters from request body (JSON)
             state = request.data.get('state')
             error = request.data.get('error')
@@ -516,9 +526,10 @@ class GoogleAuthCallbackView(APIView):
 
                 logger.info(f"🔄 Attempting to fetch token for user {user_id}...")
                 
-                # Construct authorization_response URL from code and state
+                # Construct authorization_response URL from code and state with proper URL encoding
                 # This mimics the full callback URL that Google would have used
-                authorization_response = f"{redirect_uri}?code={authorization_code}&state={state}"
+                query_params = urlencode({'code': authorization_code, 'state': state})
+                authorization_response = f"{redirect_uri}?{query_params}"
                 
                 # Add timeout handling for token fetch
                 old_timeout = socket.getdefaulttimeout()
