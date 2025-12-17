@@ -8,20 +8,24 @@
 
   .page-header {
     @include flex-between;
-    margin-bottom: $spacing-5;
+    margin-bottom: $spacing-4;
     flex-wrap: wrap;
     gap: $spacing-4;
 
     h1 {
-      font-size: 1.75rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: var(--text-primary);
       margin: 0;
       letter-spacing: -0.02em;
       line-height: 1.2;
       
+      @media (max-width: $breakpoint-md) {
+        font-size: 1.375rem;
+      }
+
       @media (max-width: $breakpoint-sm) {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
       }
     }
   }
@@ -30,11 +34,15 @@
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: $border-radius-lg;
-    padding: $spacing-5;
+    padding: $spacing-4;
     box-shadow: var(--shadow-md);
     
+    @media (max-width: $breakpoint-md) {
+      padding: $spacing-3;
+    }
+
     @media (max-width: $breakpoint-sm) {
-      padding: $spacing-4;
+      padding: $spacing-3;
     }
   }
   .table-container {
@@ -59,12 +67,16 @@
     }
 
     th, td {
-      padding: $spacing-4 $spacing-5;
+      padding: $spacing-3 $spacing-4;
       text-align: left;
       border-bottom: 1px solid var(--border-color);
 
-      @media (max-width: $breakpoint-sm) {
+      @media (max-width: $breakpoint-md) {
         padding: $spacing-3 $spacing-4;
+      }
+
+      @media (max-width: $breakpoint-sm) {
+        padding: $spacing-2 $spacing-3;
       }
     }
 
@@ -296,10 +308,10 @@
   }
 
   .search-section {
-    margin-bottom: $spacing-6;
+    margin-bottom: $spacing-4;
     
     @media (max-width: $breakpoint-sm) {
-      margin-bottom: $spacing-4;
+      margin-bottom: $spacing-3;
     }
     
     .search-input-container {
