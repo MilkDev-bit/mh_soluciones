@@ -11,16 +11,16 @@
     .sidebar {
       transform: translateX(-100%);
 
-      
+
       @media (min-width: $breakpoint-lg) {
         transform: translateX(0);
         width: $sidebar-width-collapsed;
       }
     }
-    
+
     .main-content {
       margin-left: 0;
-      
+
       @media (min-width: $breakpoint-lg) {
         margin-left: $sidebar-width-collapsed;
       }
@@ -41,10 +41,10 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  
+
   @media (max-width: $breakpoint-lg) {
     transform: translateX(-100%);
-    
+
     &.sidebar-open {
       transform: translateX(0);
     }
@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   gap: $spacing-3;
-  
+
   .logo-icon {
     width: 2.5rem;
     height: 2.5rem;
@@ -106,16 +106,16 @@
   border-radius: $border-radius;
   transition: all $transition;
   position: relative;
-  
+
   &:hover {
     background: rgba($neutral-50, 0.1);
     color: $neutral-50;
   }
-  
+
   &.active {
     background: rgba($neutral-50, 0.15);
     color: $neutral-50;
-    
+
     &::before {
       content: '';
       position: absolute;
@@ -128,7 +128,7 @@
       border-radius: 0 $border-radius $border-radius 0;
     }
   }
-  
+
   .menu-icon {
     font-size: 1.25rem;
     width: 1.5rem;
@@ -160,13 +160,13 @@
 
 .user-info {
   flex: 1;
-  
+
   .user-name {
     font-weight: 600;
     font-size: 0.875rem;
     color: $neutral-50;
   }
-  
+
   .user-role {
     font-size: 0.75rem;
     color: rgba($neutral-50, 0.7);
@@ -177,7 +177,7 @@
   flex: 1;
   margin-left: 0;
   transition: margin-left $transition;
-  
+
   @media (min-width: $breakpoint-lg) {
     margin-left: $sidebar-width;
   }
@@ -188,15 +188,15 @@
   max-width: $max-width-7xl;
   margin: 0 auto;
   width: 100%;
-  
+
   @media (max-width: $breakpoint-md) {
     padding: $spacing-4;
   }
-  
+
   @media (max-width: $breakpoint-sm) {
     padding: $spacing-3;
   }
-  
+
   @media (max-width: $breakpoint-xs) {
     padding: $spacing-2;
   }
@@ -218,12 +218,12 @@
   align-items: center;
   justify-content: center;
   transition: all $transition;
-  
+
   &:hover {
     background: $primary-600;
     transform: scale(1.05);
   }
-  
+
   @media (min-width: $breakpoint-lg) {
     display: none;
   }
@@ -239,11 +239,22 @@
   z-index: $z-modal - 1;
   backdrop-filter: blur(4px);
   display: none;
-  
+
   @media (max-width: $breakpoint-lg) {
     &.active {
       display: block;
+      animation: fadeIn 0.3s ease-out;
     }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 
@@ -251,21 +262,21 @@
   .sidebar-menu-link {
     justify-content: center;
     padding: $spacing-3;
-    
+
     .menu-text {
       display: none;
     }
-    
+
     .menu-icon {
       font-size: 1.5rem;
     }
   }
-  
+
   .user-info,
   .sidebar-logo-text {
     display: none;
   }
-  
+
   .sidebar-header {
     justify-content: center;
     padding: $spacing-4;
@@ -276,6 +287,7 @@
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -285,6 +297,7 @@
   from {
     transform: translateX(0);
   }
+
   to {
     transform: translateX(-100%);
   }
@@ -293,7 +306,7 @@
 @media (max-width: $breakpoint-lg) {
   .sidebar {
     animation: slideOutLeft $transition;
-    
+
     &.sidebar-open {
       animation: slideInLeft $transition;
     }
@@ -304,7 +317,7 @@
   .main-layout {
     background: $background-dark;
   }
-  
+
   .sidebar {
     background: linear-gradient(180deg, $neutral-900 0%, $neutral-950 100%);
   }

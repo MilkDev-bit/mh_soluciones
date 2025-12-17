@@ -17,7 +17,7 @@
   @media (max-width: $breakpoint-md) {
     padding: 0 $spacing-5;
   }
-  
+
   @media (max-width: $breakpoint-xs) {
     padding: 0 $spacing-3;
     height: 3.5rem;
@@ -32,11 +32,11 @@
     backdrop-filter: blur(20px);
     box-shadow: var(--shadow-lg);
     border-bottom-color: var(--accent-primary);
-    
+
     [data-theme="dark"] & {
       background: rgba($neutral-900, 0.95);
     }
-    
+
     &::after {
       content: '';
       position: absolute;
@@ -53,7 +53,7 @@
   display: flex;
   align-items: center;
   gap: $spacing-5;
-  
+
   @media (max-width: $breakpoint-xs) {
     gap: $spacing-2;
   }
@@ -94,11 +94,11 @@
     border-color: $primary-500;
     transform: translateY(-2px);
     box-shadow: $shadow-md;
-    
+
     &::before {
       opacity: 0.1;
     }
-    
+
     svg {
       color: $primary-600;
     }
@@ -124,7 +124,7 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   position: relative;
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -139,10 +139,10 @@
   @media (max-width: $breakpoint-md) {
     font-size: 1.25rem;
   }
-  
+
   @media (max-width: $breakpoint-xs) {
     font-size: 1rem;
-    
+
     &::after {
       width: 24px;
       height: 2px;
@@ -154,7 +154,7 @@
   display: flex;
   align-items: center;
   gap: $spacing-3;
-  
+
   @media (max-width: $breakpoint-xs) {
     gap: $spacing-2;
   }
@@ -197,11 +197,11 @@
     border-color: var(--accent-primary);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    
+
     &::before {
       opacity: 0.1;
     }
-    
+
     svg {
       animation: rotateIcon 0.5s ease-in-out;
     }
@@ -210,7 +210,7 @@
   &:active {
     transform: translateY(0) scale(0.95);
   }
-  
+
   @media (max-width: $breakpoint-xs) {
     width: 36px;
     height: 36px;
@@ -219,14 +219,22 @@
 }
 
 @keyframes rotateIcon {
-  0% { transform: rotate(0deg); }
-  50% { transform: rotate(180deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(180deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .header-spacer {
   height: $header-height;
-  
+
   @media (max-width: $breakpoint-xs) {
     height: 3.5rem;
   }
@@ -250,11 +258,11 @@
     cursor: pointer;
     transition: all $transition;
     overflow: hidden;
-    
+
     @media (max-width: $breakpoint-xs) {
-      width: 36px;
-      height: 36px;
-      font-size: 1.125rem;
+      width: 40px;
+      height: 40px;
+      font-size: 1.25rem;
     }
 
     &::before {
@@ -277,11 +285,11 @@
       border-color: var(--accent-primary);
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
-      
+
       &::before {
         opacity: 0.1;
       }
-      
+
       svg {
         animation: bellRing 0.5s ease-in-out;
       }
@@ -314,10 +322,13 @@
 }
 
 @keyframes pulse-badge {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba($error, 0.4);
   }
+
   50% {
     transform: scale(1.1);
     box-shadow: 0 4px 12px rgba($error, 0.6);
@@ -325,10 +336,25 @@
 }
 
 @keyframes bellRing {
-  0%, 100% { transform: rotate(0deg); }
-  10%, 30% { transform: rotate(-10deg); }
-  20%, 40% { transform: rotate(10deg); }
-  50% { transform: rotate(0deg); }
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  10%,
+  30% {
+    transform: rotate(-10deg);
+  }
+
+  20%,
+  40% {
+    transform: rotate(10deg);
+  }
+
+  50% {
+    transform: rotate(0deg);
+  }
 }
 
 .header-profile {
@@ -357,7 +383,7 @@
     transition: opacity $transition;
   }
 
-  > * {
+  >* {
     position: relative;
     z-index: 1;
   }
@@ -366,11 +392,11 @@
     border-color: $primary-300;
     transform: translateY(-2px);
     box-shadow: $shadow-md;
-    
+
     &::before {
       opacity: 1;
     }
-    
+
     .profile-avatar {
       border-color: $primary-500;
       box-shadow: 0 4px 12px rgba($primary-600, 0.3);
@@ -419,7 +445,7 @@
       background: linear-gradient(135deg, $primary-100, $primary-200);
       padding: $spacing-1 $spacing-2;
       border-radius: $rounded-full;
-      
+
       [data-theme="dark"] & {
         background: linear-gradient(135deg, rgba($primary-500, 0.2), rgba($primary-400, 0.3));
         color: $primary-300;
@@ -453,15 +479,20 @@
   backdrop-filter: blur(4px);
   z-index: $z-dropdown - 1;
   animation: fadeIn 0.2s ease-out;
-  
+
   [data-theme="dark"] & {
     background: rgba(0, 0, 0, 0.5);
   }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .dropdown-panel {
@@ -508,6 +539,7 @@
     opacity: 0;
     transform: translateY(-12px) scale(0.95);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -529,15 +561,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    
-    h3 { 
-      font-weight: 800; 
+
+    h3 {
+      font-weight: 800;
       font-size: 1.125rem;
       color: $neutral-900;
       margin: 0;
       letter-spacing: -0.3px;
     }
-    
+
     .mark-all-read-btn {
       display: flex;
       align-items: center;
@@ -551,11 +583,11 @@
       font-weight: 700;
       cursor: pointer;
       transition: all $transition;
-      
+
       svg {
         font-size: 1rem;
       }
-      
+
       &:hover {
         background: $success-light;
         border-color: $success;
@@ -563,7 +595,7 @@
         transform: translateY(-1px);
         box-shadow: $shadow-sm;
       }
-      
+
       &:active {
         transform: translateY(0) scale(0.97);
       }
@@ -573,31 +605,31 @@
   .notification-list {
     max-height: 480px;
     overflow-y: auto;
-    
+
     &::-webkit-scrollbar {
       width: 8px;
     }
-    
+
     &::-webkit-scrollbar-track {
       background: $neutral-100;
     }
-    
+
     &::-webkit-scrollbar-thumb {
       background: $neutral-300;
       border-radius: $border-radius;
-      
+
       &:hover {
         background: $neutral-400;
       }
     }
-    
+
     .empty-state {
       padding: $spacing-12;
       text-align: center;
       color: $neutral-500;
       font-size: 1rem;
       font-weight: 600;
-      
+
       &::before {
         content: '🔔';
         display: block;
@@ -615,7 +647,7 @@
       border-bottom: 1px solid $neutral-200;
       transition: all $transition;
       position: relative;
-      
+
       &::before {
         content: '';
         position: absolute;
@@ -627,14 +659,14 @@
         opacity: 0;
         transition: opacity $transition;
       }
-      
+
       &:not(.read) {
         background: linear-gradient(90deg, $primary-50 0%, transparent 100%);
-        
+
         &::before {
           opacity: 1;
         }
-        
+
         .notification-content .title::after {
           content: '';
           position: absolute;
@@ -648,12 +680,12 @@
           animation: pulse 2s infinite;
         }
       }
-      
-      &.read { 
-        opacity: 0.7; 
+
+      &.read {
+        opacity: 0.7;
       }
-      
-      &:not(.read):hover { 
+
+      &:not(.read):hover {
         background: linear-gradient(90deg, $primary-100 0%, $primary-50 100%);
       }
 
@@ -664,9 +696,9 @@
       .notification-content {
         flex-grow: 1;
         min-width: 0;
-        
-        .title { 
-          font-weight: 700; 
+
+        .title {
+          font-weight: 700;
           color: $neutral-900;
           font-size: 0.9375rem;
           margin: 0 0 $spacing-2 0;
@@ -674,16 +706,16 @@
           position: relative;
           padding-right: $spacing-4;
         }
-        
-        .message { 
-          font-size: 0.875rem; 
-          color: $neutral-600; 
+
+        .message {
+          font-size: 0.875rem;
+          color: $neutral-600;
           margin: 0 0 $spacing-2 0;
           line-height: 1.6;
         }
-        
-        .time { 
-          font-size: 0.75rem; 
+
+        .time {
+          font-size: 0.75rem;
           color: $neutral-500;
           font-weight: 600;
           background: $neutral-100;
@@ -706,12 +738,12 @@
         align-items: center;
         justify-content: center;
         transition: all $transition;
-        
+
         svg {
           font-size: 1.125rem;
           transition: all $transition;
         }
-        
+
         &:hover {
           background: $success-light;
           color: $success-dark;
@@ -729,10 +761,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: translateY(-50%) scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: translateY(-50%) scale(1.2);
@@ -751,7 +786,7 @@
     background: linear-gradient(135deg, $primary-50 0%, $secondary-50 100%);
     border-radius: $border-radius-lg;
     margin-bottom: $spacing-3;
-    
+
     .dropdown-avatar {
       img {
         width: 56px;
@@ -762,20 +797,20 @@
         box-shadow: $shadow-md;
       }
     }
-    
+
     .dropdown-user-info {
       display: flex;
       flex-direction: column;
       gap: $spacing-1;
       flex: 1;
-      
+
       .dropdown-name {
         font-weight: 800;
         font-size: 1rem;
         color: $neutral-900;
         letter-spacing: -0.3px;
       }
-      
+
       .dropdown-email {
         font-size: 0.8125rem;
         color: $neutral-600;
@@ -813,7 +848,7 @@
       transition: opacity $transition;
     }
 
-    > * {
+    >* {
       position: relative;
       z-index: 1;
     }
@@ -827,7 +862,7 @@
     &:hover {
       color: $primary-700;
       transform: translateX(4px);
-      
+
       &::before {
         opacity: 1;
       }
@@ -841,21 +876,21 @@
     &:active {
       transform: translateX(4px) scale(0.98);
     }
-    
+
     &:last-child {
       color: $error-dark;
-      
+
       svg {
         color: $error;
       }
-      
+
       &::before {
         background: linear-gradient(135deg, $error-light, rgba($error-light, 0.5));
       }
-      
+
       &:hover {
         color: $error;
-        
+
         svg {
           color: $error;
         }
@@ -868,38 +903,38 @@
   .main-header {
     padding: 0 $spacing-4;
   }
-  
+
   .header-left {
     gap: $spacing-3;
   }
-  
+
   .sidebar-toggle,
   .notifications-dropdown .icon-button {
     width: 40px;
     height: 40px;
     font-size: 1.25rem;
   }
-  
+
   .profile-button {
     padding: $spacing-2;
-    
+
     .profile-avatar {
       width: 36px;
       height: 36px;
     }
   }
-  
+
   .notifications-panel {
     width: calc(100vw - 1rem);
     left: 50%;
     right: auto;
     transform: translateX(-50%) translateY(-12px) scale(0.95);
-    
+
     &.active {
       transform: translateX(-50%) translateY(0) scale(1);
     }
   }
-  
+
   .profile-panel {
     width: 280px;
   }

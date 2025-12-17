@@ -1,23 +1,35 @@
 .draggable-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive grid */
+  // Mobile first: 1 column
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   padding: 1rem 0;
   width: 100%;
 
+  // Tablet: 2 columns
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  // Desktop: 3 columns
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  // Large Desktop: 4 columns
   @media (min-width: 1200px) {
-      grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
 .dashboard-item {
   height: 100%;
-  
+
   /* Different spans for different widget types if we want */
   &.full-width {
     grid-column: 1 / -1;
   }
-  
+
   &.half-width {
     grid-column: span 2;
   }
