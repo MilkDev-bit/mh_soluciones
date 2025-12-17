@@ -418,7 +418,7 @@ class GoogleAuthCallbackView(APIView):
                     if hasattr(cache, 'keys'):
                         # Limit key retrieval to avoid performance issues on large Redis instances
                         cache_keys = list(cache.keys('*'))[:100]  # Only first 100 keys
-                        logger.error(f"Sample cache keys (first 100): {len(cache_keys)}")
+                        logger.error(f"Cache key count (first 100 max): {len(cache_keys)}")
                 except Exception as debug_e:
                     logger.error(f"Could not inspect cache keys: {str(debug_e)}")
                 
