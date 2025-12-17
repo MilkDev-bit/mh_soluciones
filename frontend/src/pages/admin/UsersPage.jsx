@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { getUsers, deleteUser, activateUser } from '../../services/userService';
-import Loading from '../../components/common/Loading';
 import UserModal from '../../components/admin/UserModal';
 import ChangePasswordModal from '../../components/admin/ChangePasswordModal';
-import { FiPlus, FiEdit, FiTrash2, FiSearch, FiKey } from 'react-icons/fi';
-import './AdminPages.scss';
+import UserCard from '../../components/admin/UserCard';
+import UsersPageSkeleton from '../../components/admin/UsersPageSkeleton';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiKey, FiGrid, FiList, FiUsers, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FaCrown, FaWrench, FaUserGraduate, FaChalkboardTeacher, FaUser } from 'react-icons/fa';
+import './UsersPage.scss';
 import '../../assets/styles/_buttons.scss';
 
 const UsersPage = () => {
@@ -19,6 +21,7 @@ const UsersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const usersPerPage = 20;
 
   const fetchUsers = async (page = 1, search = '') => {
@@ -105,8 +108,22 @@ const UsersPage = () => {
     }
   };
 
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const activeUsers = users.filter(u => u.is_active).length;
+    const inactiveUsers = users.filter(u => !u.is_active).length;
+    const activationRate = totalCount > 0 ? Math.round((activeUsers / totalCount) * 100) : 0;
+    
+    return {
+      total: totalCount,
+      active: activeUsers,
+      inactive: inactiveUsers,
+      activationRate
+    };
+  }, [users, totalCount]);
+
   if (loading) {
-    return <Loading fullscreen />;
+    return <UsersPageSkeleton viewMode={viewMode} />;
   }
 
   return (
@@ -131,29 +148,109 @@ const UsersPage = () => {
         />
       )}
 
-      <div className="admin-page animate-slide-up">
-        <div className="page-header">
-          <h1>Gestión de Usuarios</h1>
-          <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-            <FiPlus /> Agregar Usuario
-          </button>
-        </div>
-
-        <div className="glass-card">
-          <div className="search-section">
-            <div className="search-input-container">
-              <FiSearch />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, usuario o email..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
+      <div className="users-page">
+        {/* Header with Gradient and Stats */}
+        <div className="users-header">
+          <div className="users-header-top">
+            <h1>Gestión de Usuarios</h1>
+            <button className="btn-add-user" onClick={() => handleOpenModal()}>
+              <FiPlus /> Agregar Usuario
+            </button>
+          </div>
+          
+          <div className="users-stats">
+            <div className="stat-card">
+              <div className="stat-icon">
+                <FiUsers />
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Total Usuarios</div>
+                <div className="stat-value">{stats.total}</div>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon">
+                <FiCheckCircle />
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Activos</div>
+                <div className="stat-value">{stats.active}</div>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon">
+                <FiXCircle />
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Inactivos</div>
+                <div className="stat-value">{stats.inactive}</div>
+              </div>
+            </div>
+            
+            <div className="stat-card">
+              <div className="stat-icon">
+                <FiCheckCircle />
+              </div>
+              <div className="stat-content">
+                <div className="stat-label">Tasa Activación</div>
+                <div className="stat-value">{stats.activationRate}%</div>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="table-container">
-            <table className="modern-table">
+        {/* Search and View Toggle */}
+        <div className="view-controls">
+          <div className="search-container">
+            <FiSearch />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, usuario o email..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
+          
+          <div className="view-toggle">
+            <button 
+              className={viewMode === 'grid' ? 'active' : ''} 
+              onClick={() => setViewMode('grid')}
+            >
+              <FiGrid />
+              <span>Grid</span>
+            </button>
+            <button 
+              className={viewMode === 'table' ? 'active' : ''} 
+              onClick={() => setViewMode('table')}
+            >
+              <FiList />
+              <span>Tabla</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Grid View */}
+        {viewMode === 'grid' && (
+          <div className="users-grid">
+            {users.map(user => (
+              <UserCard
+                key={user.id}
+                user={user}
+                onEdit={handleOpenModal}
+                onDelete={handleDeleteUser}
+                onActivate={handleActivateUser}
+                onChangePassword={handleOpenPasswordModal}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Table View */}
+        {viewMode === 'table' && (
+          <div className="users-table-container">
+            <table className="users-table">
               <thead>
                 <tr>
                   <th>Usuario</th>
@@ -182,12 +279,27 @@ const UsersPage = () => {
                     <td data-label="Email">{user.email}</td>
                     <td data-label="Rol">
                       <span className={`role-badge role-${user.role.toLowerCase()}`}>
-                        {user.role.replace('_', ' ')}
+                        {user.role === 'SUPERADMIN' && <FaCrown />}
+                        {user.role === 'ADMIN' && <FaWrench />}
+                        {user.role === 'STUDENT' && <FaUserGraduate />}
+                        {user.role === 'PROFESSOR' && <FaChalkboardTeacher />}
+                        {user.role === 'CLIENT' && <FaUser />}
+                        <span>{user.role.replace('_', ' ')}</span>
                       </span>
                     </td>
                     <td data-label="Estado">
                       <span className={`status-badge ${user.is_active ? 'status-active' : 'status-inactive'}`}>
-                        {user.is_active ? 'Activo' : 'Inactivo'}
+                        {user.is_active ? (
+                          <>
+                            <FiCheckCircle />
+                            <span>Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <FiXCircle />
+                            <span>Inactivo</span>
+                          </>
+                        )}
                       </span>
                     </td>
                     <td data-label="Acciones">
@@ -222,29 +334,28 @@ const UsersPage = () => {
               </tbody>
             </table>
           </div>
+        )}
 
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="btn btn-secondary"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Anterior
-              </button>
-              <span>
-                Página {currentPage} de {totalPages} ({totalCount} usuarios)
-              </span>
-              <button
-                className="btn btn-secondary"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Siguiente
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </button>
+            <span>
+              Página {currentPage} de {totalPages} ({totalCount} usuarios)
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

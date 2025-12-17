@@ -231,6 +231,10 @@
     letter-spacing: 0.03em;
     box-shadow: var(--shadow-sm);
 
+    svg {
+      font-size: 0.75rem;
+    }
+
     @media (max-width: $breakpoint-sm) {
       padding: $spacing-1 $spacing-2;
       font-size: 0.625rem;
