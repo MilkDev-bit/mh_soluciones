@@ -14,14 +14,14 @@
 }
 
 .dashboard-page {
-  padding: 2rem;
+  padding: $spacing-8;
   font-family: 'Outfit', sans-serif;
-  background-color: #f7fafc;
+  background-color: var(--bg-gray);
   min-height: 100vh;
-  background-image:
-    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 0) 0, transparent 50%),
-    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 0) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0) 0, transparent 50%);
+
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-5;
+  }
 
   /* Header Styles */
   .welcome-message {
@@ -30,13 +30,14 @@
     color: var(--text-primary);
     margin-bottom: 0.5rem;
     background: var(--primary-gradient);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .welcome-subtitle {
     color: var(--text-secondary);
-    margin-bottom: 2rem;
+    margin-bottom: $spacing-8;
     font-size: 1.1rem;
   }
 }

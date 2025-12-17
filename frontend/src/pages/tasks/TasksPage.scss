@@ -1,19 +1,15 @@
 @import '../../assets/styles/variables';
 
 .tasks-page {
-  padding: $spacing-6;
+  padding: $spacing-8;
   max-width: 100%;
   margin: 0 auto;
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba($primary-50, 0.2) 0%, rgba($secondary-50, 0.15) 100%);
+  background: var(--bg-gray);
   animation: fadeInUp 0.6s ease-out;
-  
+
   @media (max-width: $breakpoint-md) {
-    padding: $spacing-4;
-  }
-  
-  @media (max-width: $breakpoint-sm) {
-    padding: $spacing-3;
+    padding: $spacing-5;
   }
 }
 
@@ -21,7 +17,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: $spacing-6;
+  margin-bottom: $spacing-8;
   padding: $spacing-6;
   background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.85) 100%);
   backdrop-filter: blur(20px);
@@ -30,21 +26,21 @@
   box-shadow: 0 8px 32px rgba($neutral-900, 0.08);
   flex-wrap: wrap;
   gap: $spacing-4;
-  
+
   .header-content {
     flex: 1;
-    
+
     h1 {
       font-size: 2rem;
       font-weight: 800;
       margin: 0;
       letter-spacing: -0.02em;
       color: $neutral-900;
-      
+
       @media (max-width: $breakpoint-md) {
         font-size: 1.75rem;
       }
-      
+
       @media (max-width: $breakpoint-sm) {
         font-size: 1.5rem;
       }
@@ -55,13 +51,13 @@
     display: flex;
     align-items: center;
     gap: $spacing-3;
-    
+
     @media (max-width: $breakpoint-sm) {
       width: 100%;
       justify-content: space-between;
     }
   }
-  
+
   .btn {
     flex-shrink: 0;
     font-weight: 600;
@@ -72,7 +68,7 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 16px rgba($primary-500, 0.3);
     }
-    
+
     &:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -89,6 +85,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -101,7 +98,7 @@
   padding: $spacing-6;
   box-shadow: 0 8px 32px rgba($neutral-900, 0.06);
   backdrop-filter: blur(10px);
-  
+
   @media (max-width: $breakpoint-sm) {
     padding: $spacing-4;
   }
@@ -117,7 +114,7 @@
   margin-bottom: $spacing-6;
   flex-wrap: wrap;
   border: 1px solid rgba($neutral-300, 0.3);
-  
+
   @media (max-width: $breakpoint-sm) {
     flex-direction: column;
     align-items: stretch;
@@ -136,14 +133,14 @@
   align-items: center;
   gap: $spacing-3;
   flex: 1;
-  
+
   label {
     font-weight: 600;
     color: $neutral-700;
     white-space: nowrap;
     font-size: 0.95rem;
   }
-  
+
   .form-select {
     flex: 1;
     max-width: 320px;
@@ -159,12 +156,12 @@
       box-shadow: 0 0 0 4px rgba($primary-500, 0.1);
       outline: none;
     }
-    
+
     @media (max-width: $breakpoint-sm) {
       max-width: 100%;
     }
   }
-  
+
   @media (max-width: $breakpoint-sm) {
     flex-direction: column;
     align-items: stretch;
@@ -176,18 +173,18 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: $spacing-5;
-  
+
   @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
-    
+
     .task-column:last-child {
       grid-column: 1 / -1;
     }
   }
-  
+
   @media (max-width: $breakpoint-md) {
     grid-template-columns: 1fr;
-    
+
     .task-column:last-child {
       grid-column: auto;
     }
@@ -201,7 +198,7 @@
   border-radius: $border-radius-lg;
   border: 1px solid rgba($neutral-200, 0.5);
   overflow: hidden;
-  
+
   .task-column-header {
     display: flex;
     align-items: center;
@@ -209,11 +206,11 @@
     padding: $spacing-4;
     background: $white;
     border-bottom: 3px solid;
-    
+
     svg {
       font-size: 1.5rem;
     }
-    
+
     h2 {
       flex: 1;
       font-size: 1.125rem;
@@ -221,7 +218,7 @@
       margin: 0;
       color: $neutral-900;
     }
-    
+
     .task-count {
       display: flex;
       align-items: center;
@@ -235,7 +232,7 @@
       padding: 0 $spacing-2;
     }
   }
-  
+
   .task-column-content {
     flex: 1;
     padding: $spacing-4;
@@ -244,7 +241,7 @@
     gap: $spacing-3;
     overflow-y: auto;
     max-height: calc(100vh - 400px);
-    
+
     @media (max-width: $breakpoint-md) {
       max-height: none;
     }
@@ -259,34 +256,34 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba($neutral-900, 0.04);
-  
+
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba($primary-500, 0.15);
     border-color: $primary-500;
   }
-  
+
   &:focus {
     outline: 2px solid $primary-500;
     outline-offset: 2px;
   }
-  
+
   .task-card-header {
     display: flex;
     align-items: flex-start;
     gap: $spacing-3;
     margin-bottom: $spacing-3;
-    
+
     .task-icon {
       color: $primary-500;
       flex-shrink: 0;
-      
+
       svg {
         width: 20px;
         height: 20px;
       }
     }
-    
+
     .task-title {
       font-size: 1rem;
       font-weight: 600;
@@ -296,7 +293,7 @@
       line-height: 1.4;
     }
   }
-  
+
   .task-card-body {
     .task-description {
       color: $neutral-600;
@@ -304,16 +301,17 @@
       margin-bottom: $spacing-3;
       line-height: 1.5;
       display: -webkit-box;
+      line-clamp: 2;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    
+
     .task-meta {
       display: flex;
       flex-direction: column;
       gap: $spacing-2;
-      
+
       .task-project-badge {
         display: inline-flex;
         align-items: center;
@@ -326,7 +324,7 @@
         box-shadow: 0 2px 6px rgba($primary-500, 0.25);
         align-self: flex-start;
       }
-      
+
       .task-deadline,
       .task-assignee,
       .task-documents {
@@ -335,7 +333,7 @@
         gap: $spacing-2;
         font-size: 0.8125rem;
         color: $neutral-600;
-        
+
         svg {
           color: $primary-500;
           font-size: 0.875rem;
@@ -353,12 +351,12 @@
   justify-content: center;
   padding: $spacing-12 $spacing-4;
   color: $neutral-400;
-  
+
   svg {
     margin-bottom: $spacing-3;
     opacity: 0.5;
   }
-  
+
   p {
     font-size: 0.875rem;
     margin: 0;
@@ -371,6 +369,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -384,7 +383,7 @@
     flex-direction: column;
     gap: $spacing-4;
   }
-  
+
   .task-list-item {
     background: $white;
     border-radius: $border-radius-lg;
@@ -393,35 +392,35 @@
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba($neutral-900, 0.04);
-    
+
     &:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 24px rgba($primary-500, 0.15);
       border-color: $primary-500;
     }
-    
+
     &:focus {
       outline: 2px solid $primary-500;
       outline-offset: 2px;
     }
-    
+
     .task-list-item-content {
       .task-list-header {
         display: flex;
         align-items: center;
         gap: $spacing-3;
         margin-bottom: $spacing-3;
-        
+
         .task-icon {
           color: $primary-500;
           flex-shrink: 0;
-          
+
           svg {
             width: 20px;
             height: 20px;
           }
         }
-        
+
         .task-title {
           flex: 1;
           font-size: 1.125rem;
@@ -430,7 +429,7 @@
           margin: 0;
           line-height: 1.4;
         }
-        
+
         .task-status-badge {
           padding: $spacing-2 $spacing-3;
           border-radius: $border-radius-full;
@@ -438,24 +437,24 @@
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          
+
           &.status-completed {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: $white;
           }
-          
+
           &.status-in_progress {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: $white;
           }
-          
+
           &.status-pending {
             background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
             color: $white;
           }
         }
       }
-      
+
       .task-description {
         color: $neutral-600;
         font-size: 0.9375rem;
@@ -466,13 +465,13 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
-      
+
       .task-list-meta {
         display: flex;
         align-items: center;
         gap: $spacing-4;
         flex-wrap: wrap;
-        
+
         .task-project-badge {
           display: inline-flex;
           align-items: center;
@@ -484,14 +483,14 @@
           font-weight: 600;
           box-shadow: 0 2px 6px rgba($primary-500, 0.25);
         }
-        
+
         .task-meta-item {
           display: flex;
           align-items: center;
           gap: $spacing-2;
           font-size: 0.875rem;
           color: $neutral-600;
-          
+
           svg {
             color: $primary-500;
             font-size: 1rem;
@@ -507,29 +506,29 @@
 @media (max-width: $breakpoint-sm) {
   .page-header {
     padding: $spacing-4;
-    
+
     .btn.btn-primary {
       flex: 1;
     }
   }
-  
+
   .task-card {
     padding: $spacing-3;
   }
-  
+
   .task-list-item {
     padding: $spacing-4;
-    
+
     .task-list-header {
       flex-wrap: wrap;
-      
+
       .task-status-badge {
         width: 100%;
         text-align: center;
         margin-top: $spacing-2;
       }
     }
-    
+
     .task-list-meta {
       flex-direction: column;
       align-items: flex-start;

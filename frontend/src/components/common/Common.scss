@@ -29,7 +29,7 @@
     background-color: var(--bg-primary);
     backdrop-filter: blur(4px);
     z-index: 9999;
-    
+
     [data-theme="dark"] & {
       background-color: rgba($neutral-900, 0.95);
     }
@@ -114,9 +114,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -142,12 +145,10 @@
 
 // Skeleton loading styles
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--border-color) 25%,
-    var(--bg-tertiary) 50%,
-    var(--border-color) 75%
-  );
+  background: linear-gradient(90deg,
+      var(--border-color) 25%,
+      var(--bg-tertiary) 50%,
+      var(--border-color) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
 
@@ -160,6 +161,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -218,7 +220,7 @@
 // Visual feedback for form validation
 .form-field-valid {
   border-color: $success !important;
-  
+
   &:focus {
     box-shadow: 0 0 0 3px rgba($success, 0.15) !important;
   }
@@ -226,7 +228,7 @@
 
 .form-field-invalid {
   border-color: $error !important;
-  
+
   &:focus {
     box-shadow: 0 0 0 3px rgba($error, 0.15) !important;
   }
@@ -236,7 +238,7 @@
 .optimistic-item {
   opacity: 0.7;
   position: relative;
-  
+
   &::after {
     content: '';
     position: absolute;
@@ -244,12 +246,10 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(
-      90deg,
-      transparent 25%,
-      rgba($primary-500, 0.1) 50%,
-      transparent 75%
-    );
+    background: linear-gradient(90deg,
+        transparent 25%,
+        rgba($primary-500, 0.1) 50%,
+        transparent 75%);
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s infinite;
     pointer-events: none;
@@ -263,7 +263,8 @@
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
   transition: all $transition;
-  
+  padding: $spacing-6;
+
   &:hover {
     box-shadow: var(--shadow-md);
   }
@@ -290,7 +291,7 @@
 
 .show-mobile {
   display: none !important;
-  
+
   @media (max-width: $breakpoint-md) {
     display: block !important;
   }
@@ -298,7 +299,7 @@
 
 .show-tablet {
   display: none !important;
-  
+
   @media (min-width: $breakpoint-md) and (max-width: $breakpoint-lg) {
     display: block !important;
   }
@@ -306,7 +307,7 @@
 
 .show-desktop {
   display: none !important;
-  
+
   @media (min-width: $breakpoint-lg) {
     display: block !important;
   }

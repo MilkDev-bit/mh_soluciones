@@ -1,16 +1,17 @@
 .page-container {
-  padding: $spacing-6;
+  padding: $spacing-8;
   max-width: $max-width-7xl;
   margin: 0 auto;
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba($primary-50, 0.2) 0%, rgba($secondary-50, 0.15) 100%);
+  background: transparent;
+  /* Rely on global background */
   animation: fadeIn 0.6s ease-out;
 }
 
 .projects-grades-widget-container {
   margin-bottom: $spacing-6;
   max-width: 800px;
-  
+
   @media (max-width: $breakpoint-md) {
     margin-bottom: $spacing-4;
   }
@@ -132,7 +133,7 @@
   gap: $spacing-6;
   animation: slideUp 0.8s ease-out;
 
-  > * {
+  >* {
     animation: scaleIn 0.5s ease-out backwards;
 
     @for $i from 1 through 12 {
@@ -178,7 +179,7 @@
     animation: drift 15s ease-in-out infinite;
   }
 
-  > * {
+  >* {
     position: relative;
     z-index: 1;
   }
@@ -190,7 +191,7 @@
     filter: grayscale(0.3);
     animation: float 3s ease-in-out infinite;
   }
-  
+
   h2 {
     font-size: 2rem;
     color: $neutral-800;
@@ -234,6 +235,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -244,6 +246,7 @@
     opacity: 0;
     transform: translateY(40px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -255,6 +258,7 @@
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -262,19 +266,25 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-15px);
   }
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.5;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 0.8;
@@ -285,24 +295,29 @@
   from {
     transform: translate(-50%, -50%) rotate(0deg);
   }
+
   to {
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
 @keyframes drift {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0);
   }
+
   33% {
     transform: translate(30px, -30px);
   }
+
   66% {
     transform: translate(-20px, 20px);
   }
 }
 
-.projects-grid > * {
+.projects-grid>* {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
@@ -380,7 +395,7 @@
 
   .page-header {
     padding: $spacing-8;
-    
+
     h1 {
       font-size: 3rem;
     }
@@ -406,6 +421,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
