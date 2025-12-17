@@ -27,6 +27,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from datetime import timedelta
+from requests.exceptions import Timeout as RequestsTimeout
 
 from apps.core.permissions import IsSuperAdmin, CanManageUsers
 from apps.core.utils import (
@@ -369,9 +370,10 @@ class GoogleAuthCallbackView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Log full query parameters and request URL for debugging
-            logger.info(f"📥 Google OAuth callback received - URL: {request.build_absolute_uri()}")
-            logger.info(f"Query parameters: {dict(request.GET)}")
+            # Log request URL with sanitized parameters (don't log code/state values)
+            request_url = request.build_absolute_uri().split('?')[0]  # URL without query params
+            logger.info(f"📥 Google OAuth callback received - URL: {request_url}")
+            logger.info(f"Query parameters present: {list(request.GET.keys())}")
             
             state = request.GET.get('state')
             error = request.GET.get('error')
@@ -459,11 +461,14 @@ class GoogleAuthCallbackView(APIView):
                     full_url = full_url.replace('http://', 'https://', 1)
                     logger.info("🔄 HTTP/HTTPS scheme fix: Upgraded callback URL scheme to HTTPS to match redirect_uri")
                 
-                logger.info(f"Full callback URL (after scheme fix): {full_url}")
+                # Log sanitized callback URL (without query parameters)
+                full_url_path = full_url.split('?')[0]
+                logger.info(f"Full callback URL path (after scheme fix): {full_url_path}")
 
                 logger.info(f"🔄 Attempting to fetch token for user {user_id}...")
                 
                 # Add timeout handling for token fetch
+                # Using socket timeout as it affects the underlying HTTP requests
                 old_timeout = socket.getdefaulttimeout()
                 try:
                     socket.setdefaulttimeout(10)  # 10 second timeout
@@ -498,15 +503,15 @@ class GoogleAuthCallbackView(APIView):
                 
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
                 
-            except socket.timeout:
-                logger.error(f"❌ Socket timeout while fetching token for user {user_id}")
-                logger.error(f"Debug Info: redirect_uri={redirect_uri}, full_url={full_url}")
+            except (socket.timeout, RequestsTimeout):
+                logger.error(f"❌ Timeout while fetching token for user {user_id}")
+                logger.error(f"Debug Info: redirect_uri={redirect_uri}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_timeout")
             except (GoogleAuthError, OAuth2Error) as e:
                 logger.error(f"❌ Google OAuth callback: OAuth/Auth error for user {user_id}")
                 logger.error(f"Error type: {type(e).__name__}, Error message: {str(e)}")
                 # Log detailed debug information
-                logger.error(f"Debug Info: redirect_uri={redirect_uri}, full_url={full_url}")
+                logger.error(f"Debug Info: redirect_uri={redirect_uri}")
                 logger.error(f"State: {state_prefix}..., Code present: {bool(authorization_code)}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
