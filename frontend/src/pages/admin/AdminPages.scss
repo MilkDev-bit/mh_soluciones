@@ -1,6 +1,58 @@
 @import '../../assets/styles/variables';
 
 .admin-page {
+  padding: $spacing-6;
+  max-width: $max-width-7xl;
+  margin: 0 auto;
+  min-height: 100vh;
+  
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-4;
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-3;
+  }
+
+  .page-header {
+    @include flex-between;
+    margin-bottom: $spacing-6;
+    flex-wrap: wrap;
+    gap: $spacing-4;
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      
+      @media (max-width: $breakpoint-md) {
+        font-size: 1.75rem;
+      }
+      
+      @media (max-width: $breakpoint-sm) {
+        font-size: 1.5rem;
+      }
+    }
+  }
+
+  .glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-lg;
+    padding: $spacing-6;
+    box-shadow: var(--shadow-md);
+    
+    @media (max-width: $breakpoint-md) {
+      padding: $spacing-5;
+    }
+    
+    @media (max-width: $breakpoint-sm) {
+      padding: $spacing-4;
+    }
+  }
   .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch; // Smooth scrolling on iOS

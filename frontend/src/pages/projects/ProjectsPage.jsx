@@ -4,12 +4,13 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
-import { isAdmin } from '../../constants/roles';
+import { isAdmin, isStudent } from '../../constants/roles';
 import ProjectCard from '../../components/projects/ProjectCard';
 import Loading from '../../components/common/Loading';
 import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import ProjectForm from '../../components/projects/ProjectForm';
+import GradesWidget from '../../components/common/GradesWidget';
 import { FiPlus, FiRefreshCw, FiBriefcase } from 'react-icons/fi';
 import './ProjectsPage.scss';
 
@@ -163,6 +164,13 @@ const ProjectsPage = () => {
             )}
           </div>
         </div>
+        
+        {/* Grades Widget for Students */}
+        {user && isStudent(user.role) && (
+          <div className="projects-grades-widget-container">
+            <GradesWidget isCollapsed={false} />
+          </div>
+        )}
         
         {projects.length > 0 ? (
           <div className="projects-grid" role="list" aria-label="Lista de proyectos">
