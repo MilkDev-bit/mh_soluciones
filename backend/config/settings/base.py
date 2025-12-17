@@ -5,8 +5,6 @@ from decouple import config
 from datetime import timedelta
 from celery.schedules import crontab
 
-logger = logging.getLogger(__name__)
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
@@ -183,7 +181,8 @@ def get_cache_config():
     
     if redis_url:
         # Production: Use Redis (shared cache for multiple instances)
-        logger.info("✅ Using Redis cache (shared across instances)")
+        # Note: Using print instead of logger since Django logging isn't configured yet
+        print("✅ Using Redis cache (shared across instances)")
         return {
             'default': {
                 'BACKEND': 'django_redis.cache.RedisCache',
@@ -204,7 +203,8 @@ def get_cache_config():
     else:
         # Development: Use local memory cache
         # WARNING: This will NOT work with multiple backend instances
-        logger.warning("⚠️  Using local memory cache - OAuth may fail with multiple instances")
+        # Note: Using print instead of logger since Django logging isn't configured yet
+        print("⚠️  Using local memory cache - OAuth may fail with multiple instances")
         return {
             'default': {
                 'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
