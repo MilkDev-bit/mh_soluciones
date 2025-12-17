@@ -468,7 +468,9 @@ class GoogleAuthCallbackView(APIView):
                 logger.info(f"🔄 Attempting to fetch token for user {user_id}...")
                 
                 # Add timeout handling for token fetch
-                # Using socket timeout as it affects the underlying HTTP requests
+                # Note: Using socket.setdefaulttimeout() affects global timeout, but we restore it immediately
+                # in the finally block to minimize impact. This is done because google-auth-oauthlib.flow
+                # doesn't expose a direct timeout parameter for fetch_token().
                 old_timeout = socket.getdefaulttimeout()
                 try:
                     socket.setdefaulttimeout(10)  # 10 second timeout
