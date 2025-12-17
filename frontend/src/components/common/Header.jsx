@@ -26,7 +26,7 @@ const pageTitles = {
 const Header = ({ onToggleSidebar, sidebarOpen }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -44,23 +44,24 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
   useEffect(() => {
     if (!user) return;
-    
+
     notificationService.connectWebSocket(user.id);
 
-    const handleMessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'new_notification') {
-        const newNotification = data.payload;
+    const unsubscribe = notificationService.subscribe((notificationOrCount) => {
+      // Handle both full notification object or simple count update
+      if (typeof notificationOrCount === 'object') {
+        const newNotification = notificationOrCount;
         setNotifications(prev => [newNotification, ...prev].slice(0, 10));
         setUnreadCount(prev => prev + 1);
         toast.info(`🔔 ${newNotification.title}`);
+      } else if (typeof notificationOrCount === 'number') {
+        // Just Update count? Or maybe we should reload.
+        // For simplicity, if we get a raw number, we just update unread count
+        // But the new service implementation actually sends the payload object on WS message
+        // and nothing on poll (currently). 
+        // Let's safe guard.
       }
-    };
-
-    const socket = notificationService.socket;
-    if (socket) {
-      socket.addEventListener('message', handleMessage);
-    }
+    });
 
     const fetchInitialData = async () => {
       try {
@@ -76,10 +77,7 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
     fetchInitialData();
 
     return () => {
-      if (socket) {
-        socket.removeEventListener('message', handleMessage);
-      }
-      notificationService.disconnect();
+      unsubscribe();
     };
   }, [user]);
 
@@ -109,13 +107,13 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
   const handleMarkAllAsRead = async () => {
     try {
-        await notificationService.markAllAsRead();
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-        setTimeout(() => setNotifications([]), 500);
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+      setTimeout(() => setNotifications([]), 500);
     } catch (error) {
-        console.error("Error al marcar todas como leídas:", error);
-        toast.error("No se pudieron marcar las notificaciones.");
+      console.error("Error al marcar todas como leídas:", error);
+      toast.error("No se pudieron marcar las notificaciones.");
     }
   };
 
@@ -132,8 +130,8 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
         </div>
 
         <div className="header-right">
-          <button 
-            className="theme-toggle-btn icon-button" 
+          <button
+            className="theme-toggle-btn icon-button"
             onClick={toggleTheme}
             title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             aria-label={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -146,14 +144,14 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
               <FiBell />
               {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
             </button>
-            
+
             <div className={`dropdown-panel notifications-panel ${isNotificationsOpen ? 'active' : ''}`}>
               <div className="dropdown-header">
                 <h3>Notificaciones</h3>
                 {notifications.some(n => !n.is_read) && (
-                    <button className="mark-all-read-btn" onClick={handleMarkAllAsRead}>
-                        <FiCheckCircle /> Marcar todas como leídas
-                    </button>
+                  <button className="mark-all-read-btn" onClick={handleMarkAllAsRead}>
+                    <FiCheckCircle /> Marcar todas como leídas
+                  </button>
                 )}
               </div>
               <div className="notification-list">
@@ -186,30 +184,30 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
               </div>
               <FiChevronDown className={`dropdown-icon ${isProfileOpen ? 'open' : ''}`} />
             </button>
-             
+
             <div className={`dropdown-panel profile-panel ${isProfileOpen ? 'active' : ''}`}>
-                <div className="dropdown-header">
-                  <div className="dropdown-avatar">
-                    <img
-                      src={
-                        user.profile_picture ||
-                        `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`
-                      }
-                      alt="Avatar"
-                      className="profile-avatar"
-                    />
-                  </div>
-                  <div className="dropdown-user-info">
-                    <span className="dropdown-name">
-                      {user.first_name} {user.last_name}
-                    </span>
-                    <span className="dropdown-email">{user.email}</span>
-                  </div>
+              <div className="dropdown-header">
+                <div className="dropdown-avatar">
+                  <img
+                    src={
+                      user.profile_picture ||
+                      `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`
+                    }
+                    alt="Avatar"
+                    className="profile-avatar"
+                  />
                 </div>
-                <div className="dropdown-divider"></div>
-                <Link to="/profile" onClick={() => setIsProfileOpen(false)} className="dropdown-item"><FiUser /> Mi Perfil</Link>
-                <div className="dropdown-divider"></div>
-                <button onClick={handleLogout} className="dropdown-item"><FiLogOut /> Cerrar Sesión</button>
+                <div className="dropdown-user-info">
+                  <span className="dropdown-name">
+                    {user.first_name} {user.last_name}
+                  </span>
+                  <span className="dropdown-email">{user.email}</span>
+                </div>
+              </div>
+              <div className="dropdown-divider"></div>
+              <Link to="/profile" onClick={() => setIsProfileOpen(false)} className="dropdown-item"><FiUser /> Mi Perfil</Link>
+              <div className="dropdown-divider"></div>
+              <button onClick={handleLogout} className="dropdown-item"><FiLogOut /> Cerrar Sesión</button>
             </div>
           </div>
         </div>

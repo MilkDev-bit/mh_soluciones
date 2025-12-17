@@ -4,18 +4,18 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { ProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
 import GradesWidget from './GradesWidget';
-import { 
+import {
   canManageUsers,
   canViewReports,
   isStudent
 } from '../../constants/roles';
-import { 
-  FiGrid, 
-  FiBriefcase, 
-  FiCheckSquare, 
-  FiCalendar, 
-  FiUsers, 
-  FiLogOut, 
+import {
+  FiGrid,
+  FiBriefcase,
+  FiCheckSquare,
+  FiCalendar,
+  FiUsers,
+  FiLogOut,
   FiMenu,
   FiX,
   FiHome,
@@ -43,7 +43,7 @@ const Sidebar = () => {
   const [refreshing, setRefreshing] = useState(false);
   const location = useLocation();
 
-   useEffect(() => {
+  useEffect(() => {
     if (isMobileOpen || !isCollapsed || projectsUpdated) {
       fetchProjects();
     }
@@ -61,7 +61,7 @@ const Sidebar = () => {
       const response = await getProjects();
       const projectsData = Array.isArray(response) ? response : (response.results || []);
       setProjects(projectsData);
-      
+
       if (projectsUpdated && setProjectsUpdated) {
         setProjectsUpdated(false);
       }
@@ -85,7 +85,7 @@ const Sidebar = () => {
     };
 
     window.addEventListener('projectsUpdated', handleProjectsUpdate);
-    
+
     return () => {
       window.removeEventListener('projectsUpdated', handleProjectsUpdate);
     };
@@ -123,7 +123,7 @@ const Sidebar = () => {
 
   return (
     <>
-      <button 
+      <button
         className="mobile-menu-toggle"
         onClick={toggleMobileMenu}
         aria-label="Abrir menú"
@@ -132,7 +132,7 @@ const Sidebar = () => {
       </button>
 
       {isMobileOpen && (
-        <div 
+        <div
           className="sidebar-overlay"
           onClick={closeMobileMenu}
         />
@@ -153,14 +153,14 @@ const Sidebar = () => {
               </NavLink>
             </div>
             <div className="header-actions">
-              <button 
+              <button
                 className="collapse-toggle"
                 onClick={toggleCollapse}
                 aria-label={isCollapsed ? "Expandir menú" : "Contraer menú"}
               >
                 <FiMenu />
               </button>
-              <button 
+              <button
                 className="sidebar-close"
                 onClick={closeMobileMenu}
                 aria-label="Cerrar menú"
@@ -169,92 +169,92 @@ const Sidebar = () => {
               </button>
             </div>
           </div>
-      
-      <nav className="sidebar-nav">
-        <div className="menu-section">
-          <span className="menu-section-title">Principal</span>
-          <div className="menu-items">
-            <NavLink 
-              to="/" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiHome />
-              {!isCollapsed && <span>Panel de Control</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/actividad" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiActivity />
-              {!isCollapsed && <span>Actividad</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/notificaciones" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiBell />
-              {!isCollapsed && <span>Notificaciones</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/projects" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiBriefcase />
-              {!isCollapsed && <span>Equipos</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/tasks" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiCheckSquare />
-              {!isCollapsed && <span>Tareas</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/calendar" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiCalendar />
-              {!isCollapsed && <span>Calendario</span>}
-            </NavLink>
-            
-            <NavLink 
-              to="/archivos" 
-              className="menu-item"
-              onClick={closeMobileMenu}
-            >
-              <FiFile />
-              {!isCollapsed && <span>Archivos</span>}
-            </NavLink>
-            
-            {hasReportsAccess && (
-              <NavLink 
-                to="/reportes" 
-                className="menu-item"
-                onClick={closeMobileMenu}
-              >
-                <FiBarChart2 />
-                {!isCollapsed && <span>Reportes</span>}
-              </NavLink>
-            )}
-          </div>
-        </div>
 
-      <div className="menu-section">
+          <nav className="sidebar-nav">
+            <div className="menu-section">
+              <span className="menu-section-title">Principal</span>
+              <div className="menu-items">
+                <NavLink
+                  to="/"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiHome />
+                  {!isCollapsed && <span>Panel de Control</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/actividad"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiActivity />
+                  {!isCollapsed && <span>Actividad</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/notificaciones"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiBell />
+                  {!isCollapsed && <span>Notificaciones</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/projects"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiBriefcase />
+                  {!isCollapsed && <span>Equipos</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/tasks"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiCheckSquare />
+                  {!isCollapsed && <span>Tareas</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/calendar"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiCalendar />
+                  {!isCollapsed && <span>Calendario</span>}
+                </NavLink>
+
+                <NavLink
+                  to="/archivos"
+                  className="menu-item"
+                  onClick={closeMobileMenu}
+                >
+                  <FiFile />
+                  {!isCollapsed && <span>Archivos</span>}
+                </NavLink>
+
+                {hasReportsAccess && (
+                  <NavLink
+                    to="/reportes"
+                    className="menu-item"
+                    onClick={closeMobileMenu}
+                  >
+                    <FiBarChart2 />
+                    {!isCollapsed && <span>Reportes</span>}
+                  </NavLink>
+                )}
+              </div>
+            </div>
+
+            <div className="menu-section">
               <div className="section-header">
                 <span className="menu-section-title">Salas de Trabajo</span>
                 {!isCollapsed && (
-                  <button 
+                  <button
                     className="refresh-projects-btn"
                     onClick={handleRefreshProjects}
                     disabled={refreshing}
@@ -273,7 +273,7 @@ const Sidebar = () => {
                 ) : projects.length > 0 ? (
                   <>
                     {projects.slice(0, 5).map(project => (
-                      <NavLink 
+                      <NavLink
                         key={project.id}
                         to={`/projects/${project.id}`}
                         className="menu-item project-item"
@@ -290,7 +290,7 @@ const Sidebar = () => {
                         )}
                       </NavLink>
                     ))}
-                    
+
                     {projects.length > 5 && !isCollapsed && (
                       <div className="projects-more">
                         <span>+{projects.length - 5} más</span>
@@ -310,8 +310,8 @@ const Sidebar = () => {
               <div className="menu-section">
                 <span className="menu-section-title">Gestión</span>
                 <div className="menu-items">
-                  <NavLink 
-                    to="/admin/users" 
+                  <NavLink
+                    to="/admin/users"
                     className="menu-item"
                     onClick={closeMobileMenu}
                   >
@@ -323,34 +323,29 @@ const Sidebar = () => {
             )}
 
             {user.role === 'RH' && hasHrAccess && (
-                <div className="menu-section">
-                  <span className="menu-section-title">Recursos Humanos</span>
-                  <div className="menu-items">
-                    <NavLink 
-                      to="/hr" 
-                      className="menu-item"
-                      onClick={closeMobileMenu}
-                    >
-                      <FiFileText />
-                      {!isCollapsed && <span>Portal RH</span>}
-                    </NavLink>
-                  </div>
+              <div className="menu-section">
+                <span className="menu-section-title">Recursos Humanos</span>
+                <div className="menu-items">
+                  <NavLink
+                    to="/hr"
+                    className="menu-item"
+                    onClick={closeMobileMenu}
+                  >
+                    <FiFileText />
+                    {!isCollapsed && <span>Portal RH</span>}
+                  </NavLink>
                 </div>
+              </div>
             )}
 
           </nav>
 
-          {/* Grades Widget for Students */}
-          {isStudentUser && (
-            <GradesWidget isCollapsed={isCollapsed} />
-          )}
-
           <div className="sidebar-footer">
             <div className="user-profile">
-              <img 
-                src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=ff7c15&color=fff`} 
-                alt="Avatar" 
-                className="user-avatar" 
+              <img
+                src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=ff7c15&color=fff`}
+                alt="Avatar"
+                className="user-avatar"
               />
               {!isCollapsed && (
                 <div className="user-info">
@@ -358,7 +353,7 @@ const Sidebar = () => {
                   <span className="user-role">{user.role}</span>
                 </div>
               )}
-              <button 
+              <button
                 className="logout-button"
                 onClick={handleLogout}
                 title="Cerrar sesión"

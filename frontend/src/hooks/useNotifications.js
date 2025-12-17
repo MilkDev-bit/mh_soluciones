@@ -11,7 +11,7 @@ export const useNotifications = () => {
 
   const loadNotifications = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       // Only load unread notifications
@@ -29,7 +29,7 @@ export const useNotifications = () => {
 
   const loadUnreadCount = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const count = await notificationService.getUnreadCount();
       setUnreadCount(count);
@@ -72,11 +72,18 @@ export const useNotifications = () => {
       loadNotifications();
       loadUnreadCount();
       notificationService.connectWebSocket(user.id);
-    }
 
-    return () => {
-      notificationService.disconnect();
-    };
+      const unsubscribe = notificationService.subscribe((data) => {
+        // When a new notification arrives, refresh the list and count
+        // We could append the data directly, but refreshing ensures consistency
+        loadNotifications();
+        loadUnreadCount();
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }
   }, [user, loadNotifications, loadUnreadCount]);
 
   return {

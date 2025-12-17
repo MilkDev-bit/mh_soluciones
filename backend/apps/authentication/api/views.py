@@ -423,6 +423,12 @@ class GoogleAuthCallbackView(APIView):
                 )
                 
                 full_url = request.build_absolute_uri()
+                # Fix for Railway/Proxy: If we expect HTTPS (based on redirect_uri) but got HTTP (due to proxy stripping),
+                # force HTTPS in the full_url passed to fetch_token to satisfy OAUTHLIB match requirements.
+                if redirect_uri.startswith('https://') and full_url.startswith('http://'):
+                    full_url = full_url.replace('http://', 'https://', 1)
+                    logger.info("Google OAuth callback: Upgraded callback URL scheme to HTTPS to match redirect_uri")
+
                 logger.info(f"Google OAuth callback: Fetching token for user {user_id}")
                 
                 # This is the critical call that can fail - add proper error handling
@@ -449,7 +455,9 @@ class GoogleAuthCallbackView(APIView):
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=success")
                 
             except (GoogleAuthError, OAuth2Error) as e:
-                logger.error(f"Google OAuth callback: OAuth/Auth error for user {user_id}: {str(e)}", exc_info=True)
+                logger.error(f"Google OAuth callback: OAuth/Auth error for user {user_id}: {str(e)}")
+                # Log usage details to help debugging
+                logger.error(f"Debug Info: redirect_uri={redirect_uri}, full_url={full_url}")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_token")
             except DatabaseError as e:
                 logger.error(f"Google OAuth callback: Database error saving credentials for user {user_id}: {str(e)}", exc_info=True)
