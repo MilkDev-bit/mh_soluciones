@@ -450,6 +450,28 @@ class GoogleAuthCallbackView(APIView):
                     'error': 'Código de autorización faltante',
                     'error_type': 'error_code'
                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate format of OAuth parameters (basic validation)
+            # OAuth codes and states should be alphanumeric with possible hyphens, underscores, and dots
+            import re
+            oauth_param_pattern = re.compile(r'^[A-Za-z0-9._-]+$')
+            
+            if not oauth_param_pattern.match(str(state)):
+                logger.error(f"❌ Google OAuth callback: Invalid state format")
+                return Response({
+                    'success': False,
+                    'error': 'Formato de estado inválido',
+                    'error_type': 'error_state'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not oauth_param_pattern.match(str(authorization_code)):
+                logger.error(f"❌ Google OAuth callback: Invalid authorization code format")
+                return Response({
+                    'success': False,
+                    'error': 'Formato de código inválido',
+                    'error_type': 'error_code'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             logger.info(f"✅ Authorization code present: {authorization_code[:8]}...")
             
             logger.info(f"⏱️ Step 2: Validating state in cache (elapsed: {time.time() - start_time:.2f}s)")
