@@ -14,7 +14,6 @@ const PasswordStrength = ({ password }) => {
       special: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;~`]/.test(pwd),
     };
 
-    // Calculate score
     score += checks.length ? 25 : 0;
     score += checks.uppercase ? 20 : 0;
     score += checks.lowercase ? 20 : 0;
