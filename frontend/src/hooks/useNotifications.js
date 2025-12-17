@@ -17,7 +17,7 @@ export const useNotifications = () => {
       // Only load unread notifications
       const data = await notificationService.getNotifications({ include_read: false });
       // NotificationService.getNotifications handles both paginated and non-paginated responses
-      // and always returns an array
+      // and ensures it always returns an array. Extra check for defensive programming.
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading notifications:', error);
