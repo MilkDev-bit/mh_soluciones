@@ -314,11 +314,11 @@ class GoogleAuthRedirectView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Build redirect URI using request if BACKEND_URL is not set or incorrect
-            if settings.BACKEND_URL and settings.BACKEND_URL not in ['http://localhost:8000', 'http://127.0.0.1:8000']:
+            # Build redirect URI using request if BACKEND_URL is not set or is localhost
+            if settings.BACKEND_URL and not settings.BACKEND_URL.startswith(('http://localhost', 'http://127.0.0.1')):
                 redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
             else:
-                # Fallback to building from request
+                # Fallback to building from request (for development or when BACKEND_URL is not set)
                 redirect_uri = request.build_absolute_uri('/api/v1/auth/google/callback/')
             
             logger.info(f"Google OAuth: Using redirect URI: {redirect_uri}")
@@ -395,11 +395,11 @@ class GoogleAuthCallbackView(APIView):
                 logger.error(f"Google OAuth callback: User {user_id} does not exist")
                 return redirect(f"{settings.FRONTEND_URL}/profile?google_auth=error_user")
 
-            # Build redirect URI using request if BACKEND_URL is not set or incorrect
-            if settings.BACKEND_URL and settings.BACKEND_URL not in ['http://localhost:8000', 'http://127.0.0.1:8000']:
+            # Build redirect URI using request if BACKEND_URL is not set or is localhost
+            if settings.BACKEND_URL and not settings.BACKEND_URL.startswith(('http://localhost', 'http://127.0.0.1')):
                 redirect_uri = f"{settings.BACKEND_URL.rstrip('/')}/api/v1/auth/google/callback/"
             else:
-                # Fallback to building from request
+                # Fallback to building from request (for development or when BACKEND_URL is not set)
                 redirect_uri = request.build_absolute_uri('/api/v1/auth/google/callback/')
             
             logger.info(f"Google OAuth callback: Using redirect URI: {redirect_uri}")
