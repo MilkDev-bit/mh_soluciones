@@ -60,30 +60,53 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Handle 401 errors with token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
-            refresh: refreshToken
-          });
-
-          const newToken = response.data.access;
-          localStorage.setItem('access_token', newToken);
-
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
+        if (!refreshToken) {
+          // No refresh token available, redirect to login
+          console.error('No refresh token available');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = '/login';
+          return Promise.reject(error);
         }
+
+        // Use a separate axios instance for token refresh to avoid circular interceptor calls
+        // But still include the base URL configuration
+        const refreshResponse = await axios.post(`${API_BASE_URL}/token/refresh/`, {
+          refresh: refreshToken
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+
+        const newToken = refreshResponse.data.access;
+        localStorage.setItem('access_token', newToken);
+
+        // Update the failed request with new token and retry
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
       } catch (refreshError) {
+        // Token refresh failed - clear tokens and redirect to login
         console.error('Token refresh failed:', refreshError);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        
+        // Only redirect if we're not already on the login page
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
       }
     }
 
+    // For other errors, just reject
     return Promise.reject(error);
   }
 );

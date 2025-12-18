@@ -63,6 +63,24 @@ const ActividadPage = () => {
     return iconos[icono] || <FiBell />;
   };
 
+  const formatearFecha = (fecha) => {
+    const ahora = new Date();
+    const diferencia = ahora - fecha;
+    const minutos = Math.floor(diferencia / 60000);
+    const horas = Math.floor(minutos / 60);
+    const dias = Math.floor(horas / 24);
+
+    if (minutos < 1) return 'Justo ahora';
+    if (minutos < 60) return `Hace ${minutos} minuto${minutos !== 1 ? 's' : ''}`;
+    if (horas < 24) return `Hace ${horas} hora${horas !== 1 ? 's' : ''}`;
+    if (dias < 7) return `Hace ${dias} día${dias !== 1 ? 's' : ''}`;
+    return fecha.toLocaleDateString('es-MX', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
   // Use React Query for data fetching with caching
   const { data: notificaciones = [], isLoading: cargando, error, refetch, isError } = useQuery({
     queryKey: ['activities', filtroTipo],
@@ -100,24 +118,6 @@ const ActividadPage = () => {
   const actividades = filtroTipo !== 'TODAS'
     ? actividadesTransformadas.filter(act => mapTipoAFiltro(act.tipo) === filtroTipo)
     : actividadesTransformadas;
-
-  const formatearFecha = (fecha) => {
-    const ahora = new Date();
-    const diferencia = ahora - fecha;
-    const minutos = Math.floor(diferencia / 60000);
-    const horas = Math.floor(minutos / 60);
-    const dias = Math.floor(horas / 24);
-
-    if (minutos < 1) return 'Justo ahora';
-    if (minutos < 60) return `Hace ${minutos} minuto${minutos !== 1 ? 's' : ''}`;
-    if (horas < 24) return `Hace ${horas} hora${horas !== 1 ? 's' : ''}`;
-    if (dias < 7) return `Hace ${dias} día${dias !== 1 ? 's' : ''}`;
-    return fecha.toLocaleDateString('es-MX', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
-    });
-  };
 
   const tiposFiltro = [
     { valor: 'TODAS', etiqueta: 'Todas' },
