@@ -53,9 +53,10 @@ class NotificationService {
     this.listeners = new Set();
     this.connecting = false;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 3; // Reduced from 5 to 3 for faster fallback
     this.maxReconnectDelay = 30000; // 30 seconds
     this.reconnectTimeout = null;
+    this.hasWebSocketFailed = false; // Track if WebSocket has permanently failed
   }
 
   getWebSocketURL() {
@@ -91,10 +92,20 @@ class NotificationService {
   }
 
   connectWebSocket(userId) {
+    // If WebSocket has permanently failed, go straight to polling
+    if (this.hasWebSocketFailed) {
+      if (!this.isPolling) {
+        this.startPolling(userId);
+      }
+      return;
+    }
+
     if (!window.WebSocket) {
+      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('WebSocket no soportado, usando polling');
       }
+      this.hasWebSocketFailed = true;
       this.startPolling(userId);
       return;
     }
@@ -115,6 +126,7 @@ class NotificationService {
 
     try {
       const wsUrl = this.getWebSocketURL();
+      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('Conectando WebSocket a:', wsUrl);
       }
@@ -125,6 +137,7 @@ class NotificationService {
         this.websocketEnabled = true;
         this.connecting = false;
         this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        // Only log in development mode
         if (import.meta.env.DEV) {
           console.log('WebSocket conectado exitosamente');
         }
@@ -133,6 +146,7 @@ class NotificationService {
       this.socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // Only log in development mode
           if (import.meta.env.DEV) {
             console.log('Mensaje WebSocket recibido:', data);
           }
@@ -145,12 +159,18 @@ class NotificationService {
             this.notifyListeners(data.payload);
           }
         } catch (error) {
-          console.error('Error procesando mensaje WebSocket:', error);
+          // Only log in development mode
+          if (import.meta.env.DEV) {
+            console.error('Error procesando mensaje WebSocket:', error);
+          }
         }
       };
 
       this.socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        // Only log in development mode - make errors completely silent in production
+        if (import.meta.env.DEV) {
+          console.error('WebSocket error:', error);
+        }
         this.websocketEnabled = false;
         this.connecting = false;
       };
@@ -160,6 +180,7 @@ class NotificationService {
         this.connecting = false;
         this.socket = null;
         
+        // Only log in development mode
         if (import.meta.env.DEV) {
           console.log('WebSocket closed:', event.code, event.reason);
         }
@@ -169,20 +190,30 @@ class NotificationService {
           const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxReconnectDelay);
           this.reconnectAttempts++;
           
-          console.log(`WebSocket disconnected. Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+          // Only log in development mode
+          if (import.meta.env.DEV) {
+            console.log(`WebSocket disconnected. Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+          }
           
           this.reconnectTimeout = setTimeout(() => {
             this.connectWebSocket(userId);
           }, delay);
         } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          // Max reconnect attempts reached, fallback to polling
-          console.log('Max WebSocket reconnection attempts reached. Falling back to polling.');
-          this.reconnectAttempts = 0; // Reset for future attempts
+          // Max reconnect attempts reached, fallback to polling permanently
+          // Only log in development mode
+          if (import.meta.env.DEV) {
+            console.log('Max WebSocket reconnection attempts reached. Falling back to polling permanently.');
+          }
+          this.hasWebSocketFailed = true; // Mark WebSocket as permanently failed
+          this.reconnectAttempts = 0; // Reset for future manual attempts
           this.startPolling(userId);
         }
       };
     } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
+      // Only log in development mode - make errors completely silent in production
+      if (import.meta.env.DEV) {
+        console.error('Error creating WebSocket connection:', error);
+      }
       this.connecting = false;
       // Fallback to polling on connection error
       this.startPolling(userId);
@@ -193,10 +224,12 @@ class NotificationService {
     if (this.isPolling) return;
 
     this.isPolling = true;
+    // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('Iniciando polling de notificaciones');
     }
 
+    // Start polling immediately
     this.pollNotifications();
 
     this.pollingInterval = setInterval(async () => {
@@ -215,11 +248,16 @@ class NotificationService {
         unreadCount: unreadCount 
       });
       
+      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log(`[Polling] Notified listeners with count: ${unreadCount}`);
       }
     } catch (error) {
-      console.error('Error en polling de notificaciones:', error);
+      // Only log in development mode - silently fail in production
+      if (import.meta.env.DEV) {
+        console.error('Error en polling de notificaciones:', error);
+      }
+      // Don't throw - just continue polling
     }
   }
 
@@ -228,6 +266,7 @@ class NotificationService {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
       this.isPolling = false;
+      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('Polling de notificaciones detenido');
       }
@@ -258,6 +297,9 @@ class NotificationService {
     this.websocketEnabled = false;
     this.connecting = false;
     this.reconnectAttempts = 0;
+    this.hasWebSocketFailed = false; // Reset the permanent failure flag on disconnect
+    
+    // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('Servicio de notificaciones desconectado');
     }
@@ -301,7 +343,10 @@ class NotificationService {
 
       setTimeout(() => notification.close(), 5000);
     } catch (error) {
-      console.error('Error mostrando notificación del navegador:', error);
+      // Only log in development mode
+      if (import.meta.env.DEV) {
+        console.error('Error mostrando notificación del navegador:', error);
+      }
     }
   }
 
@@ -324,10 +369,13 @@ class NotificationService {
         ? response.data.results
         : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.error('Authentication error fetching notifications - token may be expired');
-      } else {
-        console.error('Error fetching notifications:', error);
+      // Only log in development mode - silent in production
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 401) {
+          console.error('Authentication error fetching notifications - token may be expired');
+        } else {
+          console.error('Error fetching notifications:', error);
+        }
       }
       // Return empty array instead of throwing to prevent white screens
       // The calling component can check error state if needed
@@ -343,11 +391,16 @@ class NotificationService {
       // Always call API as well to ensure persistence
       await api.post(`/notifications/${notificationId}/mark_as_read/`);
 
+      // Only log in development mode
       if (import.meta.env.DEV && sentViaWS) {
         console.log(`Notificación ${notificationId} marcada como leída vía WebSocket y API`);
       }
     } catch (error) {
-      console.error('Error marcando notificación como leída:', error);
+      // Only log in development mode
+      if (import.meta.env.DEV) {
+        console.error('Error marcando notificación como leída:', error);
+      }
+      // Don't throw - fail silently to prevent breaking UI
     }
   }
 
@@ -355,7 +408,10 @@ class NotificationService {
     try {
       await api.post('/notifications/mark_all_as_read/');
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      // Only log in development mode
+      if (import.meta.env.DEV) {
+        console.error('Error marking all notifications as read:', error);
+      }
       // Re-throw to allow caller to handle
       throw error;
     }
@@ -366,11 +422,15 @@ class NotificationService {
       const response = await api.get('/notifications/unread_count/');
       return response.data.unread_count;
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.error('Authentication error fetching unread count - token may be expired');
-      } else {
-        console.error('Error fetching unread count:', error);
+      // Only log in development mode
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 401) {
+          console.error('Authentication error fetching unread count - token may be expired');
+        } else {
+          console.error('Error fetching unread count:', error);
+        }
       }
+      // Return 0 instead of throwing to prevent breaking UI
       return 0;
     }
   }
