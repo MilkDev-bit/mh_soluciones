@@ -16,7 +16,7 @@ import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
   FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers, FiExternalLink,
-  FiFileText, FiImage, FiMusic, FiVideo, FiArchive
+  FiFileText, FiImage, FiMusic, FiVideo, FiArchive, FiBarChart
 } from 'react-icons/fi';
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
@@ -38,9 +38,9 @@ const FILE_ICON_MAP = {
   'svg': FiImage,
   'webp': FiImage,
   // Spreadsheets
-  'xls': FiFileText,
-  'xlsx': FiFileText,
-  'csv': FiFileText,
+  'xls': FiBarChart,
+  'xlsx': FiBarChart,
+  'csv': FiBarChart,
   // Presentations
   'ppt': FiFileText,
   'pptx': FiFileText,

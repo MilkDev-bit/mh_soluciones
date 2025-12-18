@@ -835,7 +835,7 @@
       
       &:hover {
         background: rgba($success, 0.2);
-        color: darken($success-dark, 10%);
+        color: $success;
       }
     }
   }
