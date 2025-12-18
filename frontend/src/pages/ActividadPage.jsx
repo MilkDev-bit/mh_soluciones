@@ -21,19 +21,24 @@ const ActividadPage = () => {
   const [filtroTipo, setFiltroTipo] = useState('TODAS');
 
   // Use React Query for data fetching with caching
-  const { data: notificaciones = [], isLoading: cargando, error, refetch } = useQuery({
+  const { data: notificaciones = [], isLoading: cargando, error, refetch, isError } = useQuery({
     queryKey: ['activities', filtroTipo],
     queryFn: async () => {
-      const data = await getNotifications({ include_read: true });
-      // Ensure we always return an array
-      return Array.isArray(data) ? data : [];
-    },
-    onError: (err) => {
-      console.error('Error cargando actividades:', err);
-      toast.error('Error al cargar actividades');
+      try {
+        const data = await getNotifications({ include_read: true });
+        // Ensure we always return an array
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error('Error cargando actividades:', err);
+        toast.error('Error al cargar actividades');
+        // Return empty array to prevent white screen
+        return [];
+      }
     },
     staleTime: 30000, // 30 seconds
     gcTime: 60000, // 1 minute (formerly cacheTime in v4)
+    retry: 1, // Retry failed requests once
+    retryDelay: 1000, // Wait 1 second before retrying
   });
 
   // Transform notifications to activity format
@@ -185,10 +190,10 @@ const ActividadPage = () => {
       <div className="actividad-lista">
         {cargando ? (
           <ActivitySkeleton />
-        ) : error ? (
+        ) : isError && actividades.length === 0 ? (
           <div className="error-container">
             <FiFileText size={48} />
-            <p>{error.message || 'No se pudieron cargar las actividades. Por favor, intenta de nuevo.'}</p>
+            <p>{error?.message || 'No se pudieron cargar las actividades. Por favor, intenta de nuevo.'}</p>
             <button onClick={() => refetch()} className="btn-reintentar">
               Reintentar
             </button>
