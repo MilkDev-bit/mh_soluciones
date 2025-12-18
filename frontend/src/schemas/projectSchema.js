@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Project validation schema aligned with backend Project model
- * Validates project creation and update forms
- */
 export const projectSchema = z.object({
   name: z
     .string()
