@@ -188,38 +188,17 @@ class NotificationService {
 
   async pollNotifications() {
     try {
-      // In polling mode, we just fetch the count and notify listeners if needed.
-      // Ideally we would fetch unread notifications diffs, but for now we just verify count.
-      // A better approach for polling would be to check if there are new unread compared to local state.
-      // But since this service is stateless regarding "current unread", we just notify that something changed
-      // or rely on components to fetch. 
-      // For the Observer pattern: we can pass a special "polling_update" event or just the count.
       const unreadCount = await this.getUnreadCount();
-      // To keep compatible with the listener signature (which expects notification object or simple count in the old "onNewNotification" callback), 
-      // we need to be careful. The old code passed "unreadCount" to the callback.
-      // The new code expects "data.payload" which is a notification object.
-      // Consumers of this service need to be robust.
-
-      // Let's NOT notify detailed payload on polling effectively, unless we fetch recent.
-      // But for the "Check notifications" use case, we can just say "null" or a special type
-      // But actually, the original code: 
-      //    if (unreadCount > 0 && onNewNotifications) { onNewNotifications(unreadCount); }
-      // This implies the callback might expect a number. 
-      // BUT `handleMessage` in Header.jsx expects: `data.payload` (an object).
-      // So the original implementation was inconsistent:
-      // WebSocket sent Object. Polling sent Number.
-
-      // Let's try to fetch the latest notification if count > 0 to simulate a push
-      if (unreadCount > 0) {
-        // This is a bit expensive to do every poll if they ignore it, but safe.
-        // Or we simply don't notify specific payload and let components strictly use `loadUnreadCount` periodically?
-        // The issue says "counter keeps counting".
-        // Let's just trust components to refresh if we signal "update".
-        // Or better: Replicate the 'socket message' structure if we can.
-
-        // Valid Strategy: Polling just refreshes state in components. 
-        // We can emit a special event:
-        // this.notifyListeners({ type: 'polling_check', count: unreadCount });
+      
+      // Notify listeners with polling update event
+      // This ensures components can refresh their state even when WebSocket is not available
+      this.notifyListeners({ 
+        type: 'polling_update', 
+        unreadCount: unreadCount 
+      });
+      
+      if (import.meta.env.DEV) {
+        console.log(`[Polling] Notified listeners with count: ${unreadCount}`);
       }
     } catch (error) {
       console.error('Error en polling de notificaciones:', error);

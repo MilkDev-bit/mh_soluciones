@@ -20,44 +20,7 @@ import './ActividadPage.scss';
 const ActividadPage = () => {
   const [filtroTipo, setFiltroTipo] = useState('TODAS');
 
-  // Use React Query for data fetching with caching
-  const { data: notificaciones = [], isLoading: cargando, error, refetch, isError } = useQuery({
-    queryKey: ['activities', filtroTipo],
-    queryFn: async () => {
-      const data = await getNotifications({ include_read: true });
-      // Ensure we always return an array
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: 30000, // 30 seconds
-    gcTime: 60000, // 1 minute (formerly cacheTime in v4)
-    retry: 1, // Retry failed requests once
-    retryDelay: 1000, // Wait 1 second before retrying
-  });
-
-  // Show error toast when there's an error
-  useEffect(() => {
-    if (isError && error) {
-      console.error('Error cargando actividades:', error);
-      toast.error('Error al cargar actividades');
-    }
-  }, [isError, error]);
-
-  // Transform notifications to activity format
-  const actividadesTransformadas = notificaciones.map(notif => ({
-    id: notif.id,
-    tipo: notif.notification_type,
-    titulo: notif.title,
-    descripcion: notif.message,
-    fecha: new Date(notif.created_at),
-    leida: notif.is_read,
-    icono: getIconoParaTipo(notif.notification_type)
-  }));
-
-  // Filter by type if needed
-  const actividades = filtroTipo !== 'TODAS'
-    ? actividadesTransformadas.filter(act => mapTipoAFiltro(act.tipo) === filtroTipo)
-    : actividadesTransformadas;
-
+  // Helper functions - moved to top to avoid hoisting issues
   const getIconoParaTipo = (tipo) => {
     const mapeo = {
       'TASK_ASSIGNED': 'checkSquare',
@@ -99,6 +62,44 @@ const ActividadPage = () => {
     };
     return iconos[icono] || <FiBell />;
   };
+
+  // Use React Query for data fetching with caching
+  const { data: notificaciones = [], isLoading: cargando, error, refetch, isError } = useQuery({
+    queryKey: ['activities', filtroTipo],
+    queryFn: async () => {
+      const data = await getNotifications({ include_read: true });
+      // Ensure we always return an array
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 30000, // 30 seconds
+    gcTime: 60000, // 1 minute (formerly cacheTime in v4)
+    retry: 1, // Retry failed requests once
+    retryDelay: 1000, // Wait 1 second before retrying
+  });
+
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (isError && error) {
+      console.error('Error cargando actividades:', error);
+      toast.error('Error al cargar actividades');
+    }
+  }, [isError, error]);
+
+  // Transform notifications to activity format
+  const actividadesTransformadas = notificaciones.map(notif => ({
+    id: notif.id,
+    tipo: notif.notification_type,
+    titulo: notif.title,
+    descripcion: notif.message,
+    fecha: new Date(notif.created_at),
+    leida: notif.is_read,
+    icono: getIconoParaTipo(notif.notification_type)
+  }));
+
+  // Filter by type if needed
+  const actividades = filtroTipo !== 'TODAS'
+    ? actividadesTransformadas.filter(act => mapTipoAFiltro(act.tipo) === filtroTipo)
+    : actividadesTransformadas;
 
   const formatearFecha = (fecha) => {
     const ahora = new Date();
