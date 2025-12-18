@@ -354,6 +354,7 @@ const ProjectDetailPage = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [taskDocuments, setTaskDocuments] = useState({});
   const [projectEvents, setProjectEvents] = useState([]);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const { notifyProjectChange, notifyTaskChange, tasksUpdated, consumeTasksUpdate } = useProjectContext();
   const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
@@ -657,6 +658,11 @@ const ProjectDetailPage = () => {
 
   const membersList = Array.isArray(project?.members) ? project.members.filter(Boolean) : [];
 
+  // Filter tasks to exclude completed ones by default
+  const displayedTasks = showCompletedTasks 
+    ? tasks 
+    : tasks.filter(task => task.status !== 'COMPLETED');
+
   return (
     <>
       <Helmet>
@@ -711,11 +717,7 @@ const ProjectDetailPage = () => {
                 });
             }}
             onTaskUpdated={(updatedTask) => {
-              if (updatedTask.status === 'COMPLETED') {
-                setTasks((prev) => prev.filter((task) => task.id !== updatedTask.id));
-              } else {
-                setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
-              }
+              setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
             }}
             onTaskDeleted={(taskId) => {
               setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -775,17 +777,26 @@ const ProjectDetailPage = () => {
               <div className="glass-card">
                 <div className="section-header">
                   <h2>
-                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${tasks.length})`}
+                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${displayedTasks.length})`}
                   </h2>
-                  {currentUser && isAdmin(currentUser.role) && (
-                    <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
-                      <FiPlus /> Nueva Tarea
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="btn btn-secondary btn-sm" 
+                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                      title={showCompletedTasks ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
+                    >
+                      <FiCheckSquare /> {showCompletedTasks ? 'Ocultar' : 'Mostrar'} Completadas
                     </button>
-                  )}
+                    {currentUser && isAdmin(currentUser.role) && (
+                      <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
+                        <FiPlus /> Nueva Tarea
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="task-list">
-                  {tasks.length > 0 ? (
-                    tasks.map((task) => {
+                  {displayedTasks.length > 0 ? (
+                    displayedTasks.map((task) => {
                       const assignee = task?.assigned_to || {};
                       const avatar =
                         assignee?.profile_picture ||
@@ -821,7 +832,7 @@ const ProjectDetailPage = () => {
                       );
                     })
                   ) : (
-                    <p>No hay tareas en este proyecto todavía.</p>
+                    <p>No hay tareas {showCompletedTasks ? '' : 'activas '}en este proyecto todavía.</p>
                   )}
                 </div>
               </div>
