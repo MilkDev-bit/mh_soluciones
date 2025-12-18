@@ -54,25 +54,25 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
 
   const onSubmit = async (data) => {
     try {
-      if (selectedFiles.length === 0 && !data.notes?.trim()) {
-        toast.error('Debes subir al menos un archivo o agregar un comentario');
+      if (selectedFiles.length === 0 && !data.notes?.trim() && !data.link?.trim()) {
+        toast.error('Debes subir al menos un archivo, agregar un comentario o un enlace');
         return;
       }
 
       const formData = new FormData();
       
-      // Add files with index to handle multiple files
-      selectedFiles.forEach((file, index) => {
-        formData.append(`file_${index}`, file);
+      // ✅ FIX: Backend expects 'files[]' for multiple files
+      selectedFiles.forEach((file) => {
+        formData.append('files[]', file);
       });
       
       // Add notes/comment
-      if (data.notes) {
+      if (data.notes?.trim()) {
         formData.append('notes', data.notes);
       }
 
       // Add link if provided
-      if (data.link) {
+      if (data.link?.trim()) {
         formData.append('link', data.link);
       }
 
@@ -82,7 +82,10 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
       
       setUploadProgress(100);
       
-      toast.success('✅ Entrega realizada exitosamente');
+      toast.success(`✅ Entrega realizada exitosamente${selectedFiles.length > 0 ? ` - ${selectedFiles.length} archivo(s) subido(s)` : ''}`);
+      
+      // Reset form
+      setSelectedFiles([]);
       
       if (onSubmissionComplete) {
         onSubmissionComplete(result);

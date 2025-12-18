@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.authentication.api.serializers import UserSerializer
 from apps.projects.api.serializers import ProjectSerializer
+from apps.documents.api.serializers import DocumentSerializer
 from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class TaskSubmissionSerializer(serializers.ModelSerializer):
     """ Serializador para las entregas de tareas. """
     submitted_by = UserSerializer(read_only=True)
     graded_by_user = UserSerializer(source='graded_by', read_only=True)
+    documents = DocumentSerializer(many=True, read_only=True)
     
     class Meta:
         model = TaskSubmission
@@ -35,12 +37,13 @@ class TaskSubmissionSerializer(serializers.ModelSerializer):
             'correction_notes', 'is_approved', 'created_at', 'updated_at',
             'google_drive_file_id', 'google_drive_link', 'uploaded_to_drive',
             'version', 'status', 'score', 'teacher_feedback', 'graded_by',
-            'graded_by_user', 'graded_at', 'criteria_scores', 'files_metadata'
+            'graded_by_user', 'graded_at', 'criteria_scores', 'files_metadata',
+            'documents'
         ]
         read_only_fields = [
             'id', 'task', 'submitted_by', 'created_at', 'updated_at',
             'google_drive_file_id', 'google_drive_link', 'uploaded_to_drive',
-            'version', 'graded_by_user'
+            'version', 'graded_by_user', 'documents'
         ]
 
 

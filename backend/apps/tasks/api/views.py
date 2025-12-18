@@ -336,21 +336,62 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             return TaskSubmissionGradeSerializer
         return TaskSubmissionSerializer
 
-    def perform_create(self, serializer):
-        task = Task.objects.get(id=self.kwargs['task_pk'])
+    def create(self, request, *args, **kwargs):
+        """
+        Create task submission with support for multiple files.
+        Files are uploaded to Google Drive and linked via Document model.
+        """
+        task_pk = kwargs.get('task_pk')
+        
+        try:
+            task = Task.objects.get(id=task_pk)
+        except Task.DoesNotExist:
+            return Response(
+                {'error': 'Tarea no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         # Check if task accepts submissions
         now = timezone.now()
         if task.status == 'CLOSED' and not task.accept_after_close:
-            raise ValidationError("Esta tarea está cerrada y no acepta entregas.")
+            return Response(
+                {'error': 'Esta tarea está cerrada y no acepta entregas.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         if task.close_date and task.close_date < now:
             if not task.allow_late_submissions and not task.accept_after_close:
-                raise ValidationError("El plazo para entregar esta tarea ha vencido.")
+                return Response(
+                    {'error': 'El plazo para entregar esta tarea ha vencido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Get files from request
+        files = request.FILES.getlist('files[]')
+        
+        # Validate that at least one of: files, notes, or link is provided
+        notes = request.data.get('notes', '').strip()
+        link = request.data.get('link', '').strip()
+        
+        if not files and not notes and not link:
+            return Response(
+                {'error': 'Debes subir al menos un archivo, agregar un comentario o un enlace'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the submission (without files in serializer)
+        submission_data = {
+            'notes': notes,
+            'link': link,
+            'status': 'SUBMITTED'
+        }
+        
+        serializer = self.get_serializer(data=submission_data)
+        serializer.is_valid(raise_exception=True)
         
         task_submission = serializer.save(
-            submitted_by=self.request.user, 
-            task_id=self.kwargs['task_pk']
+            submitted_by=request.user,
+            task=task
         )
         
         # Mark as late if submitted after deadline
@@ -358,13 +399,66 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             task_submission.status = 'LATE'
             task_submission.save()
         
-        # Upload to Google Drive and track result
-        if task_submission.file:
-            upload_success = self._upload_to_google_drive(task_submission)
-            if upload_success:
-                logger.info(f"✅ Task submission {task_submission.id} uploaded to Google Drive successfully")
-            else:
-                logger.warning(f"⚠️  Task submission {task_submission.id} saved locally but NOT uploaded to Google Drive")
+        # Process each file
+        uploaded_documents = []
+        uploaded_count = 0
+        failed_count = 0
+        
+        for file in files:
+            try:
+                # Create Document instance
+                from apps.documents.models import Document
+                
+                document = Document.objects.create(
+                    task=task,
+                    task_submission=task_submission,
+                    project=task.project,
+                    file=file,
+                    uploaded_by=request.user,
+                    folder_type='TASK_SUBMISSION'
+                )
+                
+                # Upload to Google Drive (happens automatically in Document.save via thread)
+                # But we can also try to upload synchronously for better feedback
+                upload_success = self._upload_file_to_drive(document, task, request.user, task_submission)
+                
+                if upload_success:
+                    uploaded_count += 1
+                    logger.info(f"✅ File {file.name} uploaded to Drive successfully")
+                else:
+                    failed_count += 1
+                    logger.warning(f"⚠️ File {file.name} saved locally but not uploaded to Drive")
+                
+                uploaded_documents.append({
+                    'id': document.id,
+                    'name': document.name,
+                    'size': document.file_size,
+                    'file_url': document.file.url if document.file else None,
+                    'drive_url': document.drive_file_url,
+                    'upload_status': document.upload_status
+                })
+                
+            except Exception as file_error:
+                logger.error(f'❌ Error processing file {file.name}: {file_error}')
+                failed_count += 1
+                continue
+        
+        # Prepare response
+        response_data = serializer.data
+        response_data['uploaded_files'] = uploaded_documents
+        response_data['files_count'] = len(uploaded_documents)
+        response_data['uploaded_to_drive_count'] = uploaded_count
+        response_data['failed_uploads_count'] = failed_count
+        
+        # Include documents in response
+        response_data['documents'] = uploaded_documents
+        
+        logger.info(
+            f"📤 Submission created: {task_submission.id} | "
+            f"Files: {len(files)} | Uploaded to Drive: {uploaded_count} | Failed: {failed_count}"
+        )
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post', 'patch'], url_path='grade')
     def grade(self, request, task_pk=None, pk=None):
@@ -461,6 +555,126 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             })
         
         return Response(result)
+
+    def _upload_file_to_drive(self, document, task, user, submission):
+        """
+        Upload a Document file to Google Drive.
+        
+        Args:
+            document: Document instance
+            task: Task instance
+            user: User who submitted
+            submission: TaskSubmission instance
+            
+        Returns:
+            bool: True if uploaded successfully, False otherwise
+        """
+        try:
+            from apps.documents.services import GoogleDriveService
+            
+            logger.info(f"📤 [Drive Upload] Starting for document: {document.name}")
+            
+            # Validate Google Drive configuration
+            admin_user_id = settings.GOOGLE_DRIVE_ADMIN_USER_ID
+            if not admin_user_id:
+                logger.error("❌ [Drive Upload] GOOGLE_DRIVE_ADMIN_USER_ID not configured")
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            
+            # Initialize Drive service
+            try:
+                drive_service = GoogleDriveService(use_institutional=True)
+            except ValueError as e:
+                logger.error(f"❌ [Drive Upload] Configuration error: {e}")
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            except Exception as e:
+                logger.error(f"❌ [Drive Upload] Unexpected error initializing service: {e}")
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            
+            # Read file content
+            try:
+                document.upload_status = 'UPLOADING'
+                document.save(update_fields=['upload_status'])
+                
+                file_content = document.file.read()
+                original_filename = document.file.name
+                logger.info(f"📄 [Drive Upload] File read: {original_filename} ({len(file_content)} bytes)")
+            except Exception as e:
+                logger.error(f"❌ [Drive Upload] Error reading file: {e}")
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            
+            # Create structured filename
+            try:
+                new_filename = self._create_structured_filename(submission, original_filename)
+                logger.info(f"📝 [Drive Upload] Structured name: {new_filename}")
+            except Exception as e:
+                logger.error(f"❌ [Drive Upload] Error creating filename: {e}")
+                new_filename = os.path.basename(original_filename)
+            
+            # Get destination folder
+            try:
+                folder_id = self._get_destination_folder(drive_service, task, user, submission)
+                logger.info(f"📁 [Drive Upload] Destination folder: {folder_id}")
+            except Exception as e:
+                logger.error(f"❌ [Drive Upload] Error getting destination folder: {e}")
+                logger.exception(e)
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            
+            # Determine MIME type
+            mime_type = self._get_mime_type(original_filename)
+            logger.info(f"🔖 [Drive Upload] MIME type: {mime_type}")
+            
+            # Upload file
+            try:
+                drive_result = drive_service.upload_file(
+                    file_name=new_filename,
+                    file_content=file_content,
+                    folder_id=folder_id,
+                    mime_type=mime_type
+                )
+            except Exception as e:
+                logger.error(f"❌ [Drive Upload] Error during upload: {e}")
+                logger.exception(e)
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+            
+            if drive_result:
+                # Update document with Drive info
+                document.drive_file_id = drive_result['id']
+                document.drive_file_url = drive_result['webViewLink']
+                document.upload_status = 'COMPLETE'
+                document.save(update_fields=['drive_file_id', 'drive_file_url', 'upload_status'])
+                
+                logger.info(
+                    f"✅ [Drive Upload] Success!\n"
+                    f"   - Name: {drive_result['name']}\n"
+                    f"   - ID: {drive_result['id']}\n"
+                    f"   - Link: {drive_result['webViewLink']}"
+                )
+                return True
+            else:
+                logger.warning("⚠️ [Drive Upload] upload_file returned None")
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ [Drive Upload] Unexpected error: {e}")
+            logger.exception(e)
+            if document:
+                document.upload_status = 'FAILED'
+                document.save(update_fields=['upload_status'])
+            return False
 
     def _upload_to_google_drive(self, task_submission):
         """
