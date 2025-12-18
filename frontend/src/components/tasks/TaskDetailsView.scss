@@ -314,6 +314,54 @@
   }
 }
 
+.primary-action-btn {
+  padding: 1rem 2rem !important;
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  border-radius: 12px !important;
+  min-height: 56px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.75rem !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  cursor: pointer !important;
+  flex: 1;
+  
+  svg {
+    font-size: 1.5rem !important;
+  }
+  
+  &:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  &:active {
+    transform: translateY(0) !important;
+  }
+  
+  &.submit-task-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: white !important;
+    
+    &:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    }
+  }
+  
+  &.view-submissions-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    color: white !important;
+    
+    &:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    }
+  }
+}
+
 
 .edit-form {
   background: $neutral-50;

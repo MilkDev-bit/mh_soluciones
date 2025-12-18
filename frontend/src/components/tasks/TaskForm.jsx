@@ -534,13 +534,39 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                   <div className="form-group">
                     <label className="form-label">Puntos *</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
-                      value={criterion.points}
-                      onChange={(e) => updateCriterion(index, 'points', e.target.value)}
-                      placeholder="0"
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*\.?[0-9]*"
+                      className="form-input points-input"
+                      value={criterion.points || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Permitir campo vacío o números decimales
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          const numValue = parseFloat(value);
+                          // Validar rango solo si hay valor
+                          if (value === '' || (!isNaN(numValue) && numValue >= 0 && numValue <= maxScore)) {
+                            updateCriterion(index, 'points', value);
+                          } else if (!isNaN(numValue)) {
+                            toast.error(`Los puntos deben estar entre 0 y ${maxScore}`);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Al perder foco, asegurar número válido
+                        const value = e.target.value;
+                        if (value === '') {
+                          updateCriterion(index, 'points', 0);
+                        } else {
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue)) {
+                            // Clamp entre 0 y maxScore
+                            const clampedValue = Math.min(Math.max(numValue, 0), maxScore);
+                            updateCriterion(index, 'points', clampedValue);
+                          }
+                        }
+                      }}
+                      placeholder="Ej: 25"
                     />
                   </div>
                 </div>
