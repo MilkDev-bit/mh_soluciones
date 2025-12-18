@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNotifications } from '../hooks/useNotifications';
 import NotificationsList from '../components/notifications/NotificationsList';
-import { FiBell, FiCheckCircle, FiRefreshCw, FiFilter } from 'react-icons/fi';
+import { FiBell, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
 import './NotificationsPage.scss';
 
 const NotificationsPage = () => {
@@ -14,8 +14,6 @@ const NotificationsPage = () => {
     setIsMarkingAllRead(true);
     try {
       await markAllAsRead();
-    } catch (error) {
-      console.error('Error marking all as read:', error);
     } finally {
       setIsMarkingAllRead(false);
     }

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationItem from './NotificationItem';
 import { FiBell, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';

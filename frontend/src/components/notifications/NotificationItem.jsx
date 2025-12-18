@@ -1,10 +1,8 @@
 // Componente individual para cada notificación
-import React from 'react';
 import { 
   FiCheckSquare, 
   FiAlertCircle, 
   FiBell,
-  FiFileText,
   FiCalendar,
   FiUsers,
   FiMessageSquare,
@@ -68,10 +66,25 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
   const IconComponent = config.icon;
   const relativeTime = formatRelativeTime(notification.created_at);
 
+  const handleClick = () => {
+    if (!notification.is_read) {
+      onMarkAsRead(notification.id);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    // Activate on Enter or Space key
+    if ((e.key === 'Enter' || e.key === ' ') && !notification.is_read) {
+      e.preventDefault(); // Prevent page scroll on Space
+      onMarkAsRead(notification.id);
+    }
+  };
+
   return (
     <div 
       className={`notification-item ${notification.is_read ? 'read' : 'unread'}`}
-      onClick={() => !notification.is_read && onMarkAsRead(notification.id)}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`${notification.title}. ${notification.is_read ? 'Leída' : 'No leída'}. Clic para marcar como leída.`}

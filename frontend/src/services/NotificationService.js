@@ -412,8 +412,8 @@ class NotificationService {
       if (import.meta.env.DEV) {
         console.error('Error marking all notifications as read:', error);
       }
-      // Re-throw to allow caller to handle
-      throw error;
+      // Don't throw - fail silently to prevent breaking UI
+      // Caller can handle by checking if unread count changed
     }
   }
 
