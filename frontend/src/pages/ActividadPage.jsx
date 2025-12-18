@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as ReactWindow from 'react-window';
 import { 
@@ -24,22 +24,23 @@ const ActividadPage = () => {
   const { data: notificaciones = [], isLoading: cargando, error, refetch, isError } = useQuery({
     queryKey: ['activities', filtroTipo],
     queryFn: async () => {
-      try {
-        const data = await getNotifications({ include_read: true });
-        // Ensure we always return an array
-        return Array.isArray(data) ? data : [];
-      } catch (err) {
-        console.error('Error cargando actividades:', err);
-        toast.error('Error al cargar actividades');
-        // Return empty array to prevent white screen
-        return [];
-      }
+      const data = await getNotifications({ include_read: true });
+      // Ensure we always return an array
+      return Array.isArray(data) ? data : [];
     },
     staleTime: 30000, // 30 seconds
     gcTime: 60000, // 1 minute (formerly cacheTime in v4)
     retry: 1, // Retry failed requests once
     retryDelay: 1000, // Wait 1 second before retrying
   });
+
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (isError && error) {
+      console.error('Error cargando actividades:', error);
+      toast.error('Error al cargar actividades');
+    }
+  }, [isError, error]);
 
   // Transform notifications to activity format
   const actividadesTransformadas = notificaciones.map(notif => ({
