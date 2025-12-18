@@ -110,6 +110,7 @@ export const useNotifications = () => {
     }
   }, [user, loadNotifications, loadUnreadCount]);
 
+  
   return {
     notifications,
     unreadCount,
