@@ -832,7 +832,7 @@ const ProjectDetailPage = () => {
                       );
                     })
                   ) : (
-                    <p>No hay tareas {showCompletedTasks ? '' : 'activas '}en este proyecto todavía.</p>
+                    <p>No hay tareas {showCompletedTasks ? '' : 'activas en '}este proyecto todavía.</p>
                   )}
                 </div>
               </div>
