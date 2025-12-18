@@ -1,0 +1,242 @@
+// Notifications list container styling
+.notifications-list {
+  width: 100%;
+  
+  // Container for notification items
+  .notifications-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  // Loading state with skeleton
+  .notifications-loading {
+    padding: 1rem;
+
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .skeleton-item {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+
+      .skeleton-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+      }
+
+      .skeleton-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .skeleton-title {
+        width: 60%;
+        height: 16px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+      }
+
+      .skeleton-message {
+        width: 90%;
+        height: 14px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        animation-delay: 0.1s;
+      }
+
+      .skeleton-time {
+        width: 30%;
+        height: 12px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        animation-delay: 0.2s;
+      }
+    }
+  }
+
+  // Empty state
+  .notifications-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+
+    @media (max-width: 767px) {
+      padding: 2rem 1rem;
+    }
+
+    svg {
+      color: #ddd;
+      margin-bottom: 1rem;
+
+      @media (max-width: 767px) {
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin-bottom: 0.5rem;
+
+      @media (max-width: 767px) {
+        font-size: 1.125rem;
+      }
+    }
+
+    p {
+      color: #666;
+      font-size: 0.938rem;
+      max-width: 300px;
+
+      @media (max-width: 767px) {
+        font-size: 0.875rem;
+      }
+    }
+  }
+
+  // Error state
+  .notifications-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+
+    @media (max-width: 767px) {
+      padding: 2rem 1rem;
+    }
+
+    svg {
+      color: #F44336;
+      margin-bottom: 1rem;
+
+      @media (max-width: 767px) {
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1e1e1e;
+      margin-bottom: 0.5rem;
+
+      @media (max-width: 767px) {
+        font-size: 1.125rem;
+      }
+    }
+
+    p {
+      color: #666;
+      font-size: 0.938rem;
+      margin-bottom: 1.5rem;
+      max-width: 350px;
+
+      @media (max-width: 767px) {
+        font-size: 0.875rem;
+      }
+    }
+
+    .btn-retry {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: #ff7c15;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.938rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #e66d0c;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 124, 21, 0.2);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      &:focus {
+        outline: 2px solid #ff7c15;
+        outline-offset: 2px;
+      }
+
+      svg {
+        color: white;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+}
+
+// Shimmer animation for skeleton loading
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .notifications-list {
+    .skeleton-item {
+      background: #2a2a2a;
+      border-color: #3a3a3a;
+
+      .skeleton-icon,
+      .skeleton-title,
+      .skeleton-message,
+      .skeleton-time {
+        background: linear-gradient(90deg, #3a3a3a 25%, #4a4a4a 50%, #3a3a3a 75%);
+        background-size: 200% 100%;
+      }
+    }
+
+    .notifications-empty,
+    .notifications-error {
+      h3 {
+        color: #e0e0e0;
+      }
+
+      p {
+        color: #b0b0b0;
+      }
+    }
+  }
+}
