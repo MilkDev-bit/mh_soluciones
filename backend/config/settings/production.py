@@ -103,7 +103,17 @@ else:
     print("⚠️ Credenciales AWS no encontradas - Usando almacenamiento local con Whitenoise")
     STATIC_URL = '/static/'
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-    MEDIA_URL = '/media/'
+    
+    # Generate absolute HTTPS URL for media in production to avoid mixed content warnings
+    # The X-Forwarded-Proto header tells Django the request came via HTTPS
+    frontend_url = os.environ.get('FRONTEND_URL', '')
+    if frontend_url and frontend_url.startswith('https://'):
+        # Use the frontend domain for media URLs (served via same proxy)
+        MEDIA_URL = f'{frontend_url}/media/'
+    else:
+        # Fallback to relative URL - will use request's protocol via SECURE_PROXY_SSL_HEADER
+        MEDIA_URL = '/media/'
+    
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # Trusted origins for CSRF - important for Railway

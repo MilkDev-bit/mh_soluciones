@@ -52,6 +52,9 @@ class NotificationService {
     this.websocketEnabled = false;
     this.listeners = new Set();
     this.connecting = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectTimeout = null;
   }
 
   getWebSocketURL() {
@@ -120,6 +123,7 @@ class NotificationService {
       this.socket.onopen = () => {
         this.websocketEnabled = true;
         this.connecting = false;
+        this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
         if (import.meta.env.DEV) {
           console.log('WebSocket conectado exitosamente');
         }
@@ -145,7 +149,7 @@ class NotificationService {
       };
 
       this.socket.onerror = (error) => {
-        console.error('Error en WebSocket:', error);
+        console.error('WebSocket error:', error);
         this.websocketEnabled = false;
         this.connecting = false;
       };
@@ -154,19 +158,32 @@ class NotificationService {
         this.websocketEnabled = false;
         this.connecting = false;
         this.socket = null;
+        
         if (import.meta.env.DEV) {
-          console.log('WebSocket cerrado:', event.code, event.reason);
+          console.log('WebSocket closed:', event.code, event.reason);
         }
 
-        // Fallback to polling if WebSocket connection fails
-        if (!event.wasClean) {
-          console.log('WebSocket cerrado inesperadamente, usando polling');
+        // Attempt reconnection with exponential backoff
+        if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Max 30 seconds
+          this.reconnectAttempts++;
+          
+          console.log(`WebSocket disconnected. Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+          
+          this.reconnectTimeout = setTimeout(() => {
+            this.connectWebSocket(userId);
+          }, delay);
+        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          // Max reconnect attempts reached, fallback to polling
+          console.log('Max WebSocket reconnection attempts reached. Falling back to polling.');
+          this.reconnectAttempts = 0; // Reset for future attempts
           this.startPolling(userId);
         }
       };
     } catch (error) {
-      console.error('Error creando conexión WebSocket:', error);
+      console.error('Error creating WebSocket connection:', error);
       this.connecting = false;
+      // Fallback to polling on connection error
       this.startPolling(userId);
     }
   }
@@ -224,6 +241,12 @@ class NotificationService {
     // Changing behavior: 'disconnect' now actually disconnects. 
     // Components should no longer call disconnect() on unmount.
 
+    // Clear any pending reconnection attempts
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -233,6 +256,7 @@ class NotificationService {
 
     this.websocketEnabled = false;
     this.connecting = false;
+    this.reconnectAttempts = 0;
     if (import.meta.env.DEV) {
       console.log('Servicio de notificaciones desconectado');
     }
@@ -299,7 +323,11 @@ class NotificationService {
         ? response.data.results
         : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      if (error.response?.status === 401) {
+        console.error('Authentication error fetching notifications - token may be expired');
+      } else {
+        console.error('Error fetching notifications:', error);
+      }
       // Return empty array instead of throwing to prevent white screens
       // The calling component can check error state if needed
       return [];
@@ -323,11 +351,7 @@ class NotificationService {
   }
 
   async markAllAsRead() {
-    try {
-      await api.post('/notifications/mark_all_as_read/');
-    } catch (error) {
-      throw error;
-    }
+    return await api.post('/notifications/mark_all_as_read/');
   }
 
   async getUnreadCount() {
@@ -335,6 +359,11 @@ class NotificationService {
       const response = await api.get('/notifications/unread_count/');
       return response.data.unread_count;
     } catch (error) {
+      if (error.response?.status === 401) {
+        console.error('Authentication error fetching unread count - token may be expired');
+      } else {
+        console.error('Error fetching unread count:', error);
+      }
       return 0;
     }
   }
