@@ -544,7 +544,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
             <div className="task-actions">
               {canCompleteTask && (
                 <button
-                  className="btn btn-primary btn-icon"
+                  className="btn primary-action-btn view-submissions-btn"
                   onClick={() => setShowSubmissionsReview(true)}
                 >
                   <FiUsers />
@@ -554,10 +554,10 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
               
               {isStudent && (
                 <button
-                  className="btn btn-success btn-icon"
+                  className="btn primary-action-btn submit-task-btn"
                   onClick={() => setShowSubmissionForm(true)}
                 >
-                  <FiUpload />
+                  <FiUploadCloud />
                   Entregar Tarea
                 </button>
               )}
@@ -583,15 +583,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                   )) : <p className="empty-state-text">No hay entregas para esta tarea.</p>}
                 </div>
 
-                {canSubmit && (
-                  <form onSubmit={submissionHandleSubmit(onSubmissionSubmit)} className="details-form">
-                    <h4>Añadir nueva entrega</h4>
-                    <textarea {...submissionRegister('notes')} placeholder="Añade notas (opcional)..." rows="2"></textarea>
-                    <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
-                    <input type="file" {...submissionRegister('file')} />
-                    <button type="submit" className="btn btn-primary"><FiSend /> Enviar Entrega</button>
-                  </form>
-                )}
+
               </div>
             )}
 

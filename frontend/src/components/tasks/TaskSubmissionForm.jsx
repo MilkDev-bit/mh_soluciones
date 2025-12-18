@@ -38,6 +38,20 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const getFileIcon = (mimeType) => {
+    if (!mimeType) return <FiFile />;
+    
+    if (mimeType.includes('pdf')) return '📄';
+    if (mimeType.includes('image')) return '🖼️';
+    if (mimeType.includes('video')) return '🎥';
+    if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📊';
+    if (mimeType.includes('presentation')) return '📽️';
+    if (mimeType.includes('zip') || mimeType.includes('compressed')) return '📦';
+    
+    return <FiFile />;
+  };
+
   const onSubmit = async (data) => {
     try {
       if (selectedFiles.length === 0 && !data.notes?.trim()) {
@@ -117,25 +131,29 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
         </div>
 
         {selectedFiles.length > 0 && (
-          <div className="selected-files">
-            <h4>Archivos seleccionados ({selectedFiles.length})</h4>
-            {selectedFiles.map((file, index) => (
-              <div key={index} className="file-item">
-                <FiFile />
-                <div className="file-info">
-                  <span className="file-name">{file.name}</span>
-                  <span className="file-size">{formatFileSize(file.size)}</span>
+          <div className="selected-files-preview">
+            <h4><FiFile /> Archivos seleccionados ({selectedFiles.length})</h4>
+            <div className="files-list">
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="file-preview-item">
+                  <div className="file-icon">
+                    {getFileIcon(file.type)}
+                  </div>
+                  <div className="file-info">
+                    <span className="file-name" title={file.name}>{file.name}</span>
+                    <span className="file-size">{formatFileSize(file.size)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(index)}
+                    className="remove-file-btn"
+                    aria-label={`Eliminar ${file.name}`}
+                  >
+                    <FiX />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeFile(index)}
-                  className="remove-file"
-                  aria-label="Eliminar archivo"
-                >
-                  <FiX />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
@@ -243,65 +261,92 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
           color: #9ca3af;
         }
 
-        .selected-files {
+        .selected-files-preview {
           margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(59, 130, 246, 0.05);
+          border: 2px dashed rgba(59, 130, 246, 0.3);
+          border-radius: 8px;
         }
 
-        .selected-files h4 {
-          font-size: 0.9375rem;
-          font-weight: 500;
-          color: #374151;
+        .selected-files-preview h4 {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
           margin-bottom: 0.75rem;
+          font-size: 0.9rem;
+          color: #1e40af;
         }
 
-        .file-item {
+        .files-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .file-preview-item {
           display: flex;
           align-items: center;
           gap: 0.75rem;
           padding: 0.75rem;
-          background: #f9fafb;
+          background: white;
           border: 1px solid #e5e7eb;
           border-radius: 6px;
-          margin-bottom: 0.5rem;
+          transition: all 0.2s ease;
         }
 
-        .file-item svg:first-child {
-          color: #f97316;
+        .file-preview-item:hover {
+          border-color: #3b82f6;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+
+        .file-icon {
+          font-size: 1.5rem;
           flex-shrink: 0;
         }
 
         .file-info {
           flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
+          min-width: 0;
         }
 
         .file-name {
-          font-size: 0.875rem;
+          display: block;
           font-weight: 500;
-          color: #111827;
+          color: #1f2937;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .file-size {
+          display: block;
           font-size: 0.75rem;
           color: #6b7280;
+          margin-top: 0.125rem;
         }
 
-        .remove-file {
-          background: none;
+        .remove-file-btn {
+          padding: 0.5rem;
+          background: transparent;
           border: none;
-          color: #ef4444;
+          color: #6b7280;
           cursor: pointer;
-          padding: 0.25rem;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: color 0.2s;
         }
 
-        .remove-file:hover {
+        .remove-file-btn:hover {
+          background: #fee2e2;
           color: #dc2626;
+        }
+
+        .remove-file-btn svg {
+          font-size: 1.25rem;
         }
 
         .upload-progress {
