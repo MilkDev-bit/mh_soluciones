@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FiFile, 
-  FiFolder,
   FiUpload,
   FiDownload,
   FiTrash2,
   FiSearch,
-  FiFilter,
   FiGrid,
   FiList,
   FiCheckCircle,
@@ -14,9 +12,9 @@ import {
   FiAlertCircle,
   FiExternalLink
 } from 'react-icons/fi';
-import { AuthContext } from '../contexts/AuthContext';
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
+import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
 import './ArchivosPage.scss';
 
@@ -30,7 +28,6 @@ const FILTER_TYPES = {
 };
 
 const ArchivosPage = () => {
-  const { user } = useContext(AuthContext);
   const [archivos, setArchivos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
@@ -38,10 +35,20 @@ const ArchivosPage = () => {
   const [busqueda, setBusqueda] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
+  const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
+  const [proyectos, setProyectos] = useState([]);
 
-  useEffect(() => {
-    cargarArchivos();
-  }, [filtroTipo]);
+  const cargarProyectos = async () => {
+    try {
+      const data = await getProjects();
+      // Handle both array and paginated response
+      const proyectosList = Array.isArray(data) ? data : (data.results || []);
+      setProyectos(proyectosList);
+    } catch (error) {
+      console.error('Error cargando proyectos:', error);
+      toast.error('Error al cargar proyectos');
+    }
+  };
 
   const cargarArchivos = async () => {
     try {
@@ -55,6 +62,11 @@ const ArchivosPage = () => {
         params.folder_type = filtroTipo;
       }
       
+      // Filter by selected project
+      if (proyectoSeleccionado) {
+        params.project = proyectoSeleccionado;
+      }
+      
       const documentos = await getAllDocuments(params);
       setArchivos(documentos);
     } catch (error) {
@@ -66,9 +78,24 @@ const ArchivosPage = () => {
     }
   };
 
+  useEffect(() => {
+    cargarProyectos();
+  }, []);
+
+  useEffect(() => {
+    cargarArchivos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroTipo, proyectoSeleccionado]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
       if (archivosAceptados.length === 0) return;
+      
+      // Validate project is selected
+      if (!proyectoSeleccionado) {
+        toast.error('Por favor selecciona un proyecto primero');
+        return;
+      }
       
       setSubiendo(true);
       try {
@@ -78,6 +105,8 @@ const ArchivosPage = () => {
           formData.append('file', file);
           // Use folder_type matching the backend model choices
           formData.append('folder_type', filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
+          // Add project ID
+          formData.append('project', proyectoSeleccionado);
           
           return uploadDocument(formData);
         });
@@ -95,6 +124,7 @@ const ArchivosPage = () => {
         setSubiendo(false);
       }
     },
+    disabled: !proyectoSeleccionado,
     maxSize: 40 * 1024 * 1024, // 40MB
     accept: {
       'application/pdf': ['.pdf'],
@@ -200,6 +230,22 @@ const ArchivosPage = () => {
 
       <div className="archivos-toolbar">
         <div className="toolbar-izquierda">
+          <div className="proyecto-filter-container">
+            <label htmlFor="proyecto-filter">Proyecto:</label>
+            <select
+              id="proyecto-filter"
+              value={proyectoSeleccionado || ''}
+              onChange={(e) => setProyectoSeleccionado(e.target.value || null)}
+              className="proyecto-select"
+            >
+              <option value="">Seleccionar proyecto...</option>
+              {proyectos.map(proyecto => (
+                <option key={proyecto.id} value={proyecto.id}>
+                  {proyecto.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="busqueda-container">
             <FiSearch />
             <input
@@ -239,12 +285,24 @@ const ArchivosPage = () => {
         </div>
       </div>
 
+      {!proyectoSeleccionado && (
+        <div className="warning-banner">
+          <FiAlertCircle />
+          <span>Selecciona un proyecto para poder subir archivos</span>
+        </div>
+      )}
+
       <div className="zona-subida" {...getRootProps()}>
         <input {...getInputProps()} />
-        <div className={`zona-contenido ${isDragActive ? 'arrastrando' : ''}`}>
+        <div className={`zona-contenido ${isDragActive ? 'arrastrando' : ''} ${!proyectoSeleccionado ? 'zona-deshabilitada' : ''}`}>
           <FiUpload size={48} />
           {subiendo ? (
             <p>Subiendo archivos...</p>
+          ) : !proyectoSeleccionado ? (
+            <>
+              <p>Selecciona un proyecto primero</p>
+              <p className="zona-ayuda">Debes elegir un proyecto antes de subir archivos</p>
+            </>
           ) : isDragActive ? (
             <p>Suelta los archivos aquí...</p>
           ) : (

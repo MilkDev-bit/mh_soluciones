@@ -3,12 +3,14 @@ import logging
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import ValidationError
 
 from apps.core.permissions import ADMIN_ROLES
 from apps.core.utils import (
     success_response, error_response, created_response,
     validation_error_response
 )
+from apps.projects.models import ProjectMember
 from ..models import Document
 from ..tasks import upload_document_to_drive
 from .permissions import IsOwnerOrAdminReadOnly
@@ -42,6 +44,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 Q(uploaded_by=user)
             ).distinct()
         
+        # Filter by specific project
+        project_id = self.request.query_params.get('project')
+        if project_id:
+            try:
+                queryset = queryset.filter(project_id=int(project_id))
+            except (ValueError, TypeError):
+                queryset = queryset.none()
+        
+        # Filter by folder_type
+        folder_type = self.request.query_params.get('folder_type')
+        if folder_type:
+            queryset = queryset.filter(folder_type=folder_type)
+        
         task_id = self.request.query_params.get('task')
         if task_id:
             try:
@@ -55,8 +70,25 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """
         Asigna el usuario actual al crear un documento, asegura la relación
         con el proyecto y encola la tarea de subida a Google Drive.
+        Valida que el usuario pertenezca al proyecto antes de permitir la subida.
         """
-        document = serializer.save(uploaded_by=self.request.user)
+        user = self.request.user
+        project_id = self.request.data.get('project')
+        
+        # Validate project membership if project is specified
+        if project_id:
+            is_admin = user.role in ADMIN_ROLES
+            is_member = ProjectMember.objects.filter(
+                project_id=project_id,
+                user=user
+            ).exists()
+            
+            if not is_admin and not is_member:
+                raise ValidationError({
+                    'project': 'No tienes permisos para subir archivos a este proyecto'
+                })
+        
+        document = serializer.save(uploaded_by=user)
         
         if document.task and document.task.project:
             document.project = document.task.project

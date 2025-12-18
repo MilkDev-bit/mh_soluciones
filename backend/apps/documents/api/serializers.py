@@ -9,6 +9,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     """
     uploaded_by = UserSerializer(read_only=True)
     file_url = serializers.SerializerMethodField()
+    project = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -18,6 +19,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'file',
             'file_url',
             'file_size',
+            'file_type',
             'folder_type',
             'project',
             'task',
@@ -28,13 +30,22 @@ class DocumentSerializer(serializers.ModelSerializer):
             'notes'
         ]
         read_only_fields = [
-            'id', 'file_size', 'uploaded_by', 'created_at', 
+            'id', 'file_size', 'file_type', 'uploaded_by', 'created_at', 
             'upload_status', 'drive_file_url', 'file_url'
         ]
 
     def get_file_url(self, obj):
         if obj.file:
             return obj.file.url
+        return None
+
+    def get_project(self, obj):
+        """Return minimal project information"""
+        if obj.project:
+            return {
+                'id': obj.project.id,
+                'name': obj.project.name
+            }
         return None
 
     def create(self, validated_data):
