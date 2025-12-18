@@ -23,6 +23,7 @@ class Document(TimeStampedModel):
         IMAGENES = 'IMAGENES', _('Imágenes')
         VIDEOS = 'VIDEOS', _('Videos')
         ARCHIVOS = 'ARCHIVOS', _('Archivos')
+        TASK_SUBMISSION = 'TASK_SUBMISSION', _('Entrega de Tarea')
         OTROS = 'OTROS', _('Otros')
 
     folder_type = models.CharField(
@@ -51,6 +52,15 @@ class Document(TimeStampedModel):
         null=True, 
         blank=True,
         related_name='documents'
+    )
+    task_submission = models.ForeignKey(
+        'tasks.TaskSubmission',
+        on_delete=models.CASCADE,
+        related_name='documents',
+        null=True,
+        blank=True,
+        verbose_name=_("Entrega de Tarea"),
+        help_text=_("Entrega de tarea asociada")
     )
     file = models.FileField(
         upload_to=get_document_upload_path,
@@ -117,6 +127,7 @@ class Document(TimeStampedModel):
             'IMAGENES': 'Imágenes',
             'VIDEOS': 'Videos',
             'ARCHIVOS': 'Archivos',
+            'TASK_SUBMISSION': 'Entregas',
             'OTROS': 'Otros',
         }
         return folder_mapping.get(self.folder_type, 'Documentos')

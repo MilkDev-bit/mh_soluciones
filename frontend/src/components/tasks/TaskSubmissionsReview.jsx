@@ -179,24 +179,43 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           </div>
                         )}
 
-                        {submission.files_metadata && submission.files_metadata.length > 0 && (
+                        {submission.documents && submission.documents.length > 0 && (
                           <div className="submission-files">
-                            <h5>Archivos adjuntos:</h5>
+                            <h5><FiFile /> Archivos adjuntos ({submission.documents.length}):</h5>
                             <div className="files-list">
-                              {submission.files_metadata.map((file, index) => (
-                                <div key={index} className="file-item">
+                              {submission.documents.map((doc) => (
+                                <div key={doc.id} className="file-item">
                                   <FiFile />
-                                  <span className="file-name">{file.name}</span>
-                                  {file.web_view_link && (
-                                    <a
-                                      href={file.web_view_link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="file-download"
-                                    >
-                                      <FiDownload />
-                                    </a>
-                                  )}
+                                  <div className="file-info">
+                                    <span className="file-name">{doc.name}</span>
+                                    {doc.file_size && (
+                                      <span className="file-size">
+                                        {(doc.file_size / 1024).toFixed(2)} KB
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="file-actions">
+                                    {doc.drive_file_url ? (
+                                      <a
+                                        href={doc.drive_file_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="file-download"
+                                        title="Ver en Google Drive"
+                                      >
+                                        <FiLink /> Drive
+                                      </a>
+                                    ) : doc.file_url ? (
+                                      <a
+                                        href={doc.file_url}
+                                        download
+                                        className="file-download"
+                                        title="Descargar archivo"
+                                      >
+                                        <FiDownload /> Descargar
+                                      </a>
+                                    ) : null}
+                                  </div>
                                 </div>
                               ))}
                             </div>
