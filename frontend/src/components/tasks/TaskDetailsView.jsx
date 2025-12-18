@@ -23,6 +23,46 @@ import TaskSubmissionForm from './TaskSubmissionForm';
 import Modal from '../common/Modal';
 import './TaskDetailsView.scss';
 
+// File icon mapping for different file types
+const FILE_ICON_MAP = {
+  // Documents
+  'pdf': FiFileText,
+  'doc': FiFileText,
+  'docx': FiFileText,
+  'txt': FiFileText,
+  // Images
+  'jpg': FiImage,
+  'jpeg': FiImage,
+  'png': FiImage,
+  'gif': FiImage,
+  'svg': FiImage,
+  'webp': FiImage,
+  // Spreadsheets
+  'xls': FiFileText,
+  'xlsx': FiFileText,
+  'csv': FiFileText,
+  // Presentations
+  'ppt': FiFileText,
+  'pptx': FiFileText,
+  // Compressed
+  'zip': FiArchive,
+  'rar': FiArchive,
+  '7z': FiArchive,
+  // Videos
+  'mp4': FiVideo,
+  'avi': FiVideo,
+  'mov': FiVideo,
+  'mkv': FiVideo,
+  'webm': FiVideo,
+  // Audio
+  'mp3': FiMusic,
+  'wav': FiMusic,
+  'flac': FiMusic,
+  'ogg': FiMusic,
+  // Default
+  default: FiFile
+};
+
 const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
   const [file, setFile] = useState(null);
   const [submissions, setSubmissions] = useState([]);
@@ -308,46 +348,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
 
   const getFileIcon = (extension) => {
     // Map file extensions to React icons for better accessibility
-    const iconMap = {
-      // Documents
-      'pdf': FiFileText,
-      'doc': FiFileText,
-      'docx': FiFileText,
-      'txt': FiFileText,
-      // Images
-      'jpg': FiImage,
-      'jpeg': FiImage,
-      'png': FiImage,
-      'gif': FiImage,
-      'svg': FiImage,
-      'webp': FiImage,
-      // Spreadsheets
-      'xls': FiFileText,
-      'xlsx': FiFileText,
-      'csv': FiFileText,
-      // Presentations
-      'ppt': FiFileText,
-      'pptx': FiFileText,
-      // Compressed
-      'zip': FiArchive,
-      'rar': FiArchive,
-      '7z': FiArchive,
-      // Videos
-      'mp4': FiVideo,
-      'avi': FiVideo,
-      'mov': FiVideo,
-      'mkv': FiVideo,
-      'webm': FiVideo,
-      // Audio
-      'mp3': FiMusic,
-      'wav': FiMusic,
-      'flac': FiMusic,
-      'ogg': FiMusic,
-      // Default
-      default: FiFile
-    };
-    
-    return iconMap[extension] || iconMap.default;
+    return FILE_ICON_MAP[extension] || FILE_ICON_MAP.default;
   };
  
   const filesToShow = Array.isArray(documents) && documents.length > 0 ? documents : Array.isArray(submissions) ? submissions : [];
@@ -636,7 +637,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                     const fileExtension = getFileExtension(fileName);
                     const FileIconComponent = getFileIcon(fileExtension);
                     
-                    // Obtener tamaño del archivo de files_metadata si existe
+                    // Get file size from files_metadata if it exists
                     const fileMetadata = sub.files_metadata && sub.files_metadata.length > 0 
                       ? sub.files_metadata[0] 
                       : null;
@@ -644,7 +645,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                     
                     return (
                       <div key={sub.id} className="submission-item">
-                        {/* Header con avatar y info del estudiante */}
+                        {/* Header with avatar and student info */}
                         <div className="submission-header">
                           <div className="user-avatar">
                             <img 
@@ -661,13 +662,13 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                             </span>
                           </div>
                           
-                          {/* Badge de versión */}
+                          {/* Version badge */}
                           {sub.version > 1 && (
                             <span className="version-badge">v{sub.version}</span>
                           )}
                         </div>
                         
-                        {/* Notas de la entrega */}
+                        {/* Submission notes */}
                         {sub.notes && (
                           <div className="submission-notes">
                             <FiMessageSquare className="notes-icon" />
@@ -675,7 +676,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                           </div>
                         )}
                         
-                        {/* Información del archivo */}
+                        {/* File information */}
                         {sub.file && fileName && (
                           <div className="file-info-card">
                             <div className="file-icon-wrapper">
@@ -710,7 +711,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                           </div>
                         )}
                         
-                        {/* Estado de Google Drive */}
+                        {/* Google Drive status */}
                         {sub.file && (
                           <div className="drive-status">
                             {sub.uploaded_to_drive ? (
@@ -741,7 +742,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                           </div>
                         )}
                         
-                        {/* Enlaces externos */}
+                        {/* External links */}
                         {sub.link && (
                           <div className="external-link-card">
                             <FiLink className="link-icon" />
