@@ -134,7 +134,17 @@ class Document(TimeStampedModel):
             print(f"📤 Iniciando subida a Google Drive institucional: {self.name}")
 
             # ✅ Usar credenciales institucionales
-            drive_service = GoogleDriveService(use_institutional=True)
+            try:
+                drive_service = GoogleDriveService(use_institutional=True)
+            except ValueError as e:
+                # Error de configuración - no reintentar
+                self.upload_status = Document.UploadStatus.FAILED
+                error_msg = (
+                    f"Error de configuración: {e}. "
+                    "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado correctamente."
+                )
+                print(f"❌ {error_msg}")
+                return False
             
             result = drive_service.upload_document(self)
             

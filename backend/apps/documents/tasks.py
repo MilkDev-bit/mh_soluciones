@@ -17,7 +17,18 @@ def upload_document_to_drive(self, document_id):
         document.save(update_fields=['upload_status'])
 
         # ✅ Usar credenciales institucionales
-        drive_service = GoogleDriveService(use_institutional=True)
+        try:
+            drive_service = GoogleDriveService(use_institutional=True)
+        except ValueError as e:
+            # Error de configuración - no reintentar
+            error_msg = (
+                f"Error de configuración de Google Drive institucional: {e}. "
+                "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado y que el usuario admin "
+                "haya conectado su cuenta de Google Drive."
+            )
+            document.upload_status = Document.UploadStatus.FAILED
+            document.save(update_fields=['upload_status'])
+            return error_msg
 
         if not drive_service.service:
             raise ConnectionError("No se pudo inicializar el servicio de Google Drive institucional.")

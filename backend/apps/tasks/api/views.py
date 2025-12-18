@@ -468,7 +468,16 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             logger.info(f"Iniciando subida a Google Drive institucional para entrega de tarea: {task.title}")
             
             # ✅ Usar credenciales institucionales
-            drive_service = GoogleDriveService(use_institutional=True)
+            try:
+                drive_service = GoogleDriveService(use_institutional=True)
+            except ValueError as e:
+                # Error de configuración
+                logger.error(
+                    f"Error de configuración de Google Drive institucional: {e}. "
+                    "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado y que el usuario admin "
+                    "haya conectado su cuenta de Google Drive."
+                )
+                return
             
             file_content = task_submission.file.read()
             original_filename = task_submission.file.name

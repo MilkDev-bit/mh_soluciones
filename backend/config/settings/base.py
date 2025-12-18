@@ -357,7 +357,18 @@ GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 GOOGLE_PROJECT_ID = config('GOOGLE_PROJECT_ID', default='mhsoluciones')
 GOOGLE_DRIVE_ROOT_FOLDER_ID = config('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')
 # ID del usuario admin institucional cuyas credenciales se usan para el Drive centralizado
-GOOGLE_DRIVE_ADMIN_USER_ID = config('GOOGLE_DRIVE_ADMIN_USER_ID', default=None, cast=lambda v: int(v) if v else None)
+def cast_admin_user_id(value):
+    """Safely cast admin user ID to int, handling invalid values"""
+    if not value or value == '':
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        import logging
+        logging.warning(f"Invalid GOOGLE_DRIVE_ADMIN_USER_ID value: {value}. Should be an integer.")
+        return None
+
+GOOGLE_DRIVE_ADMIN_USER_ID = config('GOOGLE_DRIVE_ADMIN_USER_ID', default=None, cast=cast_admin_user_id)
 
 # Google OAuth timeout configuration (in seconds)
 # This controls how long to wait for Google's token API response
