@@ -477,7 +477,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             logger.info(f"📤 [Google Drive] Usuario: {user.get_full_name()} ({user.email})")
             
             # ✅ Validar configuración de Google Drive Admin User
-            admin_user_id = getattr(settings, 'GOOGLE_DRIVE_ADMIN_USER_ID', None)
+            admin_user_id = settings.GOOGLE_DRIVE_ADMIN_USER_ID
             if not admin_user_id:
                 logger.error(
                     "❌ [Google Drive] GOOGLE_DRIVE_ADMIN_USER_ID no está configurado. "
