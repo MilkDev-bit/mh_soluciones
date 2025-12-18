@@ -358,8 +358,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             task_submission.status = 'LATE'
             task_submission.save()
         
+        # Upload to Google Drive and track result
         if task_submission.file:
-            self._upload_to_google_drive(task_submission)
+            upload_success = self._upload_to_google_drive(task_submission)
+            if upload_success:
+                logger.info(f"✅ Task submission {task_submission.id} uploaded to Google Drive successfully")
+            else:
+                logger.warning(f"⚠️  Task submission {task_submission.id} saved locally but NOT uploaded to Google Drive")
     
     @action(detail=True, methods=['post', 'patch'], url_path='grade')
     def grade(self, request, task_pk=None, pk=None):
@@ -460,44 +465,94 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
     def _upload_to_google_drive(self, task_submission):
         """
         Sube el archivo adjunto a Google Drive institucional usando estructura por proyecto
+        
+        Returns:
+            bool: True si se subió exitosamente, False en caso contrario
         """
         try:
             user = task_submission.submitted_by
             task = task_submission.task
             
-            logger.info(f"Iniciando subida a Google Drive institucional para entrega de tarea: {task.title}")
+            logger.info(f"📤 [Google Drive] Iniciando subida para tarea: {task.title} (ID: {task.id})")
+            logger.info(f"📤 [Google Drive] Usuario: {user.get_full_name()} ({user.email})")
+            
+            # ✅ Validar configuración de Google Drive Admin User
+            admin_user_id = getattr(settings, 'GOOGLE_DRIVE_ADMIN_USER_ID', None)
+            if not admin_user_id:
+                logger.error(
+                    "❌ [Google Drive] GOOGLE_DRIVE_ADMIN_USER_ID no está configurado. "
+                    "Por favor configure esta variable de entorno con el ID del usuario administrador."
+                )
+                return False
+            
+            logger.info(f"✅ [Google Drive] Admin User ID configurado: {admin_user_id}")
             
             # ✅ Usar credenciales institucionales
             try:
+                logger.info("🔐 [Google Drive] Intentando inicializar servicio con credenciales institucionales...")
                 drive_service = GoogleDriveService(use_institutional=True)
+                logger.info("✅ [Google Drive] Servicio inicializado correctamente")
             except ValueError as e:
                 # Error de configuración
                 logger.error(
-                    f"Error de configuración de Google Drive institucional: {e}. "
-                    "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado y que el usuario admin "
-                    "haya conectado su cuenta de Google Drive."
+                    f"❌ [Google Drive] Error de configuración: {e}\n"
+                    f"Verifica que:\n"
+                    f"1. GOOGLE_DRIVE_ADMIN_USER_ID esté configurado correctamente\n"
+                    f"2. El usuario admin (ID: {admin_user_id}) haya conectado su cuenta de Google Drive\n"
+                    f"3. Las credenciales no hayan expirado"
                 )
-                return
+                return False
+            except Exception as e:
+                logger.error(f"❌ [Google Drive] Error inesperado al inicializar servicio: {e}")
+                logger.exception(e)
+                return False
             
-            file_content = task_submission.file.read()
-            original_filename = task_submission.file.name
+            # Leer contenido del archivo
+            try:
+                file_content = task_submission.file.read()
+                original_filename = task_submission.file.name
+                logger.info(f"📄 [Google Drive] Archivo leído: {original_filename} ({len(file_content)} bytes)")
+            except Exception as e:
+                logger.error(f"❌ [Google Drive] Error al leer archivo: {e}")
+                return False
             
-            new_filename = self._create_structured_filename(task_submission, original_filename)
+            # Crear nombre estructurado
+            try:
+                new_filename = self._create_structured_filename(task_submission, original_filename)
+                logger.info(f"📝 [Google Drive] Nombre estructurado: {new_filename}")
+            except Exception as e:
+                logger.error(f"❌ [Google Drive] Error al crear nombre de archivo: {e}")
+                return False
             
-            folder_id = self._get_destination_folder(drive_service, task, user, task_submission)
+            # Obtener carpeta destino
+            try:
+                folder_id = self._get_destination_folder(drive_service, task, user, task_submission)
+                logger.info(f"📁 [Google Drive] Carpeta destino: {folder_id}")
+            except Exception as e:
+                logger.error(f"❌ [Google Drive] Error al obtener carpeta destino: {e}")
+                logger.exception(e)
+                return False
             
+            # Determinar tipo MIME
             mime_type = self._get_mime_type(original_filename)
+            logger.info(f"🔖 [Google Drive] Tipo MIME: {mime_type}")
             
-            logger.info(f"Subiendo archivo: {new_filename} a carpeta ID: {folder_id}")
-            
-            drive_result = drive_service.upload_file(
-                file_name=new_filename,
-                file_content=file_content,
-                folder_id=folder_id,
-                mime_type=mime_type
-            )
+            # Subir archivo
+            logger.info(f"⬆️  [Google Drive] Iniciando subida de archivo a carpeta {folder_id}...")
+            try:
+                drive_result = drive_service.upload_file(
+                    file_name=new_filename,
+                    file_content=file_content,
+                    folder_id=folder_id,
+                    mime_type=mime_type
+                )
+            except Exception as e:
+                logger.error(f"❌ [Google Drive] Error durante la subida del archivo: {e}")
+                logger.exception(e)
+                return False
             
             if drive_result:
+                # Guardar información del archivo
                 task_submission.google_drive_file_id = drive_result['id']
                 task_submission.google_drive_link = drive_result['webViewLink']
                 task_submission.uploaded_to_drive = True
@@ -516,12 +571,21 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 
                 task_submission.save()
                 
-                logger.info(f"Archivo subido exitosamente a Google Drive institucional: {drive_result['name']} (ID: {drive_result['id']})")
+                logger.info(
+                    f"✅ [Google Drive] Archivo subido exitosamente!\n"
+                    f"   - Nombre: {drive_result['name']}\n"
+                    f"   - ID: {drive_result['id']}\n"
+                    f"   - Link: {drive_result['webViewLink']}"
+                )
+                return True
             else:
-                logger.warning("Archivo guardado localmente pero no se pudo subir a Google Drive")
+                logger.warning("⚠️  [Google Drive] upload_file retornó None - Archivo guardado localmente pero no se pudo subir a Google Drive")
+                return False
                 
         except Exception as e:
-            logger.exception(f"Error al subir a Google Drive: {e}")
+            logger.error(f"❌ [Google Drive] Error inesperado durante el proceso de subida: {e}")
+            logger.exception(e)
+            return False
 
     def _create_structured_filename(self, task_submission, original_filename):
         """

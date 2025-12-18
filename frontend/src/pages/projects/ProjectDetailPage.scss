@@ -1,7 +1,7 @@
 @import '../../assets/styles/variables';
 
 .project-detail-page {
-  padding: $spacing-6;
+  padding: $spacing-5;
   max-width: $max-width-7xl;
   margin: 0 auto;
   min-height: 100vh;
@@ -18,8 +18,8 @@
 }
 
 .page-header {
-  margin-bottom: $spacing-8;
-  padding: $spacing-6;
+  margin-bottom: $spacing-6;
+  padding: $spacing-5;
   background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.85) 100%);
   backdrop-filter: blur(20px);
   border-radius: $border-radius-xl;
@@ -138,7 +138,7 @@
 .project-layout-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: $spacing-6;
+  gap: $spacing-5;
   
   @media (min-width: $breakpoint-lg) {
     grid-template-columns: 1fr 340px;
@@ -149,7 +149,7 @@
 .sidebar-column {
   display: flex;
   flex-direction: column;
-  gap: $spacing-6;
+  gap: $spacing-5;
   animation: slideUp 0.8s ease-out;
 }
 
@@ -157,7 +157,7 @@
   background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.9) 100%);
   border: 1px solid rgba($neutral-200, 0.5);
   border-radius: $border-radius-xl;
-  padding: $spacing-6;
+  padding: $spacing-5;
   box-shadow: 0 8px 32px rgba($neutral-900, 0.06);
   backdrop-filter: blur(10px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);

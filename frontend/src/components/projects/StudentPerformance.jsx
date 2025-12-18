@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getStudentPerformance } from '../../services/projectService';
-import { FiUser, FiCheckCircle, FiClock, FiTrendingUp } from 'react-icons/fi';
+import { FiUser, FiCheckCircle, FiClock, FiTrendingUp, FiAward } from 'react-icons/fi';
 import './StudentPerformance.scss';
 
 const StudentPerformance = ({ projectId }) => {
@@ -77,63 +77,108 @@ const StudentPerformance = ({ projectId }) => {
       <div className="performance-list">
         {students.map((student) => {
           const { label, color } = getPerformanceLevel(student.on_time_percentage);
+          const percentage = student.on_time_percentage;
+          const circumference = 2 * Math.PI * 36; // radius = 36
+          const offset = circumference - (percentage / 100) * circumference;
           
           return (
             <div key={student.id} className="student-card">
-              <div className="student-info">
-                <div className="student-avatar">
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=171717&color=fff`}
-                    alt={student.name}
-                  />
+              <div className="student-header">
+                <div className="student-avatar-container">
+                  <svg className="progress-ring" width="90" height="90">
+                    <circle
+                      className="progress-ring-circle-bg"
+                      stroke="rgba(255, 255, 255, 0.1)"
+                      strokeWidth="4"
+                      fill="transparent"
+                      r="36"
+                      cx="45"
+                      cy="45"
+                    />
+                    <circle
+                      className="progress-ring-circle"
+                      stroke={color}
+                      strokeWidth="4"
+                      fill="transparent"
+                      r="36"
+                      cx="45"
+                      cy="45"
+                      style={{
+                        strokeDasharray: circumference,
+                        strokeDashoffset: offset,
+                        transform: 'rotate(-90deg)',
+                        transformOrigin: '50% 50%',
+                        transition: 'stroke-dashoffset 1s ease-in-out'
+                      }}
+                    />
+                  </svg>
+                  <div className="student-avatar">
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=171717&color=fff`}
+                      alt={student.name}
+                    />
+                  </div>
                 </div>
-                <div className="student-details">
-                  <h4 className="student-name">{student.name}</h4>
-                  <p className="student-email">{student.email}</p>
+                <div className="student-info">
+                  <div className="student-details">
+                    <h4 className="student-name">{student.name}</h4>
+                    <p className="student-email">{student.email}</p>
+                  </div>
+                  <div className="performance-badge" style={{ backgroundColor: color }}>
+                    <FiAward />
+                    <span>{label}</span>
+                  </div>
                 </div>
               </div>
 
               <div className="student-stats">
-                <div className="stat-item">
-                  <FiCheckCircle className="stat-icon" style={{ color: '#10b981' }} />
-                  <div>
+                <div className="stat-card">
+                  <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                    <FiCheckCircle style={{ color: '#10b981' }} />
+                  </div>
+                  <div className="stat-content">
                     <p className="stat-value">{student.on_time_submissions}</p>
                     <p className="stat-label">A tiempo</p>
                   </div>
                 </div>
                 
-                <div className="stat-item">
-                  <FiClock className="stat-icon" style={{ color: '#ef4444' }} />
-                  <div>
+                <div className="stat-card">
+                  <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+                    <FiClock style={{ color: '#ef4444' }} />
+                  </div>
+                  <div className="stat-content">
                     <p className="stat-value">{student.late_submissions}</p>
                     <p className="stat-label">Tardías</p>
                   </div>
                 </div>
 
-                <div className="stat-item">
-                  <div className="performance-circle" style={{ borderColor: color }}>
-                    <span className="percentage-value" style={{ color }}>
-                      {student.on_time_percentage}%
-                    </span>
+                <div className="stat-card">
+                  <div className="stat-icon-wrapper" style={{ backgroundColor: `${color}20` }}>
+                    <FiTrendingUp style={{ color }} />
                   </div>
-                  <p className="stat-label" style={{ color }}>
-                    {label}
-                  </p>
+                  <div className="stat-content">
+                    <p className="stat-value" style={{ color }}>{percentage}%</p>
+                    <p className="stat-label">Efectividad</p>
+                  </div>
                 </div>
               </div>
 
               <div className="progress-bar-container">
+                <div className="progress-bar-header">
+                  <span className="progress-label">Progreso general</span>
+                  <span className="progress-percentage" style={{ color }}>{percentage}%</span>
+                </div>
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
                     style={{
-                      width: `${student.on_time_percentage}%`,
-                      backgroundColor: color
+                      width: `${percentage}%`,
+                      background: `linear-gradient(90deg, ${color} 0%, ${color}dd 100%)`
                     }}
                   />
                 </div>
                 <p className="progress-text">
-                  {student.total_submissions} {student.total_submissions === 1 ? 'entrega' : 'entregas'} en total
+                  {student.total_submissions} {student.total_submissions === 1 ? 'entrega total' : 'entregas totales'}
                 </p>
               </div>
             </div>

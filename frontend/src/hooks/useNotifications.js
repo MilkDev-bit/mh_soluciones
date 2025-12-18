@@ -10,17 +10,24 @@ export const useNotifications = () => {
   const { user } = useAuth();
 
   const loadNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[useNotifications] No user, skipping load');
+      return;
+    }
 
+    console.log('[useNotifications] Loading notifications...');
     setLoading(true);
     try {
       // Only load unread notifications
       const data = await notificationService.getNotifications({ include_read: false });
       // NotificationService.getNotifications handles both paginated and non-paginated responses
       // and ensures it always returns an array. Extra check for defensive programming.
-      setNotifications(Array.isArray(data) ? data : []);
+      const notifsList = Array.isArray(data) ? data : [];
+      setNotifications(notifsList);
+      console.log('[useNotifications] Notifications loaded successfully:', notifsList.length);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.error('[useNotifications] Error loading notifications:', error);
+      console.error('[useNotifications] Error details:', error.message, error.stack);
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -28,13 +35,19 @@ export const useNotifications = () => {
   }, [user]);
 
   const loadUnreadCount = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[useNotifications] No user, skipping unread count load');
+      return;
+    }
 
+    console.log('[useNotifications] Loading unread count...');
     try {
       const count = await notificationService.getUnreadCount();
       setUnreadCount(count);
+      console.log('[useNotifications] Unread count loaded:', count);
     } catch (error) {
-      console.error('Error loading unread count:', error);
+      console.error('[useNotifications] Error loading unread count:', error);
+      console.error('[useNotifications] Error details:', error.message, error.stack);
       setUnreadCount(0);
     }
   }, [user]);
@@ -46,34 +59,42 @@ export const useNotifications = () => {
   }, []);
 
   const markAsRead = useCallback(async (notificationId) => {
+    console.log('[useNotifications] Marking notification as read:', notificationId);
     try {
       await notificationService.markAsRead(notificationId);
       // Remove the notification from the list once marked as read
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       setUnreadCount(prev => Math.max(0, prev - 1));
+      console.log('[useNotifications] Notification marked as read successfully');
     } catch (error) {
-      console.error('Error marking as read:', error);
+      console.error('[useNotifications] Error marking as read:', error);
+      console.error('[useNotifications] Error details:', error.message, error.stack);
     }
   }, []);
 
   const markAllAsRead = useCallback(async () => {
+    console.log('[useNotifications] Marking all notifications as read');
     try {
       await notificationService.markAllAsRead();
       // Clear all notifications from the list once marked as read
       setNotifications([]);
       setUnreadCount(0);
+      console.log('[useNotifications] All notifications marked as read successfully');
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error('[useNotifications] Error marking all as read:', error);
+      console.error('[useNotifications] Error details:', error.message, error.stack);
     }
   }, []);
 
   useEffect(() => {
     if (user) {
+      console.log('[useNotifications] User detected, initializing notifications');
       loadNotifications();
       loadUnreadCount();
       notificationService.connectWebSocket(user.id);
 
       const unsubscribe = notificationService.subscribe((data) => {
+        console.log('[useNotifications] New notification received via WebSocket:', data);
         // When a new notification arrives, refresh the list and count
         // We could append the data directly, but refreshing ensures consistency
         loadNotifications();
@@ -81,8 +102,11 @@ export const useNotifications = () => {
       });
 
       return () => {
+        console.log('[useNotifications] Cleaning up WebSocket subscription');
         unsubscribe();
       };
+    } else {
+      console.log('[useNotifications] No user detected');
     }
   }, [user, loadNotifications, loadUnreadCount]);
 

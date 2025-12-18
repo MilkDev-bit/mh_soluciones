@@ -29,6 +29,7 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [seenNotificationIds, setSeenNotificationIds] = useState(new Set());
 
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useContext(AuthContext);
@@ -51,26 +52,45 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
       // Handle both full notification object or simple count update
       if (typeof notificationOrCount === 'object') {
         const newNotification = notificationOrCount;
-        setNotifications(prev => [newNotification, ...prev].slice(0, 10));
-        setUnreadCount(prev => prev + 1);
-        toast.info(`🔔 ${newNotification.title}`);
-      } else if (typeof notificationOrCount === 'number') {
-        // Just Update count? Or maybe we should reload.
-        // For simplicity, if we get a raw number, we just update unread count
-        // But the new service implementation actually sends the payload object on WS message
-        // and nothing on poll (currently). 
-        // Let's safe guard.
+        
+        // Check if we've already seen this notification to prevent duplicates
+        setSeenNotificationIds(prevIds => {
+          if (prevIds.has(newNotification.id)) {
+            // Already seen this notification, don't increment counter
+            console.log('[Header] Duplicate notification detected, skipping:', newNotification.id);
+            return prevIds;
+          }
+          
+          // New notification - add to list and increment counter
+          console.log('[Header] New notification received:', newNotification.id);
+          setNotifications(prev => [newNotification, ...prev].slice(0, 10));
+          setUnreadCount(prev => prev + 1);
+          toast.info(`🔔 ${newNotification.title}`);
+          
+          // Add to seen set
+          const newSet = new Set(prevIds);
+          newSet.add(newNotification.id);
+          return newSet;
+        });
       }
     });
 
     const fetchInitialData = async () => {
       try {
         const initialNotifs = await notificationService.getNotifications({ limit: 10 });
-        setNotifications(initialNotifs.results || []);
+        const notifsList = initialNotifs.results || [];
+        setNotifications(notifsList);
+        
+        // Track initial notification IDs as already seen
+        const initialIds = new Set(notifsList.map(n => n.id));
+        setSeenNotificationIds(initialIds);
+        
         const count = await notificationService.getUnreadCount();
         setUnreadCount(count);
+        
+        console.log('[Header] Initial notifications loaded:', notifsList.length, 'Unread count:', count);
       } catch (error) {
-        console.error("Error al cargar notificaciones iniciales:", error);
+        console.error("[Header] Error loading initial notifications:", error);
       }
     };
 
@@ -99,8 +119,17 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
       await notificationService.markAsRead(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
       setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Remove from seen set since it's now read
+      setSeenNotificationIds(prevIds => {
+        const newSet = new Set(prevIds);
+        newSet.delete(id);
+        return newSet;
+      });
+      
+      console.log('[Header] Notification marked as read:', id);
     } catch (error) {
-      console.error("Error al marcar como leída:", error);
+      console.error("[Header] Error marking notification as read:", error);
       toast.error("No se pudo marcar la notificación.");
     }
   };
@@ -110,9 +139,14 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
       await notificationService.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
-      setTimeout(() => setNotifications([]), 500);
+      setTimeout(() => {
+        setNotifications([]);
+        setSeenNotificationIds(new Set());
+      }, 500);
+      
+      console.log('[Header] All notifications marked as read');
     } catch (error) {
-      console.error("Error al marcar todas como leídas:", error);
+      console.error("[Header] Error marking all notifications as read:", error);
       toast.error("No se pudieron marcar las notificaciones.");
     }
   };
