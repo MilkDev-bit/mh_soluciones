@@ -320,7 +320,10 @@ class NotificationService {
         ? response.data.results
         : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      throw error;
+      console.error('Error fetching notifications:', error);
+      // Return empty array instead of throwing to prevent white screens
+      // The calling component can check error state if needed
+      return [];
     }
   }
 

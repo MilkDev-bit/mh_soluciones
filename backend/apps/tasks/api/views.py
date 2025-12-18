@@ -317,7 +317,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [CanInteractWithTask]
 
     def get_queryset(self):
-        queryset = TaskSubmission.objects.filter(task_id=self.kwargs['task_pk']).select_related('submitted_by', 'graded_by')
+        queryset = TaskSubmission.objects.filter(
+            task_id=self.kwargs['task_pk']
+        ).select_related(
+            'submitted_by', 'graded_by'
+        ).prefetch_related(
+            'documents'  # Prefetch related documents for efficiency
+        )
         
         # Filter by student if specified
         student_id = self.request.query_params.get('student', None)
@@ -523,7 +529,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("No tienes permisos para ver las entregas.")
         
         task = Task.objects.get(id=task_pk)
-        submissions = TaskSubmission.objects.filter(task=task).select_related('submitted_by', 'graded_by')
+        submissions = TaskSubmission.objects.filter(
+            task=task
+        ).select_related(
+            'submitted_by', 'graded_by'
+        ).prefetch_related(
+            'documents'  # Prefetch related documents for efficiency
+        )
         
         # Group by student
         students_data = {}
@@ -652,6 +664,22 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 document.drive_file_url = drive_result['webViewLink']
                 document.upload_status = 'COMPLETE'
                 document.save(update_fields=['drive_file_id', 'drive_file_url', 'upload_status'])
+                
+                # Update TaskSubmission files_metadata
+                if submission:
+                    if not submission.files_metadata:
+                        submission.files_metadata = []
+                    
+                    # Add metadata for this file
+                    submission.files_metadata.append({
+                        'name': drive_result.get('name', new_filename),
+                        'gdrive_id': drive_result['id'],
+                        'size': drive_result.get('size', 0),
+                        'mime_type': drive_result.get('mimeType', mime_type),
+                        'web_view_link': drive_result['webViewLink'],
+                        'document_id': document.id
+                    })
+                    submission.save(update_fields=['files_metadata'])
                 
                 logger.info(
                     f"✅ [Drive Upload] Success!\n"
