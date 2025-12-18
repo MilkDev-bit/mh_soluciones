@@ -3,12 +3,14 @@ import mimetypes
 import os
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, F, Avg
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework.decorators import action
 
 from apps.core.permissions import (
     ADMIN_ROLES, TEACHER_ROLES, EDITOR_ROLES,
@@ -18,11 +20,9 @@ from apps.core.utils import (
     success_response, error_response, created_response,
     updated_response, validation_error_response
 )
+from apps.documents.models import Document
 from apps.documents.services import GoogleDriveService
 from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
-from django.db.models import F, Avg
-from rest_framework.response import Response
-from rest_framework.decorators import action
 from .serializers import (
     TaskSerializer,
     TaskDetailSerializer,
@@ -407,8 +407,6 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         for file in files:
             try:
                 # Create Document instance
-                from apps.documents.models import Document
-                
                 document = Document.objects.create(
                     task=task,
                     task_submission=task_submission,
