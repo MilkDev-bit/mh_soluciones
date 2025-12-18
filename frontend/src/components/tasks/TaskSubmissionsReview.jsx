@@ -179,6 +179,7 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           </div>
                         )}
 
+                        {/* Show documents from Document model */}
                         {submission.documents && submission.documents.length > 0 && (
                           <div className="submission-files">
                             <h5><FiFile /> Archivos adjuntos ({submission.documents.length}):</h5>
@@ -213,6 +214,41 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                                         title="Descargar archivo"
                                       >
                                         <FiDownload /> Descargar
+                                      </a>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Show files from files_metadata JSON field */}
+                        {submission.files_metadata && submission.files_metadata.length > 0 && (
+                          <div className="submission-files">
+                            <h5><FiFile /> Archivos adicionales ({submission.files_metadata.length}):</h5>
+                            <div className="files-list">
+                              {submission.files_metadata.map((file, idx) => (
+                                <div key={idx} className="file-item">
+                                  <FiFile />
+                                  <div className="file-info">
+                                    <span className="file-name">{file.name}</span>
+                                    {file.size && (
+                                      <span className="file-size">
+                                        {(file.size / 1024).toFixed(2)} KB
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="file-actions">
+                                    {file.web_view_link ? (
+                                      <a
+                                        href={file.web_view_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="file-download"
+                                        title="Ver en Google Drive"
+                                      >
+                                        <FiLink /> Drive
                                       </a>
                                     ) : null}
                                   </div>

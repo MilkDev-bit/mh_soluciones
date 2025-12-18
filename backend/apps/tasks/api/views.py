@@ -317,7 +317,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
     permission_classes = [CanInteractWithTask]
 
     def get_queryset(self):
-        queryset = TaskSubmission.objects.filter(task_id=self.kwargs['task_pk']).select_related('submitted_by', 'graded_by')
+        queryset = TaskSubmission.objects.filter(
+            task_id=self.kwargs['task_pk']
+        ).select_related(
+            'submitted_by', 'graded_by'
+        ).prefetch_related(
+            'documents'  # Prefetch related documents for efficiency
+        )
         
         # Filter by student if specified
         student_id = self.request.query_params.get('student', None)
@@ -523,7 +529,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("No tienes permisos para ver las entregas.")
         
         task = Task.objects.get(id=task_pk)
-        submissions = TaskSubmission.objects.filter(task=task).select_related('submitted_by', 'graded_by')
+        submissions = TaskSubmission.objects.filter(
+            task=task
+        ).select_related(
+            'submitted_by', 'graded_by'
+        ).prefetch_related(
+            'documents'  # Prefetch related documents for efficiency
+        )
         
         # Group by student
         students_data = {}
