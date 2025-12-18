@@ -15,7 +15,8 @@ import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/d
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
-  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers, FiExternalLink
+  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers, FiExternalLink,
+  FiFileText, FiImage, FiMusic, FiVideo, FiArchive
 } from 'react-icons/fi';
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
@@ -294,6 +295,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       const fileName = fileNameWithParams.split('?')[0];
       return decodeURIComponent(fileName);
     } catch (error) {
+      console.error('Error extracting filename from URL:', error);
       return null;
     }
   };
@@ -305,40 +307,44 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
   };
 
   const getFileIcon = (extension) => {
+    // Map file extensions to React icons for better accessibility
     const iconMap = {
-      // Documentos
-      'pdf': '📄',
-      'doc': '📝',
-      'docx': '📝',
-      'txt': '📝',
-      // Imágenes
-      'jpg': '🖼️',
-      'jpeg': '🖼️',
-      'png': '🖼️',
-      'gif': '🖼️',
-      'svg': '🖼️',
-      // Hojas de cálculo
-      'xls': '📊',
-      'xlsx': '📊',
-      'csv': '📊',
-      // Presentaciones
-      'ppt': '📽️',
-      'pptx': '📽️',
-      // Comprimidos
-      'zip': '📦',
-      'rar': '📦',
-      '7z': '📦',
+      // Documents
+      'pdf': FiFileText,
+      'doc': FiFileText,
+      'docx': FiFileText,
+      'txt': FiFileText,
+      // Images
+      'jpg': FiImage,
+      'jpeg': FiImage,
+      'png': FiImage,
+      'gif': FiImage,
+      'svg': FiImage,
+      'webp': FiImage,
+      // Spreadsheets
+      'xls': FiFileText,
+      'xlsx': FiFileText,
+      'csv': FiFileText,
+      // Presentations
+      'ppt': FiFileText,
+      'pptx': FiFileText,
+      // Compressed
+      'zip': FiArchive,
+      'rar': FiArchive,
+      '7z': FiArchive,
       // Videos
-      'mp4': '🎥',
-      'avi': '🎥',
-      'mov': '🎥',
-      'mkv': '🎥',
+      'mp4': FiVideo,
+      'avi': FiVideo,
+      'mov': FiVideo,
+      'mkv': FiVideo,
+      'webm': FiVideo,
       // Audio
-      'mp3': '🎵',
-      'wav': '🎵',
-      'flac': '🎵',
+      'mp3': FiMusic,
+      'wav': FiMusic,
+      'flac': FiMusic,
+      'ogg': FiMusic,
       // Default
-      default: '📎'
+      default: FiFile
     };
     
     return iconMap[extension] || iconMap.default;
@@ -628,7 +634,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                   {submissions.length > 0 ? submissions.map(sub => {
                     const fileName = getFileNameFromUrl(sub.file);
                     const fileExtension = getFileExtension(fileName);
-                    const fileIcon = getFileIcon(fileExtension);
+                    const FileIconComponent = getFileIcon(fileExtension);
                     
                     // Obtener tamaño del archivo de files_metadata si existe
                     const fileMetadata = sub.files_metadata && sub.files_metadata.length > 0 
@@ -673,7 +679,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
                         {sub.file && fileName && (
                           <div className="file-info-card">
                             <div className="file-icon-wrapper">
-                              <span className="file-icon">{fileIcon}</span>
+                              <FileIconComponent className="file-icon" size={28} />
                             </div>
                             <div className="file-details">
                               <span className="file-name" title={fileName}>{fileName}</span>
