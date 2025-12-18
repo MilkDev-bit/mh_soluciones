@@ -49,7 +49,6 @@ class CalendarEvent(TimeStampedModel):
         verbose_name=_("Color del Evento")
     )
     
-    # Campos adicionales para funcionalidad tipo Teams
     participantes = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         related_name='eventos_participando',
