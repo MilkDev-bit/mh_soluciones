@@ -665,6 +665,22 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 document.upload_status = 'COMPLETE'
                 document.save(update_fields=['drive_file_id', 'drive_file_url', 'upload_status'])
                 
+                # Update TaskSubmission files_metadata
+                if submission:
+                    if not submission.files_metadata:
+                        submission.files_metadata = []
+                    
+                    # Add metadata for this file
+                    submission.files_metadata.append({
+                        'name': drive_result.get('name', new_filename),
+                        'gdrive_id': drive_result['id'],
+                        'size': drive_result.get('size', 0),
+                        'mime_type': drive_result.get('mimeType', mime_type),
+                        'web_view_link': drive_result['webViewLink'],
+                        'document_id': document.id
+                    })
+                    submission.save(update_fields=['files_metadata'])
+                
                 logger.info(
                     f"✅ [Drive Upload] Success!\n"
                     f"   - Name: {drive_result['name']}\n"
