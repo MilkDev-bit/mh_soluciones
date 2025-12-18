@@ -15,12 +15,53 @@ import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/d
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
-  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers
+  FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers, FiExternalLink,
+  FiFileText, FiImage, FiMusic, FiVideo, FiArchive, FiBarChart
 } from 'react-icons/fi';
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
 import Modal from '../common/Modal';
 import './TaskDetailsView.scss';
+
+// File icon mapping for different file types
+const FILE_ICON_MAP = {
+  // Documents
+  'pdf': FiFileText,
+  'doc': FiFileText,
+  'docx': FiFileText,
+  'txt': FiFileText,
+  // Images
+  'jpg': FiImage,
+  'jpeg': FiImage,
+  'png': FiImage,
+  'gif': FiImage,
+  'svg': FiImage,
+  'webp': FiImage,
+  // Spreadsheets
+  'xls': FiBarChart,
+  'xlsx': FiBarChart,
+  'csv': FiBarChart,
+  // Presentations
+  'ppt': FiFileText,
+  'pptx': FiFileText,
+  // Compressed
+  'zip': FiArchive,
+  'rar': FiArchive,
+  '7z': FiArchive,
+  // Videos
+  'mp4': FiVideo,
+  'avi': FiVideo,
+  'mov': FiVideo,
+  'mkv': FiVideo,
+  'webm': FiVideo,
+  // Audio
+  'mp3': FiMusic,
+  'wav': FiMusic,
+  'flac': FiMusic,
+  'ogg': FiMusic,
+  // Default
+  default: FiFile
+};
 
 const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
   const [file, setFile] = useState(null);
@@ -284,6 +325,30 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
   const isViewableFile = (filename) => {
     if (!filename) return false;
     return /\.(jpg|jpeg|png|gif|bmp|webp|pdf)$/i.test(filename);
+  };
+
+  const getFileNameFromUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    try {
+      const urlParts = fileUrl.split('/');
+      const fileNameWithParams = urlParts[urlParts.length - 1];
+      const fileName = fileNameWithParams.split('?')[0];
+      return decodeURIComponent(fileName);
+    } catch (error) {
+      console.error('Error extracting filename from URL:', error);
+      return null;
+    }
+  };
+
+  const getFileExtension = (fileName) => {
+    if (!fileName) return '';
+    const parts = fileName.split('.');
+    return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+  };
+
+  const getFileIcon = (extension) => {
+    // Map file extensions to React icons for better accessibility
+    return FILE_ICON_MAP[extension] || FILE_ICON_MAP.default;
   };
  
   const filesToShow = Array.isArray(documents) && documents.length > 0 ? documents : Array.isArray(submissions) ? submissions : [];
@@ -567,20 +632,139 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
               <div className="details-section">
                 <h3><FiUploadCloud /> Entregas y Enlaces</h3>
                 <div className="submissions-list">
-                  {submissions.length > 0 ? submissions.map(sub => (
-                    <div key={sub.id} className="submission-item">
-                      <div className="submission-header">
-                        <img src={sub.submitted_by?.profile_picture || `https://ui-avatars.com/api/?name=${sub.submitted_by?.first_name || 'U'}`} alt="avatar" />
-                        <strong>{sub.submitted_by?.first_name} {sub.submitted_by?.last_name}</strong>
-                        <span>entregó el {format(parseISO(sub.created_at), 'dd MMM yyyy, HH:mm', { locale: es })}</span>
+                  {submissions.length > 0 ? submissions.map(sub => {
+                    const fileName = getFileNameFromUrl(sub.file);
+                    const fileExtension = getFileExtension(fileName);
+                    const FileIconComponent = getFileIcon(fileExtension);
+                    
+                    // Get file size from files_metadata if it exists
+                    const fileMetadata = sub.files_metadata && sub.files_metadata.length > 0 
+                      ? sub.files_metadata[0] 
+                      : null;
+                    const fileSize = fileMetadata?.size || null;
+                    
+                    return (
+                      <div key={sub.id} className="submission-item">
+                        {/* Header with avatar and student info */}
+                        <div className="submission-header">
+                          <div className="user-avatar">
+                            <img 
+                              src={sub.submitted_by?.profile_picture || `https://ui-avatars.com/api/?name=${sub.submitted_by?.first_name || 'U'}`} 
+                              alt="avatar" 
+                            />
+                          </div>
+                          <div className="user-info">
+                            <strong className="user-name">
+                              {sub.submitted_by?.first_name} {sub.submitted_by?.last_name}
+                            </strong>
+                            <span className="submission-date">
+                              entregó el {format(parseISO(sub.created_at), 'dd MMM yyyy, HH:mm', { locale: es })}
+                            </span>
+                          </div>
+                          
+                          {/* Version badge */}
+                          {sub.version > 1 && (
+                            <span className="version-badge">v{sub.version}</span>
+                          )}
+                        </div>
+                        
+                        {/* Submission notes */}
+                        {sub.notes && (
+                          <div className="submission-notes">
+                            <FiMessageSquare className="notes-icon" />
+                            <p>"{sub.notes}"</p>
+                          </div>
+                        )}
+                        
+                        {/* File information */}
+                        {sub.file && fileName && (
+                          <div className="file-info-card">
+                            <div className="file-icon-wrapper">
+                              <FileIconComponent className="file-icon" size={28} />
+                            </div>
+                            <div className="file-details">
+                              <span className="file-name" title={fileName}>{fileName}</span>
+                              {fileSize && (
+                                <span className="file-size">{formatFileSize(fileSize)}</span>
+                              )}
+                            </div>
+                            <div className="file-actions">
+                              <button 
+                                className="btn-action btn-view" 
+                                onClick={() => { 
+                                  setSelectedFile({ file_url: sub.file }); 
+                                  setShowModal(true); 
+                                }}
+                                title="Vista previa"
+                              >
+                                <FiEye />
+                              </button>
+                              <a 
+                                href={getFileUrl(sub.file)} 
+                                download 
+                                className="btn-action btn-download"
+                                title="Descargar"
+                              >
+                                <FiDownload />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Google Drive status */}
+                        {sub.file && (
+                          <div className="drive-status">
+                            {sub.uploaded_to_drive ? (
+                              <>
+                                <FiCheckCircle className="drive-icon drive-success" />
+                                <span className="drive-text drive-success">
+                                  Guardado en Google Drive
+                                </span>
+                                {sub.google_drive_link && (
+                                  <a 
+                                    href={sub.google_drive_link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="drive-link"
+                                  >
+                                    <FiExternalLink /> Abrir en Drive
+                                  </a>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <FiUploadCloud className="drive-icon drive-pending" />
+                                <span className="drive-text drive-pending">
+                                  Subiendo a Google Drive...
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* External links */}
+                        {sub.link && (
+                          <div className="external-link-card">
+                            <FiLink className="link-icon" />
+                            <a 
+                              href={sub.link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="link-url"
+                            >
+                              {sub.link}
+                            </a>
+                            <FiExternalLink className="external-icon" />
+                          </div>
+                        )}
                       </div>
-                      {sub.notes && <p className="submission-notes">"{sub.notes}"</p>}
-                      <div className="submission-links">
-                        {sub.link && <a href={sub.link} target="_blank" rel="noopener noreferrer"><FiLink /> Ver enlace</a>}
-                        {sub.file && <button className="btn-link" onClick={() => { setSelectedFile({ file_url: sub.file }); setShowModal(true); }}><FiPaperclip /> Ver archivo</button>}
-                      </div>
+                    );
+                  }) : (
+                    <div className="empty-state">
+                      <FiUploadCloud size={48} className="empty-icon" />
+                      <p className="empty-text">No hay entregas para esta tarea.</p>
                     </div>
-                  )) : <p className="empty-state-text">No hay entregas para esta tarea.</p>}
+                  )}
                 </div>
 
 

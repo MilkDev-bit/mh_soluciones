@@ -659,67 +659,309 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-4;
+  margin-top: $spacing-4;
 }
 
 .submission-item {
-  background: $neutral-50;
-  border-radius: $border-radius;
-  padding: $spacing-4;
-  border-left: 3px solid $primary-500;
+  background: $background-light;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-lg;
+  padding: $spacing-5;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: $primary-300;
+    box-shadow: 0 4px 12px rgba($primary-500, 0.1);
+  }
+}
 
-  .submission-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-3;
-    margin-bottom: $spacing-3;
-
+.submission-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  margin-bottom: $spacing-4;
+  
+  .user-avatar {
     img {
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       object-fit: cover;
+      border: 2px solid $primary-200;
     }
-
-    strong {
+  }
+  
+  .user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-1;
+    
+    .user-name {
+      font-size: 0.95rem;
       font-weight: 600;
       color: $neutral-900;
     }
-
-    span {
-      font-size: 0.875rem;
+    
+    .submission-date {
+      font-size: 0.8rem;
       color: $neutral-600;
     }
   }
-
-  .submission-notes {
-    font-style: italic;
-    color: $neutral-700;
-    margin-bottom: $spacing-3;
-    padding-left: $spacing-1;
-    border-left: 2px solid $neutral-300;
-    text-align: left;
+  
+  .version-badge {
+    padding: $spacing-1 $spacing-3;
+    background: rgba($primary-500, 0.1);
+    color: $primary-700;
+    border-radius: $border-radius-lg;
+    font-size: 0.75rem;
+    font-weight: 600;
   }
+}
 
-  .submission-links {
+.submission-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-2;
+  padding: $spacing-3;
+  background: rgba($info, 0.05);
+  border-left: 3px solid $info;
+  border-radius: $border-radius;
+  margin-bottom: $spacing-4;
+  
+  .notes-icon {
+    color: $info;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: $neutral-700;
+    font-style: italic;
+    line-height: 1.5;
+  }
+}
+
+.file-info-card {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  padding: $spacing-4;
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-3;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: $neutral-100;
+  }
+  
+  .file-icon-wrapper {
     display: flex;
-    gap: $spacing-3;
-    flex-wrap: wrap;
-
-    a,
-    .btn-link {
-      display: inline-flex;
-      align-items: center;
-      gap: $spacing-2;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: white;
+    border-radius: $border-radius-md;
+    flex-shrink: 0;
+    
+    .file-icon {
       color: $primary-600;
-      text-decoration: none;
+    }
+  }
+  
+  .file-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-1;
+    
+    .file-name {
+      font-size: 0.9rem;
       font-weight: 500;
-      transition: all $transition;
-
+      color: $neutral-900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .file-size {
+      font-size: 0.75rem;
+      color: $neutral-600;
+    }
+  }
+  
+  .file-actions {
+    display: flex;
+    gap: $spacing-2;
+    flex-shrink: 0;
+  }
+  
+  .btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: $border-radius;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    
+    svg {
+      font-size: 1rem;
+    }
+    
+    &.btn-view {
+      background: rgba($primary-500, 0.1);
+      color: $primary-600;
+      
       &:hover {
+        background: rgba($primary-500, 0.2);
         color: $primary-700;
-        text-decoration: underline;
       }
     }
+    
+    &.btn-download {
+      background: rgba($success, 0.1);
+      color: $success-dark;
+      
+      &:hover {
+        background: rgba($success, 0.2);
+        color: $success;
+      }
+    }
+  }
+}
+
+.drive-status {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  padding: $spacing-3;
+  background: $neutral-50;
+  border-radius: $border-radius;
+  margin-bottom: $spacing-3;
+  font-size: 0.85rem;
+  
+  .drive-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    
+    &.drive-success {
+      color: $success;
+    }
+    
+    &.drive-pending {
+      color: $warning;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  }
+  
+  .drive-text {
+    font-weight: 500;
+    
+    &.drive-success {
+      color: $success-dark;
+    }
+    
+    &.drive-pending {
+      color: $warning-dark;
+    }
+  }
+  
+  .drive-link {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: $spacing-1;
+    color: $primary-600;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: $primary-700;
+      text-decoration: underline;
+    }
+    
+    svg {
+      font-size: 0.875rem;
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+}
+
+.external-link-card {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  padding: $spacing-3 $spacing-4;
+  background: rgba($primary-500, 0.05);
+  border: 1px solid rgba($primary-500, 0.2);
+  border-radius: $border-radius;
+  
+  .link-icon {
+    color: $primary-600;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  
+  .link-url {
+    flex: 1;
+    color: $primary-600;
+    text-decoration: none;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  
+  .external-icon {
+    color: $neutral-500;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-12 $spacing-4;
+  text-align: center;
+  
+  .empty-icon {
+    color: $neutral-400;
+    margin-bottom: $spacing-4;
+  }
+  
+  .empty-text {
+    color: $neutral-600;
+    font-size: 0.95rem;
+    margin: 0;
   }
 }
 
@@ -916,10 +1158,38 @@
     }
   }
 
-  .submission-item .submission-header {
-    flex-direction: column;
-    text-align: center;
-    gap: $spacing-2;
+  .submission-item {
+    .submission-header {
+      flex-wrap: wrap;
+      
+      .user-info {
+        flex: 1 1 100%;
+        text-align: center;
+        align-items: center;
+      }
+      
+      .version-badge {
+        margin-left: auto;
+      }
+    }
+    
+    .file-info-card {
+      flex-wrap: wrap;
+      
+      .file-details {
+        flex: 1 1 100%;
+        text-align: center;
+        
+        .file-name {
+          white-space: normal;
+          word-break: break-word;
+        }
+      }
+      
+      .file-actions {
+        margin-top: $spacing-2;
+      }
+    }
   }
 
   .comment-item {
