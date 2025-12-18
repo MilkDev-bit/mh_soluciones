@@ -318,6 +318,20 @@ class GoogleAuthRedirectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        # ✅ Validate that only SUPERADMIN can initiate OAuth flow
+        if request.user.role != 'SUPERADMIN':
+            logger.warning(
+                f"User {request.user.username} (role: {request.user.role}) "
+                f"attempted to connect Google Drive but is not SUPERADMIN"
+            )
+            return Response(
+                {
+                    'error': 'Solo el SUPERADMIN puede conectar Google Drive institucional',
+                    'detail': 'Esta funcionalidad está reservada para la cuenta institucional principal.'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         try:
             # Build redirect URI pointing to FRONTEND callback page
             redirect_uri = f"{settings.FRONTEND_URL.rstrip('/')}/auth/google/callback"
@@ -510,6 +524,19 @@ class GoogleAuthCallbackView(APIView):
             try:
                 user = User.objects.get(pk=user_id)
                 logger.info(f"✅ User verified: {user.username} (ID: {user_id})")
+                
+                # ✅ Validate that user is SUPERADMIN
+                if user.role != 'SUPERADMIN':
+                    logger.error(
+                        f"❌ User {user.username} (role: {user.role}) "
+                        f"is not SUPERADMIN but attempted to complete Google OAuth"
+                    )
+                    return Response({
+                        'success': False,
+                        'error': 'Solo el SUPERADMIN puede conectar Google Drive institucional',
+                        'error_type': 'error_permissions'
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
             except User.DoesNotExist:
                 logger.error(f"❌ Google OAuth callback: User {user_id} does not exist")
                 return Response({

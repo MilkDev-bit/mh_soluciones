@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { FiCheckCircle, FiCloud, FiAlertCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const GoogleDriveConnect = () => {
+  const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -33,11 +35,14 @@ const GoogleDriveConnect = () => {
       // Show appropriate message based on status
       switch (authStatus) {
         case 'success':
-          toast.success('¡Tu cuenta de Google se ha conectado exitosamente!');
+          toast.success('¡Google Drive institucional conectado exitosamente!');
           setIsConnected(true);
           break;
         case 'denied':
           toast.error('Acceso denegado. Debes autorizar el acceso a Google Drive para continuar.');
+          break;
+        case 'error_permissions':
+          toast.error('No tienes permisos para conectar Google Drive institucional. Solo el SUPERADMIN puede realizar esta acción.');
           break;
         case 'error_state':
           toast.error('Error de seguridad. Por favor, intenta conectar nuevamente.');
@@ -72,11 +77,20 @@ const GoogleDriveConnect = () => {
             window.location.href = authorization_url;
         }
     } catch (error) {
-        toast.error("No se pudo iniciar la conexión con Google.");
+        if (error.response?.status === 403) {
+          toast.error("No tienes permisos para conectar Google Drive institucional.");
+        } else {
+          toast.error("No se pudo iniciar la conexión con Google.");
+        }
         console.error("Error al obtener la URL de autorización:", error);
         setIsRedirecting(false);
     }
   };
+
+  // Only SUPERADMIN can see this component
+  if (!user || user.role !== 'SUPERADMIN') {
+    return null;
+  }
 
   if (isLoading) {
     return <p>Verificando conexión con Google Drive...</p>;
@@ -87,26 +101,35 @@ const GoogleDriveConnect = () => {
         <div className="security-info">
             <FiCloud className="security-icon" />
             <div>
-                <h4>Conexión con Google Drive</h4>
-                <p>
-                    Conecta tu cuenta para guardar automáticamente los archivos de las tareas en tu
-                    propio Google Drive, manteniendo todo organizado y seguro.
+                <h4>Google Drive Institucional</h4>
+                <p className="help-text">
+                    Como SUPERADMIN, tu cuenta de Google Drive se usará como repositorio institucional centralizado 
+                    para todos los archivos del sistema.
                 </p>
             </div>
         </div>
 
         {isConnected ? (
             <div className="status-badge active">
-                <FiCheckCircle /> Conectado
+                <FiCheckCircle /> Drive Conectado
             </div>
         ) : (
-            <button 
-              className="btn btn-primary" 
-              onClick={handleConnectClick}
-              disabled={isRedirecting}
-            >
-              {isRedirecting ? 'Redirigiendo...' : 'Conectar con Google'}
-            </button>
+            <div className="connect-section">
+                <div className="alert-warning">
+                    <FiAlertCircle />
+                    <p>
+                        <strong>Acción requerida:</strong> Debes conectar tu Google Drive para que el sistema 
+                        pueda almacenar archivos de forma centralizada. Esta es la cuenta institucional principal.
+                    </p>
+                </div>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleConnectClick}
+                  disabled={isRedirecting}
+                >
+                  {isRedirecting ? 'Conectando...' : 'Conectar Drive Institucional'}
+                </button>
+            </div>
         )}
     </div>
   );
