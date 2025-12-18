@@ -29,6 +29,17 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Detectar si estamos enviando FormData (para uploads de archivos)
+    // El navegador debe establecer Content-Type automáticamente con el boundary correcto
+    if (config.data instanceof FormData) {
+      // Eliminar Content-Type para que el navegador lo establezca automáticamente
+      delete config.headers['Content-Type'];
+      
+      if (import.meta.env.DEV) {
+        console.log('📤 FormData detected - letting browser set Content-Type with boundary');
+      }
+    }
+    
     // Agregar CSRF token para métodos que modifican datos
     if (['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
       const csrfToken = getCsrfToken();
