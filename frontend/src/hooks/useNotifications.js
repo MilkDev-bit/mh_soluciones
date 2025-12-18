@@ -98,16 +98,20 @@ export const useNotifications = () => {
         
         // Handle different event types
         if (data.type === 'new_notification' && data.payload) {
-          // WebSocket new notification
+          // WebSocket new notification - always refresh
           console.log('[useNotifications] New notification received via WebSocket:', data.payload);
           loadNotifications();
           loadUnreadCount();
         } else if (data.type === 'polling_update' && typeof data.unreadCount === 'number') {
-          // Polling update with count
+          // Polling update with count - only refresh if count changed
           console.log('[useNotifications] Polling update received with count:', data.unreadCount);
-          setUnreadCount(data.unreadCount);
-          // Optionally refresh notifications list on polling updates
-          loadNotifications();
+          setUnreadCount(prevCount => {
+            // Only refresh notifications list if count actually changed
+            if (prevCount !== data.unreadCount) {
+              loadNotifications();
+            }
+            return data.unreadCount;
+          });
         } else {
           // Fallback for other events or legacy format
           console.log('[useNotifications] Other event received, refreshing data');
