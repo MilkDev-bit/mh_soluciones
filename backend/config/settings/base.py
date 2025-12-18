@@ -356,6 +356,8 @@ GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 GOOGLE_PROJECT_ID = config('GOOGLE_PROJECT_ID', default='mhsoluciones')
 GOOGLE_DRIVE_ROOT_FOLDER_ID = config('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')
+# ID del usuario admin institucional cuyas credenciales se usan para el Drive centralizado
+GOOGLE_DRIVE_ADMIN_USER_ID = config('GOOGLE_DRIVE_ADMIN_USER_ID', default=None, cast=lambda v: int(v) if v else None)
 
 # Google OAuth timeout configuration (in seconds)
 # This controls how long to wait for Google's token API response

@@ -18,10 +18,33 @@ logger = logging.getLogger(__name__)
 class GoogleDriveService:
     """
     Servicio para interactuar con la API de Google Drive usando
-    las credenciales guardadas del usuario.
+    las credenciales guardadas del usuario o credenciales institucionales.
     """
-    def __init__(self, user):
-        self.user = user
+    def __init__(self, user=None, use_institutional=False):
+        """
+        Inicializa el servicio de Google Drive.
+        
+        Args:
+            user: Usuario para obtener credenciales (opcional si use_institutional=True)
+            use_institutional: Si True, usa credenciales del admin institucional
+        """
+        if use_institutional:
+            # Usar credenciales del usuario admin institucional
+            admin_user_id = getattr(settings, 'GOOGLE_DRIVE_ADMIN_USER_ID', None)
+            if not admin_user_id:
+                raise ValueError("GOOGLE_DRIVE_ADMIN_USER_ID no está configurado en settings")
+            
+            from apps.authentication.models import CustomUser
+            try:
+                self.user = CustomUser.objects.get(id=admin_user_id)
+                logger.info(f"Usando credenciales institucionales del usuario: {self.user.username}")
+            except CustomUser.DoesNotExist:
+                raise ValueError(f"Usuario admin con ID {admin_user_id} no encontrado")
+        else:
+            if not user:
+                raise ValueError("Se requiere un usuario si use_institutional=False")
+            self.user = user
+            
         self.credentials = None
         self.service = None
         self._initialize_service()
@@ -94,7 +117,8 @@ class GoogleDriveService:
 
     def upload_document(self, document_instance):
         """
-        Sube un archivo a Google Drive usando la instancia del documento.
+        Sube un archivo a Google Drive usando la estructura institucional por proyecto.
+        Estructura: MH Soluciones/[Año]/[Proyecto]/[Tipo de Carpeta]/archivo.ext
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
@@ -107,51 +131,41 @@ class GoogleDriveService:
             date = document_instance.created_at
             current_year = date.strftime('%Y')
             
+            # Root: MH Soluciones
+            base_folder_id = self._get_or_create_folder(
+                "MH Soluciones", 
+                parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+            )
+            
+            # Year folder
+            year_id = self._get_or_create_folder(current_year, parent_id=base_folder_id)
+            
+            # Project folder
             if document_instance.project:
-                active_statuses = ['PLANNING', 'IN_PROGRESS']
-                project_status_folder = "Proyectos Activos" if document_instance.project.status in active_statuses else "Proyectos Inactivos"
                 project_name = slugify(document_instance.project.name)
-                folder_type = document_instance._get_folder_type_for_drive()
-
-                logger.debug(f"Creando estructura de carpetas para proyecto: {document_instance.project.name}")
-
-                year1_id = self._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
-                status_id = self._get_or_create_folder(project_status_folder, parent_id=year1_id)
-                project_id = self._get_or_create_folder(project_name, parent_id=status_id)
-                year2_id = self._get_or_create_folder(current_year, parent_id=project_id)
-                final_parent_folder_id = self._get_or_create_folder(folder_type, parent_id=year2_id)
-
-                if document_instance.task:
-                    task_title = slugify(document_instance.task.title)
-                    responsible_name = "sin-asignar"
-                    if document_instance.task.assigned_to:
-                        responsible_name = slugify(
-                            document_instance.task.assigned_to.get_full_name() or 
-                            document_instance.task.assigned_to.username
-                        )
-                else:
-                    task_title = "sin-tarea"
-                    responsible_name = slugify(document_instance.uploaded_by.get_full_name() or document_instance.uploaded_by.username)
-                
+                project_id = self._get_or_create_folder(project_name, parent_id=year_id)
             else:
-                folder_type = document_instance._get_folder_type_for_drive()
-                logger.debug("Creando estructura simple para documento sin proyecto")
-
-                year_id = self._get_or_create_folder(current_year, parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
-                final_parent_folder_id = self._get_or_create_folder(folder_type, parent_id=year_id)
-                
-                task_title = "general"
-                responsible_name = slugify(document_instance.uploaded_by.get_full_name() or document_instance.uploaded_by.username)
-
+                # Si no hay proyecto, usar carpeta "General"
+                project_id = self._get_or_create_folder("General", parent_id=year_id)
+            
+            # Folder type (Documentos, Administrativo, Imagenes, etc.)
+            folder_type = document_instance._get_folder_type_for_drive()
+            folder_type_id = self._get_or_create_folder(folder_type, parent_id=project_id)
+            
+            # Create filename
+            responsible_name = slugify(
+                document_instance.uploaded_by.get_full_name() 
+                or document_instance.uploaded_by.username
+            )
             date_str = date.strftime('%d-%m-%y')
             filename, extension = os.path.splitext(document_instance.file.name)
-            new_filename = f"{task_title}_{responsible_name}_{date_str}{extension}"
-
+            new_filename = f"{slugify(filename)}_{responsible_name}_{date_str}{extension}"
+            
             logger.info(f"Subiendo archivo: {new_filename}")
 
             file_metadata = {
                 'name': new_filename,
-                'parents': [final_parent_folder_id]
+                'parents': [folder_type_id]
             }
 
             if hasattr(document_instance.file, 'path') and os.path.exists(document_instance.file.path):
