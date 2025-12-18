@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FiFile, 
   FiUpload,
@@ -12,7 +12,6 @@ import {
   FiAlertCircle,
   FiExternalLink
 } from 'react-icons/fi';
-import { AuthContext } from '../contexts/AuthContext';
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
 import { getProjects } from '../services/projectService';

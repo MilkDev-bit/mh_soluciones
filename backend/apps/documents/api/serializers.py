@@ -2,11 +2,6 @@ from rest_framework import serializers
 from ..models import Document
 from apps.authentication.api.serializers import UserSerializer
 
-class ProjectMinimalSerializer(serializers.Serializer):
-    """Minimal project info for document listing"""
-    id = serializers.IntegerField()
-    name = serializers.CharField()
-
 class DocumentSerializer(serializers.ModelSerializer):
     """
     Serializador para el modelo Document.
