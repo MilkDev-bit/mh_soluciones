@@ -6,6 +6,7 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [permission, setPermission] = useState(notificationService.getPermissionStatus());
   const { user } = useAuth();
 
@@ -17,6 +18,7 @@ export const useNotifications = () => {
 
     console.log('[useNotifications] Loading notifications...');
     setLoading(true);
+    setError(null); // Clear previous errors
     try {
       // Only load unread notifications
       const data = await notificationService.getNotifications({ include_read: false });
@@ -29,6 +31,7 @@ export const useNotifications = () => {
       console.error('[useNotifications] Error loading notifications:', error);
       console.error('[useNotifications] Error details:', error.message, error.stack);
       setNotifications([]);
+      setError(error); // Store error state
     } finally {
       setLoading(false);
     }
@@ -134,6 +137,7 @@ export const useNotifications = () => {
     notifications,
     unreadCount,
     loading,
+    error, // Expose error state
     permission,
     loadNotifications,
     loadUnreadCount,
