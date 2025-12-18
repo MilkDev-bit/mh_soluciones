@@ -67,6 +67,44 @@
         width: auto;
       }
 
+      .proyecto-filter-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex: 1;
+        min-width: 200px;
+
+        @media (min-width: 768px) {
+          flex: 0 0 auto;
+        }
+
+        label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #666;
+        }
+
+        .proyecto-select {
+          padding: 0.625rem 1rem;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: all 0.2s ease;
+
+          &:focus {
+            outline: none;
+            border-color: #ff7c15;
+            box-shadow: 0 0 0 3px rgba(255, 124, 21, 0.1);
+          }
+
+          &:hover {
+            border-color: #ff7c15;
+          }
+        }
+      }
+
       .busqueda-container {
         display: flex;
         align-items: center;
@@ -165,6 +203,42 @@
     }
   }
 
+  .warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+    border: 2px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+
+    @media (min-width: 768px) {
+      padding: 1.25rem;
+      gap: 1rem;
+    }
+
+    svg {
+      color: #f59e0b;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+
+      @media (min-width: 768px) {
+        font-size: 1.5rem;
+      }
+    }
+
+    span {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #92400e;
+
+      @media (min-width: 768px) {
+        font-size: 0.9375rem;
+      }
+    }
+  }
+
   .zona-subida {
     margin-bottom: 1.5rem;
     cursor: pointer;
@@ -190,7 +264,17 @@
         background: rgba(255, 124, 21, 0.05);
       }
 
-      &:hover {
+      &.zona-deshabilitada {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #f9f9f9;
+
+        &:hover {
+          border-color: #ddd;
+        }
+      }
+
+      &:hover:not(.zona-deshabilitada) {
         border-color: #ff7c15;
       }
 
