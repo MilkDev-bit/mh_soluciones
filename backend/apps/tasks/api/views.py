@@ -459,15 +459,25 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
 
     def _upload_to_google_drive(self, task_submission):
         """
-        Sube el archivo adjunto a Google Drive usando la estructura de Teams
+        Sube el archivo adjunto a Google Drive institucional usando estructura por proyecto
         """
         try:
             user = task_submission.submitted_by
             task = task_submission.task
             
-            logger.info(f"Iniciando subida a Google Drive para entrega de tarea: {task.title}")
+            logger.info(f"Iniciando subida a Google Drive institucional para entrega de tarea: {task.title}")
             
-            drive_service = GoogleDriveService(user)
+            # ✅ Usar credenciales institucionales
+            try:
+                drive_service = GoogleDriveService(use_institutional=True)
+            except ValueError as e:
+                # Error de configuración
+                logger.error(
+                    f"Error de configuración de Google Drive institucional: {e}. "
+                    "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado y que el usuario admin "
+                    "haya conectado su cuenta de Google Drive."
+                )
+                return
             
             file_content = task_submission.file.read()
             original_filename = task_submission.file.name
@@ -506,7 +516,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 
                 task_submission.save()
                 
-                logger.info(f"Archivo subido exitosamente a Google Drive: {drive_result['name']} (ID: {drive_result['id']})")
+                logger.info(f"Archivo subido exitosamente a Google Drive institucional: {drive_result['name']} (ID: {drive_result['id']})")
             else:
                 logger.warning("Archivo guardado localmente pero no se pudo subir a Google Drive")
                 
@@ -530,8 +540,8 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
 
     def _get_destination_folder(self, drive_service, task, user, submission):
         """
-        Crea estructura de carpetas según el formato de Teams:
-        MH Soluciones/[Año]/[Curso]/[Asignatura]/Tarea_[N]/[Usuario_Estudiante]/Entrega_v[N]
+        Crea estructura de carpetas institucional por proyecto:
+        MH Soluciones/[Año]/[Proyecto]/Tareas/[Tarea]/[Estudiante]/Entrega_v[N]
         """
         try:
             date = submission.created_at
@@ -546,43 +556,42 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             # Year folder
             year_id = drive_service._get_or_create_folder(current_year, parent_id=base_folder_id)
             
-            # Course/Project folder
+            # Project folder
             if task.project:
-                course_name = slugify(task.project.name)
+                project_name = slugify(task.project.name)
             else:
-                course_name = "General"
-            course_id = drive_service._get_or_create_folder(course_name, parent_id=year_id)
+                project_name = "General"
+            project_id = drive_service._get_or_create_folder(project_name, parent_id=year_id)
             
-            # Subject folder (using project or generic)
-            subject_name = "Asignatura_General"
-            if task.project and hasattr(task.project, 'subject'):
-                subject_name = slugify(task.project.subject)
-            subject_id = drive_service._get_or_create_folder(subject_name, parent_id=course_id)
+            # Tareas folder
+            tareas_id = drive_service._get_or_create_folder("Tareas", parent_id=project_id)
             
-            # Task folder: Tarea_[number or id]
-            task_folder_name = f"Tarea_{task.id}"
-            task_id = drive_service._get_or_create_folder(task_folder_name, parent_id=subject_id)
+            # Task folder
+            task_name = slugify(task.title)
+            task_id = drive_service._get_or_create_folder(task_name, parent_id=tareas_id)
             
-            # Student folder: [Full_Name]_[Username or ID]
+            # Student folder
             student_name = slugify(user.get_full_name() or user.username)
-            student_identifier = user.username or f"ID{user.id}"
-            student_folder_name = f"{student_name}_{student_identifier}"
-            student_id = drive_service._get_or_create_folder(student_folder_name, parent_id=task_id)
+            student_id = drive_service._get_or_create_folder(student_name, parent_id=task_id)
             
-            # Version folder: Entrega_v[N]
-            version_folder_name = f"Entrega_v{submission.version}"
-            version_id = drive_service._get_or_create_folder(version_folder_name, parent_id=student_id)
+            # Version folder
+            version_folder = f"Entrega_v{submission.version}"
+            version_id = drive_service._get_or_create_folder(version_folder, parent_id=student_id)
             
-            logger.info(f"Estructura de carpetas creada: {version_folder_name}")
+            logger.info(f"Estructura de carpetas creada: {version_folder}")
             return version_id
                 
         except Exception as e:
             logger.error(f"Error al crear estructura de carpetas: {e}")
             # Fallback to simple structure
             try:
+                base_folder_id = drive_service._get_or_create_folder(
+                    "MH Soluciones", 
+                    parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+                )
                 year_id = drive_service._get_or_create_folder(
                     current_year, 
-                    parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+                    parent_id=base_folder_id
                 )
                 return drive_service._get_or_create_folder("Entregas de Tareas", parent_id=year_id)
             except:

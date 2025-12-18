@@ -122,12 +122,8 @@ class Document(TimeStampedModel):
         return folder_mapping.get(self.folder_type, 'Documentos')
 
     def _upload_to_google_drive(self):
-        """Sube el archivo a Google Drive"""
+        """Sube el archivo a Google Drive institucional"""
         try:
-            if not self.uploaded_by:
-                print("❌ No hay usuario asignado para subir a Google Drive")
-                return False
-
             if not self.file:
                 print("❌ No hay archivo para subir")
                 return False
@@ -135,9 +131,20 @@ class Document(TimeStampedModel):
             self.upload_status = Document.UploadStatus.UPLOADING
             self.save(update_fields=['upload_status'])
 
-            print(f"📤 Iniciando subida a Google Drive: {self.name}")
+            print(f"📤 Iniciando subida a Google Drive institucional: {self.name}")
 
-            drive_service = GoogleDriveService(self.uploaded_by)
+            # ✅ Usar credenciales institucionales
+            try:
+                drive_service = GoogleDriveService(use_institutional=True)
+            except ValueError as e:
+                # Error de configuración - no reintentar
+                self.upload_status = Document.UploadStatus.FAILED
+                error_msg = (
+                    f"Error de configuración: {e}. "
+                    "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado correctamente."
+                )
+                print(f"❌ {error_msg}")
+                return False
             
             result = drive_service.upload_document(self)
             
@@ -146,7 +153,7 @@ class Document(TimeStampedModel):
                 self.drive_file_url = result.get('webViewLink')
                 self.upload_status = Document.UploadStatus.COMPLETE
                 
-                print(f"✅ Archivo subido exitosamente a Google Drive")
+                print(f"✅ Archivo subido exitosamente a Google Drive institucional")
                 print(f"🔗 Enlace: {self.drive_file_url}")
                 print(f"🆔 ID: {self.drive_file_id}")
                 
@@ -185,8 +192,8 @@ class Document(TimeStampedModel):
         is_new = not self.pk 
         super().save(*args, **kwargs)
 
-        if is_new and self.file and self.uploaded_by:
-            print(f"🔄 Nuevo documento detectado, iniciando subida a Google Drive...")
+        if is_new and self.file:
+            print(f"🔄 Nuevo documento detectado, iniciando subida a Google Drive institucional...")
             
             import threading
             import time

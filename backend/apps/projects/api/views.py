@@ -4,7 +4,7 @@ from datetime import datetime, date
 from django.db import IntegrityError
 from django.db.models import Q, Count, Case, When, IntegerField
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
@@ -449,3 +449,63 @@ class ProjectSubmissionViewSet(viewsets.ModelViewSet):
             submitted_by=self.request.user, 
             project_id=self.kwargs['project_pk']
         )
+
+
+# Standalone view for getting project Drive files
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_project_drive_folder(request, project_id):
+    """
+    Obtiene los archivos de Google Drive de un proyecto específico.
+    Los clientes solo pueden ver archivos de proyectos donde son miembros.
+    """
+    try:
+        project = Project.objects.get(id=project_id)
+        user = request.user
+        
+        # Verificar permisos
+        if user.role == 'CLIENT':
+            # Cliente solo puede ver proyectos donde es miembro o es el cliente asignado
+            is_client = project.client and project.client.id == user.id
+            is_member = ProjectMember.objects.filter(project=project, user=user).exists()
+            
+            if not is_client and not is_member:
+                return Response(
+                    {'error': 'No tienes acceso a este proyecto'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Obtener documentos del proyecto que están en Drive
+        documents = Document.objects.filter(
+            project=project,
+            upload_status=Document.UploadStatus.COMPLETE
+        ).select_related('uploaded_by')
+        
+        documents_data = []
+        for doc in documents:
+            documents_data.append({
+                'id': doc.id,
+                'name': doc.name,
+                'file_type': doc.file_type,
+                'file_size': doc.file_size,
+                'folder_type': doc.folder_type,
+                'drive_file_url': doc.drive_file_url,
+                'drive_file_id': doc.drive_file_id,
+                'uploaded_by': {
+                    'name': doc.uploaded_by.get_full_name() if doc.uploaded_by else 'Desconocido',
+                    'username': doc.uploaded_by.username if doc.uploaded_by else ''
+                },
+                'created_at': doc.created_at
+            })
+        
+        return Response({
+            'project_name': project.name,
+            'total_documents': documents.count(),
+            'documents': documents_data
+        })
+        
+    except Project.DoesNotExist:
+        return Response({'error': 'Proyecto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error al obtener archivos de Drive del proyecto: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
