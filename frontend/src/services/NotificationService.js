@@ -54,6 +54,7 @@ class NotificationService {
     this.connecting = false;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
+    this.maxReconnectDelay = 30000; // 30 seconds
     this.reconnectTimeout = null;
   }
 
@@ -165,7 +166,7 @@ class NotificationService {
 
         // Attempt reconnection with exponential backoff
         if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Max 30 seconds
+          const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxReconnectDelay);
           this.reconnectAttempts++;
           
           console.log(`WebSocket disconnected. Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
@@ -351,7 +352,13 @@ class NotificationService {
   }
 
   async markAllAsRead() {
-    return await api.post('/notifications/mark_all_as_read/');
+    try {
+      await api.post('/notifications/mark_all_as_read/');
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      // Re-throw to allow caller to handle
+      throw error;
+    }
   }
 
   async getUnreadCount() {

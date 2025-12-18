@@ -8,6 +8,9 @@ DEBUG = False
 # Detect Railway environment
 IS_RAILWAY = bool(os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_PROJECT_ID'))
 
+# Cache commonly used environment variables
+FRONTEND_URL = os.environ.get('FRONTEND_URL', '')
+
 # Trust the X-Forwarded-Proto header from the proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
@@ -106,10 +109,9 @@ else:
     
     # Generate absolute HTTPS URL for media in production to avoid mixed content warnings
     # The X-Forwarded-Proto header tells Django the request came via HTTPS
-    frontend_url = os.environ.get('FRONTEND_URL', '')
-    if frontend_url and frontend_url.startswith('https://'):
+    if FRONTEND_URL and FRONTEND_URL.startswith('https://'):
         # Use the frontend domain for media URLs (served via same proxy)
-        MEDIA_URL = f'{frontend_url}/media/'
+        MEDIA_URL = f'{FRONTEND_URL}/media/'
     else:
         # Fallback to relative URL - will use request's protocol via SECURE_PROXY_SSL_HEADER
         MEDIA_URL = '/media/'
@@ -133,9 +135,8 @@ if IS_RAILWAY:
     ])
 
 # Add FRONTEND_URL to trusted origins
-frontend_url = os.environ.get('FRONTEND_URL', '')
-if frontend_url and frontend_url not in CSRF_TRUSTED_ORIGINS:
-    CSRF_TRUSTED_ORIGINS.append(frontend_url)
+if FRONTEND_URL and FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
 
 LOGGING = {
     'version': 1,

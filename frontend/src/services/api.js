@@ -75,11 +75,18 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const response = await axios.post(`${API_BASE_URL}/token/refresh/`, {
+        // Use a separate axios instance for token refresh to avoid circular interceptor calls
+        // But still include the base URL configuration
+        const refreshResponse = await axios.post(`${API_BASE_URL}/token/refresh/`, {
           refresh: refreshToken
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
         });
 
-        const newToken = response.data.access;
+        const newToken = refreshResponse.data.access;
         localStorage.setItem('access_token', newToken);
 
         // Update the failed request with new token and retry
