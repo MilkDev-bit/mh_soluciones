@@ -74,6 +74,9 @@ const GoogleCallbackPage = () => {
         // Handle specific error responses
         if (error.response?.data?.error) {
           setErrorMessage(error.response.data.error);
+        } else if (error.response?.status === 403) {
+          // ✅ Permission error
+          setErrorMessage('No tienes permisos para conectar Google Drive institucional');
         } else if (error.response?.status === 400) {
           setErrorMessage('Error de validación');
         } else if (error.response?.status === 401) {
