@@ -140,17 +140,17 @@ class NotificationService {
       try {
         const result = listener(data);
         
-        // Si el listener devuelve una promesa, manejar errores async
+        // If the listener returns a promise, handle async errors
         if (result && typeof result.then === 'function') {
           result.catch(error => {
             if (import.meta.env.DEV) {
               console.error('Error in async notification listener:', error);
             }
-            // No propagar - solo log
+            // Don't propagate - just log
           });
         }
       } catch (error) {
-        // Error síncrono
+        // Synchronous error
         // Only log in development, prevent one listener from breaking others
         if (import.meta.env.DEV) {
           console.error('Error in notification listener:', error);

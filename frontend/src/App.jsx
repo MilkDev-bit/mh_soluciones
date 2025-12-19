@@ -3,9 +3,8 @@ import AppRoutes from './routes';
 import Loading from './components/common/Loading';
 import InstallPWA from './components/common/InstallPWA';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import toast from 'react-hot-toast';
 import useInactivityLogout from './hooks/useInactivityLogout';
 
 // Helper function to detect network-related errors

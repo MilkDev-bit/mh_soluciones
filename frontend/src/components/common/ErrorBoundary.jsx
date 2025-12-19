@@ -23,20 +23,20 @@ class ErrorBoundary extends React.Component {
       error.message?.includes('Network') ||
       error.message?.includes('fetch') ||
       error.message?.includes('Failed to fetch') ||
-      error.message?.includes('ChunkLoadError') || // Errores de carga de chunks de Vite
+      error.message?.includes('ChunkLoadError') || // Vite chunk loading errors
       error.name === 'TypeError';
 
     if (isNetworkError) {
       if (import.meta.env.DEV) {
         console.warn('Network error caught by ErrorBoundary (not critical):', error);
       }
-      // En producción, NO mostrar pantalla de error para errores de red
+      // In production, do NOT show error screen for network errors
       if (import.meta.env.PROD) {
-        // Auto-reset inmediatamente
+        // Auto-reset immediately
         this.setState({ hasError: false, error: null, errorInfo: null });
         return;
       }
-      // En desarrollo, auto-reset después de 2 segundos
+      // In development, auto-reset after 2 seconds
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorInfo: null });
       }, 2000);
