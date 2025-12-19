@@ -59,7 +59,7 @@ const Sidebar = () => {
     try {
       setLoading(true);
       const response = await getProjects();
-      const projectsData = Array.isArray(response) ? response : (response. results || []);
+      const projectsData = Array.isArray(response) ? response : (response.results || []);
       setProjects(projectsData);
 
       if (projectsUpdated && setProjectsUpdated) {
@@ -116,12 +116,12 @@ const Sidebar = () => {
   };
 
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
-  const hasUserManagementAccess = canManageUsers(user. role);
+  const hasUserManagementAccess = canManageUsers(user.role);
   const hasReportsAccess = canViewReports(user.role);
   const isStudentUser = isStudent(user.role);
   const canViewArchivos = user.role !== 'CEO' && 
                           user.role !== 'STUDENT' && 
-                          user. role !== 'CLIENT' && 
+                          user.role !== 'CLIENT' && 
                           user.role !== 'RH';
 
   return (

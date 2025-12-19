@@ -989,119 +989,8 @@
   }
 }
 
-// Dark mode adjustments
-[data-theme="dark"] {
-  .users-page {
-    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-  }
-
-  .users-header {
-    background: linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(40, 40, 40, 0.98) 100%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-
-    &::before {
-      background: rgba(255, 124, 21, 0.15);
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -20%;
-      left: -10%;
-      width: 300px;
-      height: 300px;
-      background: rgba(255, 159, 74, 0.1);
-      border-radius: $rounded-full;
-      filter: blur(60px);
-    }
-
-    h1 {
-      color: rgba(255, 255, 255, 0.95) !important;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-  }
-  
-  .stat-card {
-    background: rgba(50, 50, 50, 0.7) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    
-    &:hover {
-      background: rgba(60, 60, 60, 0.85) !important;
-      border-color: rgba(255, 124, 21, 0.4) !important;
-      transform: translateY(-2px);
-    }
-
-    .stat-label {
-      color: rgba(255, 255, 255, 0.75) !important;
-      font-weight: 600;
-    }
-
-    .stat-value {
-      color: rgba(255, 255, 255, 0.95) !important;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-
-    .stat-icon {
-      background: rgba(255, 124, 21, 0.2) !important;
-      color: #ff9f4a !important;
-      box-shadow: 0 2px 8px rgba(255, 124, 21, 0.3);
-    }
-  }
-
-  .btn-add-user {
-    background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
-    color: white;
-    border: none;
-    box-shadow: 0 4px 12px rgba(255, 124, 21, 0.4);
-
-    &:hover {
-      background: linear-gradient(135deg, #ff9f4a 0%, #ffb366 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(255, 124, 21, 0.5);
-    }
-  }
-
-  .role-badge-card {
-    &.role-superadmin {
-      background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-    }
-    
-    &.role-admin {
-      background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(255, 124, 21, 0.3);
-    }
-
-    &.role-student {
-      background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    }
-
-    &.role-professor {
-      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-
-    &.role-client {
-      background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
-      color: white;
-      box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
-    }
-  }
-  
-  .skeleton-shimmer {
-    background: linear-gradient(90deg, $neutral-800 25%, $neutral-700 50%, $neutral-800 75%);
-    background-size: 200% 100%;
-  }
-}
-
-// Also support system dark mode preference as fallback
-@media (prefers-color-scheme: dark) {
+// Dark mode mixin to avoid duplication
+@mixin users-dark-mode {
   .users-page {
     background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
   }
@@ -1174,4 +1063,51 @@
       box-shadow: 0 6px 16px rgba(255, 124, 21, 0.5);
     }
   }
+
+  .role-badge-card {
+    &.role-superadmin {
+      background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+    
+    &.role-admin {
+      background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(255, 124, 21, 0.3);
+    }
+
+    &.role-student {
+      background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    &.role-professor {
+      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    &.role-client {
+      background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+    }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, $neutral-800 25%, $neutral-700 50%, $neutral-800 75%);
+    background-size: 200% 100%;
+  }
+}
+
+// Dark mode adjustments - ThemeContext
+[data-theme="dark"] {
+  @include users-dark-mode;
+}
+
+// Dark mode adjustments - System preference fallback
+@media (prefers-color-scheme: dark) {
+  @include users-dark-mode;
 }
