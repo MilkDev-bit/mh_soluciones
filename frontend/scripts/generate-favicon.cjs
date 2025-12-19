@@ -1,6 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-
 console.log('📦 Generador de favicon para MH Soluciones');
 console.log('');
 console.log('ℹ️  Este proyecto usa los iconos existentes en /icons/');
