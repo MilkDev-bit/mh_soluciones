@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { ProjectContext } from '../../contexts/ProjectContext';
+import { LayoutContext } from '../../contexts/LayoutContext';
 import { getProjects } from '../../services/projectService';
 import GradesWidget from './GradesWidget';
 import {
@@ -36,22 +37,21 @@ import './Sidebar.scss';
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
   const { projectsUpdated, setProjectsUpdated } = useContext(ProjectContext);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isSidebarCollapsed, setIsSidebarCollapsed, isSidebarOpen, setIsSidebarOpen } = useContext(LayoutContext);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    if (isMobileOpen || ! isCollapsed || projectsUpdated) {
+    if (isSidebarOpen || !isSidebarCollapsed || projectsUpdated) {
       fetchProjects();
     }
-  }, [isMobileOpen, isCollapsed, projectsUpdated]);
+  }, [isSidebarOpen, isSidebarCollapsed, projectsUpdated]);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
-      setIsMobileOpen(false);
+      setIsSidebarOpen(false);
     }
   }, [location]);
 
@@ -97,22 +97,22 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     logout();
-    setIsMobileOpen(false);
+    setIsSidebarOpen(false);
   };
 
   const closeMobileMenu = () => {
-    setIsMobileOpen(false);
+    setIsSidebarOpen(false);
   };
 
   const toggleMobileMenu = () => {
-    setIsMobileOpen(!isMobileOpen);
-    if (! isMobileOpen) {
+    setIsSidebarOpen(!isSidebarOpen);
+    if (!isSidebarOpen) {
       fetchProjects();
     }
   };
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
@@ -134,20 +134,20 @@ const Sidebar = () => {
         <FiMenu />
       </button>
 
-      {isMobileOpen && (
+      {isSidebarOpen && (
         <div
           className="sidebar-overlay"
           onClick={closeMobileMenu}
         />
       )}
 
-      <aside className={`sidebar ${isMobileOpen ? 'sidebar-open' : ''} ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className={`sidebar ${isSidebarOpen ? 'sidebar-open' : ''} ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="sidebar-content">
           <div className="sidebar-header">
             <div className="logo-container">
               <NavLink to="/" className="logo" onClick={closeMobileMenu}>
                 <span className="logo-icon">MH</span>
-                {!isCollapsed && (
+                {!isSidebarCollapsed && (
                   <div className="logo-text">
                     <span className="logo-main">Soluciones</span>
                     <span className="logo-sub">Empresariales</span>
@@ -159,7 +159,7 @@ const Sidebar = () => {
               <button
                 className="collapse-toggle"
                 onClick={toggleCollapse}
-                aria-label={isCollapsed ? "Expandir menú" : "Contraer menú"}
+                aria-label={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}
               >
                 <FiMenu />
               </button>
@@ -183,7 +183,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiHome />
-                  {!isCollapsed && <span>Panel de Control</span>}
+                  {!isSidebarCollapsed && <span>Panel de Control</span>}
                 </NavLink>
 
                 <NavLink
@@ -192,7 +192,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiActivity />
-                  {!isCollapsed && <span>Actividad</span>}
+                  {!isSidebarCollapsed && <span>Actividad</span>}
                 </NavLink>
 
                 <NavLink
@@ -201,7 +201,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiBell />
-                  {!isCollapsed && <span>Notificaciones</span>}
+                  {!isSidebarCollapsed && <span>Notificaciones</span>}
                 </NavLink>
 
                 <NavLink
@@ -210,7 +210,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiBriefcase />
-                  {!isCollapsed && <span>Equipos</span>}
+                  {!isSidebarCollapsed && <span>Equipos</span>}
                 </NavLink>
 
                 <NavLink
@@ -219,7 +219,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiCheckSquare />
-                  {! isCollapsed && <span>Tareas</span>}
+                  {!isSidebarCollapsed && <span>Tareas</span>}
                 </NavLink>
 
                 <NavLink
@@ -228,7 +228,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiCalendar />
-                  {!isCollapsed && <span>Calendario</span>}
+                  {!isSidebarCollapsed && <span>Calendario</span>}
                 </NavLink>
 
                 {canViewArchivos && (
@@ -238,7 +238,7 @@ const Sidebar = () => {
                     onClick={closeMobileMenu}
                   >
                     <FiFile />
-                    {!isCollapsed && <span>Archivos</span>}
+                    {!isSidebarCollapsed && <span>Archivos</span>}
                   </NavLink>
                 )}
 
@@ -249,7 +249,7 @@ const Sidebar = () => {
                     onClick={closeMobileMenu}
                   >
                     <FiBarChart2 />
-                    {!isCollapsed && <span>Reportes</span>}
+                    {!isSidebarCollapsed && <span>Reportes</span>}
                   </NavLink>
                 )}
               </div>
@@ -258,34 +258,34 @@ const Sidebar = () => {
             <div className="menu-section">
               <div className="section-header">
                 <span className="menu-section-title">Salas de Trabajo</span>
-                {! isCollapsed && (
+                {!isSidebarCollapsed && (
                   <button
                     className="refresh-projects-btn"
                     onClick={handleRefreshProjects}
                     disabled={refreshing}
                     title="Actualizar proyectos"
                   >
-                    <FiRefreshCw className={refreshing ? 'spinning' :  ''} />
+                    <FiRefreshCw className={refreshing ? 'spinning' : ''} />
                   </button>
                 )}
               </div>
               <div className="menu-items">
-                {loading ?  (
+                {loading ? (
                   <div className="projects-loading">
                     <div className="loading-spinner-small"></div>
-                    {!isCollapsed && <span>Cargando proyectos... </span>}
+                    {!isSidebarCollapsed && <span>Cargando proyectos...</span>}
                   </div>
                 ) : projects.length > 0 ? (
                   <>
                     {projects.slice(0, 5).map(project => (
                       <NavLink
-                        key={project. id}
+                        key={project.id}
                         to={`/projects/${project.id}`}
                         className="menu-item project-item"
                         onClick={closeMobileMenu}
                       >
                         <FiFolder />
-                        {!isCollapsed && (
+                        {!isSidebarCollapsed && (
                           <div className="project-info">
                             <span className="project-name">{project.name}</span>
                             <span className="project-description">
@@ -296,7 +296,7 @@ const Sidebar = () => {
                       </NavLink>
                     ))}
 
-                    {projects.length > 5 && ! isCollapsed && (
+                    {projects.length > 5 && !isSidebarCollapsed && (
                       <div className="projects-more">
                         <span>+{projects.length - 5} más</span>
                       </div>
@@ -305,7 +305,7 @@ const Sidebar = () => {
                 ) : (
                   <div className="projects-empty">
                     <FiFolder />
-                    {!isCollapsed && <span>No hay proyectos</span>}
+                    {!isSidebarCollapsed && <span>No hay proyectos</span>}
                   </div>
                 )}
               </div>
@@ -321,7 +321,7 @@ const Sidebar = () => {
                     onClick={closeMobileMenu}
                   >
                     <FiUsers />
-                    {!isCollapsed && <span>Usuarios</span>}
+                    {!isSidebarCollapsed && <span>Usuarios</span>}
                   </NavLink>
                 </div>
               </div>
@@ -337,7 +337,7 @@ const Sidebar = () => {
                     onClick={closeMobileMenu}
                   >
                     <FiFileText />
-                    {!isCollapsed && <span>Portal RH</span>}
+                    {!isSidebarCollapsed && <span>Portal RH</span>}
                   </NavLink>
                 </div>
               </div>
@@ -352,10 +352,10 @@ const Sidebar = () => {
                 alt="Avatar"
                 className="user-avatar"
               />
-              {! isCollapsed && (
+              {!isSidebarCollapsed && (
                 <div className="user-info">
                   <span className="user-name">{user.first_name} {user.last_name}</span>
-                  <span className="user-role">{user. role}</span>
+                  <span className="user-role">{user.role}</span>
                 </div>
               )}
               <button

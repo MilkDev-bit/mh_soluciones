@@ -10,6 +10,7 @@ import App from './App.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
+import { LayoutProvider } from './contexts/LayoutContext.jsx';
 import './assets/styles/main.scss';
 
 // Configure React Query client with optimal settings
@@ -48,19 +49,21 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <BrowserRouter>
           <ThemeProvider>
             <AuthProvider>
-              <ProjectProvider> 
-                <App />
-                <Toaster 
-                  position="top-right" 
-                  toastOptions={{ 
-                    duration: 4000,
-                    style: {
-                      background: '#333',
-                      color: '#fff',
-                    }
-                  }} 
-                />
-              </ProjectProvider>
+              <LayoutProvider>
+                <ProjectProvider> 
+                  <App />
+                  <Toaster 
+                    position="top-right" 
+                    toastOptions={{ 
+                      duration: 4000,
+                      style: {
+                        background: '#333',
+                        color: '#fff',
+                      }
+                    }} 
+                  />
+                </ProjectProvider>
+              </LayoutProvider>
             </AuthProvider>
           </ThemeProvider>
         </BrowserRouter>
