@@ -756,10 +756,14 @@ const ProjectDetailPage = () => {
 
         <div className="project-layout-grid">
           <div className="main-column">
-            <ProjectProgressCharts projectId={projectId} />
 
-            {/* Student Performance - visible to analytics viewers */}
-            {currentUser && canViewAnalytics(currentUser.role) && (
+            {/* Ocultar estadísticas para STUDENT */}
+            {currentUser && currentUser.role !== 'STUDENT' && (
+              <ProjectProgressCharts projectId={projectId} />
+            )}
+
+            {/* Student Performance - visible to analytics viewers excepto STUDENT */}
+            {currentUser && canViewAnalytics(currentUser.role) && currentUser.role !== 'STUDENT' && (
               <div className="glass-card">
                 <StudentPerformance projectId={projectId} />
               </div>

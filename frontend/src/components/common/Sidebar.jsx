@@ -242,7 +242,7 @@ const Sidebar = () => {
                   </NavLink>
                 )}
 
-                {hasReportsAccess && (
+                {hasReportsAccess && !isStudentUser && (
                   <NavLink
                     to="/reportes"
                     className="menu-item"
