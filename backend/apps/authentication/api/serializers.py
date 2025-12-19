@@ -185,6 +185,14 @@ class ForgotPasswordSerializer(serializers.Serializer):
                 'No existe un usuario con este correo electrónico.'
             )
         
-        # Guardar el usuario para usarlo en la vista
-        self.context['user'] = user
+        # Store user temporarily for use in validate()
+        self._user = user
         return value
+    
+    def validate(self, data):
+        """
+        Add the user to validated_data.
+        """
+        if hasattr(self, '_user'):
+            data['user'] = self._user
+        return data

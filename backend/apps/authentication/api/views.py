@@ -703,12 +703,15 @@ def forgot_password(request):
     serializer = ForgotPasswordSerializer(data=request.data)
     
     if not serializer.is_valid():
+        # Extract the first error message safely
+        email_errors = serializer.errors.get('email', [])
+        error_message = email_errors[0] if email_errors else 'Error de validación'
         return Response(
-            {'detail': serializer.errors.get('email', ['Error de validación'])[0]},
+            {'detail': error_message},
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    user = serializer.context.get('user')
+    user = serializer.validated_data.get('user')
     
     # Obtener todos los SUPERADMIN
     superadmins = User.objects.filter(role='SUPERADMIN', is_active=True)
