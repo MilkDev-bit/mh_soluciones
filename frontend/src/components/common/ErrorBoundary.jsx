@@ -17,6 +17,26 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    // Detect WebSocket/network errors that should not break the UI
+    const isNetworkError = 
+      error.message?.includes('WebSocket') ||
+      error.message?.includes('Network') ||
+      error.message?.includes('fetch') ||
+      error.name === 'TypeError';
+
+    if (isNetworkError) {
+      // Do not show full error screen, only log
+      if (import.meta.env.DEV) {
+        console.warn('Network error caught by ErrorBoundary (not critical):', error);
+      }
+      // Auto-reset after 2 seconds
+      setTimeout(() => {
+        this.setState({ hasError: false, error: null, errorInfo: null });
+      }, 2000);
+      return;
+    }
+
+    // For critical errors, maintain current behavior
     // Log error details for debugging - only in development mode
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
