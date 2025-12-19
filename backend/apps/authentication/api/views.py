@@ -705,7 +705,7 @@ def forgot_password(request):
     if not serializer.is_valid():
         # Extract the first error message safely
         email_errors = serializer.errors.get('email', [])
-        error_message = email_errors[0] if email_errors else 'Error de validación'
+        error_message = str(email_errors[0]) if email_errors else 'Error de validación'
         return Response(
             {'detail': error_message},
             status=status.HTTP_400_BAD_REQUEST
