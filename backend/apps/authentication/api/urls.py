@@ -32,7 +32,8 @@ from .views import (
     GoogleAuthRedirectView,
     GoogleAuthCallbackView,
     GoogleConnectionStatusView,
-    GoogleOAuthDebugView
+    GoogleOAuthDebugView,
+    forgot_password
 )
 
 router = SimpleRouter()
@@ -45,6 +46,7 @@ google_callback_view = csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginAPIView.as_view(), name='auth_login'),
+    path('forgot-password/', forgot_password, name='forgot-password'),
     path('profile/', UserProfileAPIView.as_view(), name='auth_profile'),
     path('profile/change-password/', PasswordChangeAPIView.as_view(), name='auth_change_password'),
     path('2fa-setup/', TwoFactorSetupView.as_view(), name='auth_2fa_setup'),

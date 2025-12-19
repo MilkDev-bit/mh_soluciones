@@ -160,3 +160,39 @@ class PasswordChangeSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Las contraseñas no coinciden."})
         return data
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    """
+    Serializer para solicitud de recuperación de contraseña.
+    """
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'required': 'El correo electrónico es obligatorio.',
+            'invalid': 'Ingresa un correo electrónico válido.'
+        }
+    )
+
+    def validate_email(self, value):
+        """
+        Validar que el correo exista en la base de datos.
+        """
+        try:
+            user = CustomUser.objects.get(email=value)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError(
+                'No existe un usuario con este correo electrónico.'
+            )
+        
+        # Store user temporarily for use in validate()
+        self._user = user
+        return value
+    
+    def validate(self, data):
+        """
+        Add the user to validated_data.
+        """
+        if hasattr(self, '_user'):
+            data['user'] = self._user
+        return data
