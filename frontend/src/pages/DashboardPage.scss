@@ -674,10 +674,18 @@
 @media (prefers-color-scheme: dark) {
   .dashboard-page {
     background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+
+    h1, h2, .page-title {
+      color: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    .page-subtitle, .subtitle {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
   }
 
   .welcome-message {
-    color: rgba(255, 255, 255, 0.95);
+    color: rgba(255, 255, 255, 0.95) !important;
     /* Maintain brighter text gradient */
     background: linear-gradient(135deg, #ff9f4a 0%, #ff7c15 100%);
     -webkit-background-clip: text;
@@ -686,7 +694,7 @@
   }
 
   .welcome-subtitle {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.7) !important;
   }
 
   .error-banner {

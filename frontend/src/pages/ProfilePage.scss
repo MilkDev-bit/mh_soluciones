@@ -754,3 +754,260 @@
     }
   }
 }
+
+/* Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  .profile-page {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+
+    .page-header,
+    header {
+      h1, h2 {
+        color: rgba(255, 255, 255, 0.95) !important;
+      }
+
+      .page-subtitle,
+      p {
+        color: rgba(255, 255, 255, 0.7) !important;
+      }
+    }
+
+    .profile-sidebar .profile-card {
+      background: rgba(42, 42, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      .profile-header {
+        background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+
+        .profile-avatar {
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .avatar-edit-btn {
+          background: rgba(42, 42, 42, 0.9);
+          color: #ff9f4a;
+
+          &:hover {
+            background: rgba(50, 50, 50, 0.95);
+          }
+        }
+
+        .profile-role {
+          background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%) !important;
+          color: white !important;
+          padding: 0.5rem 1rem;
+          border-radius: 12px;
+          font-weight: 600;
+          box-shadow: 0 2px 6px rgba(255, 124, 21, 0.3);
+        }
+      }
+
+      .profile-nav {
+        .nav-item {
+          color: rgba(255, 255, 255, 0.7);
+
+          &:hover {
+            background: rgba(50, 50, 50, 0.6);
+            color: #ff9f4a;
+          }
+
+          &.active {
+            background: rgba(255, 124, 21, 0.15);
+            color: #ff9f4a;
+            border-right-color: #ff7c15;
+          }
+        }
+      }
+    }
+
+    .profile-content .content-card {
+      background: rgba(42, 42, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      .card-header {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+
+        h3 {
+          color: rgba(255, 255, 255, 0.95);
+        }
+
+        .edit-btn {
+          background: #ff7c15;
+          color: white;
+
+          &:hover {
+            background: #ff9f4a;
+          }
+        }
+      }
+
+      .form-grid .form-group {
+        label {
+          color: rgba(255, 255, 255, 0.85);
+        }
+
+        input {
+          background: rgba(30, 30, 30, 0.6);
+          border-color: rgba(255, 255, 255, 0.15);
+          color: rgba(255, 255, 255, 0.95);
+
+          &:focus {
+            border-color: #ff7c15;
+            box-shadow: 0 0 0 3px rgba(255, 124, 21, 0.1);
+          }
+
+          &.disabled {
+            background: rgba(30, 30, 30, 0.4);
+            color: rgba(255, 255, 255, 0.5);
+          }
+        }
+      }
+
+      .security-content {
+        .security-item {
+          background: rgba(30, 30, 30, 0.6);
+          border-color: rgba(255, 255, 255, 0.1);
+
+          &:hover {
+            border-color: rgba(255, 124, 21, 0.3);
+          }
+
+          .security-info {
+            .security-icon {
+              background: rgba(255, 124, 21, 0.15);
+              color: #ff9f4a;
+            }
+
+            h4 {
+              color: rgba(255, 255, 255, 0.95);
+            }
+
+            p {
+              color: rgba(255, 255, 255, 0.7);
+            }
+          }
+        }
+
+        .security-tips {
+          background: rgba(30, 30, 30, 0.6);
+
+          h4 {
+            color: rgba(255, 255, 255, 0.95);
+          }
+
+          ul {
+            color: rgba(255, 255, 255, 0.7);
+          }
+        }
+      }
+
+      .integrations-content {
+        .google-connect-widget {
+          background: rgba(30, 30, 30, 0.6);
+          border-color: rgba(255, 255, 255, 0.1);
+
+          &:hover {
+            border-color: rgba(255, 124, 21, 0.3);
+          }
+
+          .security-info {
+            h4 {
+              color: rgba(255, 255, 255, 0.95);
+            }
+
+            p, .help-text {
+              color: rgba(255, 255, 255, 0.7);
+            }
+          }
+
+          .alert-warning {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.3);
+
+            p {
+              color: rgba(255, 255, 255, 0.85);
+
+              strong {
+                color: #fbbf24;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .btn {
+      &.btn-primary {
+        background: #ff7c15;
+
+        &:hover:not(:disabled) {
+          background: #ff9f4a;
+        }
+      }
+
+      &.btn-secondary {
+        background: rgba(42, 42, 42, 0.8);
+        color: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+
+        &:hover:not(:disabled) {
+          background: rgba(50, 50, 50, 0.9);
+          color: rgba(255, 255, 255, 0.95);
+        }
+      }
+
+      &.btn-outline {
+        background: transparent;
+        color: #ff9f4a;
+        border-color: rgba(255, 124, 21, 0.3);
+
+        &:hover:not(:disabled) {
+          background: rgba(255, 124, 21, 0.15);
+        }
+      }
+    }
+
+    .modal-overlay {
+      background: rgba(0, 0, 0, 0.7);
+
+      .modal-content {
+        background: rgba(26, 26, 26, 0.98);
+
+        .modal-header {
+          border-bottom-color: rgba(255, 255, 255, 0.1);
+
+          h2 {
+            color: rgba(255, 255, 255, 0.95);
+          }
+
+          .close-btn {
+            color: rgba(255, 255, 255, 0.5);
+
+            &:hover {
+              background: rgba(50, 50, 50, 0.6);
+              color: rgba(255, 255, 255, 0.9);
+            }
+          }
+        }
+
+        .modal-body {
+          .two-factor-modal-content {
+            p {
+              color: rgba(255, 255, 255, 0.7);
+            }
+
+            .qr-code-container {
+              background: rgba(255, 255, 255, 0.95);
+            }
+
+            .otp-input {
+              background: rgba(30, 30, 30, 0.6);
+              border-color: rgba(255, 255, 255, 0.15);
+              color: rgba(255, 255, 255, 0.95);
+            }
+          }
+        }
+      }
+    }
+  }
+}

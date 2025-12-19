@@ -419,3 +419,186 @@
     }
   }
 }
+
+/* Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  .admin-page {
+    .page-header {
+      h1, h2 {
+        color: rgba(255, 255, 255, 0.95) !important;
+      }
+
+      .page-subtitle,
+      p {
+        color: rgba(255, 255, 255, 0.7) !important;
+      }
+    }
+
+    .glass-card {
+      background: rgba(42, 42, 42, 0.95);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .table-container {
+      background: rgba(42, 42, 42, 0.95);
+    }
+
+    .modern-table {
+      thead th {
+        background: rgba(30, 30, 30, 0.8);
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      tbody tr {
+        &:hover {
+          background: rgba(50, 50, 50, 0.6);
+        }
+      }
+
+      td {
+        color: rgba(255, 255, 255, 0.95);
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+      }
+
+      @media (max-width: $breakpoint-md) {
+        tr {
+          background: rgba(42, 42, 42, 0.95);
+          border-color: rgba(255, 255, 255, 0.1);
+
+          &:hover {
+            border-color: rgba(255, 124, 21, 0.5);
+          }
+        }
+
+        td {
+          border-bottom-color: rgba(255, 255, 255, 0.1);
+
+          &::before {
+            color: rgba(255, 255, 255, 0.7);
+          }
+        }
+      }
+    }
+
+    .user-cell-name {
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .user-cell-username {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .role-badge, .status-badge {
+      &.role-superadmin {
+        background: linear-gradient(135deg, #ef4444 0%, #f87171 100%) !important;
+        color: white !important;
+      }
+
+      &.role-admin {
+        background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%) !important;
+        color: white !important;
+      }
+
+      &.role-student {
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%) !important;
+        color: white !important;
+      }
+
+      &.role-professor {
+        background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+        color: white !important;
+      }
+
+      &.role-client {
+        background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%) !important;
+        color: white !important;
+      }
+
+      &.status-active {
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+      }
+
+      &.status-inactive {
+        background: rgba(156, 163, 175, 0.2);
+        color: #9ca3af;
+      }
+    }
+
+    .action-buttons {
+      .action-btn {
+        background: rgba(42, 42, 42, 0.8);
+        color: rgba(255, 255, 255, 0.7);
+
+        &:hover {
+          background: rgba(50, 50, 50, 0.9);
+        }
+
+        &.edit:hover {
+          background: rgba(59, 130, 246, 0.2);
+          color: #60a5fa;
+        }
+
+        &.delete:hover {
+          background: rgba(239, 68, 68, 0.2);
+          color: #f87171;
+        }
+
+        &.view:hover {
+          background: rgba(96, 165, 250, 0.2);
+          color: #60a5fa;
+        }
+      }
+    }
+
+    .search-section {
+      .search-input-container {
+        input {
+          background: rgba(30, 30, 30, 0.6);
+          border-color: rgba(255, 255, 255, 0.15);
+          color: rgba(255, 255, 255, 0.95);
+
+          &::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+          }
+
+          &:focus {
+            border-color: #ff7c15;
+            box-shadow: 0 0 0 3px rgba(255, 124, 21, 0.1);
+          }
+        }
+
+        svg {
+          color: rgba(255, 255, 255, 0.5);
+        }
+      }
+    }
+
+    .pagination {
+      background: rgba(42, 42, 42, 0.95);
+      border-color: rgba(255, 255, 255, 0.1);
+
+      button {
+        background: rgba(30, 30, 30, 0.6);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.95);
+
+        &:hover:not(:disabled) {
+          border-color: #ff7c15;
+          background: rgba(255, 124, 21, 0.15);
+          color: #ff9f4a;
+        }
+
+        &.active {
+          background: #ff7c15;
+          color: white;
+          border-color: #ff7c15;
+        }
+      }
+
+      span {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+}
