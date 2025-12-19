@@ -1,4 +1,4 @@
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 
@@ -19,12 +19,3 @@ def api_root(request):
             "docs": "/api/v1/docs/",
         }
     })
-
-
-@require_http_methods(["GET"])
-def favicon(request):
-    """
-    Favicon view - prevents 502 errors on browser requests.
-    Returns 204 No Content.
-    """
-    return HttpResponse(status=204)

@@ -8,7 +8,7 @@ from rest_framework import permissions
 from django.views.static import serve
 from django.views.generic import RedirectView
 from django.http import JsonResponse
-from config.views import api_root, favicon
+from config.views import api_root
 
 admin.site.site_title = 'Portal de Administración MH'
 admin.site.site_header = "" 
