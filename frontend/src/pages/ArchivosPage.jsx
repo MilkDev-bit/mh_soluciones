@@ -16,22 +16,15 @@ import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
 import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
+import { FILTER_TYPES, FOLDER_TYPES } from '../constants/folderTypes';
 import './ArchivosPage.scss';
-
-// Filter type constants
-const FILTER_TYPES = {
-  ALL: 'TODOS',
-  IMAGES: 'IMAGENES',
-  DOCUMENTS: 'DOCUMENTOS',
-  VIDEOS: 'VIDEOS',
-  FILES: 'ARCHIVOS'
-};
 
 const ArchivosPage = () => {
   const [archivos, setArchivos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
   const [filtroTipo, setFiltroTipo] = useState(FILTER_TYPES.ALL);
+  const [filtroCarpeta, setFiltroCarpeta] = useState(FOLDER_TYPES.ALL);
   const [busqueda, setBusqueda] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
@@ -57,8 +50,12 @@ const ArchivosPage = () => {
       
       // Build query params based on folder_type mapping
       const params = {};
-      if (filtroTipo !== FILTER_TYPES.ALL) {
-        // Use folder_type from backend model instead of file_type
+      
+      // Use folder filter if selected (new dedicated folder filter)
+      if (filtroCarpeta && filtroCarpeta !== FOLDER_TYPES.ALL) {
+        params.folder_type = filtroCarpeta;
+      } else if (filtroTipo !== FILTER_TYPES.ALL) {
+        // Fallback to old type filter for backward compatibility
         params.folder_type = filtroTipo;
       }
       
@@ -85,7 +82,7 @@ const ArchivosPage = () => {
   useEffect(() => {
     cargarArchivos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroTipo, proyectoSeleccionado]);
+  }, [filtroTipo, filtroCarpeta, proyectoSeleccionado]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
@@ -103,8 +100,10 @@ const ArchivosPage = () => {
         const promises = archivosAceptados.map(async (file) => {
           const formData = new FormData();
           formData.append('file', file);
-          // Use folder_type matching the backend model choices
-          formData.append('folder_type', filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
+          // Use folder filter if selected, otherwise fallback to type filter or default
+          const selectedFolderType = filtroCarpeta || 
+                                     (filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
+          formData.append('folder_type', selectedFolderType);
           // Add project ID
           formData.append('project', proyectoSeleccionado);
           
@@ -265,6 +264,21 @@ const ArchivosPage = () => {
             <option value={FILTER_TYPES.DOCUMENTS}>Documentos</option>
             <option value={FILTER_TYPES.VIDEOS}>Videos</option>
             <option value={FILTER_TYPES.FILES}>Archivos</option>
+          </select>
+          <select 
+            className="filtro-carpeta"
+            value={filtroCarpeta}
+            onChange={(e) => setFiltroCarpeta(e.target.value)}
+          >
+            <option value={FOLDER_TYPES.ALL}>Todas las carpetas</option>
+            <option value={FOLDER_TYPES.OPERATIVO}>Operativo</option>
+            <option value={FOLDER_TYPES.ADMINISTRATIVO}>Administrativo</option>
+            <option value={FOLDER_TYPES.DOCUMENTOS}>Documentos</option>
+            <option value={FOLDER_TYPES.IMAGENES}>Imágenes</option>
+            <option value={FOLDER_TYPES.VIDEOS}>Videos</option>
+            <option value={FOLDER_TYPES.ARCHIVOS}>Archivos</option>
+            <option value={FOLDER_TYPES.TASK_SUBMISSION}>Entrega de Tarea</option>
+            <option value={FOLDER_TYPES.OTROS}>Otros</option>
           </select>
         </div>
         <div className="toolbar-derecha">

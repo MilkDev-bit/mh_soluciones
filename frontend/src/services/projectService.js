@@ -165,9 +165,9 @@ export const getStudentPerformance = async (projectId) => {
   }
 };
 
-export const getProjectDriveFolder = async (projectId) => {
+export const getProjectDriveFolder = async (projectId, params = {}) => {
   try {
-    const { data } = await api.get(`/projects/${projectId}/drive-folder/`);
+    const { data } = await api.get(`/projects/${projectId}/drive-folder/`, { params });
     return data;
   } catch (error) {
     throw error.response?.data || new Error('Error al obtener carpeta de Drive');
