@@ -8,15 +8,17 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [permission, setPermission] = useState(notificationService.getPermissionStatus());
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useAuth();
 
   const loadNotifications = useCallback(async () => {
-    if (!user) {
-      console.log('[useNotifications] No user, skipping load');
+    if (!user || isRefreshing) {
+      console.log('[useNotifications] No user or already refreshing, skipping load');
       return;
     }
 
     console.log('[useNotifications] Loading notifications...');
+    setIsRefreshing(true);
     setLoading(true);
     setError(null); // Clear previous errors
     try {
@@ -34,8 +36,9 @@ export const useNotifications = () => {
       setError(error); // Store error state
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [user]);
+  }, [user, isRefreshing]);
 
   const loadUnreadCount = useCallback(async () => {
     if (!user) {
@@ -97,6 +100,12 @@ export const useNotifications = () => {
       notificationService.connectWebSocket(user.id);
 
       const unsubscribe = notificationService.subscribe((data) => {
+        // Validar que data existe y tiene la estructura correcta
+        if (!data || typeof data !== 'object') {
+          console.warn('[useNotifications] Invalid event data received:', data);
+          return;
+        }
+
         console.log('[useNotifications] Event received:', data);
         
         // Handle different event types

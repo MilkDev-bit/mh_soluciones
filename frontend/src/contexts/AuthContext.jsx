@@ -5,6 +5,7 @@ import api from '../services/api';
 import { setToken, getToken, removeToken } from '../utils/token';
 import Loading from '../components/common/Loading';
 import { jwtDecode } from 'jwt-decode';
+import notificationService from '../services/NotificationService';
 
 export const AuthContext = createContext(null);
 
@@ -16,6 +17,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     setLoading(true);
+    // Disconnect notification service before logout
+    notificationService.disconnect();
     removeToken();
     setUser(null);
     navigate('/login', { replace: true });
@@ -51,6 +54,22 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Connect auth error handler to logout
+  useEffect(() => {
+    if (user) {
+      notificationService.setAuthErrorHandler(() => {
+        // Hacer logout cuando hay error de autenticación
+        logout();
+      });
+    }
+    return () => {
+      // Clean up handler when component unmounts or user changes
+      if (!user) {
+        notificationService.setAuthErrorHandler(null);
+      }
+    };
+  }, [user, logout]);
 
   const login = async (credentials) => {
     try {

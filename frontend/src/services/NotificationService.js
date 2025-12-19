@@ -57,6 +57,10 @@ class NotificationService {
     this.maxReconnectDelay = 30000; // 30 seconds
     this.reconnectTimeout = null;
     this.hasWebSocketFailed = false; // Track if WebSocket has permanently failed
+    this.isDegraded = false; // Estado degradado (funciona con polling)
+    this.onAuthError = null; // Callback para errores de autenticación
+    this.lastReconnectAttempt = null;
+    this.minReconnectInterval = 5000; // Mínimo 5 segundos entre reconexiones
   }
 
   getWebSocketURL() {
@@ -86,12 +90,37 @@ class NotificationService {
       try {
         listener(data);
       } catch (error) {
-        console.error('Error in notification listener:', error);
+        // Solo log en desarrollo, evitar que un listener rompa otros
+        if (import.meta.env.DEV) {
+          console.error('Error in notification listener:', error);
+        }
+        // NO propagar el error
       }
     });
   }
 
+  // Método para registrar callback de error de auth
+  setAuthErrorHandler(callback) {
+    this.onAuthError = callback;
+  }
+
   connectWebSocket(userId) {
+    // Prevenir reconexiones muy frecuentes
+    const now = Date.now();
+    if (this.lastReconnectAttempt && (now - this.lastReconnectAttempt) < this.minReconnectInterval) {
+      if (import.meta.env.DEV) {
+        console.log('Reconnection throttled, too soon since last attempt');
+      }
+      return;
+    }
+    this.lastReconnectAttempt = now;
+
+    // Agregar al inicio para prevenir múltiples reconexiones simultáneas
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     // If WebSocket has permanently failed, go straight to polling
     if (this.hasWebSocketFailed) {
       if (!this.isPolling) {
@@ -155,8 +184,8 @@ class NotificationService {
             // Show browser notification
             this.showBrowserNotification(data.payload);
 
-            // Notify all listeners
-            this.notifyListeners(data.payload);
+            // Notify all listeners - FIXED: pass full data object, not just payload
+            this.notifyListeners(data);
           }
         } catch (error) {
           // Only log in development mode
@@ -205,6 +234,7 @@ class NotificationService {
             console.log('Max WebSocket reconnection attempts reached. Falling back to polling permanently.');
           }
           this.hasWebSocketFailed = true; // Mark WebSocket as permanently failed
+          this.isDegraded = true; // Estado degradado (funciona con polling)
           this.reconnectAttempts = 0; // Reset for future manual attempts
           this.startPolling(userId);
         }
@@ -239,7 +269,12 @@ class NotificationService {
 
   async pollNotifications() {
     try {
+      // Agregar timeout de 10 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const unreadCount = await this.getUnreadCount();
+      clearTimeout(timeoutId);
       
       // Notify listeners with polling update event
       // This ensures components can refresh their state even when WebSocket is not available
@@ -253,6 +288,10 @@ class NotificationService {
         console.log(`[Polling] Notified listeners with count: ${unreadCount}`);
       }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        // Timeout - no hacer nada, continuar polling
+        return;
+      }
       // Only log in development mode - silently fail in production
       if (import.meta.env.DEV) {
         console.error('Error en polling de notificaciones:', error);
@@ -298,6 +337,8 @@ class NotificationService {
     this.connecting = false;
     this.reconnectAttempts = 0;
     this.hasWebSocketFailed = false; // Reset the permanent failure flag on disconnect
+    this.isDegraded = false; // Reset degraded state on disconnect
+    this.lastReconnectAttempt = null; // Reset last reconnect timestamp
     
     // Only log in development mode
     if (import.meta.env.DEV) {
@@ -369,13 +410,19 @@ class NotificationService {
         ? response.data.results
         : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
+      // Handle 401 errors with callback
+      if (error.response?.status === 401) {
+        if (this.onAuthError && typeof this.onAuthError === 'function') {
+          this.onAuthError(); // Notificar logout
+        }
+        if (import.meta.env.DEV) {
+          console.error('Authentication error fetching notifications - token may be expired');
+        }
+        return [];
+      }
       // Only log in development mode - silent in production
       if (import.meta.env.DEV) {
-        if (error.response?.status === 401) {
-          console.error('Authentication error fetching notifications - token may be expired');
-        } else {
-          console.error('Error fetching notifications:', error);
-        }
+        console.error('Error fetching notifications:', error);
       }
       // Return empty array instead of throwing to prevent white screens
       // The calling component can check error state if needed
@@ -422,13 +469,19 @@ class NotificationService {
       const response = await api.get('/notifications/unread_count/');
       return response.data.unread_count;
     } catch (error) {
+      // Handle 401 errors with callback
+      if (error.response?.status === 401) {
+        if (this.onAuthError && typeof this.onAuthError === 'function') {
+          this.onAuthError(); // Notificar logout
+        }
+        if (import.meta.env.DEV) {
+          console.error('Authentication error fetching unread count - token may be expired');
+        }
+        return 0;
+      }
       // Only log in development mode
       if (import.meta.env.DEV) {
-        if (error.response?.status === 401) {
-          console.error('Authentication error fetching unread count - token may be expired');
-        } else {
-          console.error('Error fetching unread count:', error);
-        }
+        console.error('Error fetching unread count:', error);
       }
       // Return 0 instead of throwing to prevent breaking UI
       return 0;
