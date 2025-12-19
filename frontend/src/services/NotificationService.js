@@ -1,5 +1,9 @@
 import api from './api';
 
+// Timeout constants for API requests
+const NOTIFICATIONS_TIMEOUT = 10000; // 10 seconds
+const UNREAD_COUNT_TIMEOUT = 5000; // 5 seconds
+
 /**
  * Utility function to get WebSocket base URL from environment variables
  * Converts HTTP(S) URLs to WS(S) URLs
@@ -42,6 +46,52 @@ function getWebSocketBaseURL() {
 // Cache the WebSocket base URL at module load time
 // This is safe because Vite environment variables are resolved at build time
 const WS_BASE_URL = getWebSocketBaseURL();
+
+/**
+ * Helper function to handle API calls with timeout and error handling
+ * @param {Function} apiCall - The API call function to execute
+ * @param {number} timeout - Timeout in milliseconds
+ * @param {*} defaultValue - Default value to return on error
+ * @param {Function} onAuthError - Optional callback for 401 errors
+ * @returns {Promise<*>} - The API response or default value
+ */
+async function apiCallWithTimeout(apiCall, timeout, defaultValue, onAuthError = null) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const result = await apiCall(controller.signal);
+    clearTimeout(timeoutId);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      // Timeout - return default value silently
+      if (import.meta.env.DEV) {
+        console.warn('[NotificationService] Request timeout');
+      }
+      return defaultValue;
+    }
+    
+    // Handle 401 errors with callback
+    if (error.response?.status === 401) {
+      if (onAuthError && typeof onAuthError === 'function') {
+        onAuthError();
+      }
+      if (import.meta.env.DEV) {
+        console.error('[NotificationService] Authentication error - token may be expired');
+      }
+      return defaultValue;
+    }
+    
+    // Log other errors only in development
+    if (import.meta.env.DEV) {
+      console.error('[NotificationService] API error:', error);
+    }
+    return defaultValue;
+  }
+}
 
 class NotificationService {
   constructor() {
@@ -88,8 +138,19 @@ class NotificationService {
   notifyListeners(data) {
     this.listeners.forEach(listener => {
       try {
-        listener(data);
+        const result = listener(data);
+        
+        // If the listener returns a promise, handle async errors
+        if (result && typeof result.then === 'function') {
+          result.catch(error => {
+            if (import.meta.env.DEV) {
+              console.error('Error in async notification listener:', error);
+            }
+            // Don't propagate - just log
+          });
+        }
       } catch (error) {
+        // Synchronous error
         // Only log in development, prevent one listener from breaking others
         if (import.meta.env.DEV) {
           console.error('Error in notification listener:', error);
@@ -394,31 +455,18 @@ class NotificationService {
   }
 
   async getNotifications(params = {}) {
-    try {
-      const response = await api.get('/notifications/', { params });
-      // Handle paginated response - return results array or empty array
-      return Array.isArray(response.data.results)
-        ? response.data.results
-        : (Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      // Handle 401 errors with callback
-      if (error.response?.status === 401) {
-        if (this.onAuthError && typeof this.onAuthError === 'function') {
-          this.onAuthError(); // Notify logout
-        }
-        if (import.meta.env.DEV) {
-          console.error('Authentication error fetching notifications - token may be expired');
-        }
-        return [];
-      }
-      // Only log in development mode - silent in production
-      if (import.meta.env.DEV) {
-        console.error('Error fetching notifications:', error);
-      }
-      // Return empty array instead of throwing to prevent white screens
-      // The calling component can check error state if needed
-      return [];
-    }
+    return apiCallWithTimeout(
+      async (signal) => {
+        const response = await api.get('/notifications/', { params, signal });
+        // Handle paginated response - return results array or empty array
+        return Array.isArray(response.data.results)
+          ? response.data.results
+          : (Array.isArray(response.data) ? response.data : []);
+      },
+      NOTIFICATIONS_TIMEOUT,
+      [], // default empty array
+      this.onAuthError
+    );
   }
 
   async markAsRead(notificationId) {
@@ -456,27 +504,15 @@ class NotificationService {
   }
 
   async getUnreadCount() {
-    try {
-      const response = await api.get('/notifications/unread_count/');
-      return response.data.unread_count;
-    } catch (error) {
-      // Handle 401 errors with callback
-      if (error.response?.status === 401) {
-        if (this.onAuthError && typeof this.onAuthError === 'function') {
-          this.onAuthError(); // Notify logout
-        }
-        if (import.meta.env.DEV) {
-          console.error('Authentication error fetching unread count - token may be expired');
-        }
-        return 0;
-      }
-      // Only log in development mode
-      if (import.meta.env.DEV) {
-        console.error('Error fetching unread count:', error);
-      }
-      // Return 0 instead of throwing to prevent breaking UI
-      return 0;
-    }
+    return apiCallWithTimeout(
+      async (signal) => {
+        const response = await api.get('/notifications/unread_count/', { signal });
+        return response.data.unread_count;
+      },
+      UNREAD_COUNT_TIMEOUT,
+      0, // default to 0
+      this.onAuthError
+    );
   }
 
   getPermissionStatus() {
