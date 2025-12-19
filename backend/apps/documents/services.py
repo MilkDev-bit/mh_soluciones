@@ -165,12 +165,21 @@ class GoogleDriveService:
                 user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
             else:
                 # Fallback: use "Usuario Desconocido" if no user
-                user_id = self._get_or_create_folder("Usuario Desconocido", parent_id=parent_for_user)
+                user_name = "Usuario Desconocido"
+                user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
             
             # Create filename - keep original name, no version subfolder
             filename = document_instance.file.name
             
-            logger.info(f"Subiendo archivo: {filename} a estructura {current_year}/{document_instance.project.name if document_instance.project else 'General'}/{document_instance.task.title if document_instance.task else ''}/{user_name if document_instance.uploaded_by else 'Usuario Desconocido'}")
+            # Build path for logging
+            project_name = document_instance.project.name if document_instance.project else 'General'
+            task_name = document_instance.task.title if document_instance.task else ''
+            path_parts = [current_year, project_name]
+            if task_name:
+                path_parts.append(task_name)
+            path_parts.append(user_name)
+            
+            logger.info(f"Subiendo archivo: {filename} a estructura {'/'.join(path_parts)}")
 
             file_metadata = {
                 'name': filename,

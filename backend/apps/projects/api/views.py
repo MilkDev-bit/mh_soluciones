@@ -380,8 +380,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Get query parameters
         search = request.query_params.get('search', '').strip()
         folder_type = request.query_params.get('folder_type', '').strip()
-        page = int(request.query_params.get('page', 1))
-        page_size = min(int(request.query_params.get('page_size', 20)), 100)
+        page = max(int(request.query_params.get('page', 1)), 1)
+        page_size = max(1, min(int(request.query_params.get('page_size', 20)), 100))
         
         # Get all documents for this project
         documents = Document.objects.filter(

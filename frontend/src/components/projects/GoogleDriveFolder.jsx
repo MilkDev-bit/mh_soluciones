@@ -3,25 +3,13 @@ import { getProjectDriveFolder } from '../../services/projectService';
 import { FiFolder, FiDownload, FiExternalLink, FiFile, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { FOLDER_TYPES } from '../../constants/folderTypes';
 import './GoogleDriveFolder.scss';
 
 // Constants for Google Drive file ID validation
 const DRIVE_FILE_ID_MIN_LENGTH = 20;
 const DRIVE_FILE_ID_MAX_LENGTH = 50;
 const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-
-// Folder type constants
-const FOLDER_TYPES = {
-  ALL: '',
-  OPERATIVO: 'OPERATIVO',
-  ADMINISTRATIVO: 'ADMINISTRATIVO',
-  DOCUMENTOS: 'DOCUMENTOS',
-  IMAGENES: 'IMAGENES',
-  VIDEOS: 'VIDEOS',
-  ARCHIVOS: 'ARCHIVOS',
-  TASK_SUBMISSION: 'TASK_SUBMISSION',
-  OTROS: 'OTROS'
-};
 
 const GoogleDriveFolder = ({ projectId, userRole }) => {
   const [folderData, setFolderData] = useState(null);
@@ -137,11 +125,18 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
     }
   };
 
+  const getEmptyMessage = () => {
+    if (searchTerm || folderFilter) {
+      return 'No hay archivos que coincidan con los filtros en la carpeta de Google Drive de este proyecto.';
+    }
+    return 'No hay archivos en la carpeta de Google Drive de este proyecto.';
+  };
+
   if (!documents || documents.length === 0) {
     return (
       <div className="drive-folder-empty">
         <FiFolder size={48} />
-        <p>No hay archivos{searchTerm || folderFilter ? ' que coincidan con los filtros' : ''} en la carpeta de Google Drive de este proyecto.</p>
+        <p>{getEmptyMessage()}</p>
       </div>
     );
   }

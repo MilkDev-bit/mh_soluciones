@@ -16,29 +16,8 @@ import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
 import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
+import { FILTER_TYPES, FOLDER_TYPES } from '../constants/folderTypes';
 import './ArchivosPage.scss';
-
-// Filter type constants
-const FILTER_TYPES = {
-  ALL: 'TODOS',
-  IMAGES: 'IMAGENES',
-  DOCUMENTS: 'DOCUMENTOS',
-  VIDEOS: 'VIDEOS',
-  FILES: 'ARCHIVOS'
-};
-
-// Folder type constants - matches backend FolderType choices
-const FOLDER_TYPES = {
-  ALL: '',
-  OPERATIVO: 'OPERATIVO',
-  ADMINISTRATIVO: 'ADMINISTRATIVO',
-  DOCUMENTOS: 'DOCUMENTOS',
-  IMAGENES: 'IMAGENES',
-  VIDEOS: 'VIDEOS',
-  ARCHIVOS: 'ARCHIVOS',
-  TASK_SUBMISSION: 'TASK_SUBMISSION',
-  OTROS: 'OTROS'
-};
 
 const ArchivosPage = () => {
   const [archivos, setArchivos] = useState([]);
