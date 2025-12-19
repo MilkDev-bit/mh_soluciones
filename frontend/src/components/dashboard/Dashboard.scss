@@ -206,7 +206,7 @@
   }
 
   .stat-card {
-    // Fondo oscuro con degradado sutil
+    /* Dark background with subtle gradient */
     background: linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%);
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 
@@ -214,7 +214,7 @@
       0 2px 4px -1px rgba(0, 0, 0, 0.2),
       0 0 0 1px rgba(255, 255, 255, 0.05);
 
-    // Efecto hover más sutil
+    /* More subtle hover effect */
     &:hover {
       transform: translateY(-4px);
       box-shadow: 
@@ -226,26 +226,26 @@
 
     .stat-content {
       .stat-label {
-        // Texto más claro y visible
+        /* Brighter and more visible text */
         color: rgba(255, 255, 255, 0.7);
         font-weight: 500;
       }
 
       .stat-value {
-        // Valor completamente visible
+        /* Fully visible value */
         color: rgba(255, 255, 255, 0.95);
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
       }
     }
 
-    // Ajustar iconos para mejor visibilidad
+    /* Adjust icons for better visibility */
     .stat-icon {
-      // Los gradientes de iconos se mantienen pero con más opacidad
+      /* Icon gradients maintain colors but with higher opacity */
       opacity: 0.95;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    // Ajustes específicos por color
+    /* Color-specific adjustments */
     &.orange {
       .stat-icon {
         background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);

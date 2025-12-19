@@ -678,7 +678,7 @@
 
   .welcome-message {
     color: rgba(255, 255, 255, 0.95);
-    // Mantener el gradiente del texto más brillante
+    /* Maintain brighter text gradient */
     background: linear-gradient(135deg, #ff9f4a 0%, #ff7c15 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -703,7 +703,7 @@
   }
 
   .stats-card {
-    // Fondo oscuro con degradado sutil
+    /* Dark background with subtle gradient */
     background: linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%);
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 
