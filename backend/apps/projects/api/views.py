@@ -363,6 +363,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Returns Google Drive folder information for the project.
         Accessible by admins and CLIENT role (if they are the project client).
         Returns folder URL and list of files in the project's Drive folder.
+        Supports pagination, search by name, and folder type filtering.
+        
+        Query parameters:
+        - page: Page number for pagination (default: 1)
+        - page_size: Number of items per page (default: 20, max: 100)
+        - search: Search term to filter documents by name
+        - folder_type: Filter by folder type (OPERATIVO, ADMINISTRATIVO, etc.)
         """
         project = self.get_object()
         user = request.user
@@ -370,20 +377,47 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Validate CLIENT access
         self._validate_client_access(user, project)
         
-        # Get all documents for this project
+        # Get query parameters
+        search = request.query_params.get('search', '').strip()
+        folder_type = request.query_params.get('folder_type', '').strip()
+        page = int(request.query_params.get('page', 1))
+        page_size = min(int(request.query_params.get('page_size', 20)), 100)
         
+        # Get all documents for this project
         documents = Document.objects.filter(
             project=project,
             upload_status='COMPLETE'
-        ).order_by('-created_at')
+        )
+        
+        # Apply search filter
+        if search:
+            documents = documents.filter(name__icontains=search)
+        
+        # Apply folder type filter
+        if folder_type:
+            documents = documents.filter(folder_type=folder_type)
+        
+        # Order by creation date
+        documents = documents.order_by('-created_at')
+        
+        # Calculate total and pagination
+        total_documents = documents.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_documents = documents[start:end]
         
         folder_info = {
             'project_name': project.name,
-            'total_documents': documents.count(),
+            'total_documents': total_documents,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_documents + page_size - 1) // page_size if page_size > 0 else 0,
+            'has_next': end < total_documents,
+            'has_previous': page > 1,
             'documents': []
         }
         
-        for doc in documents:
+        for doc in paginated_documents:
             folder_info['documents'].append({
                 'id': doc.id,
                 'name': doc.name,

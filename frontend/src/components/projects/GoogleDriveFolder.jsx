@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getProjectDriveFolder } from '../../services/projectService';
-import { FiFolder, FiDownload, FiExternalLink, FiFile } from 'react-icons/fi';
+import { FiFolder, FiDownload, FiExternalLink, FiFile, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './GoogleDriveFolder.scss';
@@ -10,10 +10,27 @@ const DRIVE_FILE_ID_MIN_LENGTH = 20;
 const DRIVE_FILE_ID_MAX_LENGTH = 50;
 const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
+// Folder type constants
+const FOLDER_TYPES = {
+  ALL: '',
+  OPERATIVO: 'OPERATIVO',
+  ADMINISTRATIVO: 'ADMINISTRATIVO',
+  DOCUMENTOS: 'DOCUMENTOS',
+  IMAGENES: 'IMAGENES',
+  VIDEOS: 'VIDEOS',
+  ARCHIVOS: 'ARCHIVOS',
+  TASK_SUBMISSION: 'TASK_SUBMISSION',
+  OTROS: 'OTROS'
+};
+
 const GoogleDriveFolder = ({ projectId, userRole }) => {
   const [folderData, setFolderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [folderFilter, setFolderFilter] = useState(FOLDER_TYPES.ALL);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
 
   // Validate Google Drive file ID format (alphanumeric and some special chars)
   const isValidDriveFileId = (fileId) => {
@@ -32,7 +49,20 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
       
       try {
         setLoading(true);
-        const data = await getProjectDriveFolder(projectId);
+        const params = {
+          page: currentPage,
+          page_size: pageSize
+        };
+        
+        if (searchTerm) {
+          params.search = searchTerm;
+        }
+        
+        if (folderFilter) {
+          params.folder_type = folderFilter;
+        }
+        
+        const data = await getProjectDriveFolder(projectId, params);
         setFolderData(data);
       } catch (err) {
         console.error('Error fetching drive folder:', err);
@@ -43,7 +73,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
     };
 
     fetchFolder();
-  }, [projectId]);
+  }, [projectId, currentPage, pageSize, searchTerm, folderFilter]);
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '0 B';
@@ -83,13 +113,35 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
     );
   }
 
-  const { project_name, total_documents, documents } = folderData;
+  const { project_name, total_documents, documents, page, total_pages, has_next, has_previous } = folderData;
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page on search
+  };
+
+  const handleFolderFilterChange = (e) => {
+    setFolderFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page on filter change
+  };
+
+  const handleNextPage = () => {
+    if (has_next) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (has_previous) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   if (!documents || documents.length === 0) {
     return (
       <div className="drive-folder-empty">
         <FiFolder size={48} />
-        <p>No hay archivos en la carpeta de Google Drive de este proyecto.</p>
+        <p>No hay archivos{searchTerm || folderFilter ? ' que coincidan con los filtros' : ''} en la carpeta de Google Drive de este proyecto.</p>
       </div>
     );
   }
@@ -103,6 +155,33 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
         <p className="folder-subtitle">
           {project_name} - {total_documents} {total_documents === 1 ? 'archivo' : 'archivos'}
         </p>
+      </div>
+
+      <div className="folder-filters">
+        <div className="search-container">
+          <FiSearch />
+          <input
+            type="text"
+            placeholder="Buscar archivos por nombre..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+        </div>
+        <select 
+          className="folder-type-filter"
+          value={folderFilter}
+          onChange={handleFolderFilterChange}
+        >
+          <option value={FOLDER_TYPES.ALL}>Todas las carpetas</option>
+          <option value={FOLDER_TYPES.OPERATIVO}>Operativo</option>
+          <option value={FOLDER_TYPES.ADMINISTRATIVO}>Administrativo</option>
+          <option value={FOLDER_TYPES.DOCUMENTOS}>Documentos</option>
+          <option value={FOLDER_TYPES.IMAGENES}>Imágenes</option>
+          <option value={FOLDER_TYPES.VIDEOS}>Videos</option>
+          <option value={FOLDER_TYPES.ARCHIVOS}>Archivos</option>
+          <option value={FOLDER_TYPES.TASK_SUBMISSION}>Entrega de Tarea</option>
+          <option value={FOLDER_TYPES.OTROS}>Otros</option>
+        </select>
       </div>
 
       <div className="documents-list">
@@ -161,6 +240,28 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
           </div>
         ))}
       </div>
+
+      {total_pages > 1 && (
+        <div className="pagination-controls">
+          <button 
+            onClick={handlePreviousPage} 
+            disabled={!has_previous}
+            className="pagination-btn"
+          >
+            <FiChevronLeft /> Anterior
+          </button>
+          <span className="pagination-info">
+            Página {page} de {total_pages}
+          </span>
+          <button 
+            onClick={handleNextPage} 
+            disabled={!has_next}
+            className="pagination-btn"
+          >
+            Siguiente <FiChevronRight />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

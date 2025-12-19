@@ -117,8 +117,13 @@ class GoogleDriveService:
 
     def upload_document(self, document_instance):
         """
-        Sube un archivo a Google Drive usando la estructura institucional por proyecto.
-        Estructura: MH Soluciones/[Año]/[Proyecto]/[Tipo de Carpeta]/archivo.ext
+        Sube un archivo a Google Drive usando la nueva estructura institucional.
+        Nueva estructura: AÑO/PROYECTO/NOMBRE_TAREA/USUARIO/archivo.ext
+        - AÑO: Carpeta raíz por año (2025, 2024, etc.)
+        - PROYECTO: Carpeta del proyecto
+        - NOMBRE_TAREA: Carpeta de la tarea (si hay tarea asociada, sino se omite este nivel)
+        - USUARIO: Carpeta del usuario que sube el archivo
+        - Archivos se guardan directamente sin subcarpetas de versión
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
@@ -131,41 +136,45 @@ class GoogleDriveService:
             date = document_instance.created_at
             current_year = date.strftime('%Y')
             
-            # Root: MH Soluciones
-            base_folder_id = self._get_or_create_folder(
-                "MH Soluciones", 
+            # Level 1 - Year folder (AÑO)
+            year_id = self._get_or_create_folder(
+                current_year, 
                 parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
             )
             
-            # Year folder
-            year_id = self._get_or_create_folder(current_year, parent_id=base_folder_id)
-            
-            # Project folder
+            # Level 2 - Project folder (PROYECTO)
             if document_instance.project:
-                project_name = slugify(document_instance.project.name)
+                project_name = document_instance.project.name
                 project_id = self._get_or_create_folder(project_name, parent_id=year_id)
             else:
                 # Si no hay proyecto, usar carpeta "General"
                 project_id = self._get_or_create_folder("General", parent_id=year_id)
             
-            # Folder type (Documentos, Administrativo, Imagenes, etc.)
-            folder_type = document_instance._get_folder_type_for_drive()
-            folder_type_id = self._get_or_create_folder(folder_type, parent_id=project_id)
+            # Level 3 - Task name folder (NOMBRE_TAREA) - only if task exists
+            if document_instance.task:
+                task_name = document_instance.task.title
+                task_id = self._get_or_create_folder(task_name, parent_id=project_id)
+                parent_for_user = task_id
+            else:
+                # If no task, user folder goes directly under project
+                parent_for_user = project_id
             
-            # Create filename
-            responsible_name = slugify(
-                document_instance.uploaded_by.get_full_name() 
-                or document_instance.uploaded_by.username
-            )
-            date_str = date.strftime('%d-%m-%y')
-            filename, extension = os.path.splitext(document_instance.file.name)
-            new_filename = f"{slugify(filename)}_{responsible_name}_{date_str}{extension}"
+            # Level 4 - User folder (USUARIO)
+            if document_instance.uploaded_by:
+                user_name = document_instance.uploaded_by.get_full_name() or document_instance.uploaded_by.username
+                user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
+            else:
+                # Fallback: use "Usuario Desconocido" if no user
+                user_id = self._get_or_create_folder("Usuario Desconocido", parent_id=parent_for_user)
             
-            logger.info(f"Subiendo archivo: {new_filename}")
+            # Create filename - keep original name, no version subfolder
+            filename = document_instance.file.name
+            
+            logger.info(f"Subiendo archivo: {filename} a estructura {current_year}/{document_instance.project.name if document_instance.project else 'General'}/{document_instance.task.title if document_instance.task else ''}/{user_name if document_instance.uploaded_by else 'Usuario Desconocido'}")
 
             file_metadata = {
-                'name': new_filename,
-                'parents': [folder_type_id]
+                'name': filename,
+                'parents': [user_id]  # Files go directly in user folder
             }
 
             if hasattr(document_instance.file, 'path') and os.path.exists(document_instance.file.path):
