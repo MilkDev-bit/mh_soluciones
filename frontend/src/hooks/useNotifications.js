@@ -38,7 +38,7 @@ export const useNotifications = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [user, isRefreshing]);
+  }, [user]); // Removed isRefreshing from dependencies to avoid circular dependency
 
   const loadUnreadCount = useCallback(async () => {
     if (!user) {

@@ -269,12 +269,7 @@ class NotificationService {
 
   async pollNotifications() {
     try {
-      // Agregar timeout de 10 segundos
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
       const unreadCount = await this.getUnreadCount();
-      clearTimeout(timeoutId);
       
       // Notify listeners with polling update event
       // This ensures components can refresh their state even when WebSocket is not available
@@ -288,10 +283,6 @@ class NotificationService {
         console.log(`[Polling] Notified listeners with count: ${unreadCount}`);
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
-        // Timeout - no hacer nada, continuar polling
-        return;
-      }
       // Only log in development mode - silently fail in production
       if (import.meta.env.DEV) {
         console.error('Error en polling de notificaciones:', error);
