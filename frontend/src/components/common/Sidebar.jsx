@@ -44,7 +44,7 @@ const Sidebar = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (isMobileOpen || !isCollapsed || projectsUpdated) {
+    if (isMobileOpen || ! isCollapsed || projectsUpdated) {
       fetchProjects();
     }
   }, [isMobileOpen, isCollapsed, projectsUpdated]);
@@ -59,7 +59,7 @@ const Sidebar = () => {
     try {
       setLoading(true);
       const response = await getProjects();
-      const projectsData = Array.isArray(response) ? response : (response.results || []);
+      const projectsData = Array.isArray(response) ? response : (response. results || []);
       setProjects(projectsData);
 
       if (projectsUpdated && setProjectsUpdated) {
@@ -91,7 +91,7 @@ const Sidebar = () => {
     };
   }, []);
 
-  if (!user) {
+  if (! user) {
     return null;
   }
 
@@ -106,7 +106,7 @@ const Sidebar = () => {
 
   const toggleMobileMenu = () => {
     setIsMobileOpen(!isMobileOpen);
-    if (!isMobileOpen) {
+    if (! isMobileOpen) {
       fetchProjects();
     }
   };
@@ -115,11 +115,14 @@ const Sidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // Use role helper functions instead of hardcoded checks
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
-  const hasUserManagementAccess = canManageUsers(user.role);
+  const hasUserManagementAccess = canManageUsers(user. role);
   const hasReportsAccess = canViewReports(user.role);
   const isStudentUser = isStudent(user.role);
+  const canViewArchivos = user.role !== 'CEO' && 
+                          user.role !== 'STUDENT' && 
+                          user. role !== 'CLIENT' && 
+                          user.role !== 'RH';
 
   return (
     <>
@@ -216,7 +219,7 @@ const Sidebar = () => {
                   onClick={closeMobileMenu}
                 >
                   <FiCheckSquare />
-                  {!isCollapsed && <span>Tareas</span>}
+                  {! isCollapsed && <span>Tareas</span>}
                 </NavLink>
 
                 <NavLink
@@ -228,14 +231,16 @@ const Sidebar = () => {
                   {!isCollapsed && <span>Calendario</span>}
                 </NavLink>
 
-                <NavLink
-                  to="/archivos"
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiFile />
-                  {!isCollapsed && <span>Archivos</span>}
-                </NavLink>
+                {canViewArchivos && (
+                  <NavLink
+                    to="/archivos"
+                    className="menu-item"
+                    onClick={closeMobileMenu}
+                  >
+                    <FiFile />
+                    {!isCollapsed && <span>Archivos</span>}
+                  </NavLink>
+                )}
 
                 {hasReportsAccess && (
                   <NavLink
@@ -253,28 +258,28 @@ const Sidebar = () => {
             <div className="menu-section">
               <div className="section-header">
                 <span className="menu-section-title">Salas de Trabajo</span>
-                {!isCollapsed && (
+                {! isCollapsed && (
                   <button
                     className="refresh-projects-btn"
                     onClick={handleRefreshProjects}
                     disabled={refreshing}
                     title="Actualizar proyectos"
                   >
-                    <FiRefreshCw className={refreshing ? 'spinning' : ''} />
+                    <FiRefreshCw className={refreshing ? 'spinning' :  ''} />
                   </button>
                 )}
               </div>
               <div className="menu-items">
-                {loading ? (
+                {loading ?  (
                   <div className="projects-loading">
                     <div className="loading-spinner-small"></div>
-                    {!isCollapsed && <span>Cargando proyectos...</span>}
+                    {!isCollapsed && <span>Cargando proyectos... </span>}
                   </div>
                 ) : projects.length > 0 ? (
                   <>
                     {projects.slice(0, 5).map(project => (
                       <NavLink
-                        key={project.id}
+                        key={project. id}
                         to={`/projects/${project.id}`}
                         className="menu-item project-item"
                         onClick={closeMobileMenu}
@@ -291,7 +296,7 @@ const Sidebar = () => {
                       </NavLink>
                     ))}
 
-                    {projects.length > 5 && !isCollapsed && (
+                    {projects.length > 5 && ! isCollapsed && (
                       <div className="projects-more">
                         <span>+{projects.length - 5} más</span>
                       </div>
@@ -347,10 +352,10 @@ const Sidebar = () => {
                 alt="Avatar"
                 className="user-avatar"
               />
-              {!isCollapsed && (
+              {! isCollapsed && (
                 <div className="user-info">
                   <span className="user-name">{user.first_name} {user.last_name}</span>
-                  <span className="user-role">{user.role}</span>
+                  <span className="user-role">{user. role}</span>
                 </div>
               )}
               <button
