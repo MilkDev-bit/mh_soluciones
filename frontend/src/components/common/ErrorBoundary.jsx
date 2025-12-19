@@ -22,14 +22,21 @@ class ErrorBoundary extends React.Component {
       error.message?.includes('WebSocket') ||
       error.message?.includes('Network') ||
       error.message?.includes('fetch') ||
+      error.message?.includes('Failed to fetch') ||
+      error.message?.includes('ChunkLoadError') || // Errores de carga de chunks de Vite
       error.name === 'TypeError';
 
     if (isNetworkError) {
-      // Do not show full error screen, only log
       if (import.meta.env.DEV) {
         console.warn('Network error caught by ErrorBoundary (not critical):', error);
       }
-      // Auto-reset after 2 seconds
+      // En producción, NO mostrar pantalla de error para errores de red
+      if (import.meta.env.PROD) {
+        // Auto-reset inmediatamente
+        this.setState({ hasError: false, error: null, errorInfo: null });
+        return;
+      }
+      // En desarrollo, auto-reset después de 2 segundos
       setTimeout(() => {
         this.setState({ hasError: false, error: null, errorInfo: null });
       }, 2000);

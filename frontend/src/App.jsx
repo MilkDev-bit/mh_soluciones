@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import AppRoutes from './routes';
 import Loading from './components/common/Loading';
 import InstallPWA from './components/common/InstallPWA';
@@ -10,6 +10,76 @@ import useInactivityLogout from './hooks/useInactivityLogout';
 function App() {
   // Hook para auto-logout por inactividad
   useInactivityLogout();
+  
+  // Global error handlers
+  useEffect(() => {
+    // Handler para errores no capturados (síncronos)
+    const handleError = (event) => {
+      event.preventDefault(); // Prevenir pantalla de error del navegador
+      
+      const error = event.error || event.reason;
+      const isNetworkError = 
+        error?.message?.includes('WebSocket') ||
+        error?.message?.includes('Network') ||
+        error?.message?.includes('fetch') ||
+        error?.message?.includes('Failed to fetch') ||
+        error?.name === 'TypeError';
+      
+      if (isNetworkError) {
+        // Error de red - silencioso en producción
+        if (import.meta.env.DEV) {
+          console.warn('[Global] Network error caught:', error);
+        }
+        return;
+      }
+      
+      // Error crítico - log y mostrar toast en lugar de pantalla completa
+      console.error('[Global] Unhandled error:', error);
+      if (import.meta.env.PROD) {
+        // En producción, mostrar toast en lugar de pantalla de error
+        import('react-hot-toast').then(({ default: toast }) => {
+          toast.error('Ocurrió un problema. Por favor, recarga la página si persiste.');
+        });
+      }
+    };
+
+    // Handler para promesas rechazadas no manejadas
+    const handleUnhandledRejection = (event) => {
+      event.preventDefault(); // Prevenir pantalla de error
+      
+      const error = event.reason;
+      const isNetworkError = 
+        error?.message?.includes('WebSocket') ||
+        error?.message?.includes('Network') ||
+        error?.message?.includes('fetch') ||
+        error?.message?.includes('Failed to fetch') ||
+        error?.response?.status === 401 ||
+        error?.response?.status === 403 ||
+        error?.name === 'TypeError';
+      
+      if (isNetworkError) {
+        if (import.meta.env.DEV) {
+          console.warn('[Global] Network rejection caught:', error);
+        }
+        return;
+      }
+      
+      console.error('[Global] Unhandled promise rejection:', error);
+      if (import.meta.env.PROD) {
+        import('react-hot-toast').then(({ default: toast }) => {
+          toast.error('Ocurrió un problema. Por favor, recarga la página si persiste.');
+        });
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
   
   return (
     <ErrorBoundary>

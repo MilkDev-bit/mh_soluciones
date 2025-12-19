@@ -88,8 +88,19 @@ class NotificationService {
   notifyListeners(data) {
     this.listeners.forEach(listener => {
       try {
-        listener(data);
+        const result = listener(data);
+        
+        // Si el listener devuelve una promesa, manejar errores async
+        if (result && typeof result.then === 'function') {
+          result.catch(error => {
+            if (import.meta.env.DEV) {
+              console.error('Error in async notification listener:', error);
+            }
+            // No propagar - solo log
+          });
+        }
       } catch (error) {
+        // Error síncrono
         // Only log in development, prevent one listener from breaking others
         if (import.meta.env.DEV) {
           console.error('Error in notification listener:', error);
@@ -394,13 +405,31 @@ class NotificationService {
   }
 
   async getNotifications(params = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
-      const response = await api.get('/notifications/', { params });
+      const response = await api.get('/notifications/', { 
+        params,
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+      
       // Handle paginated response - return results array or empty array
       return Array.isArray(response.data.results)
         ? response.data.results
         : (Array.isArray(response.data) ? response.data : []);
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        // Timeout - retornar array vacío silenciosamente
+        if (import.meta.env.DEV) {
+          console.warn('[NotificationService] Request timeout');
+        }
+        return [];
+      }
+      
       // Handle 401 errors with callback
       if (error.response?.status === 401) {
         if (this.onAuthError && typeof this.onAuthError === 'function') {
@@ -456,10 +485,25 @@ class NotificationService {
   }
 
   async getUnreadCount() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     try {
-      const response = await api.get('/notifications/unread_count/');
+      const response = await api.get('/notifications/unread_count/', {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       return response.data.unread_count;
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        if (import.meta.env.DEV) {
+          console.warn('[NotificationService] Unread count timeout');
+        }
+        return 0;
+      }
+      
       // Handle 401 errors with callback
       if (error.response?.status === 401) {
         if (this.onAuthError && typeof this.onAuthError === 'function') {

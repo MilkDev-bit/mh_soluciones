@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import notificationService from '../services/NotificationService';
+import { useSafeAsync } from './useSafeAsync';
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -10,6 +11,7 @@ export const useNotifications = () => {
   const [permission, setPermission] = useState(notificationService.getPermissionStatus());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useAuth();
+  const safeAsync = useSafeAsync();
 
   const loadNotifications = useCallback(async () => {
     if (!user || isRefreshing) {
@@ -21,25 +23,28 @@ export const useNotifications = () => {
     setIsRefreshing(true);
     setLoading(true);
     setError(null); // Clear previous errors
-    try {
-      // Only load unread notifications
-      const data = await notificationService.getNotifications({ include_read: false });
-      // NotificationService.getNotifications handles both paginated and non-paginated responses
-      // and ensures it always returns an array. Extra check for defensive programming.
-      const notifsList = Array.isArray(data) ? data : [];
-      setNotifications(notifsList);
-      console.log('[useNotifications] Notifications loaded successfully:', notifsList.length);
-    } catch (error) {
-      console.error('[useNotifications] Error loading notifications:', error);
-      console.error('[useNotifications] Error details:', error.message, error.stack);
-      setNotifications([]);
-      setError(error); // Store error state
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
+    
+    await safeAsync(async () => {
+      try {
+        // Only load unread notifications
+        const data = await notificationService.getNotifications({ include_read: false });
+        // NotificationService.getNotifications handles both paginated and non-paginated responses
+        // and ensures it always returns an array. Extra check for defensive programming.
+        const notifsList = Array.isArray(data) ? data : [];
+        setNotifications(notifsList);
+        console.log('[useNotifications] Notifications loaded successfully:', notifsList.length);
+      } catch (error) {
+        console.error('[useNotifications] Error loading notifications:', error);
+        console.error('[useNotifications] Error details:', error.message, error.stack);
+        setNotifications([]);
+        setError(error); // Store error state
+      } finally {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // isRefreshing intentionally omitted to avoid circular dependency
+  }, [user, safeAsync]); // Now include safeAsync
 
   const loadUnreadCount = useCallback(async () => {
     if (!user) {
@@ -48,16 +53,19 @@ export const useNotifications = () => {
     }
 
     console.log('[useNotifications] Loading unread count...');
-    try {
-      const count = await notificationService.getUnreadCount();
-      setUnreadCount(count);
-      console.log('[useNotifications] Unread count loaded:', count);
-    } catch (error) {
-      console.error('[useNotifications] Error loading unread count:', error);
-      console.error('[useNotifications] Error details:', error.message, error.stack);
-      setUnreadCount(0);
-    }
-  }, [user]);
+    
+    await safeAsync(async () => {
+      try {
+        const count = await notificationService.getUnreadCount();
+        setUnreadCount(count);
+        console.log('[useNotifications] Unread count loaded:', count);
+      } catch (error) {
+        console.error('[useNotifications] Error loading unread count:', error);
+        console.error('[useNotifications] Error details:', error.message, error.stack);
+        setUnreadCount(0);
+      }
+    });
+  }, [user, safeAsync]);
 
   const requestPermission = useCallback(async () => {
     const newPermission = await notificationService.requestPermission();
