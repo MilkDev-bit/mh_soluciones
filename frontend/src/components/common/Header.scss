@@ -939,3 +939,215 @@
     width: 280px;
   }
 }
+
+/* Dark Mode Styles */
+[data-theme="dark"] {
+  .main-header {
+    background: rgba(26, 26, 26, 0.98);
+    backdrop-filter: blur(20px);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+    &.scrolled {
+      background: rgba(26, 26, 26, 0.98);
+      border-bottom-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .header-title {
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .sidebar-toggle {
+    background: rgba(42, 42, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.7);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.9);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: rgba(255, 255, 255, 0.95);
+    }
+  }
+
+  .profile-button {
+    background: rgba(42, 42, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.15);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.9);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .profile-name {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .profile-role {
+      background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      box-shadow: 0 2px 6px rgba(255, 124, 21, 0.3);
+    }
+  }
+
+  .theme-toggle-btn,
+  .notifications-dropdown .icon-button {
+    background: rgba(42, 42, 42, 0.6);
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.15);
+
+    &:hover {
+      background: rgba(50, 50, 50, 0.8);
+      color: rgba(255, 255, 255, 0.95);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  .notifications-panel {
+    background: rgba(26, 26, 26, 0.98);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .dropdown-header {
+      background: linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%);
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+
+      h3 {
+        color: rgba(255, 255, 255, 0.95);
+      }
+
+      .mark-all-read-btn {
+        background: rgba(42, 42, 42, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: rgba(255, 255, 255, 0.7);
+
+        &:hover {
+          background: rgba(34, 197, 94, 0.2);
+          border-color: #22c55e;
+          color: #4ade80;
+        }
+      }
+    }
+
+    .notification-list {
+      &::-webkit-scrollbar-track {
+        background: rgba(42, 42, 42, 0.5);
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      }
+
+      .empty-state {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .notification-item {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+
+        &:not(.read) {
+          background: linear-gradient(90deg, rgba(255, 124, 21, 0.1) 0%, transparent 100%);
+        }
+
+        .notification-content {
+          .title {
+            color: rgba(255, 255, 255, 0.95);
+          }
+
+          .message {
+            color: rgba(255, 255, 255, 0.7);
+          }
+
+          .time {
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(42, 42, 42, 0.6);
+          }
+        }
+
+        .mark-read-btn {
+          background: rgba(42, 42, 42, 0.6);
+          border-color: rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.5);
+
+          &:hover {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border-color: #22c55e;
+          }
+        }
+      }
+    }
+  }
+
+  .profile-panel {
+    background: rgba(26, 26, 26, 0.98);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    .dropdown-header {
+      background: linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%);
+
+      .dropdown-avatar img {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .dropdown-user-info {
+        .dropdown-name {
+          color: rgba(255, 255, 255, 0.95);
+        }
+
+        .dropdown-email {
+          color: rgba(255, 255, 255, 0.7);
+        }
+      }
+    }
+
+    .dropdown-item {
+      color: rgba(255, 255, 255, 0.7);
+
+      &::before {
+        background: linear-gradient(135deg, rgba(255, 124, 21, 0.15), rgba(255, 159, 74, 0.1));
+      }
+
+      &:hover {
+        color: rgba(255, 159, 74, 0.95);
+
+        svg {
+          color: #ff9f4a;
+        }
+      }
+
+      &:last-child {
+        color: #f87171;
+
+        svg {
+          color: #ef4444;
+        }
+
+        &::before {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(248, 113, 113, 0.1));
+        }
+
+        &:hover {
+          color: #ef4444;
+
+          svg {
+            color: #ef4444;
+          }
+        }
+      }
+    }
+  }
+}

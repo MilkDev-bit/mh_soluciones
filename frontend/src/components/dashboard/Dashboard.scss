@@ -194,7 +194,7 @@
 }
 
 /* Dark Mode Styles */
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   :root {
     --glass-bg: rgba(42, 42, 42, 0.7);
     --glass-border: rgba(255, 255, 255, 0.1);
@@ -227,8 +227,8 @@
     .stat-content {
       .stat-label {
         /* Brighter and more visible text */
-        color: rgba(255, 255, 255, 0.7);
-        font-weight: 500;
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 600;
       }
 
       .stat-value {
@@ -283,7 +283,7 @@
   }
 
   .dashboard-widget {
-    background: rgba(42, 42, 42, 0.8);
+    background: rgba(42, 42, 42, 0.95);
     backdrop-filter: blur(12px);
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
@@ -295,12 +295,22 @@
     }
 
     .widget-list-item {
+      background: rgba(40, 40, 40, 0.6);
+      border-color: rgba(255, 255, 255, 0.08);
+
+      &:hover {
+        background: rgba(50, 50, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateX(4px);
+      }
+
       .item-title {
-        color: rgba(255, 255, 255, 0.9);
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 600;
       }
 
       .item-details {
-        color: rgba(255, 255, 255, 0.6);
+        color: rgba(255, 255, 255, 0.7);
       }
     }
 

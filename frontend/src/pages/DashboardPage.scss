@@ -671,9 +671,17 @@
 }
 
 /* Dark Mode Styles */
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .dashboard-page {
     background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+
+    h1, h2, .page-title {
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .page-subtitle, .subtitle {
+      color: rgba(255, 255, 255, 0.7);
+    }
   }
 
   .welcome-message {
