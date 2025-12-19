@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       notificationService.setAuthErrorHandler(() => {
-        // Hacer logout cuando hay error de autenticación
+        // Perform logout when there is an authentication error
         logout();
       });
     }

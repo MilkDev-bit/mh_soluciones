@@ -57,10 +57,10 @@ class NotificationService {
     this.maxReconnectDelay = 30000; // 30 seconds
     this.reconnectTimeout = null;
     this.hasWebSocketFailed = false; // Track if WebSocket has permanently failed
-    this.isDegraded = false; // Estado degradado (funciona con polling)
-    this.onAuthError = null; // Callback para errores de autenticación
+    this.isDegraded = false; // Degraded state (working with polling)
+    this.onAuthError = null; // Callback for authentication errors
     this.lastReconnectAttempt = null;
-    this.minReconnectInterval = 5000; // Mínimo 5 segundos entre reconexiones
+    this.minReconnectInterval = 5000; // Minimum 5 seconds between reconnections
   }
 
   getWebSocketURL() {
@@ -90,16 +90,16 @@ class NotificationService {
       try {
         listener(data);
       } catch (error) {
-        // Solo log en desarrollo, evitar que un listener rompa otros
+        // Only log in development, prevent one listener from breaking others
         if (import.meta.env.DEV) {
           console.error('Error in notification listener:', error);
         }
-        // NO propagar el error
+        // DO NOT propagate the error
       }
     });
   }
 
-  // Método para registrar callback de error de auth
+  // Method to register authentication error callback
   setAuthErrorHandler(callback) {
     this.onAuthError = callback;
   }
@@ -234,7 +234,7 @@ class NotificationService {
             console.log('Max WebSocket reconnection attempts reached. Falling back to polling permanently.');
           }
           this.hasWebSocketFailed = true; // Mark WebSocket as permanently failed
-          this.isDegraded = true; // Estado degradado (funciona con polling)
+          this.isDegraded = true; // Degraded state (working with polling)
           this.reconnectAttempts = 0; // Reset for future manual attempts
           this.startPolling(userId);
         }
@@ -404,7 +404,7 @@ class NotificationService {
       // Handle 401 errors with callback
       if (error.response?.status === 401) {
         if (this.onAuthError && typeof this.onAuthError === 'function') {
-          this.onAuthError(); // Notificar logout
+          this.onAuthError(); // Notify logout
         }
         if (import.meta.env.DEV) {
           console.error('Authentication error fetching notifications - token may be expired');
@@ -463,7 +463,7 @@ class NotificationService {
       // Handle 401 errors with callback
       if (error.response?.status === 401) {
         if (this.onAuthError && typeof this.onAuthError === 'function') {
-          this.onAuthError(); // Notificar logout
+          this.onAuthError(); // Notify logout
         }
         if (import.meta.env.DEV) {
           console.error('Authentication error fetching unread count - token may be expired');

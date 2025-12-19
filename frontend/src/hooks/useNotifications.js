@@ -38,7 +38,8 @@ export const useNotifications = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [user]); // Removed isRefreshing from dependencies to avoid circular dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // isRefreshing intentionally omitted to avoid circular dependency
 
   const loadUnreadCount = useCallback(async () => {
     if (!user) {
