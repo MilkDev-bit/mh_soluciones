@@ -941,7 +941,7 @@
 }
 
 /* Dark Mode Styles */
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .main-header {
     background: rgba(26, 26, 26, 0.98);
     backdrop-filter: blur(20px);
@@ -955,7 +955,7 @@
   }
 
   .header-title {
-    color: rgba(255, 255, 255, 0.95) !important;
+    color: rgba(255, 255, 255, 0.95);
     font-weight: 700;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
@@ -990,8 +990,8 @@
     }
 
     .profile-role {
-      background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%) !important;
-      color: white !important;
+      background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+      color: white;
       padding: 0.25rem 0.75rem;
       border-radius: 12px;
       font-weight: 600;

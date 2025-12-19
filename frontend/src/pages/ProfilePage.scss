@@ -756,19 +756,19 @@
 }
 
 /* Dark Mode Styles */
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .profile-page {
     background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
 
     .page-header,
     header {
       h1, h2 {
-        color: rgba(255, 255, 255, 0.95) !important;
+        color: rgba(255, 255, 255, 0.95);
       }
 
       .page-subtitle,
       p {
-        color: rgba(255, 255, 255, 0.7) !important;
+        color: rgba(255, 255, 255, 0.7);
       }
     }
 
@@ -793,8 +793,8 @@
         }
 
         .profile-role {
-          background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%) !important;
-          color: white !important;
+          background: linear-gradient(135deg, #ff7c15 0%, #ff9f4a 100%);
+          color: white;
           padding: 0.5rem 1rem;
           border-radius: 12px;
           font-weight: 600;
