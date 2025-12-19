@@ -4,6 +4,7 @@ import socket
 import time
 from urllib.parse import urlencode
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from ipware import get_client_ip
@@ -45,7 +46,8 @@ from .serializers import (
     TwoFactorSerializer, 
     UserCreateSerializer,
     UserSerializer,
-    UserUpdateSerializer
+    UserUpdateSerializer,
+    ForgotPasswordSerializer
 )
 
 User = get_user_model()
@@ -688,3 +690,101 @@ class GoogleConnectionStatusView(APIView):
     def get(self, request, *args, **kwargs):
         is_connected = GoogleApiCredentials.objects.filter(user=request.user).exists()
         return Response({'is_connected': is_connected})
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def forgot_password(request):
+    """
+    Endpoint para solicitar recuperación de contraseña.
+    Envía un correo a todos los SUPERADMIN notificando la solicitud.
+    """
+    serializer = ForgotPasswordSerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return Response(
+            {'detail': serializer.errors.get('email', ['Error de validación'])[0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user = serializer.context.get('user')
+    
+    # Obtener todos los SUPERADMIN
+    superadmins = User.objects.filter(role='SUPERADMIN', is_active=True)
+    
+    if not superadmins.exists():
+        logger.error('No hay SUPERADMIN activos en el sistema')
+        return Response(
+            {'detail': 'No se pudo procesar la solicitud. Contacta al soporte técnico.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Preparar correo
+    superadmin_emails = [admin.email for admin in superadmins if admin.email]
+    
+    if not superadmin_emails:
+        logger.error('Los SUPERADMIN no tienen correos configurados')
+        return Response(
+            {'detail': 'No se pudo procesar la solicitud. Contacta al soporte técnico.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    subject = '🔐 Solicitud de Cambio de Contraseña - MH Soluciones'
+    message = f"""
+Hola Administrador,
+
+El usuario con los siguientes datos ha solicitado un cambio de contraseña:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 Correo:        {user.email}
+👤 Nombre:        {user.first_name} {user.last_name}
+🆔 Usuario:       {user.username}
+🎭 Rol:           {user.get_role_display()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Por favor, realiza el cambio de contraseña desde el panel de administración de usuarios:
+🔗 {settings.FRONTEND_URL}/admin/users
+
+Pasos para cambiar la contraseña:
+1. Inicia sesión en el panel de administración
+2. Ve a "Gestión de Usuarios"
+3. Busca al usuario "{user.username}"
+4. Haz clic en el icono de llave (🔑) para cambiar la contraseña
+5. Ingresa y confirma la nueva contraseña
+6. Notifica al usuario por los canales oficiales
+
+⚠️ IMPORTANTE:
+- Verifica la identidad del usuario antes de proceder
+- No compartas contraseñas por correo electrónico
+- Instruye al usuario a cambiar su contraseña después del primer inicio de sesión
+
+---
+Este correo fue generado automáticamente por el sistema MH Soluciones.
+Fecha y hora: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
+    """.strip()
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=superadmin_emails,
+            fail_silently=False,
+        )
+        
+        logger.info(
+            f'Solicitud de cambio de contraseña enviada para {user.email}. '
+            f'Notificados {len(superadmin_emails)} SUPERADMIN(s).'
+        )
+        
+        return Response(
+            {'detail': 'Solicitud enviada correctamente. Un administrador se pondrá en contacto contigo pronto.'},
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f'Error al enviar correo de recuperación: {str(e)}')
+        return Response(
+            {'detail': 'Error al enviar la solicitud. Por favor, intenta más tarde o contacta al soporte.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

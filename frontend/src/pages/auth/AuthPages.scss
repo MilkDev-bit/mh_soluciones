@@ -641,3 +641,169 @@
     transform: scale(1);
   }
 }
+
+// Forgot Password Link and Modal Styles
+.forgot-password-link {
+  margin-top: $spacing-4;
+  text-align: center;
+
+  .link-button {
+    background: none;
+    border: none;
+    color: $primary-500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all $transition;
+    padding: $spacing-2;
+
+    &:hover {
+      color: $primary-600;
+      text-decoration: none;
+    }
+
+    &:focus {
+      outline: 2px solid $primary-500;
+      outline-offset: 2px;
+      border-radius: $rounded-sm;
+    }
+  }
+}
+
+.forgot-password-form {
+  .forgot-password-description {
+    margin-bottom: $spacing-6;
+    color: $neutral-600;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .form-group {
+    margin-bottom: $spacing-6;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      font-weight: 600;
+      color: $neutral-700;
+      margin-bottom: $spacing-2;
+      font-size: 0.875rem;
+
+      svg {
+        color: $primary-500;
+      }
+    }
+
+    input {
+      width: 100%;
+      padding: $spacing-3 $spacing-4;
+      border: 2px solid $neutral-300;
+      border-radius: $rounded-lg;
+      font-size: 0.9375rem;
+      transition: all $transition;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+      }
+
+      &:disabled {
+        background: $neutral-100;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      &::placeholder {
+        color: $neutral-400;
+      }
+    }
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: $spacing-4;
+    justify-content: flex-end;
+    margin-top: $spacing-8;
+
+    .btn {
+      min-width: 120px;
+      padding: $spacing-3 $spacing-6;
+      border-radius: $rounded-lg;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      cursor: pointer;
+      transition: all $transition;
+      border: none;
+
+      &.btn-primary {
+        background: $primary-500;
+        color: $white;
+
+        &:hover:not(:disabled) {
+          background: $primary-600;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+
+      &.btn-secondary {
+        background: $neutral-200;
+        color: $neutral-700;
+
+        &:hover:not(:disabled) {
+          background: $neutral-300;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .forgot-password-link {
+    .link-button {
+      color: $primary-400;
+
+      &:hover {
+        color: $primary-300;
+      }
+    }
+  }
+
+  .forgot-password-form {
+    .forgot-password-description {
+      color: $neutral-400;
+    }
+
+    .form-group {
+      label {
+        color: $neutral-300;
+      }
+
+      input {
+        background: $neutral-800;
+        border-color: $neutral-600;
+        color: $neutral-100;
+
+        &:focus {
+          border-color: $primary-400;
+        }
+
+        &::placeholder {
+          color: $neutral-500;
+        }
+      }
+    }
+  }
+}
