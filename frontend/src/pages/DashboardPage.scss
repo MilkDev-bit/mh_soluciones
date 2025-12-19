@@ -669,3 +669,248 @@
     padding: $spacing-3;
   }
 }
+
+/* Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  .dashboard-page {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  }
+
+  .welcome-message {
+    color: rgba(255, 255, 255, 0.95);
+    /* Maintain brighter text gradient */
+    background: linear-gradient(135deg, #ff9f4a 0%, #ff7c15 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .welcome-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .error-banner {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.15) 100%);
+    border-left-color: $error;
+    
+    p {
+      color: rgba(255, 200, 200, 0.9);
+      
+      strong {
+        color: #f87171;
+      }
+    }
+  }
+
+  .stats-card {
+    /* Dark background with subtle gradient */
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+
+    &::before {
+      background: linear-gradient(90deg, var(--card-color, $primary-400) 0%, var(--card-color-light, $primary-300) 100%);
+    }
+
+    &::after {
+      background: var(--card-color-ultra-light, rgba($primary-400, 0.08));
+    }
+
+    &:hover {
+      transform: translateY(-6px);
+      box-shadow: 
+        0 12px 24px -6px rgba(0, 0, 0, 0.5),
+        0 4px 8px -2px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.15);
+
+      &::after {
+        transform: scale(1.2);
+        opacity: 0.6;
+      }
+    }
+
+    &.color-orange {
+      --card-color: #ff9f4a;
+      --card-color-light: #ff7c15;
+      --card-color-ultra-light: rgba(255, 159, 74, 0.1);
+    }
+
+    &.color-blue {
+      --card-color: #60a5fa;
+      --card-color-light: #3b82f6;
+      --card-color-ultra-light: rgba(96, 165, 250, 0.1);
+    }
+
+    &.color-green {
+      --card-color: #34d399;
+      --card-color-light: #10b981;
+      --card-color-ultra-light: rgba(52, 211, 153, 0.1);
+    }
+
+    &.color-red {
+      --card-color: #f87171;
+      --card-color-light: #ef4444;
+      --card-color-ultra-light: rgba(248, 113, 113, 0.1);
+    }
+
+    &.color-purple {
+      --card-color: #a855f7;
+      --card-color-light: #9333ea;
+      --card-color-ultra-light: rgba(168, 85, 247, 0.1);
+    }
+  }
+
+  .stats-icon {
+    background: linear-gradient(135deg, var(--card-color, $primary-400), var(--card-color-light, $primary-300));
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+    opacity: 0.95;
+  }
+
+  .stats-title {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .stats-value {
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .stats-trend {
+    &.positive {
+      color: #4ade80;
+    }
+
+    &.negative {
+      color: #f87171;
+    }
+  }
+
+  .dashboard-widget {
+    background: rgba(42, 42, 42, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 
+      0 10px 15px -3px rgba(0, 0, 0, 0.4),
+      0 4px 6px -2px rgba(0, 0, 0, 0.3);
+
+    &::before {
+      background: linear-gradient(90deg, var(--accent-primary, $primary-400) 0%, var(--accent-secondary, $secondary-400) 100%);
+    }
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.5),
+        0 10px 10px -5px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .widget-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+
+    &::after {
+      background: linear-gradient(90deg, var(--accent-primary, $primary-400), var(--accent-secondary, $secondary-400));
+    }
+
+    h3 {
+      color: rgba(255, 255, 255, 0.95);
+
+      svg {
+        color: var(--accent-primary, $primary-400);
+      }
+    }
+
+    .view-all-link {
+      color: var(--accent-primary, $primary-400);
+
+      &:hover {
+        background: rgba($primary-400, 0.15);
+        color: $primary-300;
+      }
+    }
+  }
+
+  .widget-list-item {
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(40, 40, 40, 0.6) 100%);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    &::before {
+      background: linear-gradient(180deg, var(--accent-primary, $primary-400) 0%, var(--accent-secondary, $secondary-400) 100%);
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.3),
+        0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  .item-info {
+    .item-title {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .item-meta {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .status-badge {
+    &.status-pending {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.2) 100%);
+      color: #fbbf24;
+    }
+
+    &.status-in-progress {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.25) 0%, rgba(96, 165, 250, 0.2) 100%);
+      color: #60a5fa;
+    }
+
+    &.status-completed {
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, rgba(52, 211, 153, 0.2) 100%);
+      color: #4ade80;
+    }
+
+    &.status-overdue {
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.25) 0%, rgba(248, 113, 113, 0.2) 100%);
+      color: #f87171;
+    }
+  }
+
+  .progress-bar-container {
+    .progress-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .progress-bar {
+      background: rgba(255, 255, 255, 0.1);
+
+      .progress-fill {
+        background: linear-gradient(90deg, $primary-400 0%, $secondary-400 100%);
+
+        &::after {
+          background: linear-gradient(90deg, transparent, rgba($white, 0.2), transparent);
+        }
+      }
+    }
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.5);
+
+    svg {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    p {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
