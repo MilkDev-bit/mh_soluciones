@@ -4,6 +4,7 @@ import Header from '../components/common/Header';
 import './MainLayout.scss';
 
 const MainLayout = () => {
+  
   return (
     <div className="main-layout">
       <Sidebar />
