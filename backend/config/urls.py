@@ -6,8 +6,9 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 from django.views.static import serve
+from django.views.generic import RedirectView
 from django.http import JsonResponse
-from config.views import api_root, favicon
+from config.views import api_root
 
 admin.site.site_title = 'Portal de Administración MH'
 admin.site.site_header = "" 
@@ -30,8 +31,11 @@ urlpatterns = [
     # API root view
     path('', api_root, name='root'),
     
-    # Favicon (prevents 502)
-    path('favicon.ico', favicon, name='favicon'),
+    # Favicon (para admin y otras rutas del backend)
+    path('favicon.ico', RedirectView.as_view(
+        url=settings.STATIC_URL + 'favicon.ico',
+        permanent=True
+    ), name='favicon'),
     
     # Existing routes
     path('health/', health_check, name='health_check'),
