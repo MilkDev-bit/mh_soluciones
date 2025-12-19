@@ -25,6 +25,8 @@ export const useSafeAsync = () => {
       if (isMountedRef.current) {
         return result;
       }
+      // Component unmounted after successful execution - return undefined
+      return undefined;
     } catch (error) {
       if (isMountedRef.current) {
         throw error;
@@ -33,6 +35,7 @@ export const useSafeAsync = () => {
       if (import.meta.env.DEV) {
         console.warn('Async operation completed after component unmount:', error);
       }
+      return undefined;
     }
   }, []);
 
