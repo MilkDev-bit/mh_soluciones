@@ -52,6 +52,7 @@ from .serializers import (
 
 User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
+forgot_password_logger = logging.getLogger('authentication.forgot_password')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -713,7 +714,7 @@ def forgot_password(request):
     superadmins = User.objects.filter(role='SUPERADMIN', is_active=True)
     
     if not superadmins.exists():
-        logger.error('No hay SUPERADMIN activos en el sistema')
+        forgot_password_logger.error('No hay SUPERADMIN activos en el sistema')
         return Response(
             {'detail': 'No se pudo procesar la solicitud. Contacta al soporte técnico.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -723,7 +724,7 @@ def forgot_password(request):
     superadmin_emails = [admin.email for admin in superadmins if admin.email]
     
     if not superadmin_emails:
-        logger.error('Los SUPERADMIN no tienen correos configurados')
+        forgot_password_logger.error('Los SUPERADMIN no tienen correos configurados')
         return Response(
             {'detail': 'No se pudo procesar la solicitud. Contacta al soporte técnico.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -772,7 +773,7 @@ Fecha y hora: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
             fail_silently=False,
         )
         
-        logger.info(
+        forgot_password_logger.info(
             f'Solicitud de cambio de contraseña enviada para {user.email}. '
             f'Notificados {len(superadmin_emails)} SUPERADMIN(s).'
         )
@@ -783,7 +784,7 @@ Fecha y hora: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
         )
         
     except Exception as e:
-        logger.error(f'Error al enviar correo de recuperación: {str(e)}')
+        forgot_password_logger.error(f'Error al enviar correo de recuperación: {str(e)}')
         return Response(
             {'detail': 'Error al enviar la solicitud. Por favor, intenta más tarde o contacta al soporte.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
