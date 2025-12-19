@@ -46,7 +46,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
           params.search = searchTerm;
         }
         
-        if (folderFilter) {
+        if (folderFilter && folderFilter !== FOLDER_TYPES.ALL) {
           params.folder_type = folderFilter;
         }
         

@@ -377,11 +377,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         # Validate CLIENT access
         self._validate_client_access(user, project)
         
-        # Get query parameters
+        # Get query parameters with validation
         search = request.query_params.get('search', '').strip()
         folder_type = request.query_params.get('folder_type', '').strip()
-        page = max(int(request.query_params.get('page', 1)), 1)
-        page_size = max(1, min(int(request.query_params.get('page_size', 20)), 100))
+        
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (ValueError, TypeError):
+            page = 1
+            
+        try:
+            page_size = max(1, min(int(request.query_params.get('page_size', 20)), 100))
+        except (ValueError, TypeError):
+            page_size = 20
         
         # Get all documents for this project
         documents = Document.objects.filter(

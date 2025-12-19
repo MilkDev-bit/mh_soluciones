@@ -52,7 +52,7 @@ const ArchivosPage = () => {
       const params = {};
       
       // Use folder filter if selected (new dedicated folder filter)
-      if (filtroCarpeta) {
+      if (filtroCarpeta && filtroCarpeta !== FOLDER_TYPES.ALL) {
         params.folder_type = filtroCarpeta;
       } else if (filtroTipo !== FILTER_TYPES.ALL) {
         // Fallback to old type filter for backward compatibility
