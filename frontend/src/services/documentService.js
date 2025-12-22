@@ -57,9 +57,12 @@ export const uploadDocument = async (formData) => {
     const response = await api.post('/documents/', formData);
     return response.data;
   } catch (error) {
+    // Extract detailed error information
+    const errorData = error.response?.data;
+    
     // Try alternative format only if the error is specifically about 'task' field
     const isTaskFieldError = error.response?.status === 400 && 
-      error.response?.data?.task !== undefined;
+      errorData?.task !== undefined;
     
     if (isTaskFieldError) {
       const newFormData = new FormData();
@@ -78,9 +81,13 @@ export const uploadDocument = async (formData) => {
       return response2.data;
     }
 
-    throw new Error(
-      error.response?.data?.message || 'Error al subir el documento'
-    );
+    // Create enhanced error with detailed message
+    const errorMessage = errorData?.detail || errorData?.message || 'Error al subir el documento';
+    const enhancedError = new Error(errorMessage);
+    enhancedError.type = errorData?.error_type || 'upload_error';
+    enhancedError.statusCode = error.response?.status;
+    
+    throw enhancedError;
   }
 };
 
@@ -139,8 +146,19 @@ export const getFoldersForProject = async (projectId) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching folders for project:', error);
-    throw new Error(
-      error.response?.data?.error || 'Error al obtener carpetas del proyecto'
+    
+    // Extract detailed error information from backend response
+    const errorData = error.response?.data;
+    const errorType = errorData?.error_type;
+    const errorDetail = errorData?.detail || errorData?.error;
+    
+    // Create a more informative error with type
+    const enhancedError = new Error(
+      errorDetail || 'Error al obtener carpetas del proyecto'
     );
+    enhancedError.type = errorType || 'unknown_error';
+    enhancedError.statusCode = error.response?.status;
+    
+    throw enhancedError;
   }
 };
