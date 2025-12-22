@@ -12,6 +12,18 @@ export const getEventsByProject = async (projectId) => {
   }
 };
 
+export const getAvailableColors = async (projectId) => {
+  if (!projectId) {
+    return [];
+  }
+  try {
+    const { data } = await api.get(`calendar/calendar-events/available-colors/?project_id=${projectId}`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const createEvent = async (eventData) => {
   try {
     const { data } = await api.post('calendar/calendar-events/', eventData);

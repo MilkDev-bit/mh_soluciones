@@ -1,4 +1,5 @@
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.db.models import Q, Prefetch
@@ -162,4 +163,50 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
             logger.error(f"Error listing events: {e}")
             return Response({
                 'detail': 'Error al obtener los eventos. Por favor, intenta nuevamente.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='available-colors')
+    def available_colors(self, request):
+        """
+        Devuelve los colores únicos que tienen eventos asociados en el proyecto especificado.
+        Retorna solo colores de eventos que realmente existen en la base de datos.
+        """
+        try:
+            project_id = request.query_params.get('project_id')
+            
+            if not project_id:
+                return Response({
+                    'detail': 'Se requiere el parámetro project_id.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Obtener eventos del proyecto con permisos aplicados
+            queryset = self.get_queryset().filter(project_id=project_id)
+            
+            # Obtener colores únicos de los eventos existentes
+            unique_colors = queryset.values_list('color', flat=True).distinct()
+            
+            # Obtener las etiquetas de los colores desde el modelo
+            color_choices = dict(CalendarEvent.EventColor.choices)
+            
+            # Construir la respuesta con colores que existen en eventos
+            available_colors = []
+            for color in unique_colors:
+                if color:  # Asegurar que el color no sea nulo
+                    available_colors.append({
+                        'value': color,
+                        'label': color_choices.get(color, color),
+                        'color': color
+                    })
+            
+            logger.info(f"Retrieved {len(available_colors)} available colors for project {project_id}")
+            
+            return Response({
+                'colors': available_colors,
+                'count': len(available_colors)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error getting available colors: {e}")
+            return Response({
+                'detail': 'Error al obtener los colores disponibles.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
