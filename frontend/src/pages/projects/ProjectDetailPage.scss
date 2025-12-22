@@ -132,7 +132,7 @@
   min-height: auto;
   
   @media (min-width: $breakpoint-lg) {
-    grid-template-columns: 1fr 420px;
+    grid-template-columns: 1fr 480px;
   }
 }
 
@@ -189,6 +189,7 @@
   margin-bottom: $spacing-5;
   padding-bottom: $spacing-4;
   border-bottom: 2px solid rgba($neutral-200, 0.6);
+  gap: $spacing-3;
   
   h2, h3 {
     font-size: 1.375rem;
