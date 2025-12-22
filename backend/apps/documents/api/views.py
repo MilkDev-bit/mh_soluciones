@@ -2,8 +2,11 @@ import logging
 
 from django.db.models import Q
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework import status
 
 from apps.core.permissions import ADMIN_ROLES
 from apps.core.utils import (
@@ -13,6 +16,7 @@ from apps.core.utils import (
 from apps.projects.models import ProjectMember
 from ..models import Document
 from ..tasks import upload_document_to_drive
+from ..services import GoogleDriveService
 from .permissions import IsOwnerOrAdminReadOnly
 from .serializers import DocumentSerializer
 
@@ -100,3 +104,50 @@ class DocumentViewSet(viewsets.ModelViewSet):
             logger.error(f"Error al encolar la tarea de subida a Drive: {e}")
             document.upload_status = Document.UploadStatus.FAILED
             document.save(update_fields=['upload_status'])
+
+    @action(detail=False, methods=['get'], url_path='folders')
+    def list_folders(self, request):
+        """
+        Lista las carpetas reales de Google Drive para un proyecto específico.
+        Requiere parámetro 'project' en query params.
+        """
+        project_id = request.query_params.get('project')
+        
+        if not project_id:
+            return Response(
+                {'error': 'El parámetro "project" es requerido'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Initialize Drive service with institutional credentials
+            drive_service = GoogleDriveService(use_institutional=True)
+            
+            # Get folders for the project
+            folders = drive_service.list_folders_for_project(project_id)
+            
+            # Format response
+            folder_list = [
+                {
+                    'id': folder.get('id'),
+                    'name': folder.get('name'),
+                    'createdTime': folder.get('createdTime'),
+                    'modifiedTime': folder.get('modifiedTime')
+                }
+                for folder in folders
+            ]
+            
+            return Response(folder_list, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
+            logger.error(f"Error de configuración: {e}")
+            return Response(
+                {'error': 'Configuración de Google Drive no disponible'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            logger.error(f"Error al listar carpetas: {e}")
+            return Response(
+                {'error': 'Error al obtener carpetas de Google Drive'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

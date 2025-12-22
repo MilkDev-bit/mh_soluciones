@@ -13,7 +13,7 @@ import {
   FiExternalLink
 } from 'react-icons/fi';
 import { useDropzone } from 'react-dropzone';
-import { getAllDocuments, uploadDocument, deleteDocument } from '../services/documentService';
+import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
 import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES, FOLDER_TYPES } from '../constants/folderTypes';
@@ -24,12 +24,14 @@ const ArchivosPage = () => {
   const [cargando, setCargando] = useState(true);
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
   const [filtroTipo, setFiltroTipo] = useState(FILTER_TYPES.ALL);
-  const [filtroCarpeta, setFiltroCarpeta] = useState(FOLDER_TYPES.ALL);
+  const [filtroCarpeta, setFiltroCarpeta] = useState('ALL'); // Changed to use string IDs
   const [busqueda, setBusqueda] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [proyectos, setProyectos] = useState([]);
+  const [carpetasDrive, setCarpetasDrive] = useState([]); // Dynamic folders from Drive
+  const [cargandoCarpetas, setCargandoCarpetas] = useState(false);
 
   const cargarProyectos = async () => {
     try {
@@ -40,6 +42,28 @@ const ArchivosPage = () => {
     } catch (error) {
       console.error('Error cargando proyectos:', error);
       toast.error('Error al cargar proyectos');
+    }
+  };
+
+  const cargarCarpetasDrive = async (projectId) => {
+    if (!projectId) {
+      setCarpetasDrive([]);
+      setFiltroCarpeta('ALL');
+      return;
+    }
+
+    try {
+      setCargandoCarpetas(true);
+      const folders = await getFoldersForProject(projectId);
+      setCarpetasDrive(folders);
+      // Reset folder filter to "ALL" when project changes
+      setFiltroCarpeta('ALL');
+    } catch (error) {
+      console.error('Error cargando carpetas:', error);
+      // Silently fail - show static folders if Drive folders can't be loaded
+      setCarpetasDrive([]);
+    } finally {
+      setCargandoCarpetas(false);
     }
   };
 
@@ -78,6 +102,11 @@ const ArchivosPage = () => {
   useEffect(() => {
     cargarProyectos();
   }, []);
+
+  useEffect(() => {
+    cargarCarpetasDrive(proyectoSeleccionado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proyectoSeleccionado]);
 
   useEffect(() => {
     cargarArchivos();
@@ -213,7 +242,27 @@ const ArchivosPage = () => {
       coincideTipo = archivo.folder_type === filtroTipo;
     }
     
-    return coincideBusqueda && coincideTipo;
+    // Filter by selected Drive folder
+    let coincideCarpeta = true;
+    if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
+      // Find the selected folder
+      const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
+      if (carpetaSeleccionada) {
+        // Filter files that are in this folder (by matching folder name in the drive path)
+        // Since we don't have parent_folder_id, we'll use the task name as folder filter
+        // because files are organized by: YEAR/PROJECT/TASK/USER/file
+        if (archivo.task && archivo.task.title) {
+          coincideCarpeta = archivo.task.title === carpetaSeleccionada.name;
+        } else {
+          // If no task, the file might be in a user folder directly under project
+          // In this case, match by uploaded_by name
+          const userName = archivo.uploaded_by?.get_full_name || archivo.uploaded_by?.username;
+          coincideCarpeta = userName === carpetaSeleccionada.name;
+        }
+      }
+    }
+    
+    return coincideBusqueda && coincideTipo && coincideCarpeta;
   });
 
   return (
@@ -269,16 +318,25 @@ const ArchivosPage = () => {
             className="filtro-carpeta"
             value={filtroCarpeta}
             onChange={(e) => setFiltroCarpeta(e.target.value)}
+            disabled={cargandoCarpetas || !proyectoSeleccionado}
           >
-            <option value={FOLDER_TYPES.ALL}>Todas las carpetas</option>
-            <option value={FOLDER_TYPES.OPERATIVO}>Operativo</option>
-            <option value={FOLDER_TYPES.ADMINISTRATIVO}>Administrativo</option>
-            <option value={FOLDER_TYPES.DOCUMENTOS}>Documentos</option>
-            <option value={FOLDER_TYPES.IMAGENES}>Imágenes</option>
-            <option value={FOLDER_TYPES.VIDEOS}>Videos</option>
-            <option value={FOLDER_TYPES.ARCHIVOS}>Archivos</option>
-            <option value={FOLDER_TYPES.TASK_SUBMISSION}>Entrega de Tarea</option>
-            <option value={FOLDER_TYPES.OTROS}>Otros</option>
+            {carpetasDrive.length > 1 && (
+              <option value="ALL">Todas las carpetas</option>
+            )}
+            {carpetasDrive.length === 0 && !proyectoSeleccionado && (
+              <option value="ALL">Selecciona un proyecto primero</option>
+            )}
+            {carpetasDrive.length === 0 && proyectoSeleccionado && !cargandoCarpetas && (
+              <option value="ALL">No hay carpetas disponibles</option>
+            )}
+            {cargandoCarpetas && (
+              <option value="ALL">Cargando carpetas...</option>
+            )}
+            {carpetasDrive.map(carpeta => (
+              <option key={carpeta.id} value={carpeta.id}>
+                {carpeta.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="toolbar-derecha">

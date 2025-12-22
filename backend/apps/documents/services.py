@@ -277,3 +277,61 @@ class GoogleDriveService:
                 'success': False,
                 'error': str(e)
             }
+
+    def list_folders_for_project(self, project_id, year=None):
+        """
+        Lista las carpetas reales existentes en Google Drive para un proyecto específico.
+        
+        Args:
+            project_id: ID del proyecto
+            year: Año (opcional, si no se proporciona usa el año actual)
+        
+        Returns:
+            list: Lista de diccionarios con información de las carpetas
+        """
+        if not self.service:
+            raise ConnectionError("Servicio de Google Drive no inicializado.")
+        
+        try:
+            from apps.projects.models import Project
+            from datetime import datetime
+            
+            # Get project
+            try:
+                project = Project.objects.get(id=project_id)
+            except Project.DoesNotExist:
+                logger.error(f"Proyecto con ID {project_id} no encontrado")
+                return []
+            
+            # Get year folder
+            if not year:
+                year = datetime.now().strftime('%Y')
+            
+            year_id = self._get_or_create_folder(
+                year, 
+                parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+            )
+            
+            # Get project folder
+            project_name = project.name
+            project_folder_id = self._get_or_create_folder(project_name, parent_id=year_id)
+            
+            # List all folders (not files) within the project folder
+            query = f"mimeType='application/vnd.google-apps.folder' and '{project_folder_id}' in parents and trashed=false"
+            
+            response = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name, createdTime, modifiedTime)',
+                orderBy='name'
+            ).execute()
+            
+            folders = response.get('files', [])
+            
+            logger.info(f"Encontradas {len(folders)} carpetas para el proyecto {project_name}")
+            
+            return folders
+            
+        except Exception as e:
+            logger.exception(f"Error al listar carpetas para proyecto {project_id}: {e}")
+            return []
