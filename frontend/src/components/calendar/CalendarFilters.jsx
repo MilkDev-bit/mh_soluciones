@@ -2,17 +2,7 @@ import React from 'react';
 import { FiFilter, FiX } from 'react-icons/fi';
 import './CalendarFilters.scss';
 
-const eventColorOptions = [
-  { value: '', label: 'Todos los colores', color: null },
-  { value: '#2C74B3', label: 'Azul (Información)', color: '#2C74B3' },
-  { value: '#198754', label: 'Verde (Hito)', color: '#198754' },
-  { value: '#ffc107', label: 'Amarillo (Advertencia)', color: '#ffc107' },
-  { value: '#dc3545', label: 'Rojo (Urgente)', color: '#dc3545' },
-  { value: '#6f42c1', label: 'Púrpura (Reunión)', color: '#6f42c1' },
-  { value: '#fd7e14', label: 'Naranja (Recordatorio)', color: '#fd7e14' },
-];
-
-const CalendarFilters = ({ filters, onFilterChange, onClearFilters, users = [] }) => {
+const CalendarFilters = ({ filters, onFilterChange, onClearFilters, users = [], availableColors = [] }) => {
   const hasActiveFilters = filters.category || filters.user || filters.searchQuery;
 
   return (
@@ -49,29 +39,32 @@ const CalendarFilters = ({ filters, onFilterChange, onClearFilters, users = [] }
           />
         </div>
 
-        <div className="filter-group">
-          <label htmlFor="category-filter" className="filter-label">
-            Categoría / Color
-          </label>
-          <select
-            id="category-filter"
-            className="form-select"
-            value={filters.category || ''}
-            onChange={(e) => onFilterChange('category', e.target.value)}
-          >
-            {eventColorOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {filters.category && (
-            <div 
-              className="color-preview-badge"
-              style={{ backgroundColor: filters.category }}
-            />
-          )}
-        </div>
+        {availableColors.length > 0 && (
+          <div className="filter-group">
+            <label htmlFor="category-filter" className="filter-label">
+              Categoría / Color
+            </label>
+            <select
+              id="category-filter"
+              className="form-select"
+              value={filters.category || ''}
+              onChange={(e) => onFilterChange('category', e.target.value)}
+            >
+              <option value="">Todos los colores</option>
+              {availableColors.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {filters.category && (
+              <div 
+                className="color-preview-badge"
+                style={{ backgroundColor: filters.category }}
+              />
+            )}
+          </div>
+        )}
 
         {users.length > 0 && (
           <div className="filter-group">

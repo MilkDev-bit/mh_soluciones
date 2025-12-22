@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { getProjects } from '../../services/projectService';
-import { getEventsByProject, updateEvent } from '../../services/calendarService';
+import { getEventsByProject, updateEvent, getAvailableColors } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
 import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
 import EventModal from '../../components/calendar/EventModal';
@@ -31,6 +31,7 @@ const CalendarPage = () => {
     searchQuery: ''
   });
   const [projectUsers, setProjectUsers] = useState([]);
+  const [availableColors, setAvailableColors] = useState([]);
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -52,11 +53,16 @@ const CalendarPage = () => {
     if (!selectedProject) {
       setEvents([]);
       setProjectUsers([]);
+      setAvailableColors([]);
       return;
     }
     try {
       setIsRefreshing(true);
-      const eventData = await getEventsByProject(selectedProject);
+      const [eventData, colorsData] = await Promise.all([
+        getEventsByProject(selectedProject),
+        getAvailableColors(selectedProject)
+      ]);
+      
       const eventList = eventData.results || eventData || [];
       
       const formattedEvents = eventList.map(event => ({
@@ -83,6 +89,10 @@ const CalendarPage = () => {
           return acc;
         }, []);
       setProjectUsers(uniqueUsers);
+      
+      // Set available colors from backend
+      const colors = colorsData.colors || [];
+      setAvailableColors(colors);
     } catch (error) {
       toast.error('No se pudieron cargar los eventos del proyecto.');
     } finally {
@@ -284,6 +294,7 @@ const CalendarPage = () => {
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
             users={projectUsers}
+            availableColors={availableColors}
           />
         )}
 
