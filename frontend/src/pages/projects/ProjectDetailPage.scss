@@ -130,9 +130,10 @@
   grid-template-columns: 1fr;
   gap: $spacing-5;
   min-height: auto;
+  overflow: visible;
   
   @media (min-width: $breakpoint-lg) {
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr minmax(340px, 400px);
   }
 }
 
@@ -146,6 +147,12 @@
   min-height: min-content;
 }
 
+.sidebar-column {
+  min-width: 340px;
+  max-width: 100%;
+  width: 100%;
+}
+
 .glass-card {
   background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.9) 100%);
   border: 1px solid rgba($neutral-200, 0.5);
@@ -155,6 +162,8 @@
   backdrop-filter: blur(10px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  overflow: visible;
+  width: 100%;
 
   &::before {
     content: '';
@@ -352,6 +361,8 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-3;
+  width: 100%;
+  overflow: visible;
 }
 
 .member-item {
@@ -362,6 +373,9 @@
   border-radius: $border-radius-lg;
   background: linear-gradient(135deg, rgba($neutral-50, 0.5) 0%, rgba($white, 0.8) 100%);
   transition: all 0.3s;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
 
   &:hover {
     background: linear-gradient(135deg, rgba($primary-50, 0.3) 0%, rgba($white, 0.9) 100%);
