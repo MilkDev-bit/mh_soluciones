@@ -248,16 +248,14 @@ const ArchivosPage = () => {
       // Find the selected folder
       const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
       if (carpetaSeleccionada) {
-        // Filter files that are in this folder (by matching folder name in the drive path)
-        // Since we don't have parent_folder_id, we'll use the task name as folder filter
-        // because files are organized by: YEAR/PROJECT/TASK/USER/file
-        if (archivo.task && archivo.task.title) {
-          coincideCarpeta = archivo.task.title === carpetaSeleccionada.name;
+        // Filter files that are in this folder using the drive_parent_folder_name
+        // If the file has a task, it's in a task folder, otherwise it's directly under project
+        if (archivo.drive_parent_folder_name) {
+          coincideCarpeta = archivo.drive_parent_folder_name === carpetaSeleccionada.name;
         } else {
-          // If no task, the file might be in a user folder directly under project
-          // In this case, match by uploaded_by name
-          const userName = archivo.uploaded_by?.get_full_name || archivo.uploaded_by?.username;
-          coincideCarpeta = userName === carpetaSeleccionada.name;
+          // Files without drive_parent_folder_name are directly under project (no task)
+          // These should only show when no specific folder is selected
+          coincideCarpeta = false;
         }
       }
     }

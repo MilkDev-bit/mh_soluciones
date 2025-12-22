@@ -205,6 +205,12 @@ class GoogleDriveService:
 
             logger.info(f"Archivo subido exitosamente: {uploaded_file.get('name')} - {uploaded_file.get('webViewLink')}")
 
+            # Add parent folder information to the result
+            # The immediate parent is user_id, but the folder name that appears under PROJECT
+            # is either the task name (if task exists) or we keep it empty to indicate root
+            uploaded_file['parent_folder_id'] = parent_for_user  # This is task_id or project_id
+            uploaded_file['parent_folder_name'] = task_name if document_instance.task else ''
+
             return uploaded_file
             
         except Exception as e:
