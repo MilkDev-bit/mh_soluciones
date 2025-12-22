@@ -1,20 +1,9 @@
 @import '../../assets/styles/variables';
 
 .project-detail-page {
-  padding: $spacing-5;
-  max-width: $max-width-7xl;
-  margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba($primary-50, 0.2) 0%, rgba($secondary-50, 0.15) 100%);
   animation: fadeInUp 0.6s ease-out;
-  
-  @media (max-width: $breakpoint-md) {
-    padding: $spacing-4;
-  }
-  
-  @media (max-width: $breakpoint-sm) {
-    padding: $spacing-3;
-  }
 }
 
 .page-header {
@@ -26,7 +15,6 @@
   border: 1px solid rgba($white, 0.5);
   box-shadow: 0 8px 32px rgba($neutral-900, 0.08);
   position: relative;
-  overflow: hidden;
 
   &::before {
     content: '';
@@ -162,7 +150,6 @@
   backdrop-filter: blur(10px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
 
   &::before {
     content: '';
@@ -245,7 +232,6 @@
   text-decoration: none;
   color: inherit;
   position: relative;
-  overflow: hidden;
 
   &::before {
     content: '';
@@ -493,27 +479,7 @@
   flex-direction: column;
   gap: $spacing-4;
   margin-bottom: $spacing-4;
-  max-height: 500px;
-  overflow-y: auto;
   padding-right: $spacing-2;
-  
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: rgba($neutral-100, 0.5);
-    border-radius: $border-radius-full;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: $neutral-300;
-    border-radius: $border-radius-full;
-    
-    &:hover {
-      background: $neutral-400;
-    }
-  }
 }
 
 .comment-item,
