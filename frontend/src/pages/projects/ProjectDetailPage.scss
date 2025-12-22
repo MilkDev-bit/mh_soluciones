@@ -149,7 +149,6 @@
 
 .sidebar-column {
   min-width: 340px;
-  max-width: 100%;
   width: 100%;
 }
 
@@ -374,7 +373,6 @@
   background: linear-gradient(135deg, rgba($neutral-50, 0.5) 0%, rgba($white, 0.8) 100%);
   transition: all 0.3s;
   width: 100%;
-  min-width: 0;
   overflow: visible;
 
   &:hover {
