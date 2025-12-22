@@ -151,6 +151,8 @@ class GoogleDriveService:
                 project_id = self._get_or_create_folder("General", parent_id=year_id)
             
             # Level 3 - Task name folder (NOMBRE_TAREA) - only if task exists
+            task_name = None
+            task_id = None
             if document_instance.task:
                 task_name = document_instance.task.title
                 task_id = self._get_or_create_folder(task_name, parent_id=project_id)
@@ -206,10 +208,16 @@ class GoogleDriveService:
             logger.info(f"Archivo subido exitosamente: {uploaded_file.get('name')} - {uploaded_file.get('webViewLink')}")
 
             # Add parent folder information to the result
-            # The immediate parent is user_id, but the folder name that appears under PROJECT
-            # is either the task name (if task exists) or we keep it empty to indicate root
-            uploaded_file['parent_folder_id'] = parent_for_user  # This is task_id or project_id
-            uploaded_file['parent_folder_name'] = task_name if document_instance.task else ''
+            # The folder that appears directly under PROJECT is either:
+            # - The TASK folder (if task exists), or
+            # - The USER folder (if no task exists)
+            if document_instance.task:
+                uploaded_file['parent_folder_id'] = task_id
+                uploaded_file['parent_folder_name'] = task_name
+            else:
+                # No task - the user folder is directly under project
+                uploaded_file['parent_folder_id'] = user_id
+                uploaded_file['parent_folder_name'] = user_name
 
             return uploaded_file
             

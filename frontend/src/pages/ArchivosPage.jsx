@@ -16,7 +16,7 @@ import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
 import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
-import { FILTER_TYPES, FOLDER_TYPES } from '../constants/folderTypes';
+import { FILTER_TYPES } from '../constants/folderTypes';
 import './ArchivosPage.scss';
 
 const ArchivosPage = () => {
@@ -76,8 +76,13 @@ const ArchivosPage = () => {
       const params = {};
       
       // Use folder filter if selected (new dedicated folder filter)
-      if (filtroCarpeta && filtroCarpeta !== FOLDER_TYPES.ALL) {
-        params.folder_type = filtroCarpeta;
+      // Note: filtroCarpeta now uses 'ALL' string instead of FOLDER_TYPES.ALL (empty string)
+      if (filtroCarpeta && filtroCarpeta !== 'ALL') {
+        // Only apply folder_type filter if we don't have dynamic folders loaded
+        // With dynamic folders, we filter client-side by drive_parent_folder_name
+        if (carpetasDrive.length === 0 && filtroTipo !== FILTER_TYPES.ALL) {
+          params.folder_type = filtroTipo;
+        }
       } else if (filtroTipo !== FILTER_TYPES.ALL) {
         // Fallback to old type filter for backward compatibility
         params.folder_type = filtroTipo;
@@ -249,14 +254,10 @@ const ArchivosPage = () => {
       const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
       if (carpetaSeleccionada) {
         // Filter files that are in this folder using the drive_parent_folder_name
-        // If the file has a task, it's in a task folder, otherwise it's directly under project
-        if (archivo.drive_parent_folder_name) {
-          coincideCarpeta = archivo.drive_parent_folder_name === carpetaSeleccionada.name;
-        } else {
-          // Files without drive_parent_folder_name are directly under project (no task)
-          // These should only show when no specific folder is selected
-          coincideCarpeta = false;
-        }
+        // The parent folder name is either:
+        // - Task title (if file has a task)
+        // - User name (if file has no task - user folder is directly under project)
+        coincideCarpeta = archivo.drive_parent_folder_name === carpetaSeleccionada.name;
       }
     }
     
