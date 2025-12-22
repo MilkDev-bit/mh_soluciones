@@ -7,6 +7,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status
+from google.auth.exceptions import RefreshError
+from googleapiclient.errors import HttpError
 
 from apps.core.permissions import ADMIN_ROLES
 from apps.core.utils import (
@@ -139,15 +141,62 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
             return Response(folder_list, status=status.HTTP_200_OK)
             
-        except ValueError as e:
-            logger.error(f"Error de configuración: {e}")
+        except RefreshError as e:
+            logger.error(
+                f"Error al refrescar credenciales de Google Drive para project_id={project_id}: {e}"
+            )
             return Response(
-                {'error': 'Configuración de Google Drive no disponible'},
+                {
+                    'detail': 'Credenciales institucionales de Google Drive expiradas o inválidas. '
+                             'Por favor, reautentique la cuenta de Google en la administración.',
+                    'error_type': 'refresh_error'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except HttpError as e:
+            error_code = e.resp.status
+            logger.error(
+                f"Error HTTP al acceder a Google Drive para project_id={project_id}: "
+                f"código={error_code}, mensaje={e}"
+            )
+            
+            if error_code in (401, 403):
+                return Response(
+                    {
+                        'detail': 'Sin permisos para acceder a la carpeta de Google Drive del proyecto. '
+                                 'Verifique que las credenciales institucionales tengan los permisos correctos.',
+                        'error_type': 'permission_error',
+                        'status_code': error_code
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            else:
+                return Response(
+                    {
+                        'detail': f'Error al acceder a Google Drive (código {error_code}). '
+                                 'Por favor, contacte a soporte técnico.',
+                        'error_type': 'google_api_error',
+                        'status_code': error_code
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        except ValueError as e:
+            logger.error(f"Error de configuración al acceder a Google Drive: {e}")
+            return Response(
+                {
+                    'detail': 'Configuración de Google Drive no disponible. '
+                             'Verifique que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado correctamente.',
+                    'error_type': 'configuration_error'
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
-            logger.error(f"Error al listar carpetas: {e}")
+            logger.exception(f"Error inesperado al listar carpetas para project_id={project_id}: {e}")
             return Response(
-                {'error': 'Error al obtener carpetas de Google Drive'},
+                {
+                    'detail': 'Error inesperado al obtener carpetas de Google Drive. '
+                             'Por favor, contacte a soporte técnico.',
+                    'error_type': 'unknown_error'
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

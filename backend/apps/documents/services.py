@@ -5,6 +5,7 @@ import os
 from django.conf import settings
 from django.utils.text import slugify
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -65,17 +66,32 @@ class GoogleDriveService:
             )
             
             if self.credentials.expired and self.credentials.refresh_token:
-                self.credentials.refresh(Request())
-                stored_credentials.access_token = self.credentials.token
-                stored_credentials.save()
+                try:
+                    logger.info(f"Refrescando credenciales expiradas para usuario {self.user.username}")
+                    self.credentials.refresh(Request())
+                    stored_credentials.access_token = self.credentials.token
+                    stored_credentials.save()
+                    logger.info(f"Credenciales refrescadas exitosamente para {self.user.username}")
+                except RefreshError as e:
+                    logger.exception(
+                        f"Error al refrescar credenciales de Google Drive para usuario {self.user.username}: {e}"
+                    )
+                    # Re-raise the original exception for proper error handling
+                    raise
             
             self.service = build('drive', 'v3', credentials=self.credentials)
             logger.info(f"Servicio de Google Drive inicializado para {self.user.username}")
             
         except GoogleApiCredentials.DoesNotExist:
+            logger.error(f"El usuario {self.user.username} no tiene credenciales de Google vinculadas")
             raise Exception(f"El usuario {self.user.username} no ha vinculado su cuenta de Google.")
+        except RefreshError:
+            # Re-raise RefreshError as-is (already logged above)
+            raise
         except Exception as e:
-            logger.error(f"Error al inicializar el servicio de Google Drive: {e}")
+            logger.exception(
+                f"Error inesperado al inicializar el servicio de Google Drive para {self.user.username}: {e}"
+            )
             raise
 
     def _get_or_create_folder(self, folder_name, parent_id=None):
@@ -221,8 +237,14 @@ class GoogleDriveService:
 
             return uploaded_file
             
+        except RefreshError as e:
+            logger.exception(f"Error al refrescar credenciales al subir archivo: {e}")
+            raise
+        except HttpError as e:
+            logger.exception(f"Error HTTP al subir archivo a Google Drive: código={e.resp.status}")
+            raise
         except Exception as e:
-            logger.exception(f"Error al subir el archivo a Google Drive: {e}")
+            logger.exception(f"Error inesperado al subir el archivo a Google Drive: {e}")
             return None
         
     def upload_file(self, file_name, file_content, folder_id, mime_type='text/plain'):
@@ -313,26 +335,32 @@ class GoogleDriveService:
             # Get project
             try:
                 project = Project.objects.get(id=project_id)
+                logger.info(f"Listando carpetas de Google Drive para proyecto ID={project_id}, nombre='{project.name}'")
             except Project.DoesNotExist:
-                logger.error(f"Proyecto con ID {project_id} no encontrado")
+                logger.error(f"Proyecto con ID {project_id} no encontrado en la base de datos")
                 return []
             
             # Get year folder
             if not year:
                 year = datetime.now().strftime('%Y')
             
+            logger.info(f"Obteniendo carpeta de año '{year}' en Google Drive")
             year_id = self._get_or_create_folder(
                 year, 
                 parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
             )
+            logger.debug(f"Carpeta de año '{year}' obtenida: folder_id={year_id}")
             
             # Get project folder
             project_name = project.name
+            logger.info(f"Obteniendo carpeta de proyecto '{project_name}' en Google Drive")
             project_folder_id = self._get_or_create_folder(project_name, parent_id=year_id)
+            logger.info(f"Carpeta de proyecto obtenida: folder_id={project_folder_id} para project_id={project_id}")
             
             # List all folders (not files) within the project folder
             query = f"mimeType='application/vnd.google-apps.folder' and '{project_folder_id}' in parents and trashed=false"
             
+            logger.debug(f"Ejecutando consulta a Google Drive: {query}")
             response = self.service.files().list(
                 q=query,
                 spaces='drive',
@@ -342,10 +370,24 @@ class GoogleDriveService:
             
             folders = response.get('files', [])
             
-            logger.info(f"Encontradas {len(folders)} carpetas para el proyecto {project_name}")
+            logger.info(f"Encontradas {len(folders)} carpetas para el proyecto '{project_name}' (ID={project_id})")
+            
+            # If no folders found but we expected some, log the raw response for debugging
+            if len(folders) == 0:
+                logger.warning(
+                    f"Lista de carpetas vacía para project_id={project_id}, folder_id={project_folder_id}. "
+                    f"Respuesta cruda de Google Drive: {response}"
+                )
             
             return folders
             
+        except HttpError as e:
+            logger.exception(
+                f"Error HTTP al acceder a Google Drive para project_id={project_id}: código={e.resp.status}"
+            )
+            raise
         except Exception as e:
-            logger.exception(f"Error al listar carpetas para proyecto {project_id}: {e}")
+            logger.exception(
+                f"Error inesperado al listar carpetas para proyecto {project_id}: {e}"
+            )
             return []

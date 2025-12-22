@@ -15,6 +15,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
   const [folderData, setFolderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [folderFilter, setFolderFilter] = useState(FOLDER_TYPES.ALL);
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,6 +38,8 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
       
       try {
         setLoading(true);
+        setError(null); // Clear previous errors
+        setErrorType(null);
         const params = {
           page: currentPage,
           page_size: pageSize
@@ -54,7 +57,24 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
         setFolderData(data);
       } catch (err) {
         console.error('Error fetching drive folder:', err);
-        setError('No se pudo cargar la carpeta de Google Drive');
+        
+        // Store error type for conditional rendering
+        setErrorType(err.type || 'unknown_error');
+        
+        // Show specific error messages based on error type
+        let errorMessage = 'No se pudo cargar la carpeta de Google Drive';
+        
+        if (err.type === 'refresh_error') {
+          errorMessage = '⚠️ Las credenciales de Google Drive han expirado. Por favor, contacte al administrador para reautenticar la cuenta institucional.';
+        } else if (err.type === 'permission_error') {
+          errorMessage = '⚠️ Sin permisos para acceder a Google Drive. Verifique que la cuenta institucional tenga los permisos correctos.';
+        } else if (err.type === 'configuration_error') {
+          errorMessage = '⚠️ Google Drive no está configurado correctamente. Contacte al administrador del sistema.';
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -96,7 +116,13 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
   if (error || !folderData) {
     return (
       <div className="drive-folder-error">
-        <p>{error || 'No hay carpeta de Drive disponible'}</p>
+        <div className="error-icon">⚠️</div>
+        <p className="error-message">{error || 'No hay carpeta de Drive disponible'}</p>
+        {errorType && ['refresh_error', 'permission_error'].includes(errorType) && (
+          <p className="error-suggestion">
+            💡 Sugerencia: Contacte al administrador del sistema o intente recargar la página.
+          </p>
+        )}
       </div>
     );
   }

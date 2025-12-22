@@ -148,7 +148,19 @@ const ArchivosPage = () => {
         await cargarArchivos();
       } catch (error) {
         console.error('Error subiendo archivos:', error);
-        toast.error('Error al subir algunos archivos');
+        
+        // Show specific error message based on error type
+        let errorMessage = 'Error al subir algunos archivos';
+        
+        if (error.type === 'refresh_error') {
+          errorMessage = 'Error: Las credenciales de Google Drive han expirado. Contacte al administrador.';
+        } else if (error.type === 'permission_error') {
+          errorMessage = 'Error: Sin permisos para subir a Google Drive. Contacte al administrador.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast.error(errorMessage);
       } finally {
         setSubiendo(false);
       }
