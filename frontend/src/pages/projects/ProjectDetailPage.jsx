@@ -774,22 +774,8 @@ const ProjectDetailPage = () => {
             {/* Hide members and events from CLIENT users */}
             {currentUser && currentUser.role !== 'CLIENT' && (
               <>
-                {/* Top widgets grid: Members and Events side by side */}
+                {/* Top widgets grid: Events and Members - Events first, Members below */}
                 <div className="sidebar-top-grid">
-                  <div className="glass-card">
-                    <div className="section-header">
-                      <h3>Miembros ({membersList.length})</h3>
-                      {currentUser && isAdmin(currentUser.role) && (
-                        <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
-                          <FiPlus />
-                        </button>
-                      )}
-                    </div>
-                    <div className="member-list">
-                      <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
-                    </div>
-                  </div>
-
                   <div className="glass-card">
                     <div className="section-header">
                       <h3>
@@ -802,6 +788,20 @@ const ProjectDetailPage = () => {
                       ) : (
                         <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="glass-card">
+                    <div className="section-header">
+                      <h3>Miembros ({membersList.length})</h3>
+                      {currentUser && isAdmin(currentUser.role) && (
+                        <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
+                          <FiPlus />
+                        </button>
+                      )}
+                    </div>
+                    <div className="member-list">
+                      <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
                     </div>
                   </div>
                 </div>
