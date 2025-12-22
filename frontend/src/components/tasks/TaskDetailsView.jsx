@@ -196,7 +196,21 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
       setTimeout(() => setUploadProgress(0), 1000);
     } catch (error) {
       console.error('Error al subir archivo:', error);
-      toast.error(error.response?.data?.message || '❌ Error al subir el archivo');
+      
+      // Show specific error message based on error type
+      let errorMessage = '❌ Error al subir el archivo';
+      
+      if (error.type === 'refresh_error') {
+        errorMessage = '❌ Las credenciales de Google Drive han expirado. Contacte al administrador.';
+      } else if (error.type === 'permission_error') {
+        errorMessage = '❌ Sin permisos para subir a Google Drive. Contacte al administrador.';
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`;
+      } else if (error.response?.data?.message) {
+        errorMessage = `❌ ${error.response.data.message}`;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
