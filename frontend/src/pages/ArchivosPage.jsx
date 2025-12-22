@@ -75,18 +75,14 @@ const ArchivosPage = () => {
       // Build query params based on folder_type mapping
       const params = {};
       
-      // Use folder filter if selected (new dedicated folder filter)
-      // Note: filtroCarpeta now uses 'ALL' string instead of FOLDER_TYPES.ALL (empty string)
-      if (filtroCarpeta && filtroCarpeta !== 'ALL') {
-        // Only apply folder_type filter if we don't have dynamic folders loaded
-        // With dynamic folders, we filter client-side by drive_parent_folder_name
-        if (carpetasDrive.length === 0 && filtroTipo !== FILTER_TYPES.ALL) {
-          params.folder_type = filtroTipo;
-        }
-      } else if (filtroTipo !== FILTER_TYPES.ALL) {
-        // Fallback to old type filter for backward compatibility
+      // Apply type filter if selected (IMAGENES, DOCUMENTOS, etc.)
+      // This is separate from the folder filter
+      if (filtroTipo !== FILTER_TYPES.ALL) {
         params.folder_type = filtroTipo;
       }
+      
+      // Note: We don't send folder filter to backend when using dynamic folders
+      // Instead, we filter client-side by drive_parent_folder_name
       
       // Filter by selected project
       if (proyectoSeleccionado) {
