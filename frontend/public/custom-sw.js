@@ -3,7 +3,6 @@
  * Handles push notifications and notification clicks
  */
 
-// Service Worker version - increment to force update
 const SW_VERSION = '1.0.0';
 
 // Helper function to safely convert Uint8Array to base64
