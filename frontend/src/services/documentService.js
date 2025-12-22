@@ -124,3 +124,23 @@ export const downloadDocument = async (documentId) => {
     );
   }
 };
+
+/**
+ * Get folders from Google Drive for a specific project
+ * @param {number} projectId - The ID of the project
+ * @returns {Promise<Array>} Array of folder objects from Google Drive
+ * @throws {Error} If fetch fails
+ */
+export const getFoldersForProject = async (projectId) => {
+  try {
+    const response = await api.get('/documents/folders/', {
+      params: { project: projectId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching folders for project:', error);
+    throw new Error(
+      error.response?.data?.error || 'Error al obtener carpetas del proyecto'
+    );
+  }
+};

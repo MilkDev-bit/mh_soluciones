@@ -98,6 +98,18 @@ class Document(TimeStampedModel):
         null=True,
         verbose_name=_("URL del Archivo en Google Drive")
     )
+    drive_parent_folder_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name=_("ID de la Carpeta Padre en Google Drive")
+    )
+    drive_parent_folder_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name=_("Nombre de la Carpeta Padre en Google Drive")
+    )
     notes = models.TextField(
         blank=True,
         null=True,
@@ -162,6 +174,8 @@ class Document(TimeStampedModel):
             if result:
                 self.drive_file_id = result.get('id')
                 self.drive_file_url = result.get('webViewLink')
+                self.drive_parent_folder_id = result.get('parent_folder_id')
+                self.drive_parent_folder_name = result.get('parent_folder_name')
                 self.upload_status = Document.UploadStatus.COMPLETE
                 
                 print(f"✅ Archivo subido exitosamente a Google Drive institucional")
@@ -221,7 +235,9 @@ class Document(TimeStampedModel):
                         Document.objects.filter(pk=self.pk).update(
                             upload_status=self.upload_status,
                             drive_file_id=self.drive_file_id,
-                            drive_file_url=self.drive_file_url
+                            drive_file_url=self.drive_file_url,
+                            drive_parent_folder_id=self.drive_parent_folder_id,
+                            drive_parent_folder_name=self.drive_parent_folder_name
                         )
                     else:
                         print(f"ℹ️ Documento {self.name} ya fue subido a Drive, omitiendo upload en segundo plano")
