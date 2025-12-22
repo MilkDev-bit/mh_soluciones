@@ -1,7 +1,6 @@
 import io
 import logging
 import os
-import traceback
 
 from django.conf import settings
 from django.utils.text import slugify
@@ -74,14 +73,11 @@ class GoogleDriveService:
                     stored_credentials.save()
                     logger.info(f"Credenciales refrescadas exitosamente para {self.user.username}")
                 except RefreshError as e:
-                    logger.error(
-                        f"Error al refrescar credenciales de Google Drive para usuario {self.user.username}: {e}\n"
-                        f"Stacktrace: {traceback.format_exc()}"
+                    logger.exception(
+                        f"Error al refrescar credenciales de Google Drive para usuario {self.user.username}: {e}"
                     )
-                    raise RefreshError(
-                        f"Las credenciales institucionales de Google Drive han expirado o son inválidas. "
-                        f"Por favor, reautentique la cuenta de Google en la administración."
-                    )
+                    # Re-raise the original exception for proper error handling
+                    raise
             
             self.service = build('drive', 'v3', credentials=self.credentials)
             logger.info(f"Servicio de Google Drive inicializado para {self.user.username}")
@@ -93,9 +89,8 @@ class GoogleDriveService:
             # Re-raise RefreshError as-is (already logged above)
             raise
         except Exception as e:
-            logger.error(
-                f"Error inesperado al inicializar el servicio de Google Drive para {self.user.username}: {e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
+            logger.exception(
+                f"Error inesperado al inicializar el servicio de Google Drive para {self.user.username}: {e}"
             )
             raise
 
@@ -243,22 +238,13 @@ class GoogleDriveService:
             return uploaded_file
             
         except RefreshError as e:
-            logger.error(
-                f"Error al refrescar credenciales al subir archivo: {e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
-            )
+            logger.exception(f"Error al refrescar credenciales al subir archivo: {e}")
             raise
         except HttpError as e:
-            logger.error(
-                f"Error HTTP al subir archivo a Google Drive: código={e.resp.status}, mensaje={e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
-            )
+            logger.exception(f"Error HTTP al subir archivo a Google Drive: código={e.resp.status}")
             raise
         except Exception as e:
-            logger.exception(
-                f"Error inesperado al subir el archivo a Google Drive: {e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
-            )
+            logger.exception(f"Error inesperado al subir el archivo a Google Drive: {e}")
             return None
         
     def upload_file(self, file_name, file_content, folder_id, mime_type='text/plain'):
@@ -396,15 +382,12 @@ class GoogleDriveService:
             return folders
             
         except HttpError as e:
-            logger.error(
-                f"Error HTTP al acceder a Google Drive para project_id={project_id}: "
-                f"código={e.resp.status}, mensaje={e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
+            logger.exception(
+                f"Error HTTP al acceder a Google Drive para project_id={project_id}: código={e.resp.status}"
             )
             raise
         except Exception as e:
             logger.exception(
-                f"Error inesperado al listar carpetas para proyecto {project_id}: {e}\n"
-                f"Stacktrace: {traceback.format_exc()}"
+                f"Error inesperado al listar carpetas para proyecto {project_id}: {e}"
             )
             return []
