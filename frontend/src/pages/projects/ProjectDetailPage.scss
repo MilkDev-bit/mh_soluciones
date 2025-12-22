@@ -130,10 +130,19 @@
   grid-template-columns: 1fr;
   gap: $spacing-5;
   min-height: auto;
+  margin-bottom: $spacing-5;
   
   @media (min-width: $breakpoint-lg) {
     grid-template-columns: 1fr 480px;
   }
+}
+
+.full-width-content {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-5;
+  width: 100%;
+  animation: slideUp 0.8s ease-out;
 }
 
 .main-column,
