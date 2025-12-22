@@ -146,6 +146,17 @@
   min-height: min-content;
 }
 
+// Top grid for Members and Events (side by side)
+.sidebar-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-5;
+  
+  @media (max-width: $breakpoint-lg) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .glass-card {
   background: linear-gradient(135deg, rgba($white, 0.95) 0%, rgba($white, 0.9) 100%);
   border: 1px solid rgba($neutral-200, 0.5);

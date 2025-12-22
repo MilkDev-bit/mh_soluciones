@@ -902,34 +902,39 @@ const ProjectDetailPage = () => {
             {/* Hide members and events from CLIENT users */}
             {currentUser && currentUser.role !== 'CLIENT' && (
               <>
-                <div className="glass-card">
-                  <div className="section-header">
-                    <h3>Miembros ({membersList.length})</h3>
-                    {currentUser && isAdmin(currentUser.role) && (
-                      <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
-                        <FiPlus />
-                      </button>
-                    )}
+                {/* Top widgets grid: Members and Events side by side */}
+                <div className="sidebar-top-grid">
+                  <div className="glass-card">
+                    <div className="section-header">
+                      <h3>Miembros ({membersList.length})</h3>
+                      {currentUser && isAdmin(currentUser.role) && (
+                        <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
+                          <FiPlus />
+                        </button>
+                      )}
+                    </div>
+                    <div className="member-list">
+                      <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+                    </div>
                   </div>
-                  <div className="member-list">
-                    <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+
+                  <div className="glass-card">
+                    <div className="section-header">
+                      <h3>
+                        <FiCalendar /> Próximos Eventos
+                      </h3>
+                    </div>
+                    <div className="events-list">
+                      {projectEvents && projectEvents.length > 0 ? (
+                        projectEvents.map((event) => <EventItem key={event.id} event={event} />)
+                      ) : (
+                        <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="glass-card">
-                  <div className="section-header">
-                    <h3>
-                      <FiCalendar /> Próximos Eventos
-                    </h3>
-                  </div>
-                  <div className="events-list">
-                    {projectEvents && projectEvents.length > 0 ? (
-                      projectEvents.map((event) => <EventItem key={event.id} event={event} />)
-                    ) : (
-                      <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
-                    )}
-                  </div>
-                </div>
+                {/* Full-width components below the top grid would go here */}
               </>
             )}
           </div>
