@@ -149,12 +149,18 @@
 // Top grid for Members and Events (side by side)
 .sidebar-top-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: $spacing-5;
   
-  @media (max-width: $breakpoint-lg) {
-    grid-template-columns: 1fr;
+  // On desktop where sidebar is a right column, show widgets side by side
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: 1fr 1fr;
   }
+}
+
+// Ensure glass-cards in sidebar that are NOT in the grid take full width
+.sidebar-column > .glass-card {
+  width: 100%;
 }
 
 .glass-card {
