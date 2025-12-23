@@ -77,18 +77,27 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
     const fetchInitialData = async () => {
       try {
-        const initialNotifs = await notificationService.getNotifications({ limit: 10 });
-        const notifsList = initialNotifs.results || [];
-        setNotifications(notifsList);
+        const initialNotifs = await notificationService.getNotifications({ 
+          limit: 10, 
+          include_read: false 
+        });
+        const notifsList = initialNotifs.results || initialNotifs;
+
+        // Filtrar solo las NO LEÍDAS por si acaso el backend devuelve leídas
+        const unreadNotifs = Array.isArray(notifsList) 
+          ? notifsList.filter(n => !n.is_read) 
+          : [];
+
+        setNotifications(unreadNotifs);
         
         // Track initial notification IDs as already seen
-        const initialIds = new Set(notifsList.map(n => n.id));
+        const initialIds = new Set(unreadNotifs.map(n => n.id));
         setSeenNotificationIds(initialIds);
         
         const count = await notificationService.getUnreadCount();
         setUnreadCount(count);
         
-        console.log('[Header] Initial notifications loaded:', notifsList.length, 'Unread count:', count);
+        console.log('[Header] Initial notifications loaded:', unreadNotifs.length, 'Unread count:', count);
       } catch (error) {
         console.error("[Header] Error loading initial notifications:", error);
       }
@@ -117,17 +126,19 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
   const handleMarkAsRead = async (id) => {
     try {
       await notificationService.markAsRead(id);
+      
+      // Eliminar la notificación del array inmediatamente
       setNotifications(prev => prev.filter(n => n.id !== id));
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Remove from seen set since it's now read
+      // Remove from seen set since it's now read and removed
       setSeenNotificationIds(prevIds => {
         const newSet = new Set(prevIds);
         newSet.delete(id);
         return newSet;
       });
       
-      console.log('[Header] Notification marked as read:', id);
+      console.log('[Header] Notification marked as read and removed:', id);
     } catch (error) {
       console.error("[Header] Error marking notification as read:", error);
       toast.error("No se pudo marcar la notificación.");
@@ -137,14 +148,13 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
-      setTimeout(() => {
-        setNotifications([]);
-        setSeenNotificationIds(new Set());
-      }, 500);
       
-      console.log('[Header] All notifications marked as read');
+      // Limpiar todas las notificaciones inmediatamente
+      setNotifications([]);
+      setUnreadCount(0);
+      setSeenNotificationIds(new Set());
+      
+      console.log('[Header] All notifications marked as read and removed');
     } catch (error) {
       console.error("[Header] Error marking all notifications as read:", error);
       toast.error("No se pudieron marcar las notificaciones.");
@@ -190,7 +200,10 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
               </div>
               <div className="notification-list">
                 {notifications.length === 0 ? (
-                  <div className="empty-state">No tienes notificaciones.</div>
+                  <div className="empty-state">
+                    <p>No tienes notificaciones</p>
+                    <small>Cuando recibas notificaciones, aparecerán aquí</small>
+                  </div>
                 ) : (
                   notifications.map(notif => (
                     <div key={notif.id} className={`notification-item ${notif.is_read ? 'read' : ''}`}>
