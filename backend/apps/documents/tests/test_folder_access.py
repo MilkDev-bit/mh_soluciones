@@ -12,6 +12,11 @@ User = get_user_model()
 class FolderListAccessControlTest(TestCase):
     """Test role-based access control for folder listing endpoint"""
     
+    # Mock folder data for testing
+    MOCK_FOLDERS = [
+        {'id': 'folder1', 'name': 'Folder 1', 'createdTime': None, 'modifiedTime': None}
+    ]
+    
     def setUp(self):
         # Create users with different roles
         self.superadmin = User.objects.create_user(
@@ -96,9 +101,7 @@ class FolderListAccessControlTest(TestCase):
         """Test that SUPERADMIN can access folders for any project"""
         # Mock the Drive service to return some folders
         mock_instance = MagicMock()
-        mock_instance.list_folders_for_project.return_value = [
-            {'id': 'folder1', 'name': 'Folder 1', 'createdTime': None, 'modifiedTime': None}
-        ]
+        mock_instance.list_folders_for_project.return_value = self.MOCK_FOLDERS
         mock_drive_service.return_value = mock_instance
         
         self.client.force_authenticate(user=self.superadmin)
@@ -113,9 +116,7 @@ class FolderListAccessControlTest(TestCase):
     def test_admin_can_access_any_project_folders(self, mock_drive_service):
         """Test that ADMIN can access folders for any project"""
         mock_instance = MagicMock()
-        mock_instance.list_folders_for_project.return_value = [
-            {'id': 'folder1', 'name': 'Folder 1', 'createdTime': None, 'modifiedTime': None}
-        ]
+        mock_instance.list_folders_for_project.return_value = self.MOCK_FOLDERS
         mock_drive_service.return_value = mock_instance
         
         self.client.force_authenticate(user=self.admin)
@@ -129,9 +130,7 @@ class FolderListAccessControlTest(TestCase):
     def test_ceo_can_access_any_project_folders(self, mock_drive_service):
         """Test that CEO can access folders for any project"""
         mock_instance = MagicMock()
-        mock_instance.list_folders_for_project.return_value = [
-            {'id': 'folder1', 'name': 'Folder 1', 'createdTime': None, 'modifiedTime': None}
-        ]
+        mock_instance.list_folders_for_project.return_value = self.MOCK_FOLDERS
         mock_drive_service.return_value = mock_instance
         
         self.client.force_authenticate(user=self.ceo)
@@ -145,9 +144,7 @@ class FolderListAccessControlTest(TestCase):
     def test_project_member_can_access_project_folders(self, mock_drive_service):
         """Test that a project member (non-admin role) can access their project folders"""
         mock_instance = MagicMock()
-        mock_instance.list_folders_for_project.return_value = [
-            {'id': 'folder1', 'name': 'Folder 1', 'createdTime': None, 'modifiedTime': None}
-        ]
+        mock_instance.list_folders_for_project.return_value = self.MOCK_FOLDERS
         mock_drive_service.return_value = mock_instance
         
         self.client.force_authenticate(user=self.student_member)

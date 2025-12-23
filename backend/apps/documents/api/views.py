@@ -15,7 +15,7 @@ from apps.core.utils import (
     success_response, error_response, created_response,
     validation_error_response
 )
-from apps.projects.models import ProjectMember
+from apps.projects.models import Project, ProjectMember
 from ..models import Document
 from ..tasks import upload_document_to_drive
 from ..services import GoogleDriveService
@@ -128,7 +128,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
         try:
             # Validate project exists
-            from apps.projects.models import Project
             try:
                 project = Project.objects.get(id=project_id)
             except Project.DoesNotExist:
