@@ -19,11 +19,18 @@ import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
 import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
-import logo from '@/assets/img/logo.png';
+import logo from '../assets/img/logo.png';
 import './ReportesPage.scss';
 
 // Registrar componentes de Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement);
+
+// Opciones de configuración para html2canvas
+const HTML2CANVAS_OPTIONS = {
+  scale: 2,
+  useCORS: true,
+  logging: false
+};
 
 const ReportesPage = () => {
   const { user } = useContext(AuthContext);
@@ -65,11 +72,7 @@ const ReportesPage = () => {
       }
 
       // Convertir el elemento HTML a canvas
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
+      const canvas = await html2canvas(elemento, HTML2CANVAS_OPTIONS);
 
       // Crear PDF en formato A4 vertical
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -105,28 +108,34 @@ const ReportesPage = () => {
       // Agregar imagen del contenido capturado
       if (contentY + imgHeight > pageHeight) {
         // Si la imagen es muy alta, añadir nueva página
-        pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, Math.min(imgHeight, pageHeight - contentY - 15));
+        const firstPageHeight = pageHeight - contentY - 15;
+        pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, Math.min(imgHeight, firstPageHeight));
         
         // Si hay más contenido, agregar páginas adicionales
-        let remainingHeight = imgHeight - (pageHeight - contentY - 15);
-        let currentY = 0;
+        let remainingHeight = imgHeight - firstPageHeight;
+        let processedHeight = firstPageHeight;
         
         while (remainingHeight > 0) {
           pdf.addPage();
           const heightToAdd = Math.min(remainingHeight, pageHeight - 30);
-          currentY += (pageHeight - contentY - 15);
+          
+          // Calcular la posición en el canvas original
+          const canvasScaleFactor = canvas.width / imgWidth;
+          const sourceY = processedHeight * canvasScaleFactor;
+          const sourceHeight = heightToAdd * canvasScaleFactor;
           
           // Crear un canvas temporal con la parte restante
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
           tempCanvas.width = canvas.width;
-          tempCanvas.height = (heightToAdd * canvas.width) / imgWidth;
+          tempCanvas.height = sourceHeight;
           
-          ctx.drawImage(canvas, 0, (currentY * canvas.width) / imgWidth, canvas.width, tempCanvas.height, 0, 0, canvas.width, tempCanvas.height);
+          ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
           const tempImgData = tempCanvas.toDataURL('image/png');
           
           pdf.addImage(tempImgData, 'PNG', 15, 15, imgWidth, heightToAdd);
           remainingHeight -= heightToAdd;
+          processedHeight += heightToAdd;
         }
       } else {
         pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, imgHeight);
