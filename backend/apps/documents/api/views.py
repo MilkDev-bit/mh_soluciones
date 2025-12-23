@@ -105,11 +105,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 f"folder_id={target_folder_id} en proyecto ID={project_id}"
             )
         
-        # Extract target_folder_id from validated_data before saving
-        # (it's write_only and not a model field)
-        validated_data = serializer.validated_data
-        target_folder_id = validated_data.pop('target_folder_id', None)
-        
+        # Save the document (target_folder_id is write_only and won't be saved to DB)
         document = serializer.save(uploaded_by=user)
         
         if document.task and document.task.project:
