@@ -15,7 +15,7 @@ from apps.core.utils import (
     success_response, error_response, created_response,
     validation_error_response
 )
-from apps.projects.models import ProjectMember
+from apps.projects.models import Project, ProjectMember
 from ..models import Document
 from ..tasks import upload_document_to_drive
 from ..services import GoogleDriveService
@@ -112,8 +112,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """
         Lista las carpetas reales de Google Drive para un proyecto específico.
         Requiere parámetro 'project' en query params.
+        
+        Control de acceso por rol:
+        - SUPERADMIN, CEO, ADMIN: pueden ver carpetas de cualquier proyecto
+        - Otros roles: solo pueden ver carpetas de proyectos donde son miembros
         """
         project_id = request.query_params.get('project')
+        user = request.user
         
         if not project_id:
             return Response(
@@ -122,10 +127,53 @@ class DocumentViewSet(viewsets.ModelViewSet):
             )
         
         try:
+            # Validate project exists
+            try:
+                project = Project.objects.get(id=project_id)
+            except Project.DoesNotExist:
+                logger.warning(f"Usuario {user.username} intentó acceder a proyecto inexistente ID={project_id}")
+                return Response(
+                    {'error': f'El proyecto con ID {project_id} no existe'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check access permissions based on role
+            has_access = False
+            
+            # SUPERADMIN, CEO, ADMIN have access to all projects
+            if user.role in ADMIN_ROLES:
+                has_access = True
+                logger.info(f"[ACCESS] Usuario {user.username} (rol: {user.role}) tiene acceso total - puede ver proyecto ID={project_id}")
+            else:
+                # Other roles: check if user is a member of the project
+                is_member = ProjectMember.objects.filter(
+                    project_id=project_id,
+                    user=user
+                ).exists()
+                
+                if is_member:
+                    has_access = True
+                    logger.info(f"[ACCESS] Usuario {user.username} (rol: {user.role}) es miembro del proyecto ID={project_id}")
+                else:
+                    logger.warning(
+                        f"[ACCESS] Usuario {user.username} (rol: {user.role}) NO tiene acceso al proyecto ID={project_id} - "
+                        f"no es miembro y no tiene rol de administrador"
+                    )
+            
+            if not has_access:
+                return Response(
+                    {
+                        'error': 'No tiene permisos para ver estas carpetas.',
+                        'detail': 'No tiene acceso a este proyecto. Solo puede ver carpetas de proyectos en los que es miembro.'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             # Initialize Drive service with institutional credentials
             drive_service = GoogleDriveService(use_institutional=True)
             
             # Get folders for the project
+            logger.info(f"[ACCESS] Usuario {user.username} consultando carpetas de Drive para proyecto ID={project_id}")
             folders = drive_service.list_folders_for_project(project_id)
             
             # Format response
@@ -134,10 +182,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     'id': folder.get('id'),
                     'name': folder.get('name'),
                     'createdTime': folder.get('createdTime'),
-                    'modifiedTime': folder.get('modifiedTime')
+                    'modifiedTime': folder.get('modifiedTime'),
+                    'isProjectRoot': folder.get('isProjectRoot', False)
                 }
                 for folder in folders
             ]
+            
+            logger.info(f"[ACCESS] Retornando {len(folder_list)} carpetas para proyecto ID={project_id} al usuario {user.username}")
             
             return Response(folder_list, status=status.HTTP_200_OK)
             

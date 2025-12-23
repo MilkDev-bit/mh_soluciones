@@ -60,8 +60,22 @@ const ArchivosPage = () => {
       setFiltroCarpeta('ALL');
     } catch (error) {
       console.error('Error cargando carpetas:', error);
-      // Silently fail - show static folders if Drive folders can't be loaded
-      setCarpetasDrive([]);
+      
+      // Handle specific error types
+      if (error.statusCode === 403) {
+        // Permission error - user doesn't have access to this project
+        toast.error('No tiene permisos para ver las carpetas de este proyecto');
+        setCarpetasDrive([]);
+      } else if (error.type === 'refresh_error') {
+        toast.error('Error de autenticación con Google Drive. Contacte al administrador.');
+        setCarpetasDrive([]);
+      } else if (error.type === 'permission_error') {
+        toast.error('Sin permisos para acceder a Google Drive. Contacte al administrador.');
+        setCarpetasDrive([]);
+      } else {
+        // For other errors, silently fail - show static folders if Drive folders can't be loaded
+        setCarpetasDrive([]);
+      }
     } finally {
       setCargandoCarpetas(false);
     }
@@ -341,14 +355,14 @@ const ArchivosPage = () => {
               <option value="ALL">Selecciona un proyecto primero</option>
             )}
             {carpetasDrive.length === 0 && proyectoSeleccionado && !cargandoCarpetas && (
-              <option value="ALL">No hay carpetas disponibles</option>
+              <option value="ALL">Carpeta del proyecto</option>
             )}
             {cargandoCarpetas && (
               <option value="ALL">Cargando carpetas...</option>
             )}
             {carpetasDrive.map(carpeta => (
               <option key={carpeta.id} value={carpeta.id}>
-                {carpeta.name}
+                {carpeta.isProjectRoot ? `📁 ${carpeta.name} (Raíz)` : carpeta.name}
               </option>
             ))}
           </select>

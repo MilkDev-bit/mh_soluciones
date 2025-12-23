@@ -335,32 +335,33 @@ class GoogleDriveService:
             # Get project
             try:
                 project = Project.objects.get(id=project_id)
-                logger.info(f"Listando carpetas de Google Drive para proyecto ID={project_id}, nombre='{project.name}'")
+                logger.info(f"[DRIVE DEBUG] Listando carpetas de Google Drive para proyecto ID={project_id}, nombre='{project.name}'")
             except Project.DoesNotExist:
-                logger.error(f"Proyecto con ID {project_id} no encontrado en la base de datos")
+                logger.error(f"[DRIVE DEBUG] Proyecto con ID {project_id} no encontrado en la base de datos")
                 return []
             
             # Get year folder
             if not year:
                 year = datetime.now().strftime('%Y')
             
-            logger.info(f"Obteniendo carpeta de año '{year}' en Google Drive")
+            logger.info(f"[DRIVE DEBUG] Obteniendo carpeta de año '{year}' en Google Drive")
+            logger.info(f"[DRIVE DEBUG] Root folder ID: {settings.GOOGLE_DRIVE_ROOT_FOLDER_ID}")
             year_id = self._get_or_create_folder(
                 year, 
                 parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
             )
-            logger.debug(f"Carpeta de año '{year}' obtenida: folder_id={year_id}")
+            logger.info(f"[DRIVE DEBUG] Carpeta de año '{year}' obtenida: folder_id={year_id}")
             
             # Get project folder
             project_name = project.name
-            logger.info(f"Obteniendo carpeta de proyecto '{project_name}' en Google Drive")
+            logger.info(f"[DRIVE DEBUG] Obteniendo carpeta de proyecto '{project_name}' en Google Drive (parent: año '{year}')")
             project_folder_id = self._get_or_create_folder(project_name, parent_id=year_id)
-            logger.info(f"Carpeta de proyecto obtenida: folder_id={project_folder_id} para project_id={project_id}")
+            logger.info(f"[DRIVE DEBUG] Carpeta de proyecto obtenida: folder_id={project_folder_id} para project_id={project_id}")
             
             # List all folders (not files) within the project folder
             query = f"mimeType='application/vnd.google-apps.folder' and '{project_folder_id}' in parents and trashed=false"
             
-            logger.debug(f"Ejecutando consulta a Google Drive: {query}")
+            logger.info(f"[DRIVE DEBUG] Ejecutando consulta a Google Drive API con query: {query}")
             response = self.service.files().list(
                 q=query,
                 spaces='drive',
@@ -368,26 +369,42 @@ class GoogleDriveService:
                 orderBy='name'
             ).execute()
             
+            # Log raw response for debugging
+            logger.info(f"[DRIVE DEBUG] Respuesta cruda de Google Drive API: {response}")
+            
             folders = response.get('files', [])
             
-            logger.info(f"Encontradas {len(folders)} carpetas para el proyecto '{project_name}' (ID={project_id})")
+            logger.info(f"[DRIVE DEBUG] Encontradas {len(folders)} subcarpetas para el proyecto '{project_name}' (ID={project_id})")
             
-            # If no folders found but we expected some, log the raw response for debugging
+            # If no subfolders found, include the project folder itself as an option
             if len(folders) == 0:
                 logger.warning(
-                    f"Lista de carpetas vacía para project_id={project_id}, folder_id={project_folder_id}. "
-                    f"Respuesta cruda de Google Drive: {response}"
+                    f"[DRIVE DEBUG] No se encontraron subcarpetas en project_id={project_id}, folder_id={project_folder_id}. "
+                    f"Se retornará la carpeta del proyecto como opción de subida."
                 )
+                # Return the project folder itself so users can upload there
+                folders = [{
+                    'id': project_folder_id,
+                    'name': project_name,
+                    'createdTime': None,
+                    'modifiedTime': None,
+                    'isProjectRoot': True  # Flag to identify this is the project root
+                }]
+                logger.info(f"[DRIVE DEBUG] Retornando carpeta raíz del proyecto: {folders}")
+            else:
+                # Log each subfolder found
+                for folder in folders:
+                    logger.info(f"[DRIVE DEBUG] Subcarpeta encontrada: {folder.get('name')} (ID: {folder.get('id')})")
             
             return folders
             
         except HttpError as e:
             logger.exception(
-                f"Error HTTP al acceder a Google Drive para project_id={project_id}: código={e.resp.status}"
+                f"[DRIVE DEBUG] Error HTTP al acceder a Google Drive para project_id={project_id}: código={e.resp.status}, mensaje={e}"
             )
             raise
         except Exception as e:
             logger.exception(
-                f"Error inesperado al listar carpetas para proyecto {project_id}: {e}"
+                f"[DRIVE DEBUG] Error inesperado al listar carpetas para proyecto {project_id}: {e}"
             )
             return []
