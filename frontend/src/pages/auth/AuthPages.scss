@@ -47,7 +47,7 @@
 .auth-card {
   background: $white;
   border-radius: $border-radius-xl;
-  padding: $spacing-10;
+  padding: $spacing-6;
   box-shadow: $shadow-2xl;
   border: 2px solid $primary-200;
   width: 100%;
@@ -90,11 +90,11 @@
 
 .auth-logo {
   text-align: center;
-  margin-bottom: $spacing-8;
+  margin-bottom: $spacing-4;
   
   .logo-image {
-    width: 100px;
-    height: 100px;
+    width: 70px;
+    height: 70px;
     object-fit: contain;
     margin: 0 auto;
     display: block;
@@ -142,16 +142,16 @@
 
 .auth-header {
   text-align: center;
-  margin-bottom: $spacing-8;
+  margin-bottom: $spacing-5;
   
   h2 {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 800;
     background: linear-gradient(135deg, $neutral-900 0%, $neutral-700 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: $spacing-3;
+    margin-bottom: $spacing-2;
     letter-spacing: -0.5px;
     animation: fadeIn 0.8s ease-out 0.2s backwards;
   }
@@ -159,7 +159,7 @@
   p {
     color: $neutral-600;
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     animation: fadeIn 0.8s ease-out 0.3s backwards;
   }
@@ -180,7 +180,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: $spacing-6;
+  gap: $spacing-4;
   
   .form-group {
     animation: fadeIn 0.8s ease-out 0.4s backwards;
@@ -194,8 +194,8 @@
     display: block;
     font-weight: 700;
     color: $neutral-800;
-    margin-bottom: $spacing-3;
-    font-size: 0.875rem;
+    margin-bottom: $spacing-2;
+    font-size: 0.8125rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -206,10 +206,10 @@
   
   input {
     width: 100%;
-    padding: $spacing-4;
+    padding: $spacing-3;
     border: 2px solid $neutral-200;
     border-radius: $border-radius-lg;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     transition: all $transition;
     background: $white;
     font-family: $font-sans;
@@ -307,12 +307,12 @@
 
 .auth-button {
   width: 100%;
-  padding: $spacing-4;
+  padding: $spacing-3;
   background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
   color: $white;
   border: none;
   border-radius: $border-radius-lg;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -320,7 +320,7 @@
   gap: $spacing-3;
   cursor: pointer;
   transition: all $transition;
-  margin-top: $spacing-4;
+  margin-top: $spacing-2;
   box-shadow: 0 4px 12px rgba($primary-500, 0.3);
   position: relative;
   overflow: hidden;
@@ -380,9 +380,9 @@
 }
 
 .auth-footer {
-  margin-top: $spacing-8;
+  margin-top: $spacing-5;
   text-align: center;
-  padding-top: $spacing-6;
+  padding-top: $spacing-4;
   border-top: 2px solid $neutral-200;
   animation: fadeIn 0.8s ease-out 0.7s backwards;
   
@@ -644,7 +644,7 @@
 
 // Forgot Password Link and Modal Styles
 .forgot-password-link {
-  margin-top: $spacing-4;
+  margin-top: $spacing-3;
   text-align: center;
 
   .link-button {
