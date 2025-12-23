@@ -20,6 +20,7 @@ export const userSchema = z.object({
     .string()
     .min(1, 'El nombre es obligatorio')
     .max(150, 'El nombre no puede exceder 150 caracteres'),
+
   
   last_name: z
     .string()
