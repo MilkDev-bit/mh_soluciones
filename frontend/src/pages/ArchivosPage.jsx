@@ -130,11 +130,16 @@ const ArchivosPage = () => {
         const promises = archivosAceptados.map(async (file) => {
           const formData = new FormData();
           formData.append('file', file);
-          // Use folder filter if selected, otherwise fallback to type filter or default
-          const selectedFolderType = filtroCarpeta || 
-                                     (filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
+          
+          // Determine folder_type for upload
+          // Use the type filter if it's not 'ALL', otherwise use default DOCUMENTS
+          // Note: filtroCarpeta contains Google Drive folder IDs, not folder_type
+          const selectedFolderType = filtroTipo !== FILTER_TYPES.ALL 
+            ? filtroTipo 
+            : FILTER_TYPES.DOCUMENTS;
           formData.append('folder_type', selectedFolderType);
-          // Add project ID
+          
+          // Add project ID (required)
           formData.append('project', proyectoSeleccionado);
           
           return uploadDocument(formData);
@@ -150,12 +155,14 @@ const ArchivosPage = () => {
         console.error('Error subiendo archivos:', error);
         
         // Show specific error message based on error type
-        let errorMessage = 'Error al subir algunos archivos';
+        let errorMessage = 'No se pudo subir el documento - Verifique acceso/estructura en Drive';
         
         if (error.type === 'refresh_error') {
-          errorMessage = 'Error: Las credenciales de Google Drive han expirado. Contacte al administrador.';
+          errorMessage = 'No se pudo subir el documento - Las credenciales de Google Drive han expirado. Contacte al administrador.';
         } else if (error.type === 'permission_error') {
-          errorMessage = 'Error: Sin permisos para subir a Google Drive. Contacte al administrador.';
+          errorMessage = 'No se pudo subir el documento - Sin permisos para acceder a Google Drive. Contacte al administrador.';
+        } else if (error.type === 'folder_error') {
+          errorMessage = 'No se pudo subir el documento - Error al acceder a la carpeta del proyecto en Drive. Verifique la estructura.';
         } else if (error.message) {
           errorMessage = error.message;
         }
