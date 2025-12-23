@@ -72,7 +72,14 @@ const ReportesPage = () => {
       }
 
       // Convertir el elemento HTML a canvas
-      const canvas = await html2canvas(elemento, HTML2CANVAS_OPTIONS);
+      let canvas;
+      try {
+        canvas = await html2canvas(elemento, HTML2CANVAS_OPTIONS);
+      } catch (canvasError) {
+        console.error('Error al capturar el contenido:', canvasError);
+        toast.error('Error al capturar el contenido de la página. Intente nuevamente.', { id: toastId });
+        return;
+      }
 
       // Crear PDF en formato A4 vertical
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -85,7 +92,12 @@ const ReportesPage = () => {
       const logoY = 15;
       
       // Cargar y agregar logo al PDF
-      pdf.addImage(logo, 'PNG', logoX, logoY, logoSize, logoSize);
+      try {
+        pdf.addImage(logo, 'PNG', logoX, logoY, logoSize, logoSize);
+      } catch (logoError) {
+        console.warn('Error al agregar logo, continuando sin él:', logoError);
+        // Continuar sin el logo si falla
+      }
 
       // Agregar título
       pdf.setFontSize(20);
@@ -107,37 +119,44 @@ const ReportesPage = () => {
 
       // Agregar imagen del contenido capturado
       if (contentY + imgHeight > pageHeight) {
-        // Si la imagen es muy alta, añadir nueva página
+        // La imagen es demasiado alta para caber en una sola página
+        // Dividir en múltiples páginas
+        
+        // Primera página: agregar lo que cabe después del header
         const firstPageHeight = pageHeight - contentY - 15;
         pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, Math.min(imgHeight, firstPageHeight));
         
-        // Si hay más contenido, agregar páginas adicionales
+        // Páginas siguientes: procesar el contenido restante
         let remainingHeight = imgHeight - firstPageHeight;
-        let processedHeight = firstPageHeight;
+        let processedHeight = firstPageHeight; // Altura procesada en coordenadas PDF (mm)
         
         while (remainingHeight > 0) {
           pdf.addPage();
           const heightToAdd = Math.min(remainingHeight, pageHeight - 30);
           
-          // Calcular la posición en el canvas original
-          const canvasScaleFactor = canvas.width / imgWidth;
-          const sourceY = processedHeight * canvasScaleFactor;
-          const sourceHeight = heightToAdd * canvasScaleFactor;
+          // Transformación de coordenadas: convertir de PDF (mm) a canvas (píxeles)
+          // El canvas es más grande que la imagen PDF debido al factor de escala
+          const canvasScaleFactor = canvas.width / imgWidth; // Relación píxeles/mm
+          const sourceY = processedHeight * canvasScaleFactor; // Posición Y en píxeles
+          const sourceHeight = heightToAdd * canvasScaleFactor; // Altura a copiar en píxeles
           
-          // Crear un canvas temporal con la parte restante
+          // Crear un canvas temporal para extraer la porción del contenido
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
           tempCanvas.width = canvas.width;
           tempCanvas.height = sourceHeight;
           
+          // Copiar la sección relevante del canvas original al temporal
           ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
           const tempImgData = tempCanvas.toDataURL('image/png');
           
+          // Agregar la sección al PDF
           pdf.addImage(tempImgData, 'PNG', 15, 15, imgWidth, heightToAdd);
           remainingHeight -= heightToAdd;
           processedHeight += heightToAdd;
         }
       } else {
+        // La imagen cabe completamente en la primera página
         pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, imgHeight);
       }
 
