@@ -168,7 +168,7 @@ const ArchivosPage = () => {
           return uploadDocument(formData);
         });
         
-        const results = await Promise.all(promises);
+        await Promise.all(promises);
         
         // Show success message with folder destination
         if (nombreCarpetaDestino) {
