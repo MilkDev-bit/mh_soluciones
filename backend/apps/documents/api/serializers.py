@@ -9,7 +9,8 @@ class DocumentSerializer(serializers.ModelSerializer):
     """
     uploaded_by = UserSerializer(read_only=True)
     file_url = serializers.SerializerMethodField()
-    project = serializers.SerializerMethodField()
+    project_info = serializers.SerializerMethodField()
+    target_folder_id = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Document
@@ -22,6 +23,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'file_type',
             'folder_type',
             'project',
+            'project_info',
             'task',
             'uploaded_by',
             'created_at',
@@ -29,12 +31,13 @@ class DocumentSerializer(serializers.ModelSerializer):
             'drive_file_url',
             'drive_parent_folder_id',
             'drive_parent_folder_name',
-            'notes'
+            'notes',
+            'target_folder_id'
         ]
         read_only_fields = [
             'id', 'file_size', 'file_type', 'uploaded_by', 'created_at', 
             'upload_status', 'drive_file_url', 'file_url', 
-            'drive_parent_folder_id', 'drive_parent_folder_name'
+            'drive_parent_folder_id', 'drive_parent_folder_name', 'project_info'
         ]
 
     def get_file_url(self, obj):
@@ -42,7 +45,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             return obj.file.url
         return None
 
-    def get_project(self, obj):
+    def get_project_info(self, obj):
         """Return minimal project information"""
         if obj.project:
             return {
@@ -52,6 +55,9 @@ class DocumentSerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
+        # Remove target_folder_id from validated_data as it's not a model field
+        # It's used in the view to determine upload destination
+        validated_data.pop('target_folder_id', None)
         return super().create(validated_data)
 
     def validate_file(self, value):

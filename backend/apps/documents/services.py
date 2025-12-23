@@ -131,15 +131,24 @@ class GoogleDriveService:
             logger.error(f"Error al buscar/crear carpeta '{folder_name}': {error}")
             raise
 
-    def upload_document(self, document_instance):
+    def upload_document(self, document_instance, target_folder_id=None):
         """
-        Sube un archivo a Google Drive usando la nueva estructura institucional.
+        Sube un archivo a Google Drive usando la nueva estructura institucional o una carpeta específica.
+        
+        Si se proporciona target_folder_id, el archivo se sube directamente a esa carpeta.
+        
+        Si NO se proporciona target_folder_id, se usa la estructura automática:
         Nueva estructura: AÑO/PROYECTO/NOMBRE_TAREA/USUARIO/archivo.ext
         - AÑO: Carpeta raíz por año (2025, 2024, etc.)
         - PROYECTO: Carpeta del proyecto
         - NOMBRE_TAREA: Carpeta de la tarea (si hay tarea asociada, sino se omite este nivel)
         - USUARIO: Carpeta del usuario que sube el archivo
         - Archivos se guardan directamente sin subcarpetas de versión
+        
+        Args:
+            document_instance: Instancia del documento a subir
+            target_folder_id (str, optional): ID de la carpeta destino en Google Drive.
+                Si se proporciona, se sube directamente aquí ignorando la estructura automática.
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
@@ -149,59 +158,91 @@ class GoogleDriveService:
             return None
 
         try:
-            date = document_instance.created_at
-            current_year = date.strftime('%Y')
-            
-            # Level 1 - Year folder (AÑO)
-            year_id = self._get_or_create_folder(
-                current_year, 
-                parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
-            )
-            
-            # Level 2 - Project folder (PROYECTO)
-            if document_instance.project:
-                project_name = document_instance.project.name
-                project_id = self._get_or_create_folder(project_name, parent_id=year_id)
+            # Determine target folder and build metadata
+            if target_folder_id:
+                # Upload directly to the specified folder
+                logger.info(
+                    f"Subiendo archivo a carpeta específica: {document_instance.file.name} "
+                    f"a folder_id={target_folder_id}"
+                )
+                
+                # Get folder name for logging and metadata
+                try:
+                    folder_metadata = self.service.files().get(
+                        fileId=target_folder_id,
+                        fields='id, name'
+                    ).execute()
+                    folder_name = folder_metadata.get('name', 'Carpeta Desconocida')
+                except HttpError as e:
+                    logger.error(f"Error al obtener metadata de carpeta {target_folder_id}: {e}")
+                    folder_name = 'Carpeta Desconocida'
+                
+                parent_folder_id = target_folder_id
+                parent_folder_name = folder_name
+                filename = document_instance.file.name
+                
+                logger.info(
+                    f"[UPLOAD] Archivo: {filename} -> Carpeta destino: '{parent_folder_name}' (ID: {parent_folder_id})"
+                )
             else:
-                # Si no hay proyecto, usar carpeta "General"
-                project_id = self._get_or_create_folder("General", parent_id=year_id)
-            
-            # Level 3 - Task name folder (NOMBRE_TAREA) - only if task exists
-            task_name = None
-            task_id = None
-            if document_instance.task:
-                task_name = document_instance.task.title
-                task_id = self._get_or_create_folder(task_name, parent_id=project_id)
-                parent_for_user = task_id
-            else:
-                # If no task, user folder goes directly under project
-                parent_for_user = project_id
-            
-            # Level 4 - User folder (USUARIO)
-            if document_instance.uploaded_by:
-                user_name = document_instance.uploaded_by.get_full_name() or document_instance.uploaded_by.username
-                user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
-            else:
-                # Fallback: use "Usuario Desconocido" if no user
-                user_name = "Usuario Desconocido"
-                user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
-            
-            # Create filename - keep original name, no version subfolder
-            filename = document_instance.file.name
-            
-            # Build path for logging
-            project_name = document_instance.project.name if document_instance.project else 'General'
-            task_name = document_instance.task.title if document_instance.task else ''
-            path_parts = [current_year, project_name]
-            if task_name:
-                path_parts.append(task_name)
-            path_parts.append(user_name)
-            
-            logger.info(f"Subiendo archivo: {filename} a estructura {'/'.join(path_parts)}")
+                # Use automatic folder structure
+                date = document_instance.created_at
+                current_year = date.strftime('%Y')
+                
+                # Level 1 - Year folder (AÑO)
+                year_id = self._get_or_create_folder(
+                    current_year, 
+                    parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+                )
+                
+                # Level 2 - Project folder (PROYECTO)
+                if document_instance.project:
+                    project_name = document_instance.project.name
+                    project_id = self._get_or_create_folder(project_name, parent_id=year_id)
+                else:
+                    # Si no hay proyecto, usar carpeta "General"
+                    project_id = self._get_or_create_folder("General", parent_id=year_id)
+                
+                # Level 3 - Task name folder (NOMBRE_TAREA) - only if task exists
+                task_name = None
+                task_id = None
+                if document_instance.task:
+                    task_name = document_instance.task.title
+                    task_id = self._get_or_create_folder(task_name, parent_id=project_id)
+                    parent_for_user = task_id
+                else:
+                    # If no task, user folder goes directly under project
+                    parent_for_user = project_id
+                
+                # Level 4 - User folder (USUARIO)
+                if document_instance.uploaded_by:
+                    user_name = document_instance.uploaded_by.get_full_name() or document_instance.uploaded_by.username
+                    user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
+                else:
+                    # Fallback: use "Usuario Desconocido" if no user
+                    user_name = "Usuario Desconocido"
+                    user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
+                
+                parent_folder_id = user_id
+                
+                # Create filename - keep original name, no version subfolder
+                filename = document_instance.file.name
+                
+                # Build path for logging
+                project_name = document_instance.project.name if document_instance.project else 'General'
+                task_name = document_instance.task.title if document_instance.task else ''
+                path_parts = [current_year, project_name]
+                if task_name:
+                    path_parts.append(task_name)
+                path_parts.append(user_name)
+                parent_folder_name = user_name
+                
+                logger.info(f"Subiendo archivo: {filename} a estructura {'/'.join(path_parts)}")
 
+            # Upload file to Drive
             file_metadata = {
                 'name': filename,
-                'parents': [user_id]  # Files go directly in user folder
+                'parents': [parent_folder_id]
             }
 
             if hasattr(document_instance.file, 'path') and os.path.exists(document_instance.file.path):
@@ -221,19 +262,15 @@ class GoogleDriveService:
                 fields='id, name, webViewLink, mimeType, size'
             ).execute()
 
-            logger.info(f"Archivo subido exitosamente: {uploaded_file.get('name')} - {uploaded_file.get('webViewLink')}")
+            logger.info(
+                f"[UPLOAD] Archivo subido exitosamente: {uploaded_file.get('name')} -> "
+                f"Carpeta: '{parent_folder_name}' (ID: {parent_folder_id}) - "
+                f"URL: {uploaded_file.get('webViewLink')}"
+            )
 
             # Add parent folder information to the result
-            # The folder that appears directly under PROJECT is either:
-            # - The TASK folder (if task exists), or
-            # - The USER folder (if no task exists)
-            if document_instance.task:
-                uploaded_file['parent_folder_id'] = task_id
-                uploaded_file['parent_folder_name'] = task_name
-            else:
-                # No task - the user folder is directly under project
-                uploaded_file['parent_folder_id'] = user_id
-                uploaded_file['parent_folder_name'] = user_name
+            uploaded_file['parent_folder_id'] = parent_folder_id
+            uploaded_file['parent_folder_name'] = parent_folder_name
 
             return uploaded_file
             

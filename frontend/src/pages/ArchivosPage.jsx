@@ -140,6 +140,10 @@ const ArchivosPage = () => {
       
       setSubiendo(true);
       try {
+        // Get the selected folder name for display
+        const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
+        const nombreCarpetaDestino = carpetaSeleccionada?.name || null;
+        
         // Upload each file
         const promises = archivosAceptados.map(async (file) => {
           const formData = new FormData();
@@ -147,7 +151,6 @@ const ArchivosPage = () => {
           
           // Determine folder_type for upload
           // Use the type filter if it's not 'ALL', otherwise use default DOCUMENTS
-          // Note: filtroCarpeta contains Google Drive folder IDs, not folder_type
           const selectedFolderType = filtroTipo !== FILTER_TYPES.ALL 
             ? filtroTipo 
             : FILTER_TYPES.DOCUMENTS;
@@ -156,12 +159,27 @@ const ArchivosPage = () => {
           // Add project ID (required)
           formData.append('project', proyectoSeleccionado);
           
+          // Add target folder ID if a specific folder is selected
+          // Only send if it's not 'ALL' and we have actual folder data
+          if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
+            formData.append('target_folder_id', filtroCarpeta);
+          }
+          
           return uploadDocument(formData);
         });
         
         await Promise.all(promises);
         
-        toast.success(`${archivosAceptados.length} archivo(s) subido(s) correctamente`);
+        // Show success message with folder destination
+        if (nombreCarpetaDestino) {
+          toast.success(
+            `${archivosAceptados.length} archivo(s) subido(s) correctamente a la carpeta "${nombreCarpetaDestino}"`
+          );
+        } else {
+          toast.success(
+            `${archivosAceptados.length} archivo(s) subido(s) correctamente`
+          );
+        }
         
         // Recargar archivos después de la subida
         await cargarArchivos();
