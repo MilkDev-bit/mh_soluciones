@@ -80,6 +80,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         project_id = self.request.data.get('project')
+        target_folder_id = self.request.data.get('target_folder_id')
         
         # Validate project membership if project is specified
         if project_id:
@@ -94,13 +95,36 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     'project': 'No tienes permisos para subir archivos a este proyecto'
                 })
         
+        # Validate folder access if target_folder_id is provided
+        if target_folder_id and project_id:
+            # For now, we trust that if the user has access to the project,
+            # they can upload to any folder within it
+            # More granular folder-level permissions could be added here in the future
+            logger.info(
+                f"[UPLOAD] Usuario {user.username} (rol: {user.role}) subiendo a carpeta específica "
+                f"folder_id={target_folder_id} en proyecto ID={project_id}"
+            )
+        
+        # Extract target_folder_id from validated_data before saving
+        # (it's write_only and not a model field)
+        validated_data = serializer.validated_data
+        target_folder_id = validated_data.pop('target_folder_id', None)
+        
         document = serializer.save(uploaded_by=user)
         
         if document.task and document.task.project:
             document.project = document.task.project
-            document.save(update_fields=['project']) 
+            document.save(update_fields=['project'])
+        
+        # Log upload details for audit/traceability
+        logger.info(
+            f"[UPLOAD] Documento ID={document.id} '{document.name}' creado por {user.username} "
+            f"para proyecto ID={project_id}, carpeta destino ID={target_folder_id or 'auto-generada'}"
+        )
+        
         try:
-            upload_document_to_drive.delay(document.id)
+            # Pass target_folder_id to the upload task
+            upload_document_to_drive.delay(document.id, target_folder_id=target_folder_id)
             logger.info(f"Tarea para subir el documento {document.id} a Google Drive ha sido encolada.")
         except Exception as e:
             logger.error(f"Error al encolar la tarea de subida a Drive: {e}")

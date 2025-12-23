@@ -10,6 +10,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     uploaded_by = UserSerializer(read_only=True)
     file_url = serializers.SerializerMethodField()
     project = serializers.SerializerMethodField()
+    target_folder_id = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Document
@@ -29,7 +30,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             'drive_file_url',
             'drive_parent_folder_id',
             'drive_parent_folder_name',
-            'notes'
+            'notes',
+            'target_folder_id'
         ]
         read_only_fields = [
             'id', 'file_size', 'file_type', 'uploaded_by', 'created_at', 
