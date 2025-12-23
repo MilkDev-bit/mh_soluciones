@@ -155,16 +155,14 @@
   min-height: min-content;
 }
 
-// Top grid for Members and Events (side by side)
+// Top grid for Events and Members (stacked vertically)
 .sidebar-top-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: $spacing-5;
   
-  // On desktop where sidebar is a right column, show widgets side by side
-  @media (min-width: $breakpoint-lg) {
-    grid-template-columns: 1fr 1fr;
-  }
+  // Keep them stacked vertically even on desktop
+  // Events appear first (top), Members appear second (below)
 }
 
 // Ensure glass-cards in sidebar that are NOT in the grid take full width
