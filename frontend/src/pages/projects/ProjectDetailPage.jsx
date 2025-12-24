@@ -754,28 +754,26 @@ const ProjectDetailPage = () => {
           </div>
         </header>
 
-        <div className="project-layout-grid">
-          <div className="main-column">
-
-            {/* Ocultar estadísticas para STUDENT */}
-            {currentUser && currentUser.role !== 'STUDENT' && (
+        <div className={`project-layout-grid ${currentUser?.role === 'STUDENT' ? 'student-layout' : ''}`}>
+          {/* Solo mostrar main-column si NO es STUDENT */}
+          {currentUser && currentUser.role !== 'STUDENT' && (
+            <div className="main-column">
               <ProjectProgressCharts projectId={projectId} />
-            )}
+              
+              {canViewAnalytics(currentUser.role) && (
+                <div className="glass-card">
+                  <StudentPerformance projectId={projectId} />
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Student Performance - visible to analytics viewers excepto STUDENT */}
-            {currentUser && canViewAnalytics(currentUser.role) && currentUser.role !== 'STUDENT' && (
-              <div className="glass-card">
-                <StudentPerformance projectId={projectId} />
-              </div>
-            )}
-          </div>
-
+          {/* Sidebar column - se adapta según el rol */}
           <div className="sidebar-column">
-            {/* Hide members and events from CLIENT users */}
             {currentUser && currentUser.role !== 'CLIENT' && (
               <>
-                {/* Top widgets grid: Events and Members - Events first, Members below */}
                 <div className="sidebar-top-grid">
+                  {/* Eventos */}
                   <div className="glass-card">
                     <div className="section-header">
                       <h3>
@@ -791,6 +789,7 @@ const ProjectDetailPage = () => {
                     </div>
                   </div>
 
+                  {/* Miembros */}
                   <div className="glass-card">
                     <div className="section-header">
                       <h3>Miembros ({membersList.length})</h3>
