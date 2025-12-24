@@ -1,7 +1,10 @@
 import json
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Notification
+
+logger = logging.getLogger(__name__)
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     """
@@ -9,20 +12,27 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     incluyendo la interacción con la base de datos.
     """
     async def connect(self):
-        self.user = self.scope['user']
-        if not self.user.is_authenticated:
+        if self.scope["user"].is_anonymous:
             await self.close()
             return
-
-        self.group_name = f'user_{self.user.id}_notifications'
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        
+        self.user = self.scope["user"]
+        self.user_group_name = f"user_{self.user.id}"
+        
+        # Log para verificar conexión
+        logger.info(f"WebSocket connected for user: {self.user.username} (ID: {self.user.id})")
+        
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
         await self.accept()
         
         print(f"WebSocket conectado para usuario {self.user.id}")
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'group_name'):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'user_group_name'):
+            await self.channel_layer.group_discard(self.user_group_name, self.channel_name)
             print(f"WebSocket desconectado para usuario {self.user.id}")
 
     async def receive(self, text_data):

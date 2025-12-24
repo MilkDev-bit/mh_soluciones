@@ -46,8 +46,13 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         Asegura que cada usuario solo pueda ver sus propias notificaciones.
         Por defecto, solo muestra las notificaciones no leídas y recientes.
         """
+        user = self.request.user
+        
+        # Log para depuración (temporal)
+        logger.debug(f"Fetching notifications for user: {user.username} (ID: {user.id})")
+        
         # Ordenar por fecha de creación (más recientes primero)
-        queryset = self.request.user.notifications.all().order_by('-created_at')
+        queryset = user.notifications.all().order_by('-created_at')
         
         # Por defecto, solo mostrar notificaciones no leídas
         include_read = self.request.query_params.get('include_read', 'false').lower() == 'true'

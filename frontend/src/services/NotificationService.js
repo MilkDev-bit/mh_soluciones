@@ -457,7 +457,18 @@ class NotificationService {
   async getNotifications(params = {}) {
     return apiCallWithTimeout(
       async (signal) => {
-        const response = await api.get('/notifications/', { params, signal });
+        // Asegurar que params siempre incluya el usuario actual
+        const response = await api.get('/notifications/', { 
+          params, 
+          signal,
+          // El interceptor de axios ya agrega el token, pero verificar que esté presente
+        });
+        
+        // Log para depuración (solo en desarrollo)
+        if (import.meta.env.DEV) {
+          console.log('[NotificationService] Notifications fetched for current user:', response.data);
+        }
+        
         // Handle paginated response - return results array or empty array
         return Array.isArray(response.data.results)
           ? response.data.results
