@@ -46,13 +46,21 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         Asegura que cada usuario solo pueda ver sus propias notificaciones.
         Por defecto, solo muestra las notificaciones no leídas y recientes.
         """
+        user = self.request.user
+        
+        # Log para depuración (temporal)
+        logger.debug(f"Fetching notifications for user: {user.username} (ID: {user.id})")
+        
         # Ordenar por fecha de creación (más recientes primero)
-        queryset = self.request.user.notifications.all().order_by('-created_at')
+        queryset = user.notifications.all().order_by('-created_at')
         
         # Por defecto, solo mostrar notificaciones no leídas
         include_read = self.request.query_params.get('include_read', 'false').lower() == 'true'
         if not include_read:
             queryset = queryset.filter(is_read=False)
+        
+        # Log count para verificar
+        logger.debug(f"Returning {queryset.count()} notifications for user {user.id}")
         
         # Don't slice the queryset here - let DRF's pagination handle it
         # This ensures the response includes pagination metadata (results, count, next, previous)

@@ -19,23 +19,32 @@ export const useNotifications = () => {
       return;
     }
 
-    console.log('[useNotifications] Loading notifications...');
+    // Validar que el usuario tenga ID
+    if (!user.id) {
+      console.error('[useNotifications] User ID is missing, cannot load notifications');
+      setError(new Error('User ID missing'));
+      return;
+    }
+
+    console.log(`[useNotifications] Loading notifications for user ID: ${user.id}`);
     setIsRefreshing(true);
     setLoading(true);
     setError(null); // Clear previous errors
     
     await safeAsync(async () => {
       try {
-        // Only load unread notifications
+        // Solo cargar notificaciones no leídas
         const data = await notificationService.getNotifications({ include_read: false });
-        // NotificationService.getNotifications handles both paginated and non-paginated responses
-        // and ensures it always returns an array. Extra check for defensive programming.
         const notifsList = Array.isArray(data) ? data : [];
+        
+        // Log para verificar que las notificaciones pertenecen al usuario correcto
+        if (import.meta.env.DEV && notifsList.length > 0) {
+          console.log(`[useNotifications] Loaded ${notifsList.length} notifications for user ${user.username} (ID: ${user.id})`);
+        }
+        
         setNotifications(notifsList);
-        console.log('[useNotifications] Notifications loaded successfully:', notifsList.length);
       } catch (error) {
         console.error('[useNotifications] Error loading notifications:', error);
-        console.error('[useNotifications] Error details:', error.message, error.stack);
         setNotifications([]);
         setError(error); // Store error state
       } finally {

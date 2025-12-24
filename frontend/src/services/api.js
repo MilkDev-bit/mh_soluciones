@@ -27,6 +27,11 @@ api.interceptors.request.use(
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Log warning si no hay token pero se está haciendo una petición autenticada
+      if (import.meta.env.DEV && config.url !== '/auth/login/') {
+        console.warn('[API] No auth token found for request:', config.url);
+      }
     }
     
     // Detectar si estamos enviando FormData (para uploads de archivos)
