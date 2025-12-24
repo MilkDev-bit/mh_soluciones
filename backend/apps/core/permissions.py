@@ -4,12 +4,12 @@ Centralized permission classes for role-based access control (RBAC).
 Role hierarchy:
 - SUPERADMIN: Full access to everything including user management
 - ADMIN: All access except user creation/modification
-- DIRECTOR: Can assign members, create projects, view dashboards & Drive folders
-- PROFESSOR: Can view assigned projects, comment, share, create channels, assign tasks, grade submissions
+- DIRECTOR: Can assign members, create projects, view dashboards, create tasks
+- PROFESSOR: Can view assigned projects, comment, share, create tasks, assign tasks, grade submissions
 - CEO: Can view all dashboards & Drive folders (even non-assigned projects)
 - STUDENT: Can only view and submit assigned tasks
-- CLIENT: Can view specific project information
-- RH: Human resources management
+- CLIENT: Can view specific project information and Drive folders
+- RH: Human resources management - can manage users (except SUPERADMIN, ADMIN, CEO) and view HR module
 """
 
 from rest_framework import permissions
@@ -26,9 +26,9 @@ ROLE_CLIENT = 'CLIENT'
 ROLE_RH = 'RH'
 
 # Role groups
-ADMIN_ROLES = (ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_CEO, ROLE_RH)
+ADMIN_ROLES = (ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_CEO)
 MANAGEMENT_ROLES = (ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_DIRECTOR, ROLE_CEO, ROLE_RH)
-TEACHER_ROLES = ADMIN_ROLES + (ROLE_PROFESSOR, ROLE_DIRECTOR)
+TEACHER_ROLES = (ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_CEO, ROLE_PROFESSOR, ROLE_DIRECTOR)
 EDITOR_ROLES = TEACHER_ROLES  # Can create/edit content
 
 
@@ -70,7 +70,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 class IsAdminRole(permissions.BasePermission):
     """
     Permission class that only allows access to admin role users.
-    Includes: SUPERADMIN, ADMIN, CEO, RH
+    Includes: SUPERADMIN, ADMIN, CEO
     """
     message = "Solo los administradores tienen acceso a este recurso."
     
@@ -100,7 +100,7 @@ class IsManagementRole(permissions.BasePermission):
 class IsTeacherRole(permissions.BasePermission):
     """
     Permission class that allows access to teacher roles.
-    Includes: SUPERADMIN, ADMIN, PROFESSOR, DIRECTOR, CEO, RH
+    Includes: SUPERADMIN, ADMIN, PROFESSOR, DIRECTOR, CEO
     """
     message = "Solo el personal docente tiene acceso a este recurso."
     
@@ -115,7 +115,7 @@ class IsTeacherRole(permissions.BasePermission):
 class IsEditorRole(permissions.BasePermission):
     """
     Permission class that allows access to roles that can create/edit content.
-    Includes: SUPERADMIN, ADMIN, PROFESSOR, DIRECTOR, CEO, RH
+    Includes: SUPERADMIN, ADMIN, PROFESSOR, DIRECTOR, CEO
     """
     message = "Solo el personal autorizado puede crear o editar contenido."
     
