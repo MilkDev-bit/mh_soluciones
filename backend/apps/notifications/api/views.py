@@ -59,9 +59,6 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         if not include_read:
             queryset = queryset.filter(is_read=False)
         
-        # Log count para verificar
-        logger.debug(f"Returning {queryset.count()} notifications for user {user.id}")
-        
         # Don't slice the queryset here - let DRF's pagination handle it
         # This ensures the response includes pagination metadata (results, count, next, previous)
         return queryset

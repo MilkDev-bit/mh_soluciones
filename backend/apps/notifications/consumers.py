@@ -14,20 +14,21 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         if self.scope["user"].is_anonymous:
             await self.close()
-        else:
-            self.user = self.scope["user"]
-            self.user_group_name = f"user_{self.user.id}"
-            
-            # Log para verificar conexión
-            logger.info(f"WebSocket connected for user: {self.user.username} (ID: {self.user.id})")
-            
-            await self.channel_layer.group_add(
-                self.user_group_name,
-                self.channel_name
-            )
-            await self.accept()
-            
-            print(f"WebSocket conectado para usuario {self.user.id}")
+            return
+        
+        self.user = self.scope["user"]
+        self.user_group_name = f"user_{self.user.id}"
+        
+        # Log para verificar conexión
+        logger.info(f"WebSocket connected for user: {self.user.username} (ID: {self.user.id})")
+        
+        await self.channel_layer.group_add(
+            self.user_group_name,
+            self.channel_name
+        )
+        await self.accept()
+        
+        print(f"WebSocket conectado para usuario {self.user.id}")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'user_group_name'):
