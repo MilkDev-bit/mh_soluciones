@@ -135,6 +135,28 @@
   @media (min-width: $breakpoint-lg) {
     grid-template-columns: 1fr 480px;
   }
+  
+  // Layout especial para estudiantes
+  &.student-layout {
+    grid-template-columns: 1fr;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    
+    .sidebar-column {
+      width: 100%;
+    }
+    
+    .sidebar-top-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: $spacing-5;
+      
+      @media (min-width: $breakpoint-md) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  }
 }
 
 .full-width-content {
