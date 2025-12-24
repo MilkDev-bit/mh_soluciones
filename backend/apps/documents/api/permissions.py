@@ -13,7 +13,7 @@ class IsOwnerOrAdminReadOnly(permissions.BasePermission):
         return request.user and request.user.is_authenticated
     
     def has_object_permission(self, request, view, obj):
-        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
+        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO']:
             return True
         
         if obj.uploaded_by == request.user:

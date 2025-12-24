@@ -14,28 +14,28 @@ export const ROLES = {
 // Role groups for common permission checks
 export const ROLE_GROUPS = {
   // Admin roles that have full access to most features
-  ADMIN_ROLES: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'],
+  ADMIN_ROLES: ['SUPERADMIN', 'ADMIN', 'CEO'],
   
   // Roles that can manage projects and view student performance
-  PROJECT_MANAGERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'DIRECTOR', 'PROFESSOR'],
+  PROJECT_MANAGERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
   
   // Roles that can view student performance and project analytics
   ANALYTICS_VIEWERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'CLIENT', 'DIRECTOR', 'PROFESSOR'],
   
   // Roles that can access Google Drive folders
-  DRIVE_ACCESS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'CLIENT'],
+  DRIVE_ACCESS: ['SUPERADMIN', 'ADMIN', 'CEO', 'CLIENT'],
   
   // Roles that can submit project deliverables
-  SUBMITTERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR'],
+  SUBMITTERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR'],
   
   // Roles that can manage users
   USER_MANAGERS: ['SUPERADMIN', 'ADMIN', 'RH'],
   
   // Roles that can create tasks
-  TASK_CREATORS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'DIRECTOR', 'PROFESSOR'],
+  TASK_CREATORS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
   
   // Roles that can grade tasks
-  TASK_GRADERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'DIRECTOR', 'PROFESSOR'],
+  TASK_GRADERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
 };
 
 // Helper functions to check role membership

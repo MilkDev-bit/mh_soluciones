@@ -7,7 +7,7 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     o un administrador puedan editarlo o eliminarlo.
     """
     def has_object_permission(self, request, view, obj):
-        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR']:
+        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR']:
             return True
         
         author_field = getattr(obj, 'user', getattr(obj, 'submitted_by', None))
@@ -30,7 +30,7 @@ class CanInteractWithTask(permissions.BasePermission):
         """
         Se ejecuta para acciones de lista y creación.
         """
-        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR']:
+        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR']:
             return True
         
         task = self._get_task(view)
@@ -43,7 +43,7 @@ class CanInteractWithTask(permissions.BasePermission):
         """
         Se ejecuta para acciones de detalle sobre un objeto existente.
         """
-        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR']:
+        if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR']:
             return True
         
         task = obj.task
