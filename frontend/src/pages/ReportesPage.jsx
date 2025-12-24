@@ -67,8 +67,12 @@ const ReportesPage = () => {
       // Logo centrado
       const logoImg = new Image();
       logoImg.src = logo;
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         logoImg.onload = resolve;
+        logoImg.onerror = () => {
+          console.warn('Error al cargar el logo');
+          resolve(); // Continuar sin el logo
+        };
       });
       pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
       
@@ -119,7 +123,7 @@ const ReportesPage = () => {
           proyectos = proyectosData.results?.map((p, idx) => ({
             project_name: p.name,
             task_count: p.task_count || 0,
-            status: p.status || 'activo',
+            status: p.status || 'N/A',
             order: idx + 1
           })) || [];
         } catch (error) {
@@ -174,6 +178,10 @@ const ReportesPage = () => {
       pdf.text('Estadísticas y Gráficos', 20, 20);
       
       const elemento = reporteRef.current;
+      if (!elemento) {
+        throw new Error('No se pudo capturar el contenido del reporte');
+      }
+      
       const canvas = await html2canvas(elemento, {
         scale: 3,  // Mayor calidad
         useCORS: true,
@@ -228,7 +236,8 @@ const ReportesPage = () => {
       }
       
       // Guardar PDF
-      const fileName = `reporte-estadisticas-${rangoTexto.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
+      const rangoTextoFinal = rangoTexto || 'periodo-seleccionado';
+      const fileName = `reporte-estadisticas-${rangoTextoFinal.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
       
       toast.dismiss();
