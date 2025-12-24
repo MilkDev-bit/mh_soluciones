@@ -14,9 +14,11 @@ import { Pie, Bar, Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
+import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import logo from '../assets/img/logo.png';
@@ -24,13 +26,6 @@ import './ReportesPage.scss';
 
 // Registrar componentes de Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement);
-
-// Opciones de configuración para html2canvas
-const HTML2CANVAS_OPTIONS = {
-  scale: 2,
-  useCORS: true,
-  logging: false
-};
 
 const ReportesPage = () => {
   const { user } = useContext(AuthContext);
@@ -59,115 +54,189 @@ const ReportesPage = () => {
     return rangos[rango] || 'Últimos 30 días';
   };
 
-  // Función para exportar a PDF
+  // Función para exportar a PDF mejorada
   const exportarPDF = async () => {
-    const toastId = toast.loading('Generando PDF...');
-    
     try {
-      // Capturar el contenido del reporte
-      const elemento = reporteRef.current;
-      if (!elemento) {
-        toast.error('No se pudo capturar el contenido del reporte', { id: toastId });
-        return;
-      }
-
-      // Convertir el elemento HTML a canvas
-      let canvas;
-      try {
-        canvas = await html2canvas(elemento, HTML2CANVAS_OPTIONS);
-      } catch (canvasError) {
-        console.error('Error al capturar el contenido:', canvasError);
-        toast.error('Error al capturar el contenido de la página. Intente nuevamente.', { id: toastId });
-        return;
-      }
-
-      // Crear PDF en formato A4 vertical
+      toast.loading('Generando PDF profesional...');
+      
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-
-      // Agregar logo
-      const logoSize = 30; // 30mm
-      const logoX = 15;
-      const logoY = 15;
       
-      // Cargar y agregar logo al PDF
-      try {
-        pdf.addImage(logo, 'PNG', logoX, logoY, logoSize, logoSize);
-      } catch (logoError) {
-        console.warn('Error al agregar logo, continuando sin él:', logoError);
-        // Continuar sin el logo si falla
-      }
-
-      // Agregar título
+      // PÁGINA 1: Portada
+      // Logo centrado
+      const logoImg = new Image();
+      logoImg.src = logo;
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+      });
+      pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
+      
+      // Título principal
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Reportes y Estadísticas', pageWidth / 2, 85, { align: 'center' });
+      
+      // Subtítulo
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Análisis detallado del progreso y rendimiento', pageWidth / 2, 95, { align: 'center' });
+      
+      // Metadata
+      pdf.setFontSize(11);
+      const today = new Date();
+      const fechaGeneracion = today.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      const rangoTexto = {
+        '7_dias': 'Últimos 7 días',
+        '30_dias': 'Últimos 30 días',
+        '90_dias': 'Últimos 90 días',
+        '12_meses': 'Últimos 12 meses'
+      }[rangoFecha];
+      
+      pdf.text(`Fecha de generación: ${fechaGeneracion}`, pageWidth / 2, 120, { align: 'center' });
+      pdf.text(`Período analizado: ${rangoTexto}`, pageWidth / 2, 128, { align: 'center' });
+      pdf.text(`Generado por: ${user?.first_name || user?.username || 'Usuario'}`, pageWidth / 2, 136, { align: 'center' });
+      
+      // PÁGINA 2: Lista de Proyectos
+      pdf.addPage();
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Reportes y Estadísticas', logoX + logoSize + 10, logoY + 10);
-
-      // Agregar metadata
-      pdf.setFontSize(10);
+      pdf.text('Proyectos Activos', 20, 20);
+      
+      // Obtener proyectos desde estadísticas o desde el servicio
+      let proyectos = estadisticas?.tareasPorProyecto || [];
+      
+      // Si no hay proyectos en estadísticas, intentar obtenerlos del servicio
+      if (proyectos.length === 0) {
+        try {
+          const proyectosData = await getProjects();
+          proyectos = proyectosData.results?.map((p, idx) => ({
+            project_name: p.name,
+            task_count: p.task_count || 0,
+            status: p.status || 'activo',
+            order: idx + 1
+          })) || [];
+        } catch (error) {
+          console.warn('No se pudieron obtener proyectos:', error);
+        }
+      }
+      
+      let yPos = 35;
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      const fechaGeneracion = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
-      pdf.text(`Fecha de generación: ${fechaGeneracion}`, logoX + logoSize + 10, logoY + 20);
-      pdf.text(`Rango de fechas: ${obtenerTextoRango(rangoFecha)}`, logoX + logoSize + 10, logoY + 27);
-
-      // Calcular dimensiones para la imagen del contenido
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = pageWidth - 30; // Márgenes de 15mm a cada lado
+      
+      if (proyectos.length > 0) {
+        // Preparar datos para la tabla
+        const tableData = proyectos.map((proyecto, index) => [
+          index + 1,
+          proyecto.project_name,
+          proyecto.task_count || 0,
+          proyecto.status || 'Activo'
+        ]);
+        
+        // Usar autoTable para una tabla profesional
+        pdf.autoTable({
+          startY: 35,
+          head: [['#', 'Nombre del Proyecto', 'Tareas', 'Estado']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [255, 124, 21],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 10,
+            cellPadding: 3
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 }
+          },
+          margin: { top: 35, left: 20, right: 20 }
+        });
+      } else {
+        pdf.text('No hay proyectos disponibles', 25, yPos);
+      }
+      
+      // PÁGINA 3+: Gráficos y Estadísticas
+      pdf.addPage();
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Estadísticas y Gráficos', 20, 20);
+      
+      const elemento = reporteRef.current;
+      const canvas = await html2canvas(elemento, {
+        scale: 3,  // Mayor calidad
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: elemento.scrollWidth,
+        windowHeight: elemento.scrollHeight
+      });
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const imgWidth = pageWidth - 20; // Margen de 10mm a cada lado
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const contentY = logoY + logoSize + 20; // Posición Y después del header
-
-      // Agregar imagen del contenido capturado
-      if (contentY + imgHeight > pageHeight) {
-        // La imagen es demasiado alta para caber en una sola página
-        // Dividir en múltiples páginas
+      
+      let position = 30;
+      
+      // Si la imagen es más alta que la página, dividirla
+      if (imgHeight > pageHeight - 40) {
+        let heightLeft = imgHeight;
+        let srcY = 0;
         
-        // Primera página: agregar lo que cabe después del header
-        const firstPageHeight = pageHeight - contentY - 15;
-        pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, Math.min(imgHeight, firstPageHeight));
-        
-        // Páginas siguientes: procesar el contenido restante
-        let remainingHeight = imgHeight - firstPageHeight;
-        let processedHeight = firstPageHeight; // Altura procesada en coordenadas PDF (mm)
-        
-        while (remainingHeight > 0) {
-          pdf.addPage();
-          const heightToAdd = Math.min(remainingHeight, pageHeight - 30);
+        while (heightLeft > 0) {
+          const pageContentHeight = pageHeight - 40;
+          const heightToAdd = Math.min(heightLeft, pageContentHeight);
           
-          // Transformación de coordenadas: convertir de PDF (mm) a canvas (píxeles)
-          // El canvas es más grande que la imagen PDF debido al factor de escala
-          const canvasScaleFactor = canvas.width / imgWidth; // Relación píxeles/mm
-          const sourceY = processedHeight * canvasScaleFactor; // Posición Y en píxeles
-          const sourceHeight = heightToAdd * canvasScaleFactor; // Altura a copiar en píxeles
-          
-          // Crear un canvas temporal para extraer la porción del contenido
+          // Crear canvas temporal para la porción actual
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
+          
+          // Calcular la altura en píxeles del canvas original
+          const scaleFactor = canvas.width / imgWidth;
+          const srcHeight = heightToAdd * scaleFactor;
+          
           tempCanvas.width = canvas.width;
-          tempCanvas.height = sourceHeight;
+          tempCanvas.height = srcHeight;
           
-          // Copiar la sección relevante del canvas original al temporal
-          ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
-          const tempImgData = tempCanvas.toDataURL('image/png');
+          // Copiar la porción relevante
+          ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
+          const tempImgData = tempCanvas.toDataURL('image/png', 1.0);
           
-          // Agregar la sección al PDF
-          pdf.addImage(tempImgData, 'PNG', 15, 15, imgWidth, heightToAdd);
-          remainingHeight -= heightToAdd;
-          processedHeight += heightToAdd;
+          pdf.addImage(tempImgData, 'PNG', 10, position, imgWidth, heightToAdd);
+          
+          heightLeft -= heightToAdd;
+          srcY += srcHeight;
+          
+          if (heightLeft > 0) {
+            pdf.addPage();
+            position = 10;
+          }
         }
       } else {
-        // La imagen cabe completamente en la primera página
-        pdf.addImage(imgData, 'PNG', 15, contentY, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       }
-
-      // Descargar PDF
-      const nombreArchivo = `reporte-estadisticas-${rangoFecha}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-      pdf.save(nombreArchivo);
-
-      toast.success('PDF generado exitosamente', { id: toastId });
+      
+      // Guardar PDF
+      const fileName = `reporte-estadisticas-${rangoTexto.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+      
+      toast.dismiss();
+      toast.success('PDF generado correctamente');
     } catch (error) {
-      console.error('Error al generar PDF:', error);
-      toast.error('Error al generar el PDF. Por favor, intente nuevamente.', { id: toastId });
+      toast.dismiss();
+      toast.error('Error al generar el PDF');
+      console.error(error);
     }
   };
 
