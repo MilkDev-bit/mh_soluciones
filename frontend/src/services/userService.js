@@ -64,7 +64,7 @@ export const activateUser = async (userId) => {
 
 export const changeUserPassword = async (userId, newPassword) => {
   try {
-    const { data } = await api.post(`auth/users/${userId}/change-password/`, { 
+    const { data } = await api.post(`auth/users/${userId}/change_password/`, { 
       new_password: newPassword 
     });
     return data;
