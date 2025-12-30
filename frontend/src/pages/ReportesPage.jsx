@@ -56,6 +56,12 @@ const ReportesPage = () => {
 
   // Función para exportar a PDF mejorada
   const exportarPDF = async () => {
+    // Validate data exists
+    if (!estadisticas || Object.keys(estadisticas).length === 0) {
+      toast.error('No hay datos disponibles para generar el reporte');
+      return;
+    }
+
     try {
       toast.loading('Generando PDF profesional...');
       
@@ -65,16 +71,28 @@ const ReportesPage = () => {
       
       // PÁGINA 1: Portada
       // Logo centrado
+      const LOGO_LOAD_TIMEOUT = 3000;
       const logoImg = new Image();
       logoImg.src = logo;
-      await new Promise((resolve, reject) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = () => {
-          console.warn('Error al cargar el logo');
-          resolve(); // Continuar sin el logo
+      let logoLoaded = false;
+      await new Promise((resolve) => {
+        logoImg.onload = () => {
+          logoLoaded = true;
+          resolve();
         };
+        logoImg.onerror = () => {
+          if (import.meta.env.DEV) {
+            console.warn('Could not load logo, continuing without it');
+          }
+          resolve(); // Continue without logo
+        };
+        setTimeout(resolve, LOGO_LOAD_TIMEOUT); // Timeout after 3 seconds
       });
-      pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
+      
+      // Only add logo if it loaded successfully
+      if (logoLoaded) {
+        pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
+      }
       
       // Título principal
       pdf.setFontSize(28);
@@ -244,8 +262,24 @@ const ReportesPage = () => {
       toast.success('PDF generado correctamente');
     } catch (error) {
       toast.dismiss();
-      toast.error('Error al generar el PDF');
-      console.error(error);
+      
+      // Specific error messages
+      let errorMessage = 'Error al generar el PDF';
+      
+      if (error.name === 'SecurityError') {
+        errorMessage = 'Error de seguridad al generar el PDF. Intente descargar desde una conexión segura.';
+      } else if (error.message?.includes('canvas')) {
+        errorMessage = 'Error al procesar los gráficos. Intente nuevamente.';
+      } else if (error.message?.includes('logo')) {
+        errorMessage = 'Error al cargar el logo. El PDF se generará sin logo.';
+      }
+      
+      toast.error(errorMessage);
+      
+      // Only log in development
+      if (import.meta.env.DEV) {
+        console.error('PDF Generation Error:', error);
+      }
     }
   };
 

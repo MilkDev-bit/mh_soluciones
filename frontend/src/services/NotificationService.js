@@ -115,11 +115,6 @@ class NotificationService {
 
   getWebSocketURL() {
     const token = localStorage.getItem('access_token');
-    // Only log in development mode
-    if (import.meta.env.DEV) {
-      console.log('WebSocket token:', token ? 'Present' : 'Missing');
-      console.log('WebSocket base URL:', WS_BASE_URL);
-    }
 
     if (token) {
       return `${WS_BASE_URL}/ws/notifications/?token=${encodeURIComponent(token)}`;
