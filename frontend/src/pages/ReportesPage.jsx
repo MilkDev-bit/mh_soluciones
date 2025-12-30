@@ -71,19 +71,28 @@ const ReportesPage = () => {
       
       // PÁGINA 1: Portada
       // Logo centrado
+      const LOGO_LOAD_TIMEOUT = 3000;
       const logoImg = new Image();
       logoImg.src = logo;
+      let logoLoaded = false;
       await new Promise((resolve) => {
-        logoImg.onload = resolve;
+        logoImg.onload = () => {
+          logoLoaded = true;
+          resolve();
+        };
         logoImg.onerror = () => {
           if (import.meta.env.DEV) {
             console.warn('Could not load logo, continuing without it');
           }
           resolve(); // Continue without logo
         };
-        setTimeout(resolve, 3000); // Timeout after 3 seconds
+        setTimeout(resolve, LOGO_LOAD_TIMEOUT); // Timeout after 3 seconds
       });
-      pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
+      
+      // Only add logo if it loaded successfully
+      if (logoLoaded) {
+        pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
+      }
       
       // Título principal
       pdf.setFontSize(28);
