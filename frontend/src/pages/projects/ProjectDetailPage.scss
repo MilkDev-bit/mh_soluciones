@@ -133,7 +133,8 @@
   margin-bottom: $spacing-5;
   
   @media (min-width: $breakpoint-lg) {
-    grid-template-columns: 1fr 480px;
+    // Give slightly more space to the right column for charts
+    grid-template-columns: minmax(400px, 1fr) minmax(500px, 1.2fr);
   }
   
   // Layout especial para estudiantes
@@ -145,16 +146,6 @@
     
     .sidebar-column {
       width: 100%;
-    }
-    
-    .sidebar-top-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: $spacing-5;
-      
-      @media (min-width: $breakpoint-md) {
-        grid-template-columns: repeat(2, 1fr);
-      }
     }
   }
 }
@@ -175,21 +166,6 @@
   animation: slideUp 0.8s ease-out;
   overflow: visible;
   min-height: min-content;
-}
-
-// Top grid for Events and Members (stacked vertically)
-.sidebar-top-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: $spacing-5;
-  
-  // Keep them stacked vertically even on desktop
-  // Events appear first (top), Members appear second (below)
-}
-
-// Ensure glass-cards in sidebar that are NOT in the grid take full width
-.sidebar-column > .glass-card {
-  width: 100%;
 }
 
 .glass-card {
