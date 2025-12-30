@@ -756,7 +756,7 @@ const ProjectDetailPage = () => {
 
         <div className={`project-layout-grid ${currentUser?.role === 'STUDENT' ? 'student-layout' : ''}`}>
           {/* Left column - Student Performance for analytics viewers */}
-          {currentUser && currentUser.role !== 'STUDENT' && canViewAnalytics(currentUser.role) && (
+          {currentUser && canViewAnalytics(currentUser.role) && (
             <div className="main-column">
               <div className="glass-card">
                 <StudentPerformance projectId={projectId} />
