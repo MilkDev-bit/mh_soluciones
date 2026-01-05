@@ -759,12 +759,12 @@ const ProjectDetailPage = () => {
           {currentUser && canViewAnalytics(currentUser.role) && (
             <div className="main-column">
               <div className="glass-card">
-                <StudentPerformance projectId={projectId} />
+                <StudentPerformance projectId={projectId} columnMode="left" />
               </div>
             </div>
           )}
 
-          {/* Right column - Stats, Events, and Members */}
+          {/* Right column - Stats, Events, Members, and overflow student cards */}
           <div className="sidebar-column">
             {currentUser && currentUser.role !== 'CLIENT' && (
               <>
@@ -803,6 +803,13 @@ const ProjectDetailPage = () => {
                     <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
                   </div>
                 </div>
+                
+                {/* Continue student cards in right column */}
+                {canViewAnalytics(currentUser.role) && (
+                  <div className="glass-card">
+                    <StudentPerformance projectId={projectId} columnMode="right" />
+                  </div>
+                )}
               </>
             )}
           </div>
