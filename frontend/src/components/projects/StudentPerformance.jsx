@@ -3,7 +3,7 @@ import { getStudentPerformance } from '../../services/projectService';
 import { FiUser, FiCheckCircle, FiClock, FiTrendingUp, FiAward } from 'react-icons/fi';
 import './StudentPerformance.scss';
 
-const StudentPerformance = ({ projectId }) => {
+const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
   const [performanceData, setPerformanceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,12 +47,16 @@ const StudentPerformance = ({ projectId }) => {
   const { students, total_students } = performanceData;
 
   if (!students || students.length === 0) {
-    return (
-      <div className="student-performance-empty">
-        <FiUser size={48} />
-        <p>No hay estudiantes asignados a este proyecto.</p>
-      </div>
-    );
+    // Only show empty state in 'full' or 'left' mode
+    if (columnMode === 'full' || columnMode === 'left') {
+      return (
+        <div className="student-performance-empty">
+          <FiUser size={48} />
+          <p>No hay estudiantes asignados a este proyecto.</p>
+        </div>
+      );
+    }
+    return null;
   }
 
   // Get performance level label and color
@@ -63,19 +67,44 @@ const StudentPerformance = ({ projectId }) => {
     return { label: 'Necesita Mejorar', color: '#ef4444' };
   };
 
+  // Dividir estudiantes entre columnas
+  const getStudentsForColumn = () => {
+    if (columnMode === 'full') return students;
+    
+    const halfPoint = Math.ceil(students.length / 2);
+    if (columnMode === 'left') {
+      return students.slice(0, halfPoint);
+    } else if (columnMode === 'right') {
+      return students.slice(halfPoint);
+    }
+    return students;
+  };
+
+  const displayedStudents = getStudentsForColumn();
+
+  // Only show empty state if no students to display
+  if (displayedStudents.length === 0) {
+    return null;
+  }
+
+  // Solo mostrar el header en modo 'full' o 'left'
+  const showHeader = columnMode === 'full' || columnMode === 'left';
+
   return (
     <div className="student-performance">
-      <div className="performance-header">
-        <h3>
-          <FiTrendingUp /> Desempeño de Estudiantes
-        </h3>
-        <p className="performance-subtitle">
-          Basado en entregas de tareas a tiempo ({total_students} {total_students === 1 ? 'estudiante' : 'estudiantes'})
-        </p>
-      </div>
+      {showHeader && (
+        <div className="performance-header">
+          <h3>
+            <FiTrendingUp /> Desempeño de Estudiantes
+          </h3>
+          <p className="performance-subtitle">
+            Basado en entregas de tareas a tiempo ({total_students} {total_students === 1 ? 'estudiante' : 'estudiantes'})
+          </p>
+        </div>
+      )}
 
       <div className="performance-list">
-        {students.map((student) => {
+        {displayedStudents.map((student) => {
           const { label, color } = getPerformanceLevel(student.on_time_percentage);
           const percentage = student.on_time_percentage;
           const circumference = 2 * Math.PI * 36; // radius = 36
