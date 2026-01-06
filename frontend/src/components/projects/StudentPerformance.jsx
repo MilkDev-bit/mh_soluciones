@@ -71,11 +71,11 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
   const getStudentsForColumn = () => {
     if (columnMode === 'full') return students;
     
-    const halfPoint = Math.ceil(students.length / 2);
+    // Alternar entre columnas: índices pares en izquierda, impares en derecha
     if (columnMode === 'left') {
-      return students.slice(0, halfPoint);
+      return students.filter((_, index) => index % 2 === 0);
     } else if (columnMode === 'right') {
-      return students.slice(halfPoint);
+      return students.filter((_, index) => index % 2 !== 0);
     }
     return students;
   };
