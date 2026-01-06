@@ -97,9 +97,6 @@ const LoginPage = () => {
             <img 
               src={logo} 
               alt="MH Soluciones Empresariales" 
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
             />
             <h1>MH Soluciones</h1>
             <p>Sistema de gestión empresarial para proyectos, tareas y recursos humanos</p>
