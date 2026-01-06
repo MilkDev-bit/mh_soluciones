@@ -6,32 +6,58 @@
   align-items: center;
   justify-content: center;
   padding: $spacing-4;
-  background: linear-gradient(135deg, $primary-50 0%, $secondary-50 50%, $primary-100 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
   position: relative;
   overflow: hidden;
   
+  // Geometric background pattern
   &::before {
     content: '';
     position: absolute;
-    top: -10%;
-    right: -5%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba($primary-500, 0.15), transparent);
-    border-radius: $border-radius-full;
-    animation: float 20s ease-in-out infinite;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      linear-gradient(30deg, rgba($primary-600, 0.05) 12%, transparent 12.5%, transparent 87%, rgba($primary-600, 0.05) 87.5%, rgba($primary-600, 0.05)),
+      linear-gradient(150deg, rgba($primary-600, 0.05) 12%, transparent 12.5%, transparent 87%, rgba($primary-600, 0.05) 87.5%, rgba($primary-600, 0.05)),
+      linear-gradient(30deg, rgba($primary-600, 0.05) 12%, transparent 12.5%, transparent 87%, rgba($primary-600, 0.05) 87.5%, rgba($primary-600, 0.05)),
+      linear-gradient(150deg, rgba($primary-600, 0.05) 12%, transparent 12.5%, transparent 87%, rgba($primary-600, 0.05) 87.5%, rgba($primary-600, 0.05)),
+      linear-gradient(60deg, rgba($accent-500, 0.08) 25%, transparent 25.5%, transparent 75%, rgba($accent-500, 0.08) 75%, rgba($accent-500, 0.08)),
+      linear-gradient(60deg, rgba($accent-500, 0.08) 25%, transparent 25.5%, transparent 75%, rgba($accent-500, 0.08) 75%, rgba($accent-500, 0.08));
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+    opacity: 0.3;
   }
   
+  // Animated gradient orbs
   &::after {
     content: '';
     position: absolute;
-    bottom: -15%;
-    left: -10%;
+    top: -20%;
+    right: -10%;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba($secondary-500, 0.12), transparent);
+    background: radial-gradient(circle, rgba($primary-500, 0.15), rgba($accent-500, 0.1), transparent);
+    border-radius: $border-radius-full;
+    animation: float 20s ease-in-out infinite;
+    filter: blur(60px);
+  }
+}
+
+// Additional floating orb
+.auth-container {
+  .floating-orb {
+    position: absolute;
+    bottom: -15%;
+    left: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba($secondary-500, 0.12), rgba($primary-600, 0.08), transparent);
     border-radius: $border-radius-full;
     animation: float 25s ease-in-out infinite reverse;
+    filter: blur(60px);
+    pointer-events: none;
   }
 }
 
@@ -45,14 +71,18 @@
 }
 
 .auth-card {
-  background: $white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: $border-radius-xl;
-  padding: $spacing-6;
-  box-shadow: $shadow-2xl;
-  border: 2px solid $primary-200;
+  padding: $spacing-8;
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   width: 100%;
-  max-width: 700px; 
-  min-height: 400px;
+  max-width: 480px; 
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -67,12 +97,12 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, $primary-500 0%, $secondary-500 100%);
+    background: linear-gradient(90deg, $primary-500 0%, $accent-500 50%, $primary-600 100%);
     border-radius: $border-radius-xl $border-radius-xl 0 0;
   }
   
   @media (max-width: $breakpoint-sm) {
-    padding: $spacing-8;
+    padding: $spacing-6;
     max-width: 95%;
   }
 }
@@ -90,21 +120,21 @@
 
 .auth-logo {
   text-align: center;
-  margin-bottom: $spacing-4;
+  margin-bottom: $spacing-6;
   
   .logo-image {
-    width: 70px;
-    height: 70px;
+    width: 100px;
+    height: 100px;
     object-fit: contain;
     margin: 0 auto;
     display: block;
-    filter: drop-shadow(0 4px 12px rgba($primary-500, 0.2));
+    filter: drop-shadow(0 4px 20px rgba($primary-500, 0.3));
     transition: all $transition-slow;
     animation: logoFade 0.8s ease-out;
     
     &:hover {
-      transform: scale(1.05) rotate(2deg);
-      filter: drop-shadow(0 6px 16px rgba($primary-500, 0.3));
+      transform: scale(1.05);
+      filter: drop-shadow(0 6px 24px rgba($primary-500, 0.4));
     }
   }
   
@@ -113,18 +143,27 @@
     justify-content: center;
     
     .logo-icon {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, $primary-500 0%, $primary-700 100%);
       color: $white;
       border-radius: $border-radius-xl;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      font-size: 2rem;
-      box-shadow: 0 4px 20px rgba($primary-500, 0.4);
-      letter-spacing: -1px;
+      font-size: 2.5rem;
+      box-shadow: 0 8px 24px rgba($primary-500, 0.4);
+      letter-spacing: -2px;
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+        border-radius: $border-radius-xl;
+      }
     }
   }
 }
@@ -142,12 +181,12 @@
 
 .auth-header {
   text-align: center;
-  margin-bottom: $spacing-5;
+  margin-bottom: $spacing-6;
   
   h2 {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 800;
-    background: linear-gradient(135deg, $neutral-900 0%, $neutral-700 100%);
+    background: linear-gradient(135deg, $neutral-900 0%, $primary-700 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -159,9 +198,24 @@
   p {
     color: $neutral-600;
     margin: 0;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     animation: fadeIn 0.8s ease-out 0.3s backwards;
+  }
+  
+  .security-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto $spacing-4;
+    background: linear-gradient(135deg, $primary-500 0%, $primary-700 100%);
+    border-radius: $border-radius-xl;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $white;
+    font-size: 2rem;
+    box-shadow: 0 8px 24px rgba($primary-500, 0.3);
+    animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
@@ -206,19 +260,21 @@
   
   input {
     width: 100%;
-    padding: $spacing-3;
-    border: 2px solid $neutral-200;
+    padding: $spacing-3 $spacing-4;
+    border: 2px solid rgba($neutral-300, 0.6);
     border-radius: $border-radius-lg;
     font-size: 0.9375rem;
     transition: all $transition;
-    background: $white;
+    background: rgba($white, 0.9);
     font-family: $font-sans;
     
     &:focus {
       outline: none;
       border-color: $primary-500;
-      box-shadow: 0 0 0 4px rgba($primary-500, 0.1);
-      background: $primary-25;
+      box-shadow: 
+        0 0 0 4px rgba($primary-500, 0.15),
+        0 4px 12px rgba($primary-500, 0.1);
+      background: $white;
       transform: translateY(-1px);
     }
     
@@ -244,8 +300,8 @@
       right: $spacing-3;
       top: 50%;
       transform: translateY(-50%);
-      background: $neutral-100;
-      border: 2px solid $neutral-200;
+      background: rgba($neutral-100, 0.8);
+      border: 2px solid rgba($neutral-200, 0.6);
       color: $neutral-600;
       cursor: pointer;
       padding: $spacing-2;
@@ -257,17 +313,29 @@
       transition: all $transition;
       width: 36px;
       height: 36px;
+      backdrop-filter: blur(4px);
       
       &:hover {
-        background: $primary-50;
+        background: rgba($primary-50, 0.9);
         color: $primary-600;
-        border-color: $primary-500;
-        transform: translateY(-50%) scale(1.1);
+        border-color: $primary-400;
+        transform: translateY(-50%) scale(1.05);
       }
       
       &:active {
         transform: translateY(-50%) scale(0.95);
       }
+    }
+  }
+  
+  &.otp-input {
+    input {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.5rem;
+      padding: $spacing-4;
+      font-family: $font-mono;
     }
   }
 }
@@ -307,21 +375,23 @@
 
 .auth-button {
   width: 100%;
-  padding: $spacing-3;
-  background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+  padding: $spacing-3 $spacing-4;
+  background: linear-gradient(135deg, $primary-600 0%, $primary-700 100%);
   color: $white;
   border: none;
   border-radius: $border-radius-lg;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: $spacing-3;
+  gap: $spacing-2;
   cursor: pointer;
   transition: all $transition;
-  margin-top: $spacing-2;
-  box-shadow: 0 4px 12px rgba($primary-500, 0.3);
+  margin-top: $spacing-4;
+  box-shadow: 
+    0 4px 12px rgba($primary-600, 0.4),
+    0 2px 4px rgba($primary-600, 0.2);
   position: relative;
   overflow: hidden;
   animation: fadeIn 0.8s ease-out 0.6s backwards;
@@ -330,7 +400,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, $primary-600 0%, $primary-700 100%);
+    background: linear-gradient(135deg, $primary-500 0%, $accent-600 100%);
     opacity: 0;
     transition: opacity $transition;
   }
@@ -346,7 +416,9 @@
   
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba($primary-500, 0.4);
+    box-shadow: 
+      0 6px 20px rgba($primary-600, 0.5),
+      0 3px 6px rgba($primary-600, 0.3);
     
     &::before {
       opacity: 1;
@@ -404,20 +476,14 @@
 @media (max-width: $breakpoint-md) {
   .auth-container {
     padding: $spacing-3;
-    
-    &::before,
-    &::after {
-      width: 300px;
-      height: 300px;
-    }
   }
   
   .auth-card {
-    padding: $spacing-8;
+    padding: $spacing-6;
   }
   
   .auth-logo {
-    margin-bottom: $spacing-6;
+    margin-bottom: $spacing-5;
     
     .logo-image {
       width: 80px;
@@ -425,26 +491,32 @@
     }
     
     .logo-fallback .logo-icon {
-      width: 64px;
-      height: 64px;
-      font-size: 1.5rem;
+      width: 80px;
+      height: 80px;
+      font-size: 2rem;
     }
   }
   
   .auth-header {
-    margin-bottom: $spacing-6;
+    margin-bottom: $spacing-5;
     
     h2 {
-      font-size: 1.75rem;
+      font-size: 1.5rem;
     }
     
     p {
-      font-size: 0.9375rem;
+      font-size: 0.875rem;
+    }
+    
+    .security-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 1.75rem;
     }
   }
   
   .auth-form {
-    gap: $spacing-5;
+    gap: $spacing-4;
   }
   
   .input-container input {
@@ -458,12 +530,12 @@
 
 @media (max-width: $breakpoint-sm) {
   .auth-card {
-    padding: $spacing-6;
+    padding: $spacing-5;
     border-radius: $border-radius-lg;
   }
   
   .auth-logo {
-    margin-bottom: $spacing-5;
+    margin-bottom: $spacing-4;
     
     .logo-image {
       width: 70px;
@@ -471,33 +543,40 @@
     }
     
     .logo-fallback .logo-icon {
-      width: 56px;
-      height: 56px;
-      font-size: 1.25rem;
+      width: 70px;
+      height: 70px;
+      font-size: 1.75rem;
     }
   }
   
   .auth-header {
     h2 {
-      font-size: 1.5rem;
+      font-size: 1.375rem;
     }
     
     p {
       font-size: 0.875rem;
     }
+    
+    .security-icon {
+      width: 52px;
+      height: 52px;
+      font-size: 1.5rem;
+      margin-bottom: $spacing-3;
+    }
   }
   
   .auth-form {
-    gap: $spacing-4;
+    gap: $spacing-3;
   }
   
   .form-label {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
   
   .input-container {
     input {
-      font-size: 0.9375rem;
+      font-size: 0.875rem;
       padding: $spacing-3;
     }
     
@@ -508,6 +587,13 @@
         font-size: 1rem;
       }
     }
+    
+    &.otp-input {
+      input {
+        font-size: 1.25rem;
+        letter-spacing: 0.375rem;
+      }
+    }
   }
   
   .auth-button {
@@ -516,8 +602,8 @@
   }
   
   .auth-footer {
-    margin-top: $spacing-6;
-    padding-top: $spacing-5;
+    margin-top: $spacing-5;
+    padding-top: $spacing-4;
     
     p {
       font-size: 0.75rem;
@@ -531,25 +617,38 @@
   }
   
   .auth-card {
-    padding: $spacing-5;
+    padding: $spacing-4;
     max-height: 95vh;
     overflow-y: auto;
   }
   
   .auth-logo {
-    margin-bottom: $spacing-4;
+    margin-bottom: $spacing-3;
     
     .logo-image {
       width: 60px;
       height: 60px;
     }
+    
+    .logo-fallback .logo-icon {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+    }
   }
   
   .auth-header {
-    margin-bottom: $spacing-4;
+    margin-bottom: $spacing-3;
     
     h2 {
       font-size: 1.25rem;
+    }
+    
+    .security-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 1.375rem;
+      margin-bottom: $spacing-2;
     }
   }
   
@@ -558,8 +657,8 @@
   }
   
   .auth-footer {
-    margin-top: $spacing-5;
-    padding-top: $spacing-4;
+    margin-top: $spacing-4;
+    padding-top: $spacing-3;
   }
 }
 

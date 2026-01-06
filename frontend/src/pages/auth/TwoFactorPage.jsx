@@ -41,58 +41,65 @@ const TwoFactorPage = () => {
       </Helmet>
       
       <div className="auth-container">
-        <div className="auth-background">
-          <div className="auth-overlay"></div>
-          
-          <div className="auth-content">
-            
-            <div className="auth-card">
-              <div className="auth-header">
-                <div className="security-icon">
-                  <FiShield />
-                </div>
-                <h2>Verificación de Dos Pasos</h2>
-                <p>Ingresa el código de 6 dígitos de tu aplicación de autenticación</p>
-              </div>
-
-              <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
-                <div className="form-group">
-                  <label htmlFor="otp_token" className="form-label">
-                    Código de Verificación
-                  </label>
-                  <div className="input-container otp-input">
-                    <input
-                      id="otp_token"
-                      type="text"
-                      maxLength="6"
-                      placeholder="123456"
-                      className={errors.otp_token ? 'error' : ''}
-                      {...register('otp_token', { 
-                        required: 'El código es obligatorio',
-                        minLength: { value: 6, message: 'Debe tener 6 dígitos' },
-                        maxLength: { value: 6, message: 'Debe tener 6 dígitos' }
-                      })}
-                    />
-                  </div>
-                  {errors.otp_token && <span className="error-message">{errors.otp_token.message}</span>}
-                </div>
-
-                <button 
-                  type="submit" 
-                  className="auth-button"
-                  disabled={isSubmitting}
-                >
-                  <FiShield />
-                  {isSubmitting ? 'Verificando...' : 'Verificar Código'}
-                  {isSubmitting && <div className="button-spinner"></div>}
-                </button>
-              </form>
-
-              <div className="auth-footer">
-                <p>© {new Date().getFullYear()} MH Soluciones. Todos los derechos reservados.</p>
-              </div>
+        <div className="auth-card">
+          <div className="auth-logo">
+            <img 
+              src={logo} 
+              alt="MH Soluciones Empresariales" 
+              className="logo-image"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="logo-fallback">
+              <div className="logo-icon">MH</div>
             </div>
-            
+          </div>
+
+          <div className="auth-header">
+            <div className="security-icon">
+              <FiShield />
+            </div>
+            <h2>Verificación de Dos Pasos</h2>
+            <p>Ingresa el código de 6 dígitos de tu aplicación de autenticación</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+            <div className="form-group">
+              <label htmlFor="otp_token" className="form-label">
+                Código de Verificación
+              </label>
+              <div className="input-container otp-input">
+                <input
+                  id="otp_token"
+                  type="text"
+                  maxLength="6"
+                  placeholder="123456"
+                  className={errors.otp_token ? 'error' : ''}
+                  {...register('otp_token', { 
+                    required: 'El código es obligatorio',
+                    minLength: { value: 6, message: 'Debe tener 6 dígitos' },
+                    maxLength: { value: 6, message: 'Debe tener 6 dígitos' }
+                  })}
+                />
+              </div>
+              {errors.otp_token && <span className="error-message">{errors.otp_token.message}</span>}
+            </div>
+
+            <button 
+              type="submit" 
+              className="auth-button"
+              disabled={isSubmitting}
+            >
+              <FiShield />
+              {isSubmitting ? 'Verificando...' : 'Verificar Código'}
+              {isSubmitting && <div className="button-spinner"></div>}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            <p>© {new Date().getFullYear()} MH Soluciones. Todos los derechos reservados.</p>
           </div>
         </div>
       </div>
