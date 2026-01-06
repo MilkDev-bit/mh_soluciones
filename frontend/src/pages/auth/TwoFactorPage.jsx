@@ -1,11 +1,10 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../../contexts/AuthContext';
 import { verifyTwoFactor } from '../../services/authService';
 import toast from 'react-hot-toast';
-import { FiShield, FiBriefcase } from 'react-icons/fi';
+import { FiShield } from 'react-icons/fi';
 import logo from '../../assets/img/logo.png'; 
 import './AuthPages.scss';
 
