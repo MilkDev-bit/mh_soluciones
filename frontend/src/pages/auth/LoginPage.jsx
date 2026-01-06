@@ -63,12 +63,17 @@ const LoginPage = () => {
       </Helmet>
       
       <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-logo">
+        {/* Floating shapes */}
+        <div className="floating-shape"></div>
+        <div className="floating-shape"></div>
+        <div className="floating-shape"></div>
+        
+        {/* Left side - Logo */}
+        <div className="auth-left">
+          <div className="auth-logo-large">
             <img 
               src={logo} 
               alt="MH Soluciones Empresariales" 
-              className="logo-image"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';
@@ -77,77 +82,84 @@ const LoginPage = () => {
             <div className="logo-fallback">
               <div className="logo-icon">MH</div>
             </div>
+            <h1>MH Soluciones</h1>
+            <p>Sistema de gestión empresarial para proyectos, tareas y recursos humanos</p>
           </div>
-
-          <div className="auth-header">
-            <h2>Bienvenido de vuelta</h2>
-            <p>Ingresa tus credenciales para continuar</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
-            <div className="form-group">
-              <label htmlFor="username" className="form-label">
-                Nombre de Usuario
-              </label>
-              <div className="input-container">
-                <input
-                  id="username"
-                  type="text"
-                  placeholder="Ingresa tu usuario"
-                  className={errors.username ? 'error' : ''}
-                  {...register('username', { required: 'El nombre de usuario es obligatorio' })}
-                />
-              </div>
-              {errors.username && <span className="error-message">{errors.username.message}</span>}
+        </div>
+        
+        {/* Right side - Form */}
+        <div className="auth-right">
+          <div className="auth-card">
+            <div className="auth-header">
+              <h2>Bienvenido de vuelta</h2>
+              <p>Ingresa tus credenciales para continuar</p>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                Contraseña
-              </label>
-              <div className="input-container password-input">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className={errors.password ? 'error' : ''}
-                  {...register('password', { required: 'La contraseña es obligatoria' })}
-                />
+            <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
+              <div className="form-group">
+                <label htmlFor="username" className="form-label">
+                  Nombre de Usuario
+                </label>
+                <div className="input-container">
+                  <input
+                    id="username"
+                    type="text"
+                    placeholder="Ingresa tu usuario"
+                    className={errors.username ? 'error' : ''}
+                    {...register('username', { required: 'El nombre de usuario es obligatorio' })}
+                  />
+                </div>
+                {errors.username && <span className="error-message">{errors.username.message}</span>}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">
+                  Contraseña
+                </label>
+                <div className="input-container password-input">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className={errors.password ? 'error' : ''}
+                    {...register('password', { required: 'La contraseña es obligatoria' })}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+                {errors.password && <span className="error-message">{errors.password.message}</span>}
+              </div>
+
+              <button 
+                type="submit" 
+                className="auth-button"
+                disabled={isSubmitting}
+              >
+                <FiLogIn />
+                {isSubmitting ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
+                {isSubmitting && <div className="button-spinner"></div>}
+              </button>
+
+              {/* NUEVO: Enlace de recuperación de contraseña */}
+              <div className="forgot-password-link">
                 <button
                   type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="link-button"
+                  onClick={() => setIsForgotPasswordOpen(true)}
                 >
-                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                  ¿Olvidaste tu contraseña?
                 </button>
               </div>
-              {errors.password && <span className="error-message">{errors.password.message}</span>}
+            </form>
+
+            <div className="auth-footer">
+              <p>© {new Date().getFullYear()} MH Soluciones. Todos los derechos reservados.</p>
             </div>
-
-            <button 
-              type="submit" 
-              className="auth-button"
-              disabled={isSubmitting}
-            >
-              <FiLogIn />
-              {isSubmitting ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
-              {isSubmitting && <div className="button-spinner"></div>}
-            </button>
-
-            {/* NUEVO: Enlace de recuperación de contraseña */}
-            <div className="forgot-password-link">
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => setIsForgotPasswordOpen(true)}
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
-            </div>
-          </form>
-
-          <div className="auth-footer">
-            <p>© {new Date().getFullYear()} MH Soluciones. Todos los derechos reservados.</p>
           </div>
         </div>
       </div>
