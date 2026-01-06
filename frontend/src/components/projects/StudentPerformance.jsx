@@ -71,11 +71,18 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
   const getStudentsForColumn = () => {
     if (columnMode === 'full') return students;
     
-    const halfPoint = Math.ceil(students.length / 2);
+    // La columna izquierda tiene más espacio disponible (solo header pequeño)
+    // La columna derecha tiene menos espacio (widgets fijos: Estadísticas, Eventos, Miembros)
+    // Distribución: ~65% izquierda, ~35% derecha
+    const leftColumnRatio = 0.65;
+    const splitPoint = Math.ceil(students.length * leftColumnRatio);
+    
     if (columnMode === 'left') {
-      return students.slice(0, halfPoint);
+      // Primeros 65% de usuarios
+      return students.slice(0, splitPoint);
     } else if (columnMode === 'right') {
-      return students.slice(halfPoint);
+      // Últimos 35% de usuarios
+      return students.slice(splitPoint);
     }
     return students;
   };
