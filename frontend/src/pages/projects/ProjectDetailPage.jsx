@@ -768,47 +768,83 @@ const ProjectDetailPage = () => {
           <div className="sidebar-column">
             {currentUser && currentUser.role !== 'CLIENT' && (
               <>
-                {/* Project Progress Charts */}
+                {/* Project Progress Charts - Only for analytics viewers (not STUDENT) */}
                 {canViewAnalytics(currentUser.role) && (
                   <ProjectProgressCharts projectId={projectId} />
                 )}
 
-                {/* Events */}
-                <div className="glass-card">
-                  <div className="section-header">
-                    <h3>
-                      <FiCalendar /> Próximos Eventos
-                    </h3>
-                  </div>
-                  <div className="events-list">
-                    {projectEvents && projectEvents.length > 0 ? (
-                      projectEvents.map((event) => <EventItem key={event.id} event={event} />)
-                    ) : (
-                      <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
-                    )}
-                  </div>
-                </div>
+                {/* For STUDENT role: Events and Members go at the bottom */}
+                {currentUser.role !== 'STUDENT' && (
+                  <>
+                    {/* Events */}
+                    <div className="glass-card">
+                      <div className="section-header">
+                        <h3>
+                          <FiCalendar /> Próximos Eventos
+                        </h3>
+                      </div>
+                      <div className="events-list">
+                        {projectEvents && projectEvents.length > 0 ? (
+                          projectEvents.map((event) => <EventItem key={event.id} event={event} />)
+                        ) : (
+                          <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Members */}
-                <div className="glass-card">
-                  <div className="section-header">
-                    <h3>Miembros ({membersList.length})</h3>
-                    {currentUser && isAdmin(currentUser.role) && (
-                      <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
-                        <FiPlus />
-                      </button>
-                    )}
-                  </div>
-                  <div className="member-list">
-                    <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
-                  </div>
-                </div>
+                    {/* Members */}
+                    <div className="glass-card">
+                      <div className="section-header">
+                        <h3>Miembros ({membersList.length})</h3>
+                        {currentUser && isAdmin(currentUser.role) && (
+                          <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
+                            <FiPlus />
+                          </button>
+                        )}
+                      </div>
+                      <div className="member-list">
+                        <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+                      </div>
+                    </div>
+                  </>
+                )}
                 
                 {/* Continue student cards in right column */}
                 {canViewAnalytics(currentUser.role) && (
                   <div className="glass-card">
                     <StudentPerformance projectId={projectId} columnMode="right" />
                   </div>
+                )}
+
+                {/* For STUDENT role: Show Events and Members at the bottom */}
+                {currentUser.role === 'STUDENT' && (
+                  <>
+                    {/* Events */}
+                    <div className="glass-card">
+                      <div className="section-header">
+                        <h3>
+                          <FiCalendar /> Próximos Eventos
+                        </h3>
+                      </div>
+                      <div className="events-list">
+                        {projectEvents && projectEvents.length > 0 ? (
+                          projectEvents.map((event) => <EventItem key={event.id} event={event} />)
+                        ) : (
+                          <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Members */}
+                    <div className="glass-card">
+                      <div className="section-header">
+                        <h3>Miembros ({membersList.length})</h3>
+                      </div>
+                      <div className="member-list">
+                        <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}
