@@ -773,7 +773,7 @@ const ProjectDetailPage = () => {
                   <ProjectProgressCharts projectId={projectId} />
                 )}
 
-                {/* For STUDENT role: Events and Members go at the bottom */}
+                {/* Only show Events and Members in sidebar for non-STUDENT roles */}
                 {currentUser.role !== 'STUDENT' && (
                   <>
                     {/* Events */}
