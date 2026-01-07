@@ -29,6 +29,14 @@ const Modal = ({ title, children, onClose, size = 'medium' }) => {
     };
   }, []);
 
+  // Handle overlay click - only close if click was directly on overlay
+  const handleOverlayClick = useCallback((e) => {
+    // Solo cierra si el click fue directamente en el overlay
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }, [onClose]);
+
   // Handle keyboard events for accessibility
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -64,7 +72,7 @@ const Modal = ({ title, children, onClose, size = 'medium' }) => {
   const modalContent = (
     <div 
       className="modal-overlay" 
-      onClick={onClose}
+      onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"

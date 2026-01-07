@@ -110,7 +110,11 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="event-modal-overlay" onClick={onClose}>
+    <div className="event-modal-overlay" onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    }}>
       <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="event-modal-header">
           <div className="event-modal-title">
