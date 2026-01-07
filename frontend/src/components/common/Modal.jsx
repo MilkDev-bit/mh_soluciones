@@ -31,7 +31,7 @@ const Modal = ({ title, children, onClose, size = 'medium' }) => {
 
   // Handle overlay click - only close if click was directly on overlay
   const handleOverlayClick = useCallback((e) => {
-    // Solo cierra si el click fue directamente en el overlay
+    // Only close if the click was directly on the overlay, not on child elements
     if (e.target === e.currentTarget) {
       onClose();
     }
