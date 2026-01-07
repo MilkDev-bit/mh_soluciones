@@ -815,37 +815,6 @@ const ProjectDetailPage = () => {
                     <StudentPerformance projectId={projectId} columnMode="right" />
                   </div>
                 )}
-
-                {/* For STUDENT role: Show Events and Members at the bottom */}
-                {currentUser.role === 'STUDENT' && (
-                  <>
-                    {/* Events */}
-                    <div className="glass-card">
-                      <div className="section-header">
-                        <h3>
-                          <FiCalendar /> Próximos Eventos
-                        </h3>
-                      </div>
-                      <div className="events-list">
-                        {projectEvents && projectEvents.length > 0 ? (
-                          projectEvents.map((event) => <EventItem key={event.id} event={event} />)
-                        ) : (
-                          <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Members */}
-                    <div className="glass-card">
-                      <div className="section-header">
-                        <h3>Miembros ({membersList.length})</h3>
-                      </div>
-                      <div className="member-list">
-                        <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
-                      </div>
-                    </div>
-                  </>
-                )}
               </>
             )}
           </div>
@@ -860,104 +829,105 @@ const ProjectDetailPage = () => {
             </div>
           )}
 
-          {/* Only show tasks section to non-CLIENT users or if CLIENT wants to see them */}
-          {currentUser && currentUser.role !== 'CLIENT' && (
-            <div className="glass-card">
-              <div className="section-header">
-                <h2>
-                  {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${displayedTasks.length})`}
-                </h2>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    className="btn btn-secondary btn-sm" 
-                    onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                    title={showCompletedTasks ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
-                  >
-                    <FiCheckSquare /> {showCompletedTasks ? 'Ocultar' : 'Mostrar'} Completadas
-                  </button>
-                  {currentUser && isAdmin(currentUser.role) && (
-                    <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
-                      <FiPlus /> Nueva Tarea
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="task-list">
-                {displayedTasks.length > 0 ? (
-                  displayedTasks.map((task) => {
-                    const assignee = task?.assigned_to || {};
-                    const avatar =
-                      assignee?.profile_picture ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
-                    const documents = taskDocuments[task.id] || [];
-
-                    return (
-                      <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
-                        <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
-                        <div className="task-info">
-                          <p className="task-title">{task.title || 'Tarea sin título'}</p>
-                          {task?.due_date && (
-                            <span className="task-due-date">
-                              Vence:{' '}
-                              {format(parseISO(task.due_date), 'dd MMMM, yyyy', {
-                                locale: es
-                              })}
-                            </span>
-                          )}
-                          {documents.length > 0 && (
-                            <div className="task-documents-badge">
-                              <FiPaperclip size={12} />
-                              <span>{documents.length} documento(s)</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="task-right-section">
-                          {task?.assigned_to && (
-                            <img src={avatar} alt={assignee.first_name || 'Usuario'} className="task-assignee-avatar" title={`Asignada a ${assignee.first_name || ''}`} />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p>No hay tareas {showCompletedTasks ? '' : 'activas en '}este proyecto todavía.</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Hide submissions and comments from CLIENT users */}
           {currentUser && currentUser.role !== 'CLIENT' && (
             <>
+              {/* For STUDENT: Show Submissions first */}
+              {currentUser.role === 'STUDENT' && (
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h2>
+                      <FiUploadCloud /> Entregas Generales del Proyecto
+                    </h2>
+                  </div>
+                  <div className="submissions-list">
+                    {project?.submissions && project.submissions.length > 0 ? (
+                      project.submissions.map((sub) => (
+                        <ProjectSubmissionItem key={sub.id} submission={sub} currentUser={currentUser} onUpdate={handleUpdateSubmission} onDelete={handleDeleteSubmission} />
+                      ))
+                    ) : (
+                      <p>No hay entregas generales para este proyecto.</p>
+                    )}
+                  </div>
+
+                  {currentUser && canSubmit(currentUser.role) && (
+                    <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
+                      <h4>Añadir nueva entrega</h4>
+                      <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
+                      <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
+                      <input type="file" {...submissionRegister('file')} />
+                      <button type="submit" className="btn btn-primary">
+                        <FiSend /> Enviar
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* Tasks section */}
               <div className="glass-card">
                 <div className="section-header">
                   <h2>
-                    <FiUploadCloud /> Entregas Generales del Proyecto
+                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${displayedTasks.length})`}
                   </h2>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="btn btn-secondary btn-sm" 
+                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                      title={showCompletedTasks ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
+                    >
+                      <FiCheckSquare /> {showCompletedTasks ? 'Ocultar' : 'Mostrar'} Completadas
+                    </button>
+                    {currentUser && isAdmin(currentUser.role) && (
+                      <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
+                        <FiPlus /> Nueva Tarea
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="submissions-list">
-                  {project?.submissions && project.submissions.length > 0 ? (
-                    project.submissions.map((sub) => (
-                      <ProjectSubmissionItem key={sub.id} submission={sub} currentUser={currentUser} onUpdate={handleUpdateSubmission} onDelete={handleDeleteSubmission} />
-                    ))
+                <div className="task-list">
+                  {displayedTasks.length > 0 ? (
+                    displayedTasks.map((task) => {
+                      const assignee = task?.assigned_to || {};
+                      const avatar =
+                        assignee?.profile_picture ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
+                      const documents = taskDocuments[task.id] || [];
+
+                      return (
+                        <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
+                          <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
+                          <div className="task-info">
+                            <p className="task-title">{task.title || 'Tarea sin título'}</p>
+                            {task?.due_date && (
+                              <span className="task-due-date">
+                                Vence:{' '}
+                                {format(parseISO(task.due_date), 'dd MMMM, yyyy', {
+                                  locale: es
+                                })}
+                              </span>
+                            )}
+                            {documents.length > 0 && (
+                              <div className="task-documents-badge">
+                                <FiPaperclip size={12} />
+                                <span>{documents.length} documento(s)</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="task-right-section">
+                            {task?.assigned_to && (
+                              <img src={avatar} alt={assignee.first_name || 'Usuario'} className="task-assignee-avatar" title={`Asignada a ${assignee.first_name || ''}`} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <p>No hay entregas generales para este proyecto.</p>
+                    <p>No hay tareas {showCompletedTasks ? '' : 'activas en '}este proyecto todavía.</p>
                   )}
                 </div>
-
-                {currentUser && canSubmit(currentUser.role) && (
-                  <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
-                    <h4>Añadir nueva entrega</h4>
-                    <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
-                    <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
-                    <input type="file" {...submissionRegister('file')} />
-                    <button type="submit" className="btn btn-primary">
-                      <FiSend /> Enviar
-                    </button>
-                  </form>
-                )}
               </div>
 
+              {/* Comments section */}
               <div className="glass-card">
                 <div className="section-header">
                   <h2>
@@ -978,6 +948,69 @@ const ProjectDetailPage = () => {
                   </button>
                 </form>
               </div>
+
+              {/* For STUDENT: Show Events and Members at the bottom */}
+              {currentUser.role === 'STUDENT' && (
+                <>
+                  {/* Events */}
+                  <div className="glass-card">
+                    <div className="section-header">
+                      <h3>
+                        <FiCalendar /> Próximos Eventos
+                      </h3>
+                    </div>
+                    <div className="events-list">
+                      {projectEvents && projectEvents.length > 0 ? (
+                        projectEvents.map((event) => <EventItem key={event.id} event={event} />)
+                      ) : (
+                        <p className="no-events-message">No hay eventos próximos para este proyecto.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Members */}
+                  <div className="glass-card">
+                    <div className="section-header">
+                      <h3>Miembros ({membersList.length})</h3>
+                    </div>
+                    <div className="member-list">
+                      <MembersRenderer members={membersList} project={project} onMemberRemoved={fetchProjectData} currentUser={currentUser} />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* For non-STUDENT: Show Submissions at the end */}
+              {currentUser.role !== 'STUDENT' && (
+                <div className="glass-card">
+                  <div className="section-header">
+                    <h2>
+                      <FiUploadCloud /> Entregas Generales del Proyecto
+                    </h2>
+                  </div>
+                  <div className="submissions-list">
+                    {project?.submissions && project.submissions.length > 0 ? (
+                      project.submissions.map((sub) => (
+                        <ProjectSubmissionItem key={sub.id} submission={sub} currentUser={currentUser} onUpdate={handleUpdateSubmission} onDelete={handleDeleteSubmission} />
+                      ))
+                    ) : (
+                      <p>No hay entregas generales para este proyecto.</p>
+                    )}
+                  </div>
+
+                  {currentUser && canSubmit(currentUser.role) && (
+                    <form onSubmit={submissionHandleSubmit(onProjectSubmissionSubmit)} className="submission-form">
+                      <h4>Añadir nueva entrega</h4>
+                      <textarea {...submissionRegister('notes')} placeholder="Añade notas..." rows="2" />
+                      <input type="url" {...submissionRegister('link')} placeholder="Pega un enlace aquí..." />
+                      <input type="file" {...submissionRegister('file')} />
+                      <button type="submit" className="btn btn-primary">
+                        <FiSend /> Enviar
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
