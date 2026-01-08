@@ -11,6 +11,9 @@
   --card-bg: #ffffff;
   --text-primary: #2d3748;
   --text-secondary: #718096;
+
+  --button-primary-color: #667eea;
+  --button-primary-rgb: 102, 126, 234;
 }
 
 .dashboard-page {
@@ -184,6 +187,65 @@
   }
 }
 
+/* Widget List Container with max-height and scroll */
+.widget-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+
+  /* Smooth scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+/* Toggle button for show more/less */
+.widget-toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  margin-top: 0.5rem;
+  background: rgba(var(--button-primary-rgb), 0.1);
+  color: var(--button-primary-color);
+  border: 1px solid rgba(var(--button-primary-rgb), 0.2);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(var(--button-primary-rgb), 0.15);
+    border-color: rgba(var(--button-primary-rgb), 0.3);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    font-size: 1rem;
+  }
+}
+
 /* Draggable Overrides */
 .dashboard-item {
   &.sortable-card-ghost {
@@ -203,6 +265,9 @@
     --card-bg: rgba(42, 42, 42, 0.95);
     --text-primary: rgba(255, 255, 255, 0.95);
     --text-secondary: rgba(255, 255, 255, 0.7);
+
+    --button-primary-color: #8b9cff;
+    --button-primary-rgb: 102, 126, 234;
   }
 
   .stat-card {
@@ -316,6 +381,32 @@
 
     p {
       color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  .widget-list-container {
+    /* Dark mode scrollbar */
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+
+  .widget-toggle-button {
+    background: rgba(var(--button-primary-rgb), 0.15);
+    color: var(--button-primary-color);
+    border-color: rgba(var(--button-primary-rgb), 0.25);
+
+    &:hover {
+      background: rgba(var(--button-primary-rgb), 0.25);
+      border-color: rgba(var(--button-primary-rgb), 0.4);
     }
   }
 

@@ -79,7 +79,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.8rem 0.5rem;
+    padding: 0.5rem 0.5rem;
     border-radius: $border-radius;
     transition: $transition-base;
 
@@ -88,21 +88,23 @@
     }
 
     .item-icon {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       color: $primary-color;
     }
 
     .item-info {
       display: flex;
       flex-direction: column;
+      gap: 0.1rem;
 
       .item-title {
         font-weight: 500;
         color: $text-color;
+        font-size: 0.95rem;
       }
 
       .item-details {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: $text-color-secondary;
       }
     }
