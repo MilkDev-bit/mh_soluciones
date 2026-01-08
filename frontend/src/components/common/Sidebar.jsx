@@ -116,7 +116,8 @@ const Sidebar = () => {
   };
 
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
-  const hasUserManagementAccess = canManageUsers(user.role);
+  // Solo RH puede gestionar usuarios
+  const hasUserManagementAccess = user.role === 'RH';
   const hasReportsAccess = canViewReports(user.role);
   const isStudentUser = isStudent(user.role);
   const canViewArchivos = user.role !== 'CEO' && 
@@ -213,14 +214,17 @@ const Sidebar = () => {
                   {!isSidebarCollapsed && <span>Equipos</span>}
                 </NavLink>
 
-                <NavLink
-                  to="/tasks"
-                  className="menu-item"
-                  onClick={closeMobileMenu}
-                >
-                  <FiCheckSquare />
-                  {!isSidebarCollapsed && <span>Tareas</span>}
-                </NavLink>
+                {/* Restringir Tareas para RH */}
+                {user.role !== 'RH' && (
+                  <NavLink
+                    to="/tasks"
+                    className="menu-item"
+                    onClick={closeMobileMenu}
+                  >
+                    <FiCheckSquare />
+                    {!isSidebarCollapsed && <span>Tareas</span>}
+                  </NavLink>
+                )}
 
                 <NavLink
                   to="/calendar"
@@ -311,7 +315,8 @@ const Sidebar = () => {
               </div>
             </div>
 
-            {hasUserManagementAccess && (
+            {/* Restringir Gestión de usuarios para RH */}
+            {user.role !== 'RH' && hasUserManagementAccess && (
               <div className="menu-section">
                 <span className="menu-section-title">Gestión</span>
                 <div className="menu-items">
