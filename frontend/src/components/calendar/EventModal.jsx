@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { createEvent, updateEvent, deleteEvent } from '../../services/calendarService';
@@ -107,10 +107,17 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
     }
   };
 
+  const handleOverlayClick = useCallback((e) => {
+    // Only close if the click was directly on the overlay, not on child elements
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="event-modal-overlay" onClick={onClose}>
+    <div className="event-modal-overlay" onClick={handleOverlayClick}>
       <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="event-modal-header">
           <div className="event-modal-title">
