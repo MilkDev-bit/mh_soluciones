@@ -11,6 +11,9 @@
   --card-bg: #ffffff;
   --text-primary: #2d3748;
   --text-secondary: #718096;
+
+  --button-primary-color: #667eea;
+  --button-primary-rgb: 102, 126, 234;
 }
 
 .dashboard-page {
@@ -219,9 +222,9 @@
   width: 100%;
   padding: 0.625rem 1rem;
   margin-top: 0.5rem;
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-  border: 1px solid rgba(102, 126, 234, 0.2);
+  background: rgba(var(--button-primary-rgb), 0.1);
+  color: var(--button-primary-color);
+  border: 1px solid rgba(var(--button-primary-rgb), 0.2);
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -229,8 +232,8 @@
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(102, 126, 234, 0.15);
-    border-color: rgba(102, 126, 234, 0.3);
+    background: rgba(var(--button-primary-rgb), 0.15);
+    border-color: rgba(var(--button-primary-rgb), 0.3);
     transform: translateY(-1px);
   }
 
@@ -262,6 +265,9 @@
     --card-bg: rgba(42, 42, 42, 0.95);
     --text-primary: rgba(255, 255, 255, 0.95);
     --text-secondary: rgba(255, 255, 255, 0.7);
+
+    --button-primary-color: #8b9cff;
+    --button-primary-rgb: 102, 126, 234;
   }
 
   .stat-card {
@@ -394,13 +400,13 @@
   }
 
   .widget-toggle-button {
-    background: rgba(102, 126, 234, 0.15);
-    color: #8b9cff;
-    border-color: rgba(102, 126, 234, 0.25);
+    background: rgba(var(--button-primary-rgb), 0.15);
+    color: var(--button-primary-color);
+    border-color: rgba(var(--button-primary-rgb), 0.25);
 
     &:hover {
-      background: rgba(102, 126, 234, 0.25);
-      border-color: rgba(102, 126, 234, 0.4);
+      background: rgba(var(--button-primary-rgb), 0.25);
+      border-color: rgba(var(--button-primary-rgb), 0.4);
     }
   }
 
