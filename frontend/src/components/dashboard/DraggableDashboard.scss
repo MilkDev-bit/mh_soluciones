@@ -33,4 +33,10 @@
   &.half-width {
     grid-column: span 2;
   }
+
+  &.recent-projects {
+    @media (min-width: 768px) {
+      grid-column: span 2;
+    }
+  }
 }
