@@ -91,7 +91,7 @@ const Sidebar = () => {
     };
   }, []);
 
-  if (! user) {
+  if (!user) {
     return null;
   }
 
@@ -117,13 +117,13 @@ const Sidebar = () => {
 
   const hasHrAccess = user.role === 'RH' || user.role === 'SUPERADMIN';
   // Solo RH puede gestionar usuarios
-  const hasUserManagementAccess = user.role === 'RH';
+  const hasUserManagementAccess = canManageUsers(user.role);
   const hasReportsAccess = canViewReports(user.role);
   const isStudentUser = isStudent(user.role);
-  const canViewArchivos = user.role !== 'CEO' && 
-                          user.role !== 'STUDENT' && 
-                          user.role !== 'CLIENT' && 
-                          user.role !== 'RH';
+  const canViewArchivos = user.role !== 'CEO' &&
+    user.role !== 'STUDENT' &&
+    user.role !== 'CLIENT' &&
+    user.role !== 'RH';
 
   return (
     <>
