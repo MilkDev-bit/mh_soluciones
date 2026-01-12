@@ -21,7 +21,7 @@ const AddMemberModal = ({ isOpen, onClose, projectId, onMemberAdded }) => {
       const fetchUsers = async () => {
         try {
           setIsLoading(true);
-          const allUsers = await getUsers();
+          const allUsers = await getUsers(1, '', 1000);
           setUsers(allUsers.results || allUsers);
           setFilteredUsers(allUsers.results || allUsers);
           setError('');
