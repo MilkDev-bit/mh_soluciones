@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from ipware import get_client_ip
-from rest_framework import status, viewsets, generics, permissions
+from rest_framework import status, viewsets, generics, permissions, pagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.core.cache import cache
@@ -58,6 +58,14 @@ user_api_logger = logging.getLogger('authentication.user_api')
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+
+class UserPagination(pagination.PageNumberPagination):
+    """Custom pagination class for UserViewSet that allows clients to set page_size"""
+    page_size = 20  # Default page size
+    page_size_query_param = 'page_size'  # Allow client to override with ?page_size=X
+    max_page_size = 1000  # Maximum allowed page size
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar usuarios.
@@ -68,6 +76,7 @@ class UserViewSet(viewsets.ModelViewSet):
     - Others: Cannot access
     """
     queryset = User.objects.all().order_by('first_name', 'last_name')
+    pagination_class = UserPagination
     filter_backends = [SearchFilter, OrderingFilter]
     search_fields = ['username', 'first_name', 'last_name', 'email']
     ordering_fields = ['first_name', 'last_name', 'email', 'created_at']
@@ -157,7 +166,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # Fallback to non-paginated response (shouldn't happen normally)
         serializer = self.get_serializer(queryset, many=True)
-        user_api_logger.info(f"Returning non-paginated response with {queryset.count()} items")
+        user_api_logger.info(f"Returning non-paginated response with {total_count} items")
         return Response(serializer.data)
 
 class UserProfileAPIView(generics.RetrieveUpdateAPIView):
