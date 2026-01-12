@@ -53,6 +53,7 @@ from .serializers import (
 User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
 forgot_password_logger = logging.getLogger('authentication.forgot_password')
+# Logger for user API operations (list, retrieve, etc.)
 user_api_logger = logging.getLogger('authentication.user_api')
 
 if settings.DEBUG:
@@ -121,6 +122,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         Overridden list method to add debugging information for pagination.
+        
+        Logs the page_size parameter and adds custom response headers:
+        - X-Total-Count: Total number of users in the queryset
+        - X-Page-Size: Number of users returned in this page
         """
         # Get page_size from query params
         page_size_param = request.query_params.get('page_size', None)
@@ -137,9 +142,13 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(page, many=True)
             response = self.get_paginated_response(serializer.data)
             
-            # Get pagination info from the paginator (which has already counted)
-            paginator = self.paginator
-            total_count = paginator.page.paginator.count
+            # Get total count - use paginator's count if available, otherwise query
+            try:
+                # Try to get count from paginator (DRF stores it here after paginate_queryset)
+                total_count = self.paginator.page.paginator.count
+            except (AttributeError, TypeError):
+                # Fallback to direct count if paginator structure differs
+                total_count = queryset.count()
             
             # Add debug info to response headers
             response['X-Total-Count'] = str(total_count)
