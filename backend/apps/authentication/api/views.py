@@ -120,8 +120,7 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """
-        Overridden list method to handle large page_size requests properly
-        and add debugging information.
+        Overridden list method to add debugging information for pagination.
         """
         # Get page_size from query params
         page_size_param = request.query_params.get('page_size', None)
@@ -131,31 +130,16 @@ class UserViewSet(viewsets.ModelViewSet):
         
         # Get the queryset
         queryset = self.filter_queryset(self.get_queryset())
-        total_count = queryset.count()
-        
-        user_api_logger.info(f"Total users in queryset: {total_count}")
-        
-        # If page_size is provided and is large, handle it specially
-        if page_size_param:
-            try:
-                requested_page_size = int(page_size_param)
-                max_page_size = getattr(settings, 'REST_FRAMEWORK', {}).get('MAX_PAGE_SIZE', 100)
-                
-                user_api_logger.info(f"Requested page_size: {requested_page_size}, MAX_PAGE_SIZE: {max_page_size}")
-                
-                # If requesting more than MAX_PAGE_SIZE, cap it
-                if requested_page_size > max_page_size:
-                    requested_page_size = max_page_size
-                    user_api_logger.warning(f"Capping page_size to MAX_PAGE_SIZE: {max_page_size}")
-                    
-            except (ValueError, TypeError):
-                user_api_logger.error(f"Invalid page_size parameter: {page_size_param}")
         
         # Use default pagination
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             response = self.get_paginated_response(serializer.data)
+            
+            # Get pagination info from the paginator (which has already counted)
+            paginator = self.paginator
+            total_count = paginator.page.paginator.count
             
             # Add debug info to response headers
             response['X-Total-Count'] = str(total_count)
@@ -166,6 +150,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # Fallback to non-paginated response (shouldn't happen normally)
         serializer = self.get_serializer(queryset, many=True)
+        total_count = queryset.count()
         user_api_logger.info(f"Returning non-paginated response with {total_count} items")
         return Response(serializer.data)
 
