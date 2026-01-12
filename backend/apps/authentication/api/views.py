@@ -53,6 +53,7 @@ from .serializers import (
 User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
 forgot_password_logger = logging.getLogger('authentication.forgot_password')
+user_api_logger = logging.getLogger('authentication.user_api')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -107,6 +108,57 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
         
         return Response({'message': 'Contraseña actualizada correctamente.'}, status=status.HTTP_200_OK)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Overridden list method to handle large page_size requests properly
+        and add debugging information.
+        """
+        # Get page_size from query params
+        page_size_param = request.query_params.get('page_size', None)
+        
+        # Log the request for debugging
+        user_api_logger.info(f"UserViewSet.list called with page_size={page_size_param}")
+        
+        # Get the queryset
+        queryset = self.filter_queryset(self.get_queryset())
+        total_count = queryset.count()
+        
+        user_api_logger.info(f"Total users in queryset: {total_count}")
+        
+        # If page_size is provided and is large, handle it specially
+        if page_size_param:
+            try:
+                requested_page_size = int(page_size_param)
+                max_page_size = getattr(settings, 'REST_FRAMEWORK', {}).get('MAX_PAGE_SIZE', 100)
+                
+                user_api_logger.info(f"Requested page_size: {requested_page_size}, MAX_PAGE_SIZE: {max_page_size}")
+                
+                # If requesting more than MAX_PAGE_SIZE, cap it
+                if requested_page_size > max_page_size:
+                    requested_page_size = max_page_size
+                    user_api_logger.warning(f"Capping page_size to MAX_PAGE_SIZE: {max_page_size}")
+                    
+            except (ValueError, TypeError):
+                user_api_logger.error(f"Invalid page_size parameter: {page_size_param}")
+        
+        # Use default pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            
+            # Add debug info to response headers
+            response['X-Total-Count'] = str(total_count)
+            response['X-Page-Size'] = str(len(page))
+            
+            user_api_logger.info(f"Returning paginated response with {len(page)} items out of {total_count} total")
+            return response
+
+        # Fallback to non-paginated response (shouldn't happen normally)
+        serializer = self.get_serializer(queryset, many=True)
+        user_api_logger.info(f"Returning non-paginated response with {queryset.count()} items")
+        return Response(serializer.data)
 
 class UserProfileAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
