@@ -1,10 +1,13 @@
 import api from './api';
 
-export const getUsers = async (page = 1, search = '') => {
+export const getUsers = async (page = 1, search = '', pageSize = null) => {
   try {
     let url = `auth/users/?page=${page}`;
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
+    }
+    if (pageSize !== null) {
+      url += `&page_size=${pageSize}`;
     }
     const { data } = await api.get(url);
     return data;
