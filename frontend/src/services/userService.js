@@ -6,7 +6,7 @@ export const getUsers = async (page = 1, search = '', pageSize = null) => {
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
     }
-    if (pageSize) {
+    if (pageSize !== null) {
       url += `&page_size=${pageSize}`;
     }
     const { data } = await api.get(url);

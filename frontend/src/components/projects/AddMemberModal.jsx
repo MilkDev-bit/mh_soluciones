@@ -7,6 +7,8 @@ import { FiUserPlus, FiX, FiCheck, FiSearch } from 'react-icons/fi';
 import './AddMemberModal.scss';
 import { ProjectContext } from '../../contexts/ProjectContext';
 
+const MAX_USERS_TO_FETCH = 1000;
+
 const AddMemberModal = ({ isOpen, onClose, projectId, onMemberAdded }) => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -21,7 +23,7 @@ const AddMemberModal = ({ isOpen, onClose, projectId, onMemberAdded }) => {
       const fetchUsers = async () => {
         try {
           setIsLoading(true);
-          const allUsers = await getUsers(1, '', 1000);
+          const allUsers = await getUsers(1, '', MAX_USERS_TO_FETCH);
           setUsers(allUsers.results || allUsers);
           setFilteredUsers(allUsers.results || allUsers);
           setError('');
