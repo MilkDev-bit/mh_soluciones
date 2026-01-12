@@ -123,45 +123,29 @@ class UserViewSet(viewsets.ModelViewSet):
         """
         Overridden list method to add debugging information for pagination.
         
-        Logs the page_size parameter and adds custom response headers:
+        Adds custom response headers:
         - X-Total-Count: Total number of users in the queryset
         - X-Page-Size: Number of users returned in this page
         """
-        # Get page_size from query params
-        page_size_param = request.query_params.get('page_size', None)
-        
         # Log the request for debugging
+        page_size_param = request.query_params.get('page_size', None)
         user_api_logger.info(f"UserViewSet.list called with page_size={page_size_param}")
         
-        # Get the queryset
-        queryset = self.filter_queryset(self.get_queryset())
+        # Call parent's list method
+        response = super().list(request, *args, **kwargs)
         
-        # Use default pagination
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
+        # Add debug headers if paginated
+        if hasattr(response, 'data') and isinstance(response.data, dict):
+            # Extract count and results from paginated response
+            count = response.data.get('count', 0)
+            results = response.data.get('results', [])
             
-            # Get total count - use paginator's count if available, otherwise query
-            try:
-                # Try to get count from paginator (DRF stores it here after paginate_queryset)
-                total_count = self.paginator.page.paginator.count
-            except (AttributeError, TypeError):
-                # Fallback to direct count if paginator structure differs
-                total_count = queryset.count()
+            response['X-Total-Count'] = str(count)
+            response['X-Page-Size'] = str(len(results))
             
-            # Add debug info to response headers
-            response['X-Total-Count'] = str(total_count)
-            response['X-Page-Size'] = str(len(page))
-            
-            user_api_logger.info(f"Returning paginated response with {len(page)} items out of {total_count} total")
-            return response
-
-        # Fallback to non-paginated response (shouldn't happen normally)
-        serializer = self.get_serializer(queryset, many=True)
-        total_count = queryset.count()
-        user_api_logger.info(f"Returning non-paginated response with {total_count} items")
-        return Response(serializer.data)
+            user_api_logger.info(f"Returning paginated response with {len(results)} items out of {count} total")
+        
+        return response
 
 class UserProfileAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
