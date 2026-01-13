@@ -2,7 +2,7 @@ import os
 import logging
 import socket
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -122,8 +122,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 # Get paginated results
                 paginated_queryset = queryset[start:end]
                 
+                # Calculate actual result count without extra DB query
+                result_count = len(paginated_queryset)
+                
                 user_logger.info(f"   Paginating: page={page_number}, start={start}, end={end}")
-                user_logger.info(f"   Returning {paginated_queryset.count()} users")
+                user_logger.info(f"   Returning {result_count} users")
                 
                 # Serialize
                 serializer = self.get_serializer(paginated_queryset, many=True)
@@ -132,11 +135,35 @@ class UserViewSet(viewsets.ModelViewSet):
                 user_ids = [u.id for u in paginated_queryset[:5]]
                 user_logger.info(f"   First user IDs: {user_ids}")
                 
+                # Calculate next and previous page URLs
+                has_next = end < total_count
+                has_previous = page_number > 1
+                
+                next_url = None
+                previous_url = None
+                
+                if has_next:
+                    next_url = request.build_absolute_uri()
+                    # Replace page parameter if it exists, otherwise add it
+                    parsed = urlparse(next_url)
+                    query_params = parse_qs(parsed.query)
+                    query_params['page'] = [str(page_number + 1)]
+                    new_query = urlencode(query_params, doseq=True)
+                    next_url = urlunparse(parsed._replace(query=new_query))
+                
+                if has_previous:
+                    previous_url = request.build_absolute_uri()
+                    parsed = urlparse(previous_url)
+                    query_params = parse_qs(parsed.query)
+                    query_params['page'] = [str(page_number - 1)]
+                    new_query = urlencode(query_params, doseq=True)
+                    previous_url = urlunparse(parsed._replace(query=new_query))
+                
                 # Return paginated response
                 return Response({
                     'count': total_count,
-                    'next': None,
-                    'previous': None,
+                    'next': next_url,
+                    'previous': previous_url,
                     'results': serializer.data
                 })
                 
