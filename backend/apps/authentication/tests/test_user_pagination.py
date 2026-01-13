@@ -56,7 +56,7 @@ class UserPaginationTests(TestCase):
     
     def test_default_pagination_returns_20_users(self):
         """Test that default pagination returns 20 users (PAGE_SIZE setting)"""
-        response = self.client.get('/api/users/')
+        response = self.client.get('/api/v1/auth/users/')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)
@@ -64,68 +64,68 @@ class UserPaginationTests(TestCase):
         
         # Should return 20 users by default (PAGE_SIZE=20)
         self.assertEqual(len(response.data['results']), 20)
-        # Total count should be 23 (22 active + 1 superadmin)
-        self.assertEqual(response.data['count'], 23)
+        # Total count should be 25 (22 active + 1 superadmin + 2 inactive)
+        self.assertEqual(response.data['count'], 25)
     
     def test_custom_page_size_returns_all_users(self):
         """Test that custom page_size parameter returns all users"""
-        response = self.client.get('/api/users/', {'page_size': 1000})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 1000})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)
         self.assertIn('count', response.data)
         
-        # Should return all 23 users (22 active + 1 superadmin)
-        self.assertEqual(len(response.data['results']), 23)
-        self.assertEqual(response.data['count'], 23)
+        # Should return all 25 users (22 active + 1 superadmin + 2 inactive)
+        self.assertEqual(len(response.data['results']), 25)
+        self.assertEqual(response.data['count'], 25)
     
     def test_custom_page_size_50_returns_all_users(self):
-        """Test that page_size=50 returns all 23 users"""
-        response = self.client.get('/api/users/', {'page_size': 50})
+        """Test that page_size=50 returns all 25 users"""
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 50})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        # Should return all 23 users since we have less than 50
-        self.assertEqual(len(response.data['results']), 23)
-        self.assertEqual(response.data['count'], 23)
+        # Should return all 25 users since we have less than 50
+        self.assertEqual(len(response.data['results']), 25)
+        self.assertEqual(response.data['count'], 25)
     
     def test_custom_page_size_respects_max_page_size(self):
         """Test that page_size respects MAX_PAGE_SIZE setting"""
         # Request more than MAX_PAGE_SIZE (1000)
-        response = self.client.get('/api/users/', {'page_size': 5000})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 5000})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Should return all users (limited by total count, not exceeding MAX_PAGE_SIZE)
-        self.assertEqual(len(response.data['results']), 23)
-        self.assertEqual(response.data['count'], 23)
+        self.assertEqual(len(response.data['results']), 25)
+        self.assertEqual(response.data['count'], 25)
     
     def test_pagination_with_page_number(self):
         """Test pagination with page_size and page parameters"""
         # Get first page of 10 users
-        response = self.client.get('/api/users/', {'page_size': 10, 'page': 1})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 10, 'page': 1})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 10)
-        self.assertEqual(response.data['count'], 23)
+        self.assertEqual(response.data['count'], 25)
         
         # Get second page of 10 users
-        response = self.client.get('/api/users/', {'page_size': 10, 'page': 2})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 10, 'page': 2})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 10)
-        self.assertEqual(response.data['count'], 23)
+        self.assertEqual(response.data['count'], 25)
         
-        # Get third page (should have 3 remaining users)
-        response = self.client.get('/api/users/', {'page_size': 10, 'page': 3})
+        # Get third page (should have 5 remaining users)
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 10, 'page': 3})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 3)
-        self.assertEqual(response.data['count'], 23)
+        self.assertEqual(len(response.data['results']), 5)
+        self.assertEqual(response.data['count'], 25)
     
     def test_invalid_page_size_falls_back_to_default(self):
         """Test that invalid page_size falls back to default pagination"""
-        response = self.client.get('/api/users/', {'page_size': 'invalid'})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 'invalid'})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
@@ -134,7 +134,7 @@ class UserPaginationTests(TestCase):
     
     def test_queryset_excludes_inactive_users_by_default(self):
         """Test that queryset includes both active and inactive users"""
-        response = self.client.get('/api/users/', {'page_size': 1000})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 1000})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
@@ -150,13 +150,13 @@ class UserPaginationTests(TestCase):
     def test_unauthenticated_user_cannot_access(self):
         """Test that unauthenticated users cannot access user list"""
         client = APIClient()  # New client without authentication
-        response = client.get('/api/users/', {'page_size': 1000})
+        response = client.get('/api/v1/auth/users/', {'page_size': 1000})
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
     
     def test_ordering_is_preserved_with_custom_pagination(self):
         """Test that ordering by first_name, last_name is preserved"""
-        response = self.client.get('/api/users/', {'page_size': 1000})
+        response = self.client.get('/api/v1/auth/users/', {'page_size': 1000})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
