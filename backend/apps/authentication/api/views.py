@@ -53,6 +53,7 @@ from .serializers import (
 User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
 forgot_password_logger = logging.getLogger('authentication.forgot_password')
+user_logger = logging.getLogger('authentication.users')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -84,6 +85,68 @@ class UserViewSet(viewsets.ModelViewSet):
             # Only SUPERADMIN can create, update, delete users
             self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
         return super().get_permissions()
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Custom list method with explicit page_size handling and detailed logging.
+        """
+        # Get page_size from query params
+        page_size_param = request.query_params.get('page_size')
+        
+        # Get base queryset
+        queryset = self.filter_queryset(self.get_queryset())
+        total_count = queryset.count()
+        
+        user_logger.info(f"📊 UserViewSet.list() called")
+        user_logger.info(f"   Total users in queryset: {total_count}")
+        user_logger.info(f"   page_size parameter: {page_size_param}")
+        user_logger.info(f"   Query params: {dict(request.query_params)}")
+        
+        # If page_size is provided, use custom pagination
+        if page_size_param:
+            try:
+                page_size = int(page_size_param)
+                # Respect MAX_PAGE_SIZE from settings
+                max_page_size = getattr(settings, 'REST_FRAMEWORK', {}).get('MAX_PAGE_SIZE', 1000)
+                page_size = min(page_size, max_page_size)
+                
+                user_logger.info(f"   Requested page_size: {page_size_param}, Using: {page_size}")
+                
+                # Get page number
+                page_number = int(request.query_params.get('page', 1))
+                
+                # Calculate pagination
+                start = (page_number - 1) * page_size
+                end = start + page_size
+                
+                # Get paginated results
+                paginated_queryset = queryset[start:end]
+                
+                user_logger.info(f"   Paginating: page={page_number}, start={start}, end={end}")
+                user_logger.info(f"   Returning {paginated_queryset.count()} users")
+                
+                # Serialize
+                serializer = self.get_serializer(paginated_queryset, many=True)
+                
+                # Log first few user IDs for debugging
+                user_ids = [u.id for u in paginated_queryset[:5]]
+                user_logger.info(f"   First user IDs: {user_ids}")
+                
+                # Return paginated response
+                return Response({
+                    'count': total_count,
+                    'next': None,
+                    'previous': None,
+                    'results': serializer.data
+                })
+                
+            except (ValueError, TypeError) as e:
+                user_logger.error(f"   Error parsing page_size: {e}")
+                # Fall through to default pagination
+        
+        # Default pagination via parent
+        user_logger.info(f"   Using default DRF pagination")
+        return super().list(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
