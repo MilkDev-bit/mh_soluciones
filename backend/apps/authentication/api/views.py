@@ -2,7 +2,7 @@ import os
 import logging
 import socket
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -53,6 +53,7 @@ from .serializers import (
 User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
 forgot_password_logger = logging.getLogger('authentication.forgot_password')
+user_logger = logging.getLogger('authentication.users')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -84,6 +85,95 @@ class UserViewSet(viewsets.ModelViewSet):
             # Only SUPERADMIN can create, update, delete users
             self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
         return super().get_permissions()
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Custom list method with explicit page_size handling and detailed logging.
+        """
+        # Get page_size from query params
+        page_size_param = request.query_params.get('page_size')
+        
+        # Get base queryset
+        queryset = self.filter_queryset(self.get_queryset())
+        total_count = queryset.count()
+        
+        user_logger.info(f"📊 UserViewSet.list() called")
+        user_logger.info(f"   Total users in queryset: {total_count}")
+        user_logger.info(f"   page_size parameter: {page_size_param}")
+        user_logger.info(f"   Query params: {dict(request.query_params)}")
+        
+        # If page_size is provided, use custom pagination
+        if page_size_param:
+            try:
+                page_size = int(page_size_param)
+                # Respect MAX_PAGE_SIZE from settings
+                max_page_size = getattr(settings, 'REST_FRAMEWORK', {}).get('MAX_PAGE_SIZE', 1000)
+                page_size = min(page_size, max_page_size)
+                
+                user_logger.info(f"   Requested page_size: {page_size_param}, Using: {page_size}")
+                
+                # Get page number
+                page_number = int(request.query_params.get('page', 1))
+                
+                # Calculate pagination
+                start = (page_number - 1) * page_size
+                end = start + page_size
+                
+                # Get paginated results
+                paginated_queryset = queryset[start:end]
+                
+                # Calculate actual result count without extra DB query
+                result_count = len(paginated_queryset)
+                
+                user_logger.info(f"   Paginating: page={page_number}, start={start}, end={end}")
+                user_logger.info(f"   Returning {result_count} users")
+                
+                # Serialize
+                serializer = self.get_serializer(paginated_queryset, many=True)
+                
+                # Log first few user IDs for debugging
+                user_ids = [u.id for u in paginated_queryset[:5]]
+                user_logger.info(f"   First user IDs: {user_ids}")
+                
+                # Calculate next and previous page URLs
+                has_next = end < total_count
+                has_previous = page_number > 1
+                
+                next_url = None
+                previous_url = None
+                
+                if has_next:
+                    next_url = request.build_absolute_uri()
+                    # Replace page parameter if it exists, otherwise add it
+                    parsed = urlparse(next_url)
+                    query_params = parse_qs(parsed.query)
+                    query_params['page'] = [str(page_number + 1)]
+                    new_query = urlencode(query_params, doseq=True)
+                    next_url = urlunparse(parsed._replace(query=new_query))
+                
+                if has_previous:
+                    previous_url = request.build_absolute_uri()
+                    parsed = urlparse(previous_url)
+                    query_params = parse_qs(parsed.query)
+                    query_params['page'] = [str(page_number - 1)]
+                    new_query = urlencode(query_params, doseq=True)
+                    previous_url = urlunparse(parsed._replace(query=new_query))
+                
+                # Return paginated response
+                return Response({
+                    'count': total_count,
+                    'next': next_url,
+                    'previous': previous_url,
+                    'results': serializer.data
+                })
+                
+            except (ValueError, TypeError) as e:
+                user_logger.error(f"   Error parsing page_size: {e}")
+                # Fall through to default pagination
+        
+        # Default pagination via parent
+        user_logger.info(f"   Using default DRF pagination")
+        return super().list(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
