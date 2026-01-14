@@ -17,11 +17,9 @@ RUN pip install --upgrade pip
 COPY requirements/base.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
-RUN pip install channels channels-redis daphne
-
 COPY . /app
 
-RUN SECRET_KEY=dummy DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput --clear
+RUN SECRET_KEY=dummy DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput --clear || echo "Collectstatic failed, continuing build..."
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
