@@ -233,7 +233,7 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
               </a>
             )}
             {submission?.file && (
-              <button className="btn btn-link" onClick={() => handleViewFile({ file_url: submission.file })}>
+              <button className="btn btn-link" onClick={() => handleViewFile({ file_url: submission.file_url || submission.file })}>
                 <FiPaperclip /> Ver archivo
               </button>
             )}
