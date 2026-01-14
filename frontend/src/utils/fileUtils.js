@@ -1,7 +1,7 @@
 // Obtener la URL base de la API desde la configuración
 const getAPIBaseURL = () => {
   // En desarrollo, usar la variable de entorno o localhost
-  if (import.meta?.env?.DEV) {
+  if (import.meta.env.DEV) {
     const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
     // Remover /api/v1 del final para obtener la URL base
     return apiUrl.replace(/\/api\/v1\/?$/, '');

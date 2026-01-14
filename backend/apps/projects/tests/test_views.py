@@ -175,9 +175,6 @@ class ProjectSubmissionFileUrlTest(TestCase):
             # Verify it contains the file path
             self.assertIn('project_submissions', submission_data['file_url'])
             self.assertIn('test_document', submission_data['file_url'])
-        
-        # Clean up
-        submission.delete()
     
     def test_project_submission_file_url_null_when_no_file(self):
         """Test that file_url is null when no file is uploaded"""
@@ -198,6 +195,3 @@ class ProjectSubmissionFileUrlTest(TestCase):
         
         # Verify file_url is None when no file
         self.assertIsNone(submission_data['file_url'])
-        
-        # Clean up
-        submission.delete()
