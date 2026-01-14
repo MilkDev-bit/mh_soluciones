@@ -55,11 +55,21 @@ class ProjectCommentSerializer(serializers.ModelSerializer):
 class ProjectSubmissionSerializer(serializers.ModelSerializer):
     """ Serializador para las entregas de proyectos. """
     submitted_by = UserSerializer(read_only=True)
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectSubmission
-        fields = ['id', 'project', 'submitted_by', 'notes', 'link', 'file', 'created_at']
+        fields = ['id', 'project', 'submitted_by', 'notes', 'link', 'file', 'file_url', 'created_at']
         read_only_fields = ('id', 'created_at', 'project', 'submitted_by')
+    
+    def get_file_url(self, obj):
+        """Devuelve la URL absoluta del archivo si existe."""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
 
 class ProjectDetailSerializer(ProjectSerializer):
     """
