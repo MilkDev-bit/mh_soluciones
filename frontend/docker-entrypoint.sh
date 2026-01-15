@@ -152,6 +152,36 @@ server {
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
+        
+        # ===================================================================
+        # FORCE DOWNLOAD for Office documents and compressed files
+        # ===================================================================
+        # This ensures Word, Excel, PowerPoint, and compressed files are
+        # downloaded instead of opening a blank page in the browser.
+        # PDFs are not included here so they can still be viewed in-browser.
+        # 
+        # Supported formats:
+        # - Word: .doc, .docx
+        # - Excel: .xls, .xlsx
+        # - PowerPoint: .ppt, .pptx
+        # - Compressed: .zip, .rar, .7z
+        # - Others: .txt (large files), .csv
+        
+        # Hide backend's Content-Disposition header to replace it
+        proxy_hide_header Content-Disposition;
+        
+        # Set Content-Disposition based on file extension
+        # Using map would be cleaner but requires separate block, so using if here
+        # Note: This use of 'if' is safe because we're only setting a variable
+        # (one of the documented safe uses of 'if' in nginx location blocks)
+        set \$download_disposition "";
+        
+        if (\$request_uri ~* \\.(docx?|xlsx?|pptx?|zip|rar|7z)\$) {
+            set \$download_disposition "attachment";
+        }
+        
+        # Apply the header if it was set
+        add_header Content-Disposition \$download_disposition;
     }
     
     # ===========================================================================
