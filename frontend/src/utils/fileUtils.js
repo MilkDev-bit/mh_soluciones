@@ -117,7 +117,7 @@ export const handleViewFile = async (doc) => {
   
   // Asegurar que la URL use HTTPS en producción (evitar Mixed Content)
   if (!import.meta.env.DEV && fileUrl.startsWith('http://')) {
-    fileUrl = fileUrl.replace('http://', 'https://');
+    fileUrl = fileUrl.replace(/^http:/, 'https:');
   }
   
   // Verificar si el archivo se puede visualizar en el navegador
