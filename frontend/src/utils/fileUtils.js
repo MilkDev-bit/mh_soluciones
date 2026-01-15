@@ -65,7 +65,9 @@ const downloadFile = async (fileUrl) => {
     console.log('Iniciando descarga:', fileUrl);
     
     // Descargar el archivo como Blob
-    const response = await fetch(fileUrl);
+    const response = await fetch(fileUrl, {
+      credentials: 'include' // Incluir cookies para autenticación
+    });
     
     if (!response.ok) {
       throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
@@ -90,7 +92,7 @@ const downloadFile = async (fileUrl) => {
     // Liberar la URL del Blob después de un tiempo
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
-    }, 100);
+    }, 1000);
     
     console.log('Descarga completada:', getFileNameFromUrl(fileUrl));
   } catch (error) {
