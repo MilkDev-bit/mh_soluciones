@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { verifyTwoFactor } from '../../services/authService';
 import toast from 'react-hot-toast';
 import { FiShield } from 'react-icons/fi';
-import logo from '../../assets/img/logo.png'; 
+ 
 import './AuthPages.scss';
 
 const TwoFactorPage = () => {
@@ -72,7 +72,7 @@ const TwoFactorPage = () => {
         <div className="auth-left">
           <div className="auth-logo-large">
             <img 
-              src={logo} 
+              src="/icons/MatrixMh.png" 
               alt="MH Soluciones Empresariales" 
             />
             <h1>MH Soluciones</h1>
