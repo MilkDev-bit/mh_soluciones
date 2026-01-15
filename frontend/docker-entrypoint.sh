@@ -172,6 +172,8 @@ server {
         
         # Set Content-Disposition based on file extension
         # Using map would be cleaner but requires separate block, so using if here
+        # Note: This use of 'if' is safe because we're only setting a variable
+        # (one of the documented safe uses of 'if' in nginx location blocks)
         set \$download_disposition "";
         
         if (\$request_uri ~* \\.(docx?|xlsx?|pptx?|zip|rar|7z)\$) {
