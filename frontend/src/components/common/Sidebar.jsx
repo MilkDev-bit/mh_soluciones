@@ -33,6 +33,7 @@ import {
   FiBell
 } from 'react-icons/fi';
 import './Sidebar.scss';
+import matrixMhLogo from '/icons/MatrixMh.png';
 
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -147,7 +148,7 @@ const Sidebar = () => {
           <div className="sidebar-header">
             <div className="logo-container">
               <NavLink to="/" className="logo" onClick={closeMobileMenu}>
-                <span className="logo-icon">MH</span>
+                <img src={matrixMhLogo} alt="MH" className="logo-icon" />
                 {!isSidebarCollapsed && (
                   <div className="logo-text">
                     <span className="logo-main">Soluciones</span>
