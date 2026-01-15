@@ -75,7 +75,6 @@ const TwoFactorPage = () => {
               src="/icons/MatrixMh.png" 
               alt="MH Soluciones Empresariales" 
             />
-            <h1>MH Soluciones</h1>
             <p>Sistema de gestión empresarial para proyectos, tareas y recursos humanos</p>
           </div>
         </div>
