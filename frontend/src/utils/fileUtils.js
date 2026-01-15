@@ -30,7 +30,7 @@ const isViewableInBrowser = (fileUrl) => {
     '.gif',
     '.webp',
     '.svg',
-    '.txt',           // Texto plano (aunque no es común)
+    '.txt',           // Texto plano
   ];
   
   return viewableExtensions.some(ext => url.endsWith(ext));
@@ -47,7 +47,7 @@ const getFileNameFromUrl = (fileUrl) => {
     const pathname = url.pathname;
     const parts = pathname.split('/');
     return parts[parts.length - 1] || 'download';
-  } catch {
+  } catch (error) {
     // Si falla el parsing de URL, extraer el nombre de otra forma
     const parts = fileUrl.split('/');
     return parts[parts.length - 1] || 'download';
