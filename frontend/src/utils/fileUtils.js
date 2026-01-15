@@ -56,22 +56,53 @@ const getFileNameFromUrl = (fileUrl) => {
 
 /**
  * Descarga un archivo directamente sin abrir ventana
+ * Usa fetch + Blob para evitar problemas de CORS y políticas de navegador
  * @param {string} fileUrl - URL del archivo a descargar
  */
-const downloadFile = (fileUrl) => {
-  // Crear un elemento <a> temporal
-  const link = document.createElement('a');
-  link.href = fileUrl;
-  link.download = getFileNameFromUrl(fileUrl);
-  link.style.display = 'none';
-  
-  // Agregarlo al DOM, hacer clic, y removerlo
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+const downloadFile = async (fileUrl) => {
+  try {
+    // Mostrar indicador de carga (opcional)
+    console.log('Iniciando descarga:', fileUrl);
+    
+    // Descargar el archivo como Blob
+    const response = await fetch(fileUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // Crear una URL local temporal para el Blob
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // Crear un elemento <a> temporal con la URL del Blob
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = getFileNameFromUrl(fileUrl);
+    link.style.display = 'none';
+    
+    // Agregarlo al DOM, hacer clic, y removerlo
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Liberar la URL del Blob después de un tiempo
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+    
+    console.log('Descarga completada:', getFileNameFromUrl(fileUrl));
+  } catch (error) {
+    console.error('Error al descargar archivo:', error);
+    
+    // Fallback: intentar abrir en nueva pestaña
+    // Si fetch falla, al menos mostramos el archivo de alguna forma
+    window.open(fileUrl, '_blank');
+  }
 };
 
-export const handleViewFile = (doc) => {
+export const handleViewFile = async (doc) => {
   // Prioridad: file_url (URL absoluta) > file (URL relativa)
   let fileUrl = doc.file_url || doc.file;
   
@@ -88,9 +119,13 @@ export const handleViewFile = (doc) => {
     fileUrl = `${baseURL}${fileUrl}`;
   }
   
+  // Log para debugging
+  console.log('handleViewFile llamado con URL:', fileUrl);
+  
   // Verificar si el archivo se puede visualizar en el navegador
   if (isViewableInBrowser(fileUrl)) {
     // PDFs e imágenes: abrir en nueva ventana
+    console.log('Archivo visualizable, abriendo en ventana nueva');
     const width = 800;
     const height = 700;
     const left = (window.screen.width / 2) - (width / 2);
@@ -100,6 +135,7 @@ export const handleViewFile = (doc) => {
     window.open(fileUrl, 'FileViewer', windowFeatures);
   } else {
     // Word, Excel, PowerPoint, ZIP, etc.: descargar directamente sin abrir ventana
-    downloadFile(fileUrl);
+    console.log('Archivo no visualizable, iniciando descarga');
+    await downloadFile(fileUrl);
   }
 };
