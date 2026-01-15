@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import logo from '../../assets/img/logo.png';
+import logo from '/icons/MatrixMh.png';
 import { FiLogIn, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
 import Modal from '../../components/common/Modal';
 import api from '../../services/api';
