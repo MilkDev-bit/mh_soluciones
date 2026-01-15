@@ -10,6 +10,67 @@ const getAPIBaseURL = () => {
   return `${window.location.protocol}//${window.location.host}`;
 };
 
+/**
+ * Determina si un archivo se puede visualizar directamente en el navegador
+ * @param {string} fileUrl - URL del archivo
+ * @returns {boolean} - true si se puede visualizar, false si debe descargarse
+ */
+const isViewableInBrowser = (fileUrl) => {
+  if (!fileUrl) return false;
+  
+  // Convertir a minúsculas para comparación case-insensitive
+  const url = fileUrl.toLowerCase();
+  
+  // Extensiones que el navegador puede visualizar directamente
+  const viewableExtensions = [
+    '.pdf',           // PDFs
+    '.png',           // Imágenes
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.webp',
+    '.svg',
+    '.txt',           // Texto plano
+  ];
+  
+  return viewableExtensions.some(ext => url.endsWith(ext));
+};
+
+/**
+ * Obtiene el nombre del archivo desde una URL
+ * @param {string} fileUrl - URL del archivo
+ * @returns {string} - Nombre del archivo
+ */
+const getFileNameFromUrl = (fileUrl) => {
+  try {
+    const url = new URL(fileUrl);
+    const pathname = url.pathname;
+    const parts = pathname.split('/');
+    return parts[parts.length - 1] || 'download';
+  } catch (error) {
+    // Si falla el parsing de URL, extraer el nombre de otra forma
+    const parts = fileUrl.split('/');
+    return parts[parts.length - 1] || 'download';
+  }
+};
+
+/**
+ * Descarga un archivo directamente sin abrir ventana
+ * @param {string} fileUrl - URL del archivo a descargar
+ */
+const downloadFile = (fileUrl) => {
+  // Crear un elemento <a> temporal
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = getFileNameFromUrl(fileUrl);
+  link.style.display = 'none';
+  
+  // Agregarlo al DOM, hacer clic, y removerlo
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 export const handleViewFile = (doc) => {
   // Prioridad: file_url (URL absoluta) > file (URL relativa)
   let fileUrl = doc.file_url || doc.file;
@@ -27,12 +88,18 @@ export const handleViewFile = (doc) => {
     fileUrl = `${baseURL}${fileUrl}`;
   }
   
-  // Abrir el archivo en una nueva ventana
-  const width = 800;
-  const height = 700;
-  const left = (window.screen.width / 2) - (width / 2);
-  const top = (window.screen.height / 2) - (height / 2);
-  const windowFeatures = `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`;
-  
-  window.open(fileUrl, 'PDFViewer', windowFeatures);
+  // Verificar si el archivo se puede visualizar en el navegador
+  if (isViewableInBrowser(fileUrl)) {
+    // PDFs e imágenes: abrir en nueva ventana
+    const width = 800;
+    const height = 700;
+    const left = (window.screen.width / 2) - (width / 2);
+    const top = (window.screen.height / 2) - (height / 2);
+    const windowFeatures = `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`;
+    
+    window.open(fileUrl, 'FileViewer', windowFeatures);
+  } else {
+    // Word, Excel, PowerPoint, ZIP, etc.: descargar directamente sin abrir ventana
+    downloadFile(fileUrl);
+  }
 };
