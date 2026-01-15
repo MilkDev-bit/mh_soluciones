@@ -6,8 +6,9 @@ const getAPIBaseURL = () => {
     // Remover /api/v1 del final para obtener la URL base
     return apiUrl.replace(/\/api\/v1\/?$/, '');
   }
-  // En producción, usar el protocolo y host actual
-  return `${window.location.protocol}//${window.location.host}`;
+  // En producción, SIEMPRE usar HTTPS para evitar Mixed Content errors
+  // Esto es seguro porque Railway/Nginx siempre sirven sobre HTTPS
+  return `https://${window.location.host}`;
 };
 
 /**
@@ -61,13 +62,8 @@ const getFileNameFromUrl = (fileUrl) => {
  */
 const downloadFile = async (fileUrl) => {
   try {
-    // Mostrar indicador de carga (opcional)
-    console.log('Iniciando descarga:', fileUrl);
-    
     // Descargar el archivo como Blob
-    const response = await fetch(fileUrl, {
-      credentials: 'include' // Incluir cookies para autenticación
-    });
+    const response = await fetch(fileUrl);
     
     if (!response.ok) {
       throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
@@ -92,9 +88,7 @@ const downloadFile = async (fileUrl) => {
     // Liberar la URL del Blob después de un tiempo
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
-    }, 1000);
-    
-    console.log('Descarga completada:', getFileNameFromUrl(fileUrl));
+    }, 100);
   } catch (error) {
     console.error('Error al descargar archivo:', error);
     
@@ -121,13 +115,14 @@ export const handleViewFile = async (doc) => {
     fileUrl = `${baseURL}${fileUrl}`;
   }
   
-  // Log para debugging
-  console.log('handleViewFile llamado con URL:', fileUrl);
+  // Asegurar que la URL use HTTPS en producción (evitar Mixed Content)
+  if (!import.meta.env.DEV && fileUrl.startsWith('http://')) {
+    fileUrl = fileUrl.replace(/^http:/, 'https:');
+  }
   
   // Verificar si el archivo se puede visualizar en el navegador
   if (isViewableInBrowser(fileUrl)) {
     // PDFs e imágenes: abrir en nueva ventana
-    console.log('Archivo visualizable, abriendo en ventana nueva');
     const width = 800;
     const height = 700;
     const left = (window.screen.width / 2) - (width / 2);
@@ -137,7 +132,6 @@ export const handleViewFile = async (doc) => {
     window.open(fileUrl, 'FileViewer', windowFeatures);
   } else {
     // Word, Excel, PowerPoint, ZIP, etc.: descargar directamente sin abrir ventana
-    console.log('Archivo no visualizable, iniciando descarga');
     await downloadFile(fileUrl);
   }
 };
