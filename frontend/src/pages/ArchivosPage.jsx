@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   FiFile, 
   FiUpload,
@@ -45,7 +45,7 @@ const ArchivosPage = () => {
     }
   };
 
-  const cargarCarpetasDrive = async (projectId) => {
+  const cargarCarpetasDrive = useCallback(async (projectId) => {
     if (!projectId) {
       setCarpetasDrive([]);
       setFiltroCarpeta('ALL');
@@ -79,9 +79,9 @@ const ArchivosPage = () => {
     } finally {
       setCargandoCarpetas(false);
     }
-  };
+  }, []);
 
-  const cargarArchivos = async () => {
+  const cargarArchivos = useCallback(async () => {
     try {
       setCargando(true);
       setError(null);
@@ -112,7 +112,7 @@ const ArchivosPage = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [filtroTipo, proyectoSeleccionado]);
 
   useEffect(() => {
     cargarProyectos();
@@ -120,13 +120,11 @@ const ArchivosPage = () => {
 
   useEffect(() => {
     cargarCarpetasDrive(proyectoSeleccionado);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proyectoSeleccionado]);
+  }, [proyectoSeleccionado, cargarCarpetasDrive]);
 
   useEffect(() => {
     cargarArchivos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroTipo, filtroCarpeta, proyectoSeleccionado]);
+  }, [cargarArchivos]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
