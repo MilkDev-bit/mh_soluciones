@@ -108,7 +108,8 @@ const CalendarPage = () => {
     if (selectedProject) {
       fetchEvents();
     }
-  }, [selectedProject, fetchEvents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject]);
 
   const handleEventSaved = () => {
     setIsModalOpen(false);
