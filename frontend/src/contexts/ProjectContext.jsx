@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 
 const ProjectContext = createContext();
 
@@ -15,20 +15,27 @@ export const ProjectProvider = ({ children }) => {
   const [tasksUpdated, setTasksUpdated] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [activeProjectId, setActiveProjectId] = useState(null);
+  const projectsUpdateTimeoutRef = useRef(null);
+  const tasksUpdateTimeoutRef = useRef(null);
 
-  // Trigger projects update across all components
+  // Trigger projects update with debounce
   const triggerProjectsUpdate = useCallback(() => {
-    setProjectsUpdated(true);
-    setLastUpdateTime(Date.now());
-    // Dispatch custom event for components that may not have context access
-    window.dispatchEvent(new CustomEvent('projectsUpdated'));
+    clearTimeout(projectsUpdateTimeoutRef.current);
+    projectsUpdateTimeoutRef.current = setTimeout(() => {
+      setProjectsUpdated(true);
+      setLastUpdateTime(Date.now());
+      // Only use the context event, no window.dispatchEvent to avoid duplicates
+    }, 300); // Debounce of 300ms
   }, []);
 
-  // Trigger tasks update across all components
+  // Trigger tasks update with debounce
   const triggerTasksUpdate = useCallback((projectId = null) => {
-    setTasksUpdated(true);
-    setLastUpdateTime(Date.now());
-    window.dispatchEvent(new CustomEvent('tasksUpdated', { detail: { projectId } }));
+    clearTimeout(tasksUpdateTimeoutRef.current);
+    tasksUpdateTimeoutRef.current = setTimeout(() => {
+      setTasksUpdated(true);
+      setLastUpdateTime(Date.now());
+      if (projectId) setActiveProjectId(projectId);
+    }, 300); // Debounce of 300ms
   }, []);
 
   // Mark updates as consumed
@@ -41,24 +48,22 @@ export const ProjectProvider = ({ children }) => {
   }, []);
 
   // Notify when a specific project is updated
-  const notifyProjectChange = useCallback((projectId, changeType = 'update') => {
-    window.dispatchEvent(new CustomEvent('projectChanged', { 
-      detail: { projectId, changeType, timestamp: Date.now() } 
-    }));
+  const notifyProjectChange = useCallback((_projectId, _changeType = 'update') => {
+    // Note: Removed window.dispatchEvent to avoid duplicate events
     triggerProjectsUpdate();
   }, [triggerProjectsUpdate]);
 
   // Notify when a task is updated
-  const notifyTaskChange = useCallback((taskId, projectId, changeType = 'update') => {
-    window.dispatchEvent(new CustomEvent('taskChanged', { 
-      detail: { taskId, projectId, changeType, timestamp: Date.now() } 
-    }));
+  const notifyTaskChange = useCallback((_taskId, projectId, _changeType = 'update') => {
+    // Note: Removed window.dispatchEvent to avoid duplicate events
     triggerTasksUpdate(projectId);
   }, [triggerTasksUpdate]);
 
-  // Subscribe to global updates
+  // Subscribe to global updates (keeping for backward compatibility)
   const useProjectUpdateSubscription = (callback, deps = []) => {
     useEffect(() => {
+      // Note: This hook is deprecated in favor of using projectsUpdated state directly
+      // Kept for backward compatibility with existing code
       const handleUpdate = () => callback();
       window.addEventListener('projectsUpdated', handleUpdate);
       return () => window.removeEventListener('projectsUpdated', handleUpdate);
@@ -67,6 +72,8 @@ export const ProjectProvider = ({ children }) => {
 
   const useTaskUpdateSubscription = (callback, projectId = null, deps = []) => {
     useEffect(() => {
+      // Note: This hook is deprecated in favor of using tasksUpdated state directly
+      // Kept for backward compatibility with existing code
       const handleUpdate = (e) => {
         if (!projectId || e.detail?.projectId === projectId) {
           callback(e.detail);
@@ -76,6 +83,18 @@ export const ProjectProvider = ({ children }) => {
       return () => window.removeEventListener('tasksUpdated', handleUpdate);
     }, [projectId, ...deps]);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (projectsUpdateTimeoutRef.current) {
+        clearTimeout(projectsUpdateTimeoutRef.current);
+      }
+      if (tasksUpdateTimeoutRef.current) {
+        clearTimeout(tasksUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const value = {
     // State
