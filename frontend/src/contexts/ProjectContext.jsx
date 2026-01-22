@@ -15,12 +15,13 @@ export const ProjectProvider = ({ children }) => {
   const [tasksUpdated, setTasksUpdated] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [activeProjectId, setActiveProjectId] = useState(null);
-  const updateTimeoutRef = useRef(null);
+  const projectsUpdateTimeoutRef = useRef(null);
+  const tasksUpdateTimeoutRef = useRef(null);
 
   // Trigger projects update with debounce
   const triggerProjectsUpdate = useCallback(() => {
-    clearTimeout(updateTimeoutRef.current);
-    updateTimeoutRef.current = setTimeout(() => {
+    clearTimeout(projectsUpdateTimeoutRef.current);
+    projectsUpdateTimeoutRef.current = setTimeout(() => {
       setProjectsUpdated(true);
       setLastUpdateTime(Date.now());
       // Only use the context event, no window.dispatchEvent to avoid duplicates
@@ -29,8 +30,8 @@ export const ProjectProvider = ({ children }) => {
 
   // Trigger tasks update with debounce
   const triggerTasksUpdate = useCallback((projectId = null) => {
-    clearTimeout(updateTimeoutRef.current);
-    updateTimeoutRef.current = setTimeout(() => {
+    clearTimeout(tasksUpdateTimeoutRef.current);
+    tasksUpdateTimeoutRef.current = setTimeout(() => {
       setTasksUpdated(true);
       setLastUpdateTime(Date.now());
       if (projectId) setActiveProjectId(projectId);
@@ -86,8 +87,11 @@ export const ProjectProvider = ({ children }) => {
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
+      if (projectsUpdateTimeoutRef.current) {
+        clearTimeout(projectsUpdateTimeoutRef.current);
+      }
+      if (tasksUpdateTimeoutRef.current) {
+        clearTimeout(tasksUpdateTimeoutRef.current);
       }
     };
   }, []);
