@@ -17,11 +17,12 @@ import './assets/styles/main.scss';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime in v4)
+      staleTime: 10 * 60 * 1000, // 10 minutes - increased to reduce unnecessary refetches
+      gcTime: 15 * 60 * 1000, // 15 minutes (formerly cacheTime in v4)
       retry: 1,
       refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+      refetchOnReconnect: false, // Disabled to prevent reloads on reconnection
+      refetchOnMount: false, // Disabled to prevent reloads on component mount
     },
     mutations: {
       retry: 1,
@@ -42,33 +43,41 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <BrowserRouter>
-          <ThemeProvider>
-            <AuthProvider>
-              <LayoutProvider>
-                <ProjectProvider> 
-                  <App />
-                  <Toaster 
-                    position="top-right" 
-                    toastOptions={{ 
-                      duration: 4000,
-                      style: {
-                        background: '#333',
-                        color: '#fff',
-                      }
-                    }} 
-                  />
-                </ProjectProvider>
-              </LayoutProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </BrowserRouter>
-      </HelmetProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </React.StrictMode>
+const rootElement = document.getElementById('root');
+const app = (
+  <QueryClientProvider client={queryClient}>
+    <HelmetProvider>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <LayoutProvider>
+              <ProjectProvider> 
+                <App />
+                <Toaster 
+                  position="top-right" 
+                  toastOptions={{ 
+                    duration: 4000,
+                    style: {
+                      background: '#333',
+                      color: '#fff',
+                    }
+                  }} 
+                />
+              </ProjectProvider>
+            </LayoutProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </HelmetProvider>
+    {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+  </QueryClientProvider>
 );
+
+// Conditionally wrap with StrictMode only in development
+if (import.meta.env.DEV) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>{app}</React.StrictMode>
+  );
+} else {
+  ReactDOM.createRoot(rootElement).render(app);
+}

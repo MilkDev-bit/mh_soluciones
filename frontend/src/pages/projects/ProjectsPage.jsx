@@ -52,15 +52,6 @@ const ProjectsPage = () => {
     }
   }, [projectsUpdated, fetchProjects, consumeProjectsUpdate]);
 
-  // Listen for external project update events
-  useEffect(() => {
-    const handleProjectChange = () => {
-      fetchProjects(true);
-    };
-    window.addEventListener('projectsUpdated', handleProjectChange);
-    return () => window.removeEventListener('projectsUpdated', handleProjectChange);
-  }, [fetchProjects]);
-
   const handleProjectSaved = useCallback((savedProject) => {
     if (editingProject) {
       // Optimistic update for edit
