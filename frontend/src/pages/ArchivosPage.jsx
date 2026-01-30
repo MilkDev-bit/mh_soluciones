@@ -39,24 +39,33 @@ const ArchivosPage = () => {
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
-    const ahora = new Date();
     let hoy;
     switch(rangoTipo) {
       case 'week':
         hoy = new Date();
-        return new Date(hoy.setDate(hoy.getDate() - 7));
+        hoy.setDate(hoy.getDate() - 7);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
       case 'month':
         hoy = new Date();
-        return new Date(hoy.setMonth(hoy.getMonth() - 1));
+        hoy.setMonth(hoy.getMonth() - 1);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
       case '3months':
         hoy = new Date();
-        return new Date(hoy.setMonth(hoy.getMonth() - 3));
+        hoy.setMonth(hoy.getMonth() - 3);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
       case '6months':
         hoy = new Date();
-        return new Date(hoy.setMonth(hoy.getMonth() - 6));
+        hoy.setMonth(hoy.getMonth() - 6);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
       case 'year':
         hoy = new Date();
-        return new Date(hoy.setFullYear(hoy.getFullYear() - 1));
+        hoy.setFullYear(hoy.getFullYear() - 1);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
       default:
         return null;
     }
