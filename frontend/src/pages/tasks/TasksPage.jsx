@@ -24,7 +24,21 @@ import {
   FiUser,
   FiPaperclip
 } from 'react-icons/fi';
-import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
+import { 
+  format, 
+  parseISO, 
+  isPast, 
+  isFuture, 
+  addDays, 
+  isWithinInterval,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfDay,
+  endOfDay,
+  isToday as checkIsToday
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
@@ -33,6 +47,9 @@ const TasksPage = () => {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('all');
+  const [filtroFecha, setFiltroFecha] = useState('all');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -175,6 +192,91 @@ const TasksPage = () => {
     notifyTaskChange(taskId, null, 'delete');
   }, [notifyTaskChange]);
 
+  const handleFechaFilterChange = (value) => {
+    setFiltroFecha(value);
+    // Reset custom dates when changing to predefined filters
+    if (value !== 'custom') {
+      setFechaDesde('');
+      setFechaHasta('');
+    }
+  };
+
+  const aplicarFiltroFecha = useCallback((tasksList) => {
+    if (filtroFecha === 'all') return tasksList;
+
+    const hoy = new Date();
+
+    return tasksList.filter(task => {
+      if (!task.due_date) return false; // Excluir tareas sin fecha de vencimiento
+      
+      const fechaVencimiento = parseISO(task.due_date);
+
+      switch(filtroFecha) {
+        case 'today':
+          return checkIsToday(fechaVencimiento);
+        
+        case 'week':
+          return isWithinInterval(fechaVencimiento, {
+            start: startOfWeek(hoy, { weekStartsOn: 1 }), // Lunes
+            end: endOfWeek(hoy, { weekStartsOn: 1 })
+          });
+        
+        case 'month':
+          return isWithinInterval(fechaVencimiento, {
+            start: startOfMonth(hoy),
+            end: endOfMonth(hoy)
+          });
+        
+        case 'next7':
+          return isWithinInterval(fechaVencimiento, {
+            start: startOfDay(hoy),
+            end: endOfDay(addDays(hoy, 7))
+          });
+        
+        case 'next30':
+          return isWithinInterval(fechaVencimiento, {
+            start: startOfDay(hoy),
+            end: endOfDay(addDays(hoy, 30))
+          });
+        
+        case 'overdue':
+          return isPast(fechaVencimiento) && task.status !== 'COMPLETED';
+        
+        case 'custom':
+          if (!fechaDesde && !fechaHasta) return true;
+          
+          if (fechaDesde && fechaHasta) {
+            // Validar que fechaDesde <= fechaHasta
+            const desde = parseISO(fechaDesde);
+            const hasta = parseISO(fechaHasta);
+            
+            if (desde > hasta) {
+              toast.error('La fecha "desde" no puede ser posterior a la fecha "hasta"');
+              return false;
+            }
+            
+            return isWithinInterval(fechaVencimiento, {
+              start: startOfDay(desde),
+              end: endOfDay(hasta)
+            });
+          }
+          
+          if (fechaDesde) {
+            return fechaVencimiento >= parseISO(fechaDesde);
+          }
+          
+          if (fechaHasta) {
+            return fechaVencimiento <= endOfDay(parseISO(fechaHasta));
+          }
+          
+          return true;
+        
+        default:
+          return true;
+      }
+    });
+  }, [filtroFecha, fechaDesde, fechaHasta]);
+
   // Categorize tasks based on Microsoft Teams style
   // Tasks are categorized into 3 groups:
   // - Upcoming: Tasks due within the next 7 days (configurable)
@@ -202,9 +304,17 @@ const TasksPage = () => {
     };
   };
 
-  const filteredTasks = selectedProject === 'all'
-    ? tasks
-    : tasks.filter((task) => task.project === parseInt(selectedProject));
+  const filteredTasks = useMemo(() => {
+    // Primero aplicar filtro de proyecto
+    let tasksFiltered = selectedProject === 'all'
+      ? tasks
+      : tasks.filter((task) => task.project === parseInt(selectedProject));
+    
+    // Luego aplicar filtro de fecha
+    tasksFiltered = aplicarFiltroFecha(tasksFiltered);
+    
+    return tasksFiltered;
+  }, [tasks, selectedProject, filtroFecha, fechaDesde, fechaHasta, aplicarFiltroFecha]);
 
   const categorizedTasks = categorizeTasks(filteredTasks);
 
@@ -406,6 +516,47 @@ const TasksPage = () => {
                   ))}
               </select>
             </div>
+
+            <div className="filter-group">
+              <FiCalendar />
+              <label htmlFor="date-filter">Filtrar por Fecha:</label>
+              <select
+                id="date-filter"
+                className="form-select"
+                value={filtroFecha}
+                onChange={(e) => handleFechaFilterChange(e.target.value)}
+              >
+                <option value="all">Todas las fechas</option>
+                <option value="today">Hoy</option>
+                <option value="week">Esta semana</option>
+                <option value="month">Este mes</option>
+                <option value="next7">Próximos 7 días</option>
+                <option value="next30">Próximos 30 días</option>
+                <option value="overdue">Vencidas</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+
+            {filtroFecha === 'custom' && (
+              <div className="filter-group custom-date-filters">
+                <label htmlFor="fecha-desde">Desde:</label>
+                <input
+                  type="date"
+                  id="fecha-desde"
+                  className="form-control"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                />
+                <label htmlFor="fecha-hasta">Hasta:</label>
+                <input
+                  type="date"
+                  id="fecha-hasta"
+                  className="form-control"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           {isStudent(user.role) ? (
