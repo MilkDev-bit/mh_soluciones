@@ -206,6 +206,17 @@ const TasksPage = () => {
 
     const hoy = new Date();
 
+    // Validate custom date range if both dates are provided
+    if (filtroFecha === 'custom' && fechaDesde && fechaHasta) {
+      const desde = parseISO(fechaDesde);
+      const hasta = parseISO(fechaHasta);
+      
+      if (desde > hasta) {
+        toast.error('La fecha "desde" no puede ser posterior a la fecha "hasta"');
+        return tasksList; // Return all tasks if validation fails
+      }
+    }
+
     return tasksList.filter(task => {
       if (!task.due_date) return false; // Excluir tareas sin fecha de vencimiento
       
@@ -240,20 +251,14 @@ const TasksPage = () => {
           });
         
         case 'overdue':
-          return isPast(fechaVencimiento) && task.status !== 'COMPLETED';
+          return isPast(endOfDay(fechaVencimiento)) && task.status !== 'COMPLETED';
         
         case 'custom':
           if (!fechaDesde && !fechaHasta) return true;
           
           if (fechaDesde && fechaHasta) {
-            // Validar que fechaDesde <= fechaHasta
             const desde = parseISO(fechaDesde);
             const hasta = parseISO(fechaHasta);
-            
-            if (desde > hasta) {
-              toast.error('La fecha "desde" no puede ser posterior a la fecha "hasta"');
-              return false;
-            }
             
             return isWithinInterval(fechaVencimiento, {
               start: startOfDay(desde),
@@ -262,7 +267,7 @@ const TasksPage = () => {
           }
           
           if (fechaDesde) {
-            return fechaVencimiento >= parseISO(fechaDesde);
+            return fechaVencimiento >= startOfDay(parseISO(fechaDesde));
           }
           
           if (fechaHasta) {
@@ -314,7 +319,7 @@ const TasksPage = () => {
     tasksFiltered = aplicarFiltroFecha(tasksFiltered);
     
     return tasksFiltered;
-  }, [tasks, selectedProject, filtroFecha, fechaDesde, fechaHasta, aplicarFiltroFecha]);
+  }, [tasks, selectedProject, filtroFecha, fechaDesde, fechaHasta]);
 
   const categorizedTasks = categorizeTasks(filteredTasks);
 
