@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   FiFile, 
   FiUpload,
@@ -39,17 +39,23 @@ const ArchivosPage = () => {
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
-    const hoy = new Date();
+    const ahora = new Date();
+    let hoy;
     switch(rangoTipo) {
       case 'week':
+        hoy = new Date();
         return new Date(hoy.setDate(hoy.getDate() - 7));
       case 'month':
+        hoy = new Date();
         return new Date(hoy.setMonth(hoy.getMonth() - 1));
       case '3months':
+        hoy = new Date();
         return new Date(hoy.setMonth(hoy.getMonth() - 3));
       case '6months':
+        hoy = new Date();
         return new Date(hoy.setMonth(hoy.getMonth() - 6));
       case 'year':
+        hoy = new Date();
         return new Date(hoy.setFullYear(hoy.getFullYear() - 1));
       default:
         return null;
@@ -333,6 +339,14 @@ const ArchivosPage = () => {
     }
   };
 
+  // Memoize the date limit calculation for better performance
+  const fechaLimiteCalculada = useMemo(() => {
+    if (filtroFecha === 'all' || filtroFecha === 'custom') {
+      return null;
+    }
+    return calcularFechaDesde(filtroFecha);
+  }, [filtroFecha]);
+
   const archivosFiltrados = archivos.filter(archivo => {
     const nombreArchivo = archivo.name || '';
     const proyectoNombre = archivo.project?.name || '';
@@ -367,18 +381,24 @@ const ArchivosPage = () => {
       const fechaArchivo = new Date(archivo.created_at);
       
       if (filtroFecha === 'custom') {
-        if (fechaDesde) {
-          coincideFecha = coincideFecha && fechaArchivo >= new Date(fechaDesde);
-        }
-        if (fechaHasta) {
-          const fechaHastaFin = new Date(fechaHasta);
-          fechaHastaFin.setHours(23, 59, 59, 999);
-          coincideFecha = coincideFecha && fechaArchivo <= fechaHastaFin;
+        // Don't apply filter if there's a validation error
+        if (errorFecha) {
+          coincideFecha = true; // Show all files if dates are invalid
+        } else {
+          if (fechaDesde) {
+            const fechaDesdeInicio = new Date(fechaDesde);
+            fechaDesdeInicio.setHours(0, 0, 0, 0);
+            coincideFecha = coincideFecha && fechaArchivo >= fechaDesdeInicio;
+          }
+          if (fechaHasta) {
+            const fechaHastaFin = new Date(fechaHasta);
+            fechaHastaFin.setHours(23, 59, 59, 999);
+            coincideFecha = coincideFecha && fechaArchivo <= fechaHastaFin;
+          }
         }
       } else {
-        const fechaLimite = calcularFechaDesde(filtroFecha);
-        if (fechaLimite) {
-          coincideFecha = fechaArchivo >= fechaLimite;
+        if (fechaLimiteCalculada) {
+          coincideFecha = fechaArchivo >= fechaLimiteCalculada;
         }
       }
     }
@@ -479,7 +499,6 @@ const ArchivosPage = () => {
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
                 disabled={filtroFecha !== 'custom'}
-                placeholder="Fecha desde"
                 aria-label="Fecha desde"
               />
               <input
@@ -487,7 +506,6 @@ const ArchivosPage = () => {
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
                 disabled={filtroFecha !== 'custom'}
-                placeholder="Fecha hasta"
                 aria-label="Fecha hasta"
               />
             </div>
