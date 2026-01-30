@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   FiFile, 
   FiUpload,
@@ -32,6 +32,71 @@ const ArchivosPage = () => {
   const [proyectos, setProyectos] = useState([]);
   const [carpetasDrive, setCarpetasDrive] = useState([]); // Dynamic folders from Drive
   const [cargandoCarpetas, setCargandoCarpetas] = useState(false);
+  const [filtroFecha, setFiltroFecha] = useState('all'); // 'all', 'week', 'month', '3months', '6months', 'year', 'custom'
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+  const [errorFecha, setErrorFecha] = useState('');
+
+  // Helper para calcular fechas de rangos predefinidos
+  const calcularFechaDesde = (rangoTipo) => {
+    let hoy;
+    switch(rangoTipo) {
+      case 'week':
+        hoy = new Date();
+        hoy.setDate(hoy.getDate() - 7);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
+      case 'month':
+        hoy = new Date();
+        hoy.setMonth(hoy.getMonth() - 1);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
+      case '3months':
+        hoy = new Date();
+        hoy.setMonth(hoy.getMonth() - 3);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
+      case '6months':
+        hoy = new Date();
+        hoy.setMonth(hoy.getMonth() - 6);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
+      case 'year':
+        hoy = new Date();
+        hoy.setFullYear(hoy.getFullYear() - 1);
+        hoy.setHours(0, 0, 0, 0);
+        return hoy;
+      default:
+        return null;
+    }
+  };
+
+  // Función para manejar cambios en el filtro de fecha
+  const handleFiltroFechaChange = (value) => {
+    setFiltroFecha(value);
+    setErrorFecha('');
+    
+    // Reset custom dates when switching to predefined range
+    if (value !== 'custom') {
+      setFechaDesde('');
+      setFechaHasta('');
+    }
+  };
+
+  // Función para validar rango de fechas personalizadas
+  const validarFechasPersonalizadas = useCallback(() => {
+    if (filtroFecha === 'custom' && fechaDesde && fechaHasta) {
+      const desde = new Date(fechaDesde);
+      const hasta = new Date(fechaHasta);
+      
+      if (desde > hasta) {
+        setErrorFecha('La fecha desde no puede ser posterior a la fecha hasta');
+        return false;
+      }
+    }
+    setErrorFecha('');
+    return true;
+  }, [filtroFecha, fechaDesde, fechaHasta]);
 
   const cargarProyectos = async () => {
     try {
@@ -125,6 +190,11 @@ const ArchivosPage = () => {
   useEffect(() => {
     cargarArchivos();
   }, [cargarArchivos]);
+
+  // Validar fechas personalizadas cuando cambian
+  useEffect(() => {
+    validarFechasPersonalizadas();
+  }, [validarFechasPersonalizadas]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
@@ -278,6 +348,14 @@ const ArchivosPage = () => {
     }
   };
 
+  // Memoize the date limit calculation for better performance
+  const fechaLimiteCalculada = useMemo(() => {
+    if (filtroFecha === 'all' || filtroFecha === 'custom') {
+      return null;
+    }
+    return calcularFechaDesde(filtroFecha);
+  }, [filtroFecha]);
+
   const archivosFiltrados = archivos.filter(archivo => {
     const nombreArchivo = archivo.name || '';
     const proyectoNombre = archivo.project?.name || '';
@@ -306,7 +384,35 @@ const ArchivosPage = () => {
       }
     }
     
-    return coincideBusqueda && coincideTipo && coincideCarpeta;
+    // Filter by date
+    let coincideFecha = true;
+    if (filtroFecha !== 'all' && archivo.created_at) {
+      const fechaArchivo = new Date(archivo.created_at);
+      
+      if (filtroFecha === 'custom') {
+        // Don't apply filter if there's a validation error
+        if (errorFecha) {
+          coincideFecha = true; // Show all files if dates are invalid
+        } else {
+          if (fechaDesde) {
+            const fechaDesdeInicio = new Date(fechaDesde);
+            fechaDesdeInicio.setHours(0, 0, 0, 0);
+            coincideFecha = coincideFecha && fechaArchivo >= fechaDesdeInicio;
+          }
+          if (fechaHasta) {
+            const fechaHastaFin = new Date(fechaHasta);
+            fechaHastaFin.setHours(23, 59, 59, 999);
+            coincideFecha = coincideFecha && fechaArchivo <= fechaHastaFin;
+          }
+        }
+      } else {
+        if (fechaLimiteCalculada) {
+          coincideFecha = fechaArchivo >= fechaLimiteCalculada;
+        }
+      }
+    }
+    
+    return coincideBusqueda && coincideTipo && coincideCarpeta && coincideFecha;
   });
 
   return (
@@ -382,6 +488,40 @@ const ArchivosPage = () => {
               </option>
             ))}
           </select>
+          <div className="fecha-filter-container">
+            <select 
+              className="fecha-rango-select"
+              value={filtroFecha}
+              onChange={(e) => handleFiltroFechaChange(e.target.value)}
+            >
+              <option value="all">Todas las fechas</option>
+              <option value="week">Última semana</option>
+              <option value="month">Último mes</option>
+              <option value="3months">Últimos 3 meses</option>
+              <option value="6months">Últimos 6 meses</option>
+              <option value="year">Último año</option>
+              <option value="custom">Personalizado</option>
+            </select>
+            <div className={`fecha-personalizada ${filtroFecha !== 'custom' ? 'disabled' : ''}`}>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                disabled={filtroFecha !== 'custom'}
+                aria-label="Fecha desde"
+              />
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                disabled={filtroFecha !== 'custom'}
+                aria-label="Fecha hasta"
+              />
+            </div>
+            {errorFecha && (
+              <span className="error-fecha">{errorFecha}</span>
+            )}
+          </div>
         </div>
         <div className="toolbar-derecha">
           <div className="vista-toggle">

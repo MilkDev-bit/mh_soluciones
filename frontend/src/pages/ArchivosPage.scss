@@ -164,6 +164,83 @@
           border-color: #ff7c15;
         }
       }
+
+      .fecha-filter-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 200px;
+
+        @media (min-width: 768px) {
+          flex: 0 0 auto;
+          min-width: 250px;
+        }
+
+        .fecha-rango-select {
+          padding: 0.625rem 1rem;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: all 0.2s ease;
+
+          &:focus {
+            outline: 2px solid #ff7c15;
+            outline-offset: 2px;
+            border-color: #ff7c15;
+          }
+
+          &:hover {
+            border-color: #ff7c15;
+          }
+        }
+
+        .fecha-personalizada {
+          display: flex;
+          gap: 0.5rem;
+          transition: opacity 0.2s ease;
+
+          &.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+          }
+
+          input[type="date"] {
+            padding: 0.625rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.875rem;
+            flex: 1;
+            transition: all 0.2s ease;
+
+            &:focus {
+              outline: 2px solid #ff7c15;
+              outline-offset: 2px;
+              border-color: #ff7c15;
+            }
+
+            &:hover:not(:disabled) {
+              border-color: #ff7c15;
+            }
+
+            &:disabled {
+              cursor: not-allowed;
+              background: #f9f9f9;
+            }
+          }
+        }
+
+        .error-fecha {
+          font-size: 0.75rem;
+          color: #ef4444;
+          font-weight: 500;
+          margin-top: -0.25rem;
+        }
+      }
     }
 
     .toolbar-derecha {
