@@ -28,6 +28,7 @@ from django.db.models import Q
 from django.db import DatabaseError
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_ratelimit.decorators import ratelimit
+from django_ratelimit.core import is_ratelimited
 from django.utils.decorators import method_decorator
 from datetime import timedelta
 from requests.exceptions import Timeout as RequestsTimeout
@@ -54,6 +55,7 @@ User = get_user_model()
 logger = logging.getLogger('authentication.google_oauth')
 forgot_password_logger = logging.getLogger('authentication.forgot_password')
 user_logger = logging.getLogger('authentication.users')
+ratelimit_logger = logging.getLogger('authentication.ratelimit')
 
 if settings.DEBUG:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -220,7 +222,6 @@ class LoginAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Attempt rate limiting, but don't fail if Redis is down
         try:
-            from django_ratelimit.core import is_ratelimited
             if is_ratelimited(request=request, group='login', key='ip', rate='5/m', method='POST', increment=True):
                 return Response(
                     {'error': 'Demasiados intentos de inicio de sesión. Por favor, intente más tarde.'},
@@ -228,8 +229,7 @@ class LoginAPIView(APIView):
                 )
         except Exception as e:
             # Log the error but continue with login
-            logger = logging.getLogger('authentication.ratelimit')
-            logger.warning(f'Rate limiting failed (Redis issue), continuing without rate limit: {e}')
+            ratelimit_logger.warning(f'Rate limiting failed (Redis issue), continuing without rate limit: {e}')
         
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)

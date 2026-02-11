@@ -5,6 +5,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
+from unittest.mock import patch
 from apps.authentication.models import LoginActivity
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -191,10 +192,8 @@ class LoginAPITests(TestCase):
     
     def test_login_succeeds_when_redis_unavailable(self):
         """Test that login still works when Redis is unavailable"""
-        from unittest.mock import patch
-        
         # Mock is_ratelimited to raise an exception (simulating Redis failure)
-        with patch('django_ratelimit.core.is_ratelimited') as mock_ratelimit:
+        with patch('apps.authentication.api.views.is_ratelimited') as mock_ratelimit:
             mock_ratelimit.side_effect = Exception("Redis connection failed")
             
             response = self.client.post(self.login_url, {
@@ -209,10 +208,8 @@ class LoginAPITests(TestCase):
     
     def test_rate_limiting_works_when_redis_available(self):
         """Test that rate limiting works when Redis is available"""
-        from unittest.mock import patch
-        
         # Mock is_ratelimited to return True (simulating rate limit hit)
-        with patch('django_ratelimit.core.is_ratelimited') as mock_ratelimit:
+        with patch('apps.authentication.api.views.is_ratelimited') as mock_ratelimit:
             mock_ratelimit.return_value = True
             
             response = self.client.post(self.login_url, {
