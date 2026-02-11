@@ -32,6 +32,8 @@ from django_ratelimit.core import is_ratelimited
 from django.utils.decorators import method_decorator
 from datetime import timedelta
 from requests.exceptions import Timeout as RequestsTimeout
+from redis.exceptions import RedisError, ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
+from django_redis.exceptions import ConnectionInterrupted
 
 from apps.core.permissions import IsSuperAdmin, CanManageUsers
 from apps.core.utils import (
@@ -222,14 +224,17 @@ class LoginAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Attempt rate limiting, but don't fail if Redis is down
         try:
-            if is_ratelimited(request=request, group='login', key='ip', rate='5/m', method='POST', increment=True):
+            if is_ratelimited(request=request, group='login', key='ip', rate='5/m', increment=True):
                 return Response(
                     {'error': 'Demasiados intentos de inicio de sesión. Por favor, intente más tarde.'},
                     status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
-        except Exception as e:
-            # Log the error but continue with login
+        except (RedisError, RedisConnectionError, RedisTimeoutError, ConnectionInterrupted) as e:
+            # Log Redis-specific errors but continue with login
             ratelimit_logger.warning(f'Rate limiting failed (Redis issue), continuing without rate limit: {e}')
+        except Exception as e:
+            # Log unexpected errors but continue with login to maintain availability
+            ratelimit_logger.error(f'Rate limiting failed (unexpected error), continuing without rate limit: {e}')
         
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
