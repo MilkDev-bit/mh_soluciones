@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { FiEdit, FiTrash2, FiKey, FiCheckCircle } from 'react-icons/fi';
 import { FaCrown, FaWrench, FaUserGraduate, FaChalkboardTeacher, FaUser } from 'react-icons/fa';
 
-const UserCard = ({ user, onEdit, onDelete, onActivate, onChangePassword }) => {
+const UserCard = memo(({ user, onEdit, onDelete, onActivate, onChangePassword }) => {
   // Map roles to icons
   const roleIcons = {
     SUPERADMIN: <FaCrown />,
@@ -99,6 +100,13 @@ const UserCard = ({ user, onEdit, onDelete, onActivate, onChangePassword }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if user data or handler functions actually changed
+  return prevProps.user.id === nextProps.user.id &&
+         prevProps.user.is_active === nextProps.user.is_active &&
+         prevProps.user.updated_at === nextProps.user.updated_at;
+});
+
+UserCard.displayName = 'UserCard';
 
 export default UserCard;

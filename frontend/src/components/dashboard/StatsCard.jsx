@@ -1,7 +1,7 @@
-import React from 'react';
+import { memo } from 'react';
 import './Dashboard.scss';
 
-const StatsCard = ({ title, value, icon, color }) => {
+const StatsCard = memo(({ title, value, icon, color }) => {
   return (
     <div className={`stat-card ${color}`}>
       <div className={`stat-icon ${color}`}>
@@ -14,6 +14,13 @@ const StatsCard = ({ title, value, icon, color }) => {
       <div className="stat-decoration"></div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if value or color changed
+  return prevProps.value === nextProps.value &&
+         prevProps.color === nextProps.color &&
+         prevProps.title === nextProps.title;
+});
+
+StatsCard.displayName = 'StatsCard';
 
 export default StatsCard;
