@@ -101,10 +101,12 @@ const UserCard = memo(({ user, onEdit, onDelete, onActivate, onChangePassword })
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if user data or handler functions actually changed
+  // Custom comparison: only re-render if user data actually changed
+  // Returns true if props are equal (prevents re-render)
+  // Handler functions are not compared - they're assumed to be stable
   return prevProps.user.id === nextProps.user.id &&
          prevProps.user.is_active === nextProps.user.is_active &&
-         prevProps.user.updated_at === nextProps.user.updated_at;
+         (prevProps.user.updated_at || '') === (nextProps.user.updated_at || '');
 });
 
 UserCard.displayName = 'UserCard';

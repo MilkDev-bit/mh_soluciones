@@ -25,16 +25,19 @@ const UsersPage = () => {
   // Fetch users with React Query
   const { 
     data: usersData, 
-    isLoading: loading 
+    isLoading: loading,
+    isError 
   } = useQuery({
     queryKey: ['users', currentPage, searchTerm],
     queryFn: () => getUsers(currentPage, searchTerm),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    onError: () => {
-      toast.error('No se pudieron cargar los usuarios.');
-    }
   });
+
+  // Handle errors
+  if (isError) {
+    toast.error('No se pudieron cargar los usuarios.');
+  }
 
   const users = usersData?.results || usersData || [];
   const totalCount = usersData?.count || users.length;

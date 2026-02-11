@@ -107,10 +107,11 @@ const ProjectCard = memo(({ project }) => {
   );
 }, (prevProps, nextProps) => {
   // Custom comparison: only re-render if project data actually changed
+  // Returns true if props are equal (prevents re-render)
   return prevProps.project.id === nextProps.project.id &&
-         prevProps.project.updated_at === nextProps.project.updated_at &&
-         prevProps.project.progress === nextProps.project.progress &&
-         prevProps.project.status === nextProps.project.status;
+         (prevProps.project.updated_at || '') === (nextProps.project.updated_at || '') &&
+         (prevProps.project.progress || 0) === (nextProps.project.progress || 0) &&
+         (prevProps.project.status || '') === (nextProps.project.status || '');
 });
 
 ProjectCard.displayName = 'ProjectCard';

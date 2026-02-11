@@ -27,18 +27,20 @@ const ProjectsPage = () => {
     data: projectsData, 
     isLoading, 
     isFetching,
-    refetch 
+    refetch,
+    isError 
   } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     select: (data) => data.results || data,
-    onError: (error) => {
-      console.error('Error fetching projects:', error);
-      toast.error('No se pudieron cargar los proyectos.');
-    }
   });
+
+  // Handle errors
+  if (isError) {
+    toast.error('No se pudieron cargar los proyectos.');
+  }
 
   const projects = projectsData || [];
 
