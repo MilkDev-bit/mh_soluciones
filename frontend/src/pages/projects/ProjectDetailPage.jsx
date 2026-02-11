@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback, useContext  } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getProjectById,
   removeProjectMember,
@@ -16,9 +17,8 @@ import {
 } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
-import { AuthContext } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
-import { ROLES, isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
+import { isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
 import { getDocumentsByTask } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
@@ -41,8 +41,7 @@ import {
   FiTrash2,
   FiSave,
   FiX,
-  FiCalendar,
-  FiRefreshCw
+  FiCalendar
 } from 'react-icons/fi';
 import { format, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -225,7 +224,7 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
         </div>
       ) : (
         <div className="submission-body">
-          {submission?.notes && <p className="notes">"{submission.notes}"</p>}
+          {submission?.notes && <p className="notes">&ldquo;{submission.notes}&rdquo;</p>}
           <div className="submission-links">
             {submission?.link && (
               <a href={submission.link} target="_blank" rel="noopener noreferrer" className="submission-link">
@@ -343,90 +342,90 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [project, setProject] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [taskDocuments, setTaskDocuments] = useState({});
-  const [projectEvents, setProjectEvents] = useState([]);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const { notifyProjectChange, notifyTaskChange, tasksUpdated, consumeTasksUpdate } = useProjectContext();
   const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
   const { register: submissionRegister, handleSubmit: submissionHandleSubmit, reset: submissionReset } = useForm();
 
-  const fetchProjectEvents = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const eventsData = await getEventsByProject(projectId);
-      const eventList = eventsData?.results || eventsData || [];
-      const currentDate = new Date();
-      const upcomingEvents = eventList
-        .filter((event) => {
-          if (!event?.start_time) return false;
-          const eventDate = parseISO(event.start_time);
-          return !isAfter(currentDate, eventDate);
-        })
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-      setProjectEvents(upcomingEvents.slice(0, 3));
-    } catch (error) {
-      console.error('Error fetching project events:', error);
-    }
-  }, [projectId]);
+  // Fetch current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUserFromSession,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
 
-  const fetchProjectData = useCallback(async (showRefreshIndicator = false) => {
-    if (!projectId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      if (showRefreshIndicator) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      const [projectData, userData] = await Promise.all([
-        getProjectById(projectId), 
-        getCurrentUserFromSession()
-      ]);
-
-      if (userData?.role === 'STUDENT') {
+  // Fetch project data
+  const { 
+    data: project, 
+    isLoading: projectLoading,
+    refetch: refetchProject 
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: async () => {
+      const projectData = await getProjectById(projectId);
+      
+      // Check access for students
+      if (currentUser?.role === 'STUDENT') {
         const isMember = (projectData?.members || []).some(
-          (m) => m?.user?.id === userData?.id || m?.id === userData?.id
+          (m) => m?.user?.id === currentUser?.id || m?.id === currentUser?.id
         );
         if (!isMember) {
           toast.error('No tienes acceso a este proyecto.');
-          setProject(null);
-          setTasks([]);
-          setLoading(false);
-          setIsRefreshing(false);
-          return;
+          return null;
         }
       }
-
+      
       const safeMembers = Array.isArray(projectData?.members) ? projectData.members.filter(Boolean) : [];
-      setProject({ ...projectData, members: safeMembers });
-      setCurrentUser(userData);
+      return { ...projectData, members: safeMembers };
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!projectId && !!currentUser,
+  });
 
-      const [tasksData, eventsData] = await Promise.all([
-        getTasks(projectId),
-        getEventsByProject(projectId)
-      ]);
-
+  // Fetch project tasks
+  const { 
+    data: tasks = [],
+    isLoading: tasksLoading,
+    refetch: refetchTasks 
+  } = useQuery({
+    queryKey: ['projectTasks', projectId],
+    queryFn: async () => {
+      const tasksData = await getTasks(projectId);
       const rawTasks = Array.isArray(tasksData?.results) ? tasksData.results : Array.isArray(tasksData) ? tasksData : [];
       let safeTasks = (rawTasks || []).filter(Boolean);
-      if (userData?.role === 'STUDENT') {
-        safeTasks = safeTasks.filter((task) => task?.assigned_to?.id === userData?.id);
+      
+      if (currentUser?.role === 'STUDENT') {
+        safeTasks = safeTasks.filter((task) => task?.assigned_to?.id === currentUser?.id);
       }
-      setTasks(safeTasks);
+      
+      return safeTasks;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!projectId && !!currentUser,
+  });
 
-      const documentsPromises = safeTasks.map(async (task) => {
+  // Memoize task IDs for stable query key
+  const taskIds = useMemo(() => 
+    tasks?.map(t => t.id).sort().join(',') || '', 
+    [tasks]
+  );
+
+  // Fetch task documents
+  const { data: taskDocuments = {} } = useQuery({
+    queryKey: ['projectTaskDocuments', projectId, taskIds],
+    queryFn: async () => {
+      if (!tasks || tasks.length === 0) return {};
+      
+      const documentsPromises = tasks.map(async (task) => {
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -441,8 +440,18 @@ const ProjectDetailPage = () => {
       documentsResults.forEach((r) => {
         documentsMap[r.taskId] = r.documents;
       });
-      setTaskDocuments(documentsMap);
+      
+      return documentsMap;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!tasks && tasks.length > 0,
+  });
 
+  // Fetch project events
+  const { data: projectEvents = [] } = useQuery({
+    queryKey: ['projectEvents', projectId],
+    queryFn: async () => {
+      const eventsData = await getEventsByProject(projectId);
       const eventList = eventsData?.results || eventsData || [];
       const currentDate = new Date();
       const upcomingEvents = eventList
@@ -452,41 +461,39 @@ const ProjectDetailPage = () => {
           return !isAfter(currentDate, eventDate);
         })
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-      setProjectEvents(upcomingEvents.slice(0, 3));
+      return upcomingEvents.slice(0, 3);
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!projectId,
+  });
 
-    } catch (error) {
-      console.error('Error fetching project data:', error);
-      toast.error('No se pudo cargar la información del proyecto.');
-      setProject(null);
-      setTasks([]);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [projectId]);
+  const loading = projectLoading || tasksLoading;
 
-  useEffect(() => {
-    fetchProjectData();
-  }, [fetchProjectData]);
+  const fetchProjectData = useCallback(async () => {
+    refetchProject();
+    refetchTasks();
+  }, [refetchProject, refetchTasks]);
 
   // Listen for task updates from other components
   useEffect(() => {
     if (tasksUpdated) {
-      fetchProjectData(true);
+      fetchProjectData();
       consumeTasksUpdate();
     }
   }, [tasksUpdated, fetchProjectData, consumeTasksUpdate]);
 
-  // Listen for external task update events
+  // Listen for external task update events (keep for backward compatibility)
   useEffect(() => {
     const handleTaskChange = (e) => {
       if (!e.detail?.projectId || e.detail.projectId === parseInt(projectId)) {
-        fetchProjectData(true);
+        refetchProject();
+        refetchTasks();
       }
     };
     window.addEventListener('tasksUpdated', handleTaskChange);
     return () => window.removeEventListener('tasksUpdated', handleTaskChange);
-  }, [fetchProjectData, projectId]);
+  }, [refetchProject, refetchTasks, projectId]);
 
   const handleDeleteProject = async () => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.')) {
@@ -506,11 +513,8 @@ const ProjectDetailPage = () => {
 
   const handleUpdateComment = async (commentId, data) => {
     try {
-      const updatedComment = await updateProjectComment(projectId, commentId, data);
-      setProject((prev) => ({
-        ...prev,
-        comments: (prev?.comments || []).map((c) => (c.id === commentId ? updatedComment : c))
-      }));
+      await updateProjectComment(projectId, commentId, data);
+      queryClient.invalidateQueries(['project', projectId]);
       toast.success('Comentario actualizado.');
     } catch (error) {
       console.error('Error updating comment:', error);
@@ -521,10 +525,7 @@ const ProjectDetailPage = () => {
   const handleDeleteComment = async (commentId) => {
     try {
       await deleteProjectComment(projectId, commentId);
-      setProject((prev) => ({
-        ...prev,
-        comments: (prev?.comments || []).filter((c) => c.id !== commentId)
-      }));
+      queryClient.invalidateQueries(['project', projectId]);
       toast.success('Comentario eliminado.');
     } catch (error) {
       console.error('Error deleting comment:', error);
@@ -534,11 +535,8 @@ const ProjectDetailPage = () => {
 
   const handleUpdateSubmission = async (submissionId, data) => {
     try {
-      const updatedSubmission = await updateProjectSubmission(projectId, submissionId, data);
-      setProject((prev) => ({
-        ...prev,
-        submissions: (prev?.submissions || []).map((s) => (s.id === submissionId ? updatedSubmission : s))
-      }));
+      await updateProjectSubmission(projectId, submissionId, data);
+      queryClient.invalidateQueries(['project', projectId]);
       toast.success('Entrega actualizada correctamente.');
     } catch (error) {
       console.error('Error updating submission:', error?.response?.data || error);
@@ -549,10 +547,7 @@ const ProjectDetailPage = () => {
   const handleDeleteSubmission = async (submissionId) => {
     try {
       await deleteProjectSubmission(projectId, submissionId);
-      setProject((prev) => ({
-        ...prev,
-        submissions: (prev?.submissions || []).filter((s) => s.id !== submissionId)
-      }));
+      queryClient.invalidateQueries(['project', projectId]);
       toast.success('Entrega eliminada correctamente.');
     } catch (error) {
       console.error('Error deleting submission:', error);
@@ -561,11 +556,8 @@ const ProjectDetailPage = () => {
   };
 
   const handleTaskCreated = (newTask, isEditMode = false) => {
-    if (isEditMode) {
-      setTasks((prev) => prev.map((t) => (t.id === newTask.id ? newTask : t)));
-    } else {
-      setTasks((prev) => [newTask, ...prev]);
-    }
+    queryClient.invalidateQueries(['projectTasks', projectId]);
+    queryClient.invalidateQueries(['projectTaskDocuments', projectId]);
     setIsModalOpen(false);
     // Notify other components about the task change
     notifyTaskChange(newTask.id, projectId, isEditMode ? 'update' : 'create');
@@ -575,8 +567,8 @@ const ProjectDetailPage = () => {
   const handleEditProject = () => setIsEditModalOpen(true);
   const handleCloseEditModal = () => setIsEditModalOpen(false);
 
-  const handleProjectUpdated = (updatedProject) => {
-    setProject((prev) => ({ ...prev, ...updatedProject }));
+  const handleProjectUpdated = () => {
+    queryClient.invalidateQueries(['project', projectId]);
     setIsEditModalOpen(false);
     // Notify other components about the project change
     notifyProjectChange(projectId, 'update');
@@ -586,16 +578,15 @@ const ProjectDetailPage = () => {
   const handleAddMember = () => setIsAddMemberModalOpen(true);
 
   const handleMemberAdded = () => {
-    fetchProjectData(true);
+    queryClient.invalidateQueries(['project', projectId]);
     setIsAddMemberModalOpen(false);
   };
 
   const onProjectCommentSubmit = async (data) => {
     if (!data?.comment || !data.comment.trim()) return;
     try {
-      const newCommentFromApi = await addProjectComment(projectId, { comment: data.comment });
-      const newCommentWithUser = { ...newCommentFromApi, user: currentUser };
-      setProject((prev) => ({ ...prev, comments: [...(prev?.comments || []), newCommentWithUser] }));
+      await addProjectComment(projectId, { comment: data.comment });
+      queryClient.invalidateQueries(['project', projectId]);
       commentReset();
       toast.success('Comentario añadido');
     } catch (error) {
@@ -616,9 +607,8 @@ const ProjectDetailPage = () => {
       formData.append('notes', data?.notes || '');
       formData.append('link', data?.link || '');
       if (hasFile) formData.append('file', data.file[0]);
-      const newSubmissionFromApi = await addProjectSubmission(projectId, formData);
-      const newSubmissionWithUser = { ...newSubmissionFromApi, submitted_by: currentUser };
-      setProject((prev) => ({ ...prev, submissions: [...(prev?.submissions || []), newSubmissionWithUser] }));
+      await addProjectSubmission(projectId, formData);
+      queryClient.invalidateQueries(['project', projectId]);
       submissionReset();
       toast.success('Entrega añadida con éxito');
     } catch (error) {
@@ -708,19 +698,15 @@ const ProjectDetailPage = () => {
             onClose={() => setSelectedTask(null)}
             documents={taskDocuments[selectedTask.id] || []}
             onDocumentUpload={() => {
-              getDocumentsByTask(selectedTask.id)
-                .then((docs) => {
-                  setTaskDocuments((prev) => ({ ...prev, [selectedTask.id]: docs }));
-                })
-                .catch((error) => {
-                  console.error('Error refreshing documents:', error);
-                });
+              queryClient.invalidateQueries(['projectTaskDocuments', projectId]);
             }}
-            onTaskUpdated={(updatedTask) => {
-              setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
+            onTaskUpdated={() => {
+              queryClient.invalidateQueries(['projectTasks', projectId]);
+              queryClient.invalidateQueries(['projectTaskDocuments', projectId]);
             }}
-            onTaskDeleted={(taskId) => {
-              setTasks((prev) => prev.filter((t) => t.id !== taskId));
+            onTaskDeleted={() => {
+              queryClient.invalidateQueries(['projectTasks', projectId]);
+              queryClient.invalidateQueries(['projectTaskDocuments', projectId]);
               setSelectedTask(null);
             }}
           />

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUsers, deleteUser, activateUser } from '../../services/userService';
 import UserModal from '../../components/admin/UserModal';
 import ChangePasswordModal from '../../components/admin/ChangePasswordModal';
@@ -12,36 +13,37 @@ import './UsersPage.scss';
 import '../../assets/styles/_buttons.scss';
 
 const UsersPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const usersPerPage = 20;
 
-  const fetchUsers = async (page = 1, search = '') => {
-    try {
-      setLoading(true);
-      const response = await getUsers(page, search);
-      setUsers(response.results || response);
-      setTotalCount(response.count || (response.results || response).length);
-      setTotalPages(response.count ? Math.ceil(response.count / usersPerPage) : 1);
-      setCurrentPage(page);
-    } catch (error) {
-      toast.error('No se pudieron cargar los usuarios.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch users with React Query
+  const { 
+    data: usersData, 
+    isLoading: loading,
+    isError 
+  } = useQuery({
+    queryKey: ['users', currentPage, searchTerm],
+    queryFn: () => getUsers(currentPage, searchTerm),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
+  // Handle errors with useEffect to avoid re-render loops
   useEffect(() => {
-    fetchUsers(currentPage, searchTerm);
-  }, [currentPage, searchTerm]);
+    if (isError) {
+      toast.error('No se pudieron cargar los usuarios.');
+    }
+  }, [isError]);
+
+  const users = usersData?.results || usersData || [];
+  const totalCount = usersData?.count || users.length;
+  const totalPages = usersData?.count ? Math.ceil(usersData.count / usersPerPage) : 1;
 
   const handleOpenModal = (user = null) => {
     setEditingUser(user);
@@ -55,8 +57,8 @@ const UsersPage = () => {
 
   const handleActivateUser = async (userId) => {
     try {
-      const updatedUser = await activateUser(userId);
-      setUsers(users.map(user => user.id === userId ? updatedUser : user));
+      await activateUser(userId);
+      queryClient.invalidateQueries(['users']);
       toast.success('Usuario activado correctamente.');
     } catch (error) {
       toast.error('No se pudo activar el usuario.');
@@ -67,7 +69,7 @@ const UsersPage = () => {
     if (!window.confirm('¿Seguro que deseas desactivar este usuario?')) return;
     try {
       await deleteUser(userId);
-      setUsers(users.map(user => user.id === userId ? { ...user, is_active: false } : user));
+      queryClient.invalidateQueries(['users']);
       toast.success('Usuario desactivado correctamente.');
     } catch (error) {
       toast.error('No se pudo desactivar el usuario.');
@@ -84,12 +86,9 @@ const UsersPage = () => {
     setEditingUser(null);
   };
 
-  const handleUserSaved = (savedUser, isEdit) => {
-    if (isEdit) {
-      setUsers(users.map(user => user.id === savedUser.id ? savedUser : user));
-    } else {
-      fetchUsers(currentPage, searchTerm);
-    }
+  const handleUserSaved = () => {
+    queryClient.invalidateQueries(['users']);
+    handleCloseModal();
   };
 
   const handlePasswordChanged = () => {

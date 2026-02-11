@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -51,8 +51,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, [logout]);
 
+  // Fetch profile only once on mount to avoid infinite loops
+  // fetchProfile is stable due to useCallback with [logout] dependency
+  // Use refreshProfile() for manual updates after this initial fetch
   useEffect(() => {
-    fetchProfile();
+    const token = getToken();
+    if (token) {
+      fetchProfile();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - fetchProfile excluded to prevent re-runs
+
+  // Manual refetch function for when needed
+  const refreshProfile = useCallback(async () => {
+    await fetchProfile();
   }, [fetchProfile]);
 
   // Connect auth error handler to logout
@@ -106,6 +120,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUserContext,
     finalizeLogin,
+    refreshProfile,
   };
 
   if (loading) {

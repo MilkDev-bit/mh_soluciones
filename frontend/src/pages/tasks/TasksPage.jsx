@@ -8,7 +8,6 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isStudent, canCreateTasks } from '../../constants/roles';
-import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
@@ -29,61 +28,98 @@ import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
 const TasksPage = () => {
-  const [user, setUser] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const queryClient = useQueryClient();
   const [selectedProject, setSelectedProject] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [projectMembers, setProjectMembers] = useState([]);
-  const [taskDocuments, setTaskDocuments] = useState({});
 
   const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
-  const fetchData = useCallback(async (showRefreshIndicator = false) => {
-    try {
-      if (showRefreshIndicator) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      
-      const [userData, tasksData, projectsData] = await Promise.all([
-        getCurrentUserFromSession(),
-        getTasks(),
-        getProjects(),
-      ]);
+  // Fetch user data with React Query
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUserFromSession,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000,
+  });
 
-      setUser(userData);
-      const tasksList = Array.isArray(tasksData.results) ? tasksData.results : [];
+  // Fetch tasks with React Query
+  const { 
+    data: tasksData, 
+    isLoading: tasksLoading,
+    isFetching: tasksFetching,
+    refetch: refetchTasks 
+  } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: getTasks,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,
+    select: (data) => {
+      const tasksList = Array.isArray(data.results) ? data.results : [];
       
       // For students, filter to only show their assigned tasks
-      let filteredTasks = tasksList;
-      if (userData.role === 'STUDENT') {
-        filteredTasks = tasksList.filter(task => {
-          const isAssignedTo = task.assigned_to?.id === userData.id;
+      if (user?.role === 'STUDENT') {
+        return tasksList.filter(task => {
+          const isAssignedTo = task.assigned_to?.id === user.id;
           const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
-            task.assigned_students_data.some(student => student.id === userData.id);
+            task.assigned_students_data.some(student => student.id === user.id);
           return isAssignedTo || isInAssignedStudents;
         });
       }
-
-      setTasks(filteredTasks);
       
-      let filteredProjects = Array.isArray(projectsData.results) ? projectsData.results : [];
-      if (userData.role === 'STUDENT') {
-        filteredProjects = filteredProjects.filter(project => 
+      return tasksList;
+    },
+    enabled: !!user, // Only fetch when user is available
+  });
+
+  // Fetch projects with React Query
+  const { 
+    data: projectsData,
+    isLoading: projectsLoading 
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    select: (data) => {
+      const projectsList = Array.isArray(data.results) ? data.results : [];
+      
+      // For students, filter to only show their projects
+      if (user?.role === 'STUDENT') {
+        return projectsList.filter(project => 
           project.members?.some(member => 
-            member.user?.id === userData.id || member.id === userData.id
+            member.user?.id === user.id || member.id === user.id
           )
         );
       }
       
-      setProjects(filteredProjects);
+      return projectsList;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch project members when a project is selected
+  const { data: projectMembers = [] } = useQuery({
+    queryKey: ['projectMembers', selectedProject],
+    queryFn: () => getProjectMembers(selectedProject),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: selectedProject !== 'all',
+  });
+
+  // Memoize task IDs for stable query key
+  const taskIds = useMemo(() => 
+    tasksData?.map(t => t.id).sort().join(',') || '', 
+    [tasksData]
+  );
+
+  // Fetch documents for all tasks
+  const { data: taskDocuments = {} } = useQuery({
+    queryKey: ['taskDocuments', taskIds],
+    queryFn: async () => {
+      if (!tasksData || tasksData.length === 0) return {};
       
-      const documentsPromises = filteredTasks.map(async (task) => {
+      const documentsPromises = tasksData.map(async (task) => {
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -98,82 +134,53 @@ const TasksPage = () => {
       documentsResults.forEach(result => {
         documentsMap[result.taskId] = result.documents;
       });
-      setTaskDocuments(documentsMap);
       
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('No se pudieron cargar los datos.');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+      return documentsMap;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!tasksData && tasksData.length > 0,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const tasks = tasksData || [];
+  const projects = projectsData || [];
+  const loading = tasksLoading || projectsLoading;
+  const isRefreshing = tasksFetching;
 
+  // Listen for task updates from other components
   useEffect(() => {
     if (tasksUpdated) {
-      fetchData(true);
+      refetchTasks();
       consumeTasksUpdate();
     }
-  }, [tasksUpdated, fetchData, consumeTasksUpdate]);
-
-  useEffect(() => {
-    const handleTaskChange = () => {
-      fetchData(true);
-    };
-    window.addEventListener('tasksUpdated', handleTaskChange);
-    return () => window.removeEventListener('tasksUpdated', handleTaskChange);
-  }, [fetchData]);
-
-  useEffect(() => {
-    const fetchMembers = async () => {
-      if (selectedProject !== 'all') {
-        try {
-          const members = await getProjectMembers(selectedProject);
-          setProjectMembers(members);
-        } catch (error) {
-          console.error('Error fetching project members:', error);
-          setProjectMembers([]);
-        }
-      } else {
-        setProjectMembers([]);
-      }
-    };
-    fetchMembers();
-  }, [selectedProject, isModalOpen]);
+  }, [tasksUpdated, refetchTasks, consumeTasksUpdate]);
 
   const handleRefresh = useCallback(() => {
-    fetchData(true);
-  }, [fetchData]);
+    refetchTasks();
+  }, [refetchTasks]);
 
   const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
-    if (isEditMode) {
-      setTasks(prev => prev.map(task => 
-        task.id === newTask.id ? newTask : task
-      ));
-    } else {
-      setTasks(prev => [newTask, ...prev]);
-    }
+    // Invalidate and refetch tasks
+    queryClient.invalidateQueries(['tasks']);
+    queryClient.invalidateQueries(['taskDocuments']);
     setIsModalOpen(false);
     notifyTaskChange(newTask.id, newTask.project, isEditMode ? 'update' : 'create');
     toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
-  }, [notifyTaskChange]);
+  }, [queryClient, notifyTaskChange]);
 
   const handleTaskUpdated = useCallback((updatedTask) => {
-    setTasks(prev => prev.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    ));
+    // Invalidate and refetch tasks
+    queryClient.invalidateQueries(['tasks']);
+    queryClient.invalidateQueries(['taskDocuments']);
     notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
-  }, [notifyTaskChange]);
+  }, [queryClient, notifyTaskChange]);
 
   const handleTaskDeleted = useCallback((taskId) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+    // Invalidate and refetch tasks
+    queryClient.invalidateQueries(['tasks']);
+    queryClient.invalidateQueries(['taskDocuments']);
     setSelectedTask(null);
     notifyTaskChange(taskId, null, 'delete');
-  }, [notifyTaskChange]);
+  }, [queryClient, notifyTaskChange]);
 
   // Categorize tasks based on Microsoft Teams style
   // Tasks are categorized into 3 groups:
@@ -338,16 +345,7 @@ const TasksPage = () => {
             onClose={() => setSelectedTask(null)}
             documents={taskDocuments[selectedTask.id] || []}
             onDocumentUpload={() => {
-              getDocumentsByTask(selectedTask.id)
-                .then(docs => {
-                  setTaskDocuments(prev => ({
-                    ...prev,
-                    [selectedTask.id]: docs
-                  }));
-                })
-                .catch(error => {
-                  console.error('Error refreshing documents:', error);
-                });
+              queryClient.invalidateQueries(['taskDocuments']);
             }}
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}
