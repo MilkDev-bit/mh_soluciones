@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -8,7 +8,6 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isStudent, canCreateTasks } from '../../constants/roles';
-import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskForm from '../../components/tasks/TaskForm';
@@ -340,16 +339,7 @@ const TasksPage = () => {
             onClose={() => setSelectedTask(null)}
             documents={taskDocuments[selectedTask.id] || []}
             onDocumentUpload={() => {
-              getDocumentsByTask(selectedTask.id)
-                .then(docs => {
-                  setTaskDocuments(prev => ({
-                    ...prev,
-                    [selectedTask.id]: docs
-                  }));
-                })
-                .catch(error => {
-                  console.error('Error refreshing documents:', error);
-                });
+              queryClient.invalidateQueries(['taskDocuments']);
             }}
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}

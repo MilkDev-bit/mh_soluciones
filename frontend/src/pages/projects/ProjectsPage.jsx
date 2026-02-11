@@ -8,7 +8,7 @@ import { getProjects } from '../../services/projectService';
 import { isAdmin, isStudent } from '../../constants/roles';
 import ProjectCard from '../../components/projects/ProjectCard';
 import Loading from '../../components/common/Loading';
-import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
+import { SkeletonList } from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import ProjectForm from '../../components/projects/ProjectForm';
 import GradesWidget from '../../components/common/GradesWidget';
@@ -50,7 +50,7 @@ const ProjectsPage = () => {
     }
   }, [projectsUpdated, refetch, consumeProjectsUpdate]);
 
-  const handleProjectSaved = useCallback((savedProject) => {
+  const handleProjectSaved = useCallback(() => {
     if (editingProject) {
       toast.success('¡Proyecto actualizado!');
     } else {

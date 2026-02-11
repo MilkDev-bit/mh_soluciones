@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { FiUsers, FiCheckSquare, FiCalendar, FiTrendingUp } from 'react-icons/fi';
 import { translateStatus } from '../../utils/projectUtils';
