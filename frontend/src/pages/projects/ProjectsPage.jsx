@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
@@ -16,57 +17,51 @@ import './ProjectsPage.scss';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
-  const { triggerProjectsUpdate, projectsUpdated, consumeProjectsUpdate } = useProjectContext();
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
+  const { projectsUpdated, consumeProjectsUpdate } = useProjectContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
 
-  const fetchProjects = useCallback(async (showRefreshIndicator = false) => {
-    try {
-      if (showRefreshIndicator) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      const response = await getProjects();
-      setProjects(response.results || response);
-    } catch (error) {
+  // Use React Query for data fetching with caching
+  const { 
+    data: projectsData, 
+    isLoading, 
+    isFetching,
+    refetch 
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    select: (data) => data.results || data,
+    onError: (error) => {
+      console.error('Error fetching projects:', error);
       toast.error('No se pudieron cargar los proyectos.');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
     }
-  }, []);
+  });
 
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+  const projects = projectsData || [];
 
   // Listen for project updates from other components
   useEffect(() => {
     if (projectsUpdated) {
-      fetchProjects(true);
+      refetch();
       consumeProjectsUpdate();
     }
-  }, [projectsUpdated, fetchProjects, consumeProjectsUpdate]);
+  }, [projectsUpdated, refetch, consumeProjectsUpdate]);
 
   const handleProjectSaved = useCallback((savedProject) => {
     if (editingProject) {
-      // Optimistic update for edit
-      setProjects(prev => prev.map(p => p.id === savedProject.id ? savedProject : p));
       toast.success('¡Proyecto actualizado!');
     } else {
-      // Optimistic update for create
-      setProjects(prev => [savedProject, ...prev]);
       toast.success('¡Proyecto creado exitosamente!');
     }
 
-    triggerProjectsUpdate();
+    // Invalidate and refetch projects
+    queryClient.invalidateQueries(['projects']);
     setIsModalOpen(false);
     setEditingProject(null);
-  }, [editingProject, triggerProjectsUpdate]);
+  }, [editingProject, queryClient]);
 
   const handleOpenModal = useCallback(() => {
     setEditingProject(null);
@@ -78,7 +73,7 @@ const ProjectsPage = () => {
     setEditingProject(null);
   }, []);
   
-  if (loading || !user) {
+  if (isLoading || !user) {
     return (
       <>
         <Helmet>
@@ -133,16 +128,16 @@ const ProjectsPage = () => {
             </div>
           </div>
           <div className="header-actions">
-            {isRefreshing && (
+            {isFetching && (
               <Loading inline size="small" text="Actualizando..." />
             )}
             <button 
               className="btn btn-ghost btn-icon" 
-              onClick={() => fetchProjects(true)}
-              disabled={isRefreshing}
+              onClick={() => refetch()}
+              disabled={isFetching}
               title="Actualizar proyectos"
             >
-              <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
+              <FiRefreshCw className={isFetching ? 'spinning' : ''} />
             </button>
             {user && isAdmin(user.role) && (
               <button 

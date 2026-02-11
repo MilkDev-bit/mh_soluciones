@@ -51,8 +51,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, [logout]);
 
+  // Fetch profile only once on mount
   useEffect(() => {
-    fetchProfile();
+    const token = getToken();
+    if (token && !user) {
+      fetchProfile();
+    } else if (!token) {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+
+  // Manual refetch function for when needed
+  const refreshProfile = useCallback(async () => {
+    await fetchProfile();
   }, [fetchProfile]);
 
   // Connect auth error handler to logout
@@ -106,6 +118,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUserContext,
     finalizeLogin,
+    refreshProfile,
   };
 
   if (loading) {

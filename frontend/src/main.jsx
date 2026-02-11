@@ -17,12 +17,12 @@ import './assets/styles/main.scss';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutes - increased to reduce unnecessary refetches
-      gcTime: 15 * 60 * 1000, // 15 minutes (formerly cacheTime in v4)
+      staleTime: 5 * 60 * 1000, // 5 minutes - data remains fresh
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime in v4) - cache retention
       retry: 1,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false, // Disabled to prevent reloads on reconnection
-      refetchOnMount: false, // Disabled to prevent reloads on component mount
+      refetchOnWindowFocus: false, // Prevent refetch on tab focus
+      refetchOnReconnect: false, // Prevent refetch on reconnect
+      refetchOnMount: false, // Use cache if available
     },
     mutations: {
       retry: 1,
