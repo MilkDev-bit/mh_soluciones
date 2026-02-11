@@ -212,13 +212,25 @@ class UserProfileAPIView(generics.RetrieveUpdateAPIView):
         return UserSerializer
 
 
-@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
 class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = LoginSerializer
 
     def post(self, request, *args, **kwargs):
+        # Attempt rate limiting, but don't fail if Redis is down
+        try:
+            from django_ratelimit.core import is_ratelimited
+            if is_ratelimited(request=request, group='login', key='ip', rate='5/m', method='POST', increment=True):
+                return Response(
+                    {'error': 'Demasiados intentos de inicio de sesión. Por favor, intente más tarde.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+        except Exception as e:
+            # Log the error but continue with login
+            logger = logging.getLogger('authentication.ratelimit')
+            logger.warning(f'Rate limiting failed (Redis issue), continuing without rate limit: {e}')
+        
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']

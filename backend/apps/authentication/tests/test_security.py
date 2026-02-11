@@ -188,6 +188,41 @@ class LoginAPITests(TestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_login_succeeds_when_redis_unavailable(self):
+        """Test that login still works when Redis is unavailable"""
+        from unittest.mock import patch
+        
+        # Mock is_ratelimited to raise an exception (simulating Redis failure)
+        with patch('django_ratelimit.core.is_ratelimited') as mock_ratelimit:
+            mock_ratelimit.side_effect = Exception("Redis connection failed")
+            
+            response = self.client.post(self.login_url, {
+                'username': 'testuser',
+                'password': 'StrongP@ssw0rd123'
+            })
+            
+            # Login should still succeed despite Redis failure
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn('access', response.data)
+            self.assertIn('refresh', response.data)
+    
+    def test_rate_limiting_works_when_redis_available(self):
+        """Test that rate limiting works when Redis is available"""
+        from unittest.mock import patch
+        
+        # Mock is_ratelimited to return True (simulating rate limit hit)
+        with patch('django_ratelimit.core.is_ratelimited') as mock_ratelimit:
+            mock_ratelimit.return_value = True
+            
+            response = self.client.post(self.login_url, {
+                'username': 'testuser',
+                'password': 'StrongP@ssw0rd123'
+            })
+            
+            # Should be rate limited
+            self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+            self.assertIn('error', response.data)
 
 
 class SecurityMiddlewareTests(TestCase):
