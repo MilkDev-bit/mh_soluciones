@@ -37,10 +37,12 @@ const ProjectsPage = () => {
     select: (data) => data.results || data,
   });
 
-  // Handle errors
-  if (isError) {
-    toast.error('No se pudieron cargar los proyectos.');
-  }
+  // Handle errors with useEffect to avoid re-render loops
+  useEffect(() => {
+    if (isError) {
+      toast.error('No se pudieron cargar los proyectos.');
+    }
+  }, [isError]);
 
   const projects = projectsData || [];
 

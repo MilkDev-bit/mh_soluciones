@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
   }, [logout]);
 
   // Fetch profile only once on mount to avoid infinite loops
+  // fetchProfile is stable due to useCallback with [logout] dependency
   // Use refreshProfile() for manual updates after this initial fetch
   useEffect(() => {
     const token = getToken();

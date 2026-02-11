@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,10 +34,12 @@ const UsersPage = () => {
     gcTime: 10 * 60 * 1000,
   });
 
-  // Handle errors
-  if (isError) {
-    toast.error('No se pudieron cargar los usuarios.');
-  }
+  // Handle errors with useEffect to avoid re-render loops
+  useEffect(() => {
+    if (isError) {
+      toast.error('No se pudieron cargar los usuarios.');
+    }
+  }, [isError]);
 
   const users = usersData?.results || usersData || [];
   const totalCount = usersData?.count || users.length;
