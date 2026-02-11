@@ -54,13 +54,13 @@ export const AuthProvider = ({ children }) => {
   // Fetch profile only once on mount
   useEffect(() => {
     const token = getToken();
-    if (token && !user) {
+    if (token) {
       fetchProfile();
-    } else if (!token) {
+    } else {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount
+  }, []); // Only on mount - user is set by fetchProfile
 
   // Manual refetch function for when needed
   const refreshProfile = useCallback(async () => {

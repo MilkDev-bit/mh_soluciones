@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -413,9 +413,15 @@ const ProjectDetailPage = () => {
     enabled: !!projectId && !!currentUser,
   });
 
+  // Memoize task IDs for stable query key
+  const taskIds = useMemo(() => 
+    tasks?.map(t => t.id).sort().join(',') || '', 
+    [tasks]
+  );
+
   // Fetch task documents
   const { data: taskDocuments = {} } = useQuery({
-    queryKey: ['projectTaskDocuments', projectId, tasks],
+    queryKey: ['projectTaskDocuments', projectId, taskIds],
     queryFn: async () => {
       if (!tasks || tasks.length === 0) return {};
       

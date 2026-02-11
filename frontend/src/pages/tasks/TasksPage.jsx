@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
@@ -107,9 +107,15 @@ const TasksPage = () => {
     enabled: selectedProject !== 'all',
   });
 
+  // Memoize task IDs for stable query key
+  const taskIds = useMemo(() => 
+    tasksData?.map(t => t.id).sort().join(',') || '', 
+    [tasksData]
+  );
+
   // Fetch documents for all tasks
   const { data: taskDocuments = {} } = useQuery({
-    queryKey: ['taskDocuments', tasksData],
+    queryKey: ['taskDocuments', taskIds],
     queryFn: async () => {
       if (!tasksData || tasksData.length === 0) return {};
       

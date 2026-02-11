@@ -51,16 +51,11 @@ const ProjectsPage = () => {
   }, [projectsUpdated, refetch, consumeProjectsUpdate]);
 
   const handleProjectSaved = useCallback(() => {
-    if (editingProject) {
-      toast.success('¡Proyecto actualizado!');
-    } else {
-      toast.success('¡Proyecto creado exitosamente!');
-    }
-
     // Invalidate and refetch projects
     queryClient.invalidateQueries(['projects']);
     setIsModalOpen(false);
     setEditingProject(null);
+    toast.success(editingProject ? '¡Proyecto actualizado!' : '¡Proyecto creado exitosamente!');
   }, [editingProject, queryClient]);
 
   const handleOpenModal = useCallback(() => {
