@@ -32,7 +32,7 @@ from django_ratelimit.core import is_ratelimited
 from django.utils.decorators import method_decorator
 from datetime import timedelta
 from requests.exceptions import Timeout as RequestsTimeout
-from redis.exceptions import RedisError, ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
+from redis.exceptions import RedisError
 from django_redis.exceptions import ConnectionInterrupted
 
 from apps.core.permissions import IsSuperAdmin, CanManageUsers
@@ -229,7 +229,7 @@ class LoginAPIView(APIView):
                     {'error': 'Demasiados intentos de inicio de sesión. Por favor, intente más tarde.'},
                     status=status.HTTP_429_TOO_MANY_REQUESTS
                 )
-        except (RedisError, RedisConnectionError, RedisTimeoutError, ConnectionInterrupted) as e:
+        except (RedisError, ConnectionInterrupted) as e:
             # Log Redis-specific errors but continue with login
             ratelimit_logger.warning(f'Rate limiting failed (Redis issue), continuing without rate limit: {e}')
         except Exception as e:
