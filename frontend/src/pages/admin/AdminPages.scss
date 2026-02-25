@@ -181,7 +181,7 @@
   .table-avatar {
     width: 40px; // Reduced from 44px
     height: 40px;
-    border-radius: $border-radius-lg;
+    border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
     box-shadow: var(--shadow-sm);
