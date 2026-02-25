@@ -445,6 +445,7 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
   };
 
   const handleSubmissionComplete = async () => {
+    toast.success('✅ ¡Tarea entregada exitosamente!');
     setShowSubmissionForm(false);
     await fetchSubmissions();
   };
