@@ -178,11 +178,11 @@
     }
   }
 
-  .table-avatar {
+  .table-avatar-wrapper {
     width: 40px; // Reduced from 44px
     height: 40px;
     border-radius: 50%;
-    object-fit: cover;
+    overflow: hidden;
     flex-shrink: 0;
     box-shadow: var(--shadow-sm);
 
@@ -190,6 +190,13 @@
       width: 36px;
       height: 36px;
     }
+  }
+
+  .table-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .user-cell-info {
