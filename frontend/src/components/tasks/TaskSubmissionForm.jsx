@@ -82,8 +82,6 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
       
       setUploadProgress(100);
       
-      toast.success(`✅ Entrega realizada exitosamente${selectedFiles.length > 0 ? ` - ${selectedFiles.length} archivo(s) subido(s)` : ''}`);
-      
       // Reset form
       setSelectedFiles([]);
       
