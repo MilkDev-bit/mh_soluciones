@@ -30,11 +30,22 @@ const ProjectsPage = () => {
     refetch,
     isError 
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', user?.id, user?.role],
     queryFn: getProjects,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    select: (data) => data.results || data,
+    enabled: !!user,
+    select: (data) => {
+      const projectsList = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      if (user?.role === 'STUDENT') {
+        return projectsList.filter(project =>
+          project.members?.some(member =>
+            member.user?.id === user.id || member.id === user.id
+          )
+        );
+      }
+      return projectsList;
+    },
   });
 
   // Handle errors with useEffect to avoid re-render loops
