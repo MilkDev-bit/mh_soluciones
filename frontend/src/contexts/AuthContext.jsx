@@ -26,17 +26,17 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [navigate]);
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (silent = false) => {
     const token = getToken();
     if (!token) {
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
 
     try {
       const decodedToken = jwtDecode(token);
       if (decodedToken.exp * 1000 < Date.now()) {
-        toast.error('Tu sesión ha expirado.');
+        if (!silent) toast.error('Tu sesión ha expirado.');
         logout();
         return;
       }
@@ -45,9 +45,11 @@ export const AuthProvider = ({ children }) => {
       setUser(data);
     } catch (error) {
       console.error("Error fetching profile:", error);
-      logout();
+      if (!silent) {
+        logout();
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [logout]);
 
@@ -68,6 +70,28 @@ export const AuthProvider = ({ children }) => {
   const refreshProfile = useCallback(async () => {
     await fetchProfile();
   }, [fetchProfile]);
+
+  // Refresh profile when user returns to the tab (handles role changes by admin)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && getToken()) {
+        fetchProfile(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchProfile]);
+
+  // Refresh profile every 5 minutes while user is logged in and tab is visible
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchProfile(true);
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, fetchProfile]);
 
   // Connect auth error handler to logout
   useEffect(() => {
