@@ -45,8 +45,12 @@ const Sidebar = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (isSidebarOpen || !isSidebarCollapsed || projectsUpdated) {
-      fetchProjects();
+    if (projectsUpdated) {
+      // Background update - don't show loading spinner to avoid re-renders that close modals
+      fetchProjects(true);
+    } else if (isSidebarOpen || !isSidebarCollapsed) {
+      // Initial load or sidebar opening - show loading
+      fetchProjects(false);
     }
   }, [isSidebarOpen, isSidebarCollapsed, projectsUpdated]);
 
@@ -56,9 +60,11 @@ const Sidebar = () => {
     }
   }, [location]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const response = await getProjects();
       const projectsData = Array.isArray(response) ? response : (response.results || []);
       setProjects(projectsData);
@@ -77,12 +83,12 @@ const Sidebar = () => {
 
   const handleRefreshProjects = () => {
     setRefreshing(true);
-    fetchProjects();
+    fetchProjects(false); // Explicit refresh by user - show spinner
   };
 
   useEffect(() => {
     const handleProjectsUpdate = () => {
-      fetchProjects();
+      fetchProjects(true); // Always silent for window events
     };
 
     window.addEventListener('projectsUpdated', handleProjectsUpdate);
