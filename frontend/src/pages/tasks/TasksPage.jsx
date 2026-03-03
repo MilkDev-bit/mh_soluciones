@@ -200,7 +200,9 @@ const TasksPage = () => {
   const filteredTasks = useMemo(() => {
     if (selectedProject === 'all') return tasks;
     return tasks.filter((task) => {
-      const taskProjectId = typeof task.project === 'object' ? task.project.id : task.project;
+      const taskProjectId = (task.project && typeof task.project === 'object') 
+        ? task.project.id 
+        : task.project;
       return String(taskProjectId) === String(selectedProject);
     });
   }, [tasks, selectedProject]);
