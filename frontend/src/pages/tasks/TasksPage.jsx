@@ -23,7 +23,8 @@ import {
   FiUser,
   FiPaperclip
 } from 'react-icons/fi';
-import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
+// IMPORTANTE: Se agregó isValid para prevenir crasheos por fechas corruptas
+import { format, parseISO, isPast, isFuture, addDays, isWithinInterval, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
@@ -59,9 +60,9 @@ const TasksPage = () => {
       
       if (user?.role === 'STUDENT') {
         tasksList = tasksList.filter(task => {
-          const isAssignedTo = task.assigned_to?.id === user.id;
-          const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
-            task.assigned_students_data.some(student => student.id === user.id);
+          const isAssignedTo = task?.assigned_to?.id === user?.id;
+          const isInAssignedStudents = Array.isArray(task?.assigned_students_data) && 
+            task.assigned_students_data.some(student => student?.id === user?.id);
           return isAssignedTo || isInAssignedStudents;
         });
       }
@@ -81,7 +82,7 @@ const TasksPage = () => {
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => getProjects(), 
+    queryFn: () => getProjects(),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
@@ -89,8 +90,8 @@ const TasksPage = () => {
       
       if (user?.role === 'STUDENT') {
         return projectsList.filter(project => 
-          project.members?.some(member => 
-            member.user?.id === user.id || member.id === user.id
+          project?.members?.some(member => 
+            member?.user?.id === user?.id || member?.id === user?.id
           )
         );
       }
@@ -113,7 +114,7 @@ const TasksPage = () => {
   const isRefreshing = tasksFetching;
 
   const taskIds = useMemo(() => 
-    tasks.map(t => t.id).sort().join(',') || '', 
+    tasks.map(t => t?.id).filter(Boolean).sort().join(',') || '', 
     [tasks]
   );
 
@@ -123,6 +124,7 @@ const TasksPage = () => {
       if (!tasks || tasks.length === 0) return {};
       
       const documentsPromises = tasks.map(async (task) => {
+        if (!task?.id) return { taskId: null, documents: [] };
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -135,7 +137,7 @@ const TasksPage = () => {
       const documentsResults = await Promise.all(documentsPromises);
       const documentsMap = {};
       documentsResults.forEach(result => {
-        documentsMap[result.taskId] = result.documents;
+        if (result.taskId) documentsMap[result.taskId] = result.documents;
       });
       
       return documentsMap;
@@ -151,22 +153,20 @@ const TasksPage = () => {
     }
   }, [tasksUpdated, refetchTasks, consumeTasksUpdate]);
 
-  const handleRefresh = useCallback(() => {
-    refetchTasks();
-  }, [refetchTasks]);
+  const handleRefresh = useCallback(() => refetchTasks(), [refetchTasks]);
 
   const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setIsModalOpen(false);
-    notifyTaskChange(newTask.id, newTask.project, isEditMode ? 'update' : 'create');
+    notifyTaskChange(newTask?.id, newTask?.project, isEditMode ? 'update' : 'create');
     toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskUpdated = useCallback((updatedTask) => {
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
-    notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
+    notifyTaskChange(updatedTask?.id, updatedTask?.project, 'update');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskDeleted = useCallback((taskId) => {
@@ -176,6 +176,14 @@ const TasksPage = () => {
     notifyTaskChange(taskId, null, 'delete');
   }, [queryClient, notifyTaskChange]);
 
+  // Función segura para formatear fechas sin crashear
+  const renderSafeDate = (dateString) => {
+    if (!dateString) return null;
+    const parsedDate = parseISO(dateString);
+    if (!isValid(parsedDate)) return 'Fecha inválida';
+    return format(parsedDate, 'dd MMM yyyy', { locale: es });
+  };
+
   const UPCOMING_DAYS_THRESHOLD = 7;
   
   const categorizeTasks = (tasksList) => {
@@ -184,25 +192,26 @@ const TasksPage = () => {
 
     return {
       upcoming: tasksList.filter(task => {
-        if (!task.due_date || task.status === 'COMPLETED') return false;
+        if (!task?.due_date || task?.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
+        return isValid(dueDate) && isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
       }),
       overdue: tasksList.filter(task => {
-        if (!task.due_date || task.status === 'COMPLETED') return false;
+        if (!task?.due_date || task?.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        return isPast(dueDate);
+        return isValid(dueDate) && isPast(dueDate);
       }),
-      completed: tasksList.filter(task => task.status === 'COMPLETED')
+      completed: tasksList.filter(task => task?.status === 'COMPLETED')
     };
   };
 
   const filteredTasks = useMemo(() => {
     if (selectedProject === 'all') return tasks;
     return tasks.filter((task) => {
-      const taskProjectId = (task.project && typeof task.project === 'object') 
+      // Validación estricta para evitar error al leer properties de null
+      const taskProjectId = (task?.project && typeof task.project === 'object') 
         ? task.project.id 
-        : task.project;
+        : task?.project;
       return String(taskProjectId) === String(selectedProject);
     });
   }, [tasks, selectedProject]);
@@ -214,6 +223,7 @@ const TasksPage = () => {
   }
 
   const TaskCard = ({ task }) => {
+    if (!task) return null;
     const documents = taskDocuments[task.id] || [];
     
     return (
@@ -222,34 +232,22 @@ const TasksPage = () => {
         onClick={() => setSelectedTask(task)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setSelectedTask(task);
-          }
-        }}
       >
         <div className="task-card-header">
-          <div className="task-icon">
-            <FiCheckSquare />
-          </div>
-          <h3 className="task-title">{task.title}</h3>
+          <div className="task-icon"><FiCheckSquare /></div>
+          <h3 className="task-title">{task.title || 'Sin título'}</h3>
         </div>
         
         <div className="task-card-body">
-          {task.description && (
-            <p className="task-description">{task.description}</p>
-          )}
+          {task.description && <p className="task-description">{task.description}</p>}
           
           <div className="task-meta">
-            <div className="task-project-badge">
-              {task.project_name}
-            </div>
+            {task.project_name && <div className="task-project-badge">{task.project_name}</div>}
             
             {task.due_date && (
               <div className="task-deadline">
                 <FiCalendar />
-                <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+                <span>{renderSafeDate(task.due_date)}</span>
               </div>
             )}
             
@@ -278,13 +276,12 @@ const TasksPage = () => {
         <Icon style={{ color }} />
         <h2>{title}</h2>
         <span className="task-count" style={{ backgroundColor: color }}>
-          {tasks.length}
+          {Array.isArray(tasks) ? tasks.length : 0}
         </span>
       </div>
-      
       <div className="task-column-content">
-        {tasks.length > 0 ? (
-          tasks.map(task => <TaskCard key={task.id} task={task} />)
+        {Array.isArray(tasks) && tasks.length > 0 ? (
+          tasks.map(task => <TaskCard key={task?.id || Math.random()} task={task} />)
         ) : (
           <div className="empty-state">
             <Icon size={48} />
@@ -298,28 +295,23 @@ const TasksPage = () => {
   return (
     <>
       <Helmet>
-        <title>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
+        <title>{isStudent(user?.role) ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
       </Helmet>
 
       {isModalOpen && (
-        <Modal 
-          title="Nueva Tarea" 
-          onClose={() => setIsModalOpen(false)}
-        >
+        <Modal title="Nueva Tarea" onClose={() => setIsModalOpen(false)}>
           {selectedProject !== 'all' ? (
             <TaskForm
               onCancel={() => setIsModalOpen(false)}
-              project={projects.find(p => p.id === parseInt(selectedProject))}
+              // Comparación segura como String en lugar de parseInt
+              project={projects.find(p => String(p?.id) === String(selectedProject))}
               projectMembers={projectMembers}
               onTaskSaved={handleTaskCreated}
             />
           ) : (
             <div className="p-4">
               <p className="text-warning">Por favor selecciona un proyecto primero</p>
-              <button 
-                className="btn btn-secondary" 
-                onClick={() => setIsModalOpen(false)}
-              >
+              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
                 Cerrar
               </button>
             </div>
@@ -328,19 +320,13 @@ const TasksPage = () => {
       )}
 
       {selectedTask && (
-        <Modal
-          title="Detalles de la Tarea"
-          onClose={() => setSelectedTask(null)}
-          size="large"
-        >
+        <Modal title="Detalles de la Tarea" onClose={() => setSelectedTask(null)} size="large">
           <TaskDetailsView
             task={selectedTask}
             user={user}
             onClose={() => setSelectedTask(null)}
-            documents={taskDocuments[selectedTask.id] || []}
-            onDocumentUpload={() => {
-              queryClient.invalidateQueries(['taskDocuments']);
-            }}
+            documents={taskDocuments[selectedTask?.id] || []}
+            onDocumentUpload={() => queryClient.invalidateQueries(['taskDocuments'])}
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}
           />
@@ -350,27 +336,22 @@ const TasksPage = () => {
       <div className="tasks-page animate-slide-up">
         <div className="page-header">
           <div className="header-content">
-            <h1>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
+            <h1>{isStudent(user?.role) ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
           </div>
           <div className="header-actions">
-            {isRefreshing && (
-              <Loading inline size="small" text="Actualizando..." />
-            )}
+            {isRefreshing && <Loading inline size="small" text="Actualizando..." />}
             <button
               className="btn btn-secondary btn-icon"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              aria-label="Actualizar lista de tareas"
-              title="Actualizar"
             >
               <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
             </button>
-            {canCreateTasks(user.role) && (
+            {canCreateTasks(user?.role) && (
               <button 
                 className="btn btn-primary" 
                 onClick={() => setIsModalOpen(true)}
                 disabled={selectedProject === 'all'}
-                title={selectedProject === 'all' ? 'Selecciona un proyecto primero' : 'Crear nueva tarea'}
               >
                 + Nueva Tarea
               </button>
@@ -389,21 +370,20 @@ const TasksPage = () => {
                 value={selectedProject}
                 onChange={(e) => {
                   setSelectedProject(e.target.value);
-                  setCurrentPage(1); 
+                  setCurrentPage(1);
                 }}
               >
                 <option value="all">Todos los Proyectos</option>
-                {Array.isArray(projects) &&
-                  projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
+                {Array.isArray(projects) && projects.map((project) => (
+                  <option key={project?.id || Math.random()} value={project?.id}>
+                    {project?.name || 'Proyecto sin nombre'}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          {isStudent(user.role) ? (
+          {isStudent(user?.role) ? (
             <div className="tasks-board">
               <TaskColumn
                 title="Próximamente"
@@ -412,7 +392,6 @@ const TasksPage = () => {
                 emptyMessage="No hay tareas próximas"
                 color="#f59e0b"
               />
-              
               <TaskColumn
                 title="Vencidas"
                 icon={FiAlertCircle}
@@ -420,7 +399,6 @@ const TasksPage = () => {
                 emptyMessage="No hay tareas vencidas"
                 color="#ef4444"
               />
-              
               <TaskColumn
                 title="Completadas"
                 icon={FiCheckCircle}
@@ -433,65 +411,59 @@ const TasksPage = () => {
             <div className="tasks-list">
               {filteredTasks.length > 0 ? (
                 <div className="tasks-list-container">
-                  {filteredTasks.map(task => (
-                    <div
-                      key={task.id}
-                      className="task-list-item"
-                      onClick={() => setSelectedTask(task)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSelectedTask(task);
-                        }
-                      }}
-                    >
-                      <div className="task-list-item-content">
-                        <div className="task-list-header">
-                          <div className="task-icon">
-                            <FiCheckSquare />
-                          </div>
-                          <h3 className="task-title">{task.title}</h3>
-                          <div className={`task-status-badge status-${task.status.toLowerCase()}`}>
-                            {task.status === 'COMPLETED' ? 'Completada' : 
-                             task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
-                          </div>
-                        </div>
-                        
-                        {task.description && (
-                          <p className="task-description">{task.description}</p>
-                        )}
-                        
-                        <div className="task-list-meta">
-                          <div className="task-project-badge">
-                            {task.project_name}
+                  {filteredTasks.map(task => {
+                    if (!task) return null;
+                    // Se asegura el status para evitar .toLowerCase() en un null
+                    const statusVal = task.status || 'PENDING';
+                    
+                    return (
+                      <div
+                        key={task.id || Math.random()}
+                        className="task-list-item"
+                        onClick={() => setSelectedTask(task)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="task-list-item-content">
+                          <div className="task-list-header">
+                            <div className="task-icon"><FiCheckSquare /></div>
+                            <h3 className="task-title">{task.title || 'Sin título'}</h3>
+                            <div className={`task-status-badge status-${statusVal.toLowerCase()}`}>
+                              {statusVal === 'COMPLETED' ? 'Completada' : 
+                               statusVal === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                            </div>
                           </div>
                           
-                          {task.due_date && (
-                            <div className="task-meta-item">
-                              <FiCalendar />
-                              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
-                            </div>
-                          )}
+                          {task.description && <p className="task-description">{task.description}</p>}
                           
-                          {task.assigned_to && (
-                            <div className="task-meta-item">
-                              <FiUser />
-                              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
-                            </div>
-                          )}
-                          
-                          {taskDocuments[task.id] && taskDocuments[task.id].length > 0 && (
-                            <div className="task-meta-item">
-                              <FiPaperclip />
-                              <span>{taskDocuments[task.id].length} archivo(s)</span>
-                            </div>
-                          )}
+                          <div className="task-list-meta">
+                            {task.project_name && <div className="task-project-badge">{task.project_name}</div>}
+                            
+                            {task.due_date && (
+                              <div className="task-meta-item">
+                                <FiCalendar />
+                                <span>{renderSafeDate(task.due_date)}</span>
+                              </div>
+                            )}
+                            
+                            {task.assigned_to && (
+                              <div className="task-meta-item">
+                                <FiUser />
+                                <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+                              </div>
+                            )}
+                            
+                            {taskDocuments[task.id] && taskDocuments[task.id].length > 0 && (
+                              <div className="task-meta-item">
+                                <FiPaperclip />
+                                <span>{taskDocuments[task.id].length} archivo(s)</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="empty-state">
