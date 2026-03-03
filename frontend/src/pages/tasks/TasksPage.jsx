@@ -36,15 +36,13 @@ const TasksPage = () => {
 
   const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
-  // Fetch user data with React Query
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUserFromSession,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
 
-  // Fetch tasks with React Query
   const { 
     data: tasksData, 
     isLoading: tasksLoading,
@@ -52,16 +50,15 @@ const TasksPage = () => {
     refetch: refetchTasks 
   } = useQuery({
     queryKey: ['tasks', selectedProject, currentPage], 
-    queryFn: () => getTasks(selectedProject, currentPage), // Pasamos parámetros limpios
+    queryFn: () => getTasks(selectedProject, currentPage),
     placeholderData: (previousData) => previousData,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
-      const tasksList = Array.isArray(data.results) ? data.results : [];
+      let tasksList = Array.isArray(data?.results) ? data.results : [];
       
-      // For students, filter to only show their assigned tasks
       if (user?.role === 'STUDENT') {
-        return tasksList.filter(task => {
+        tasksList = tasksList.filter(task => {
           const isAssignedTo = task.assigned_to?.id === user.id;
           const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
             task.assigned_students_data.some(student => student.id === user.id);
@@ -69,24 +66,27 @@ const TasksPage = () => {
         });
       }
       
-      return tasksList;
+      return {
+        results: tasksList,
+        next: data?.next,
+        previous: data?.previous,
+        count: data?.count
+      };
     },
-    enabled: !!user, // Only fetch when user is available
+    enabled: !!user,
   });
 
-  // Fetch projects with React Query
   const { 
     data: projectsData,
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => getProjects(),
+    queryFn: () => getProjects(), 
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
-      const projectsList = Array.isArray(data.results) ? data.results : [];
+      const projectsList = Array.isArray(data?.results) ? data.results : [];
       
-      // For students, filter to only show their projects
       if (user?.role === 'STUDENT') {
         return projectsList.filter(project => 
           project.members?.some(member => 
@@ -94,13 +94,11 @@ const TasksPage = () => {
           )
         );
       }
-      
       return projectsList;
     },
     enabled: !!user,
   });
 
-  // Fetch project members when a project is selected
   const { data: projectMembers = [] } = useQuery({
     queryKey: ['projectMembers', selectedProject],
     queryFn: () => getProjectMembers(selectedProject),
@@ -109,19 +107,22 @@ const TasksPage = () => {
     enabled: selectedProject !== 'all',
   });
 
-  // Memoize task IDs for stable query key
+  const tasks = tasksData?.results || [];
+  const projects = projectsData || [];
+  const loading = tasksLoading || projectsLoading;
+  const isRefreshing = tasksFetching;
+
   const taskIds = useMemo(() => 
-    tasksData?.map(t => t.id).sort().join(',') || '', 
-    [tasksData]
+    tasks.map(t => t.id).sort().join(',') || '', 
+    [tasks]
   );
 
-  // Fetch documents for all tasks
   const { data: taskDocuments = {} } = useQuery({
     queryKey: ['taskDocuments', taskIds],
     queryFn: async () => {
-      if (!tasksData || tasksData.length === 0) return {};
+      if (!tasks || tasks.length === 0) return {};
       
-      const documentsPromises = tasksData.map(async (task) => {
+      const documentsPromises = tasks.map(async (task) => {
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -140,15 +141,9 @@ const TasksPage = () => {
       return documentsMap;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!tasksData && tasksData.length > 0,
+    enabled: !!tasks && tasks.length > 0,
   });
 
-  const tasks = tasksData || [];
-  const projects = projectsData || [];
-  const loading = tasksLoading || projectsLoading;
-  const isRefreshing = tasksFetching;
-
-  // Listen for task updates from other components
   useEffect(() => {
     if (tasksUpdated) {
       refetchTasks();
@@ -161,7 +156,6 @@ const TasksPage = () => {
   }, [refetchTasks]);
 
   const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
-    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setIsModalOpen(false);
@@ -170,25 +164,18 @@ const TasksPage = () => {
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskUpdated = useCallback((updatedTask) => {
-    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskDeleted = useCallback((taskId) => {
-    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setSelectedTask(null);
     notifyTaskChange(taskId, null, 'delete');
   }, [queryClient, notifyTaskChange]);
 
-  // Categorize tasks based on Microsoft Teams style
-  // Tasks are categorized into 3 groups:
-  // - Upcoming: Tasks due within the next 7 days (configurable)
-  // - Overdue: Tasks past their due date
-  // - Completed: All completed tasks
   const UPCOMING_DAYS_THRESHOLD = 7;
   
   const categorizeTasks = (tasksList) => {
@@ -199,7 +186,6 @@ const TasksPage = () => {
       upcoming: tasksList.filter(task => {
         if (!task.due_date || task.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        // Include all future tasks (not just within 7 days) to ensure no tasks are hidden
         return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
       }),
       overdue: tasksList.filter(task => {
@@ -390,7 +376,7 @@ const TasksPage = () => {
           </div>
         </div>
 
-        <div className="glass-card">
+        <div className="glass-card" style={{ opacity: isFetching ? 0.7 : 1, transition: 'opacity 0.2s' }}>
           <div className="filters-bar">
             <div className="filter-group">
               <FiFilter />
@@ -399,7 +385,10 @@ const TasksPage = () => {
                 id="project-filter"
                 className="form-select"
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
+                onChange={(e) => {
+                  setSelectedProject(e.target.value);
+                  setCurrentPage(1); 
+                }}
               >
                 <option value="all">Todos los Proyectos</option>
                 {Array.isArray(projects) &&
@@ -413,7 +402,6 @@ const TasksPage = () => {
           </div>
 
           {isStudent(user.role) ? (
-            // Student view - Board with 3 columns
             <div className="tasks-board">
               <TaskColumn
                 title="Próximamente"
@@ -506,35 +494,35 @@ const TasksPage = () => {
               ) : (
                 <div className="empty-state">
                   <FiCheckSquare size={48} />
-                  <p>No hay tareas disponibles</p>
+                  <p>No hay tareas disponibles en esta página o proyecto.</p>
                 </div>
               )}
             </div>
           )}
+
+          <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
+            <button 
+              className="btn btn-secondary"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+            >
+              Anterior
+            </button>
+            
+            <span className="page-info" style={{ display: 'flex', alignItems: 'center' }}>
+              Página <strong>{currentPage}</strong>
+            </span>
+
+            <button 
+              className="btn btn-secondary"
+              disabled={!tasksData?.next}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </div>
-
-      <div className="pagination-bar">
-  <button 
-    className="btn btn-secondary"
-    disabled={currentPage === 1}
-    onClick={() => setCurrentPage(prev => prev - 1)}
-  >
-    Anterior
-  </button>
-  
-  <span className="page-info">
-    Página <strong>{currentPage}</strong>
-  </span>
-
-  <button 
-    className="btn btn-secondary"
-    disabled={!tasksData?.next}
-    onClick={() => setCurrentPage(prev => prev + 1)}
-  >
-    Siguiente
-  </button>
-</div>
     </>
   );
 };
