@@ -30,6 +30,7 @@ import './TasksPage.scss';
 const TasksPage = () => {
   const queryClient = useQueryClient();
   const [selectedProject, setSelectedProject] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -50,8 +51,9 @@ const TasksPage = () => {
     isFetching: tasksFetching,
     refetch: refetchTasks 
   } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: getTasks,
+    queryKey: ['tasks', selectedProject, currentPage], 
+    queryFn: () => getTasks(selectedProject, currentPage), // Pasamos parámetros limpios
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     select: (data) => {
@@ -78,7 +80,7 @@ const TasksPage = () => {
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects(),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
@@ -438,7 +440,6 @@ const TasksPage = () => {
               />
             </div>
           ) : (
-            // Non-student view (Task creators/reviewers) - List view
             <div className="tasks-list">
               {filteredTasks.length > 0 ? (
                 <div className="tasks-list-container">
@@ -512,6 +513,28 @@ const TasksPage = () => {
           )}
         </div>
       </div>
+
+      <div className="pagination-bar">
+  <button 
+    className="btn btn-secondary"
+    disabled={currentPage === 1}
+    onClick={() => setCurrentPage(prev => prev - 1)}
+  >
+    Anterior
+  </button>
+  
+  <span className="page-info">
+    Página <strong>{currentPage}</strong>
+  </span>
+
+  <button 
+    className="btn btn-secondary"
+    disabled={!tasksData?.next}
+    onClick={() => setCurrentPage(prev => prev + 1)}
+  >
+    Siguiente
+  </button>
+</div>
     </>
   );
 };
