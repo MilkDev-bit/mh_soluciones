@@ -209,9 +209,13 @@ const TasksPage = () => {
     };
   };
 
-  const filteredTasks = selectedProject === 'all'
-    ? tasks
-    : tasks.filter((task) => task.project === parseInt(selectedProject));
+  const filteredTasks = useMemo(() => {
+    if (selectedProject === 'all') return tasks;
+    return tasks.filter((task) => {
+      const taskProjectId = typeof task.project === 'object' ? task.project.id : task.project;
+      return String(taskProjectId) === String(selectedProject);
+    });
+  }, [tasks, selectedProject]);
 
   const categorizedTasks = categorizeTasks(filteredTasks);
 
