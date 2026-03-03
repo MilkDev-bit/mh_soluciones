@@ -444,10 +444,29 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
     toast.success('Datos actualizados');
   };
 
-  const handleSubmissionComplete = async () => {
-    toast.success('✅ ¡Tarea entregada exitosamente!');
+  const handleSubmissionComplete = () => {
     setShowSubmissionForm(false);
-    await fetchSubmissions();
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+    setTimeout(() => {
+      toast.success('✅ ¡Tarea entregada exitosamente!', {
+        duration: 5000,
+        style: {
+          background: '#16a34a',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '1.1rem',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 24px rgba(22,163,74,0.35)',
+        },
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#16a34a',
+        },
+      });
+    }, 300);
   };
 
   return (

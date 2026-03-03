@@ -30,11 +30,18 @@ const ProjectsPage = () => {
     refetch,
     isError 
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', user?.id, user?.role],
     queryFn: getProjects,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    select: (data) => data.results || data,
+    enabled: !!user,
+    select: (data) => {
+      // The backend already filters by role in get_queryset().
+      // Here we just extract the array from the paginated response format.
+      if (Array.isArray(data?.results)) return data.results;
+      if (Array.isArray(data)) return data;
+      return [];
+    },
   });
 
   // Handle errors with useEffect to avoid re-render loops

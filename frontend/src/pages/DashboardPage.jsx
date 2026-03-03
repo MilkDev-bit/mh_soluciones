@@ -29,7 +29,7 @@ const DashboardPage = () => {
 
   // Use React Query for data fetching
   const { data, isLoading: loading, error } = useQuery({
-    queryKey: ['dashboard'],
+    queryKey: ['dashboard', user?.id, user?.role],
     queryFn: () => getDashboardData(),
     onError: (error) => {
       if (error.response?.status === 401) {
@@ -41,6 +41,7 @@ const DashboardPage = () => {
     },
     staleTime: 60000, // 1 minute
     retry: 1,
+    enabled: !!user,
   });
 
   const displayData = useMemo(() => {
@@ -129,10 +130,16 @@ const DashboardPage = () => {
 
     const defaults = getDefaultItems(user.role);
 
-    if (savedOrder && savedOrder.length === defaults.length) {
+    // Clear saved order if widget count doesn't match (different role or stale data)
+    const validSavedOrder = savedOrder && savedOrder.length === defaults.length ? savedOrder : null;
+    if (savedOrder && !validSavedOrder) {
+      localStorage.removeItem(savedOrderKey);
+    }
+
+    if (validSavedOrder) {
       // Merge saved order with current data values
       // This assumes IDs didn't change. simpler logic: use defaults but sort by savedOrder IDs
-      const orderMap = new Map(savedOrder.map((id, index) => [id, index]));
+      const orderMap = new Map(validSavedOrder.map((id, index) => [id, index]));
       const sorted = [...defaults].sort((a, b) => {
         const indexA = orderMap.has(a.id) ? orderMap.get(a.id) : 999;
         const indexB = orderMap.has(b.id) ? orderMap.get(b.id) : 999;

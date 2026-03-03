@@ -264,11 +264,13 @@ const UsersPage = () => {
                   <tr key={user.id}>
                     <td data-label="Usuario">
                       <div className="user-cell">
-                        <img 
-                          src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`}
-                          alt="Avatar" 
-                          className="table-avatar"
-                        />
+                        <div className="table-avatar-wrapper">
+                          <img 
+                            src={user.profile_picture || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f97316&color=fff`}
+                            alt="Avatar" 
+                            className="table-avatar"
+                          />
+                        </div>
                         <div>
                           <div className="user-cell-name">{user.first_name} {user.last_name}</div>
                           <div className="user-cell-username">@{user.username}</div>
