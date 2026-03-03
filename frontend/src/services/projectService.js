@@ -1,14 +1,17 @@
 import api from './api';
 
-export const getProjects = async () => {
+export const getProjects = async (page = 1) => {
   try {
-    const { data } = await api.get('projects/');
+    const { data } = await api.get(`projects/?page=${page}`);
     return {
       ...data,
       results: Array.isArray(data.results) ? data.results : [],
+      count: data.count || 0,
+      next: data.next,
+      previous: data.previous
     };
   } catch (error) {
-    return { results: [] };
+    return { results: [], count: 0, next: null, previous: null };
   }
 };
 

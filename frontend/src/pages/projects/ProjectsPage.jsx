@@ -12,48 +12,39 @@ import { SkeletonList } from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import ProjectForm from '../../components/projects/ProjectForm';
 import GradesWidget from '../../components/common/GradesWidget';
-import { FiPlus, FiRefreshCw, FiBriefcase } from 'react-icons/fi';
+import { FiPlus, FiRefreshCw, FiBriefcase, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import './ProjectsPage.scss';
 
 const ProjectsPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { projectsUpdated, consumeProjectsUpdate } = useProjectContext();
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
 
-  // Use React Query for data fetching with caching
   const { 
-    data: projectsData, 
+    data: projectsResponse,
     isLoading, 
     isFetching,
     refetch,
     isError 
   } = useQuery({
-    queryKey: ['projects', user?.id, user?.role],
-    queryFn: getProjects,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    queryKey: ['projects', user?.id, user?.role, page],
+    queryFn: () => getProjects(page),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     enabled: !!user,
-    select: (data) => {
-      // The backend already filters by role in get_queryset().
-      // Here we just extract the array from the paginated response format.
-      if (Array.isArray(data?.results)) return data.results;
-      if (Array.isArray(data)) return data;
-      return [];
-    },
   });
 
-  // Handle errors with useEffect to avoid re-render loops
+  const projects = projectsResponse?.results || [];
+
   useEffect(() => {
     if (isError) {
       toast.error('No se pudieron cargar los proyectos.');
     }
   }, [isError]);
 
-  const projects = projectsData || [];
-
-  // Listen for project updates from other components
   useEffect(() => {
     if (projectsUpdated) {
       refetch();
@@ -62,7 +53,6 @@ const ProjectsPage = () => {
   }, [projectsUpdated, refetch, consumeProjectsUpdate]);
 
   const handleProjectSaved = useCallback(() => {
-    // Invalidate and refetch projects
     queryClient.invalidateQueries(['projects']);
     setIsModalOpen(false);
     setEditingProject(null);
@@ -78,28 +68,26 @@ const ProjectsPage = () => {
     setIsModalOpen(false);
     setEditingProject(null);
   }, []);
-  
+
   if (isLoading || !user) {
     return (
-      <>
+      <div className="page-container">
         <Helmet>
           <title>Proyectos | MH Soluciones</title>
         </Helmet>
-        <div className="page-container">
-          <div className="page-header">
-            <div className="header-content">
-              <div className="header-title">
-                <FiBriefcase className="header-icon" />
-                <h1>Salas de Trabajo (Proyectos)</h1>
-              </div>
-              <div className="header-subtitle">
-                Gestiona y colabora en proyectos de manera eficiente
-              </div>
+        <div className="page-header">
+          <div className="header-content">
+            <div className="header-title">
+              <FiBriefcase className="header-icon" />
+              <h1>Salas de Trabajo (Proyectos)</h1>
+            </div>
+            <div className="header-subtitle">
+              Gestiona y colabora en proyectos de manera eficiente
             </div>
           </div>
-          <SkeletonList count={6} />
         </div>
-      </>
+        <SkeletonList count={6} />
+      </div>
     );
   }
 
@@ -157,7 +145,6 @@ const ProjectsPage = () => {
           </div>
         </div>
         
-        {/* Grades Widget for Students */}
         {user && isStudent(user.role) && (
           <div className="projects-grades-widget-container">
             <GradesWidget isCollapsed={false} />
@@ -165,15 +152,45 @@ const ProjectsPage = () => {
         )}
         
         {projects.length > 0 ? (
-          <div className="projects-grid" role="list" aria-label="Lista de proyectos">
-            {projects.map((project) => (
-              <ProjectCard 
-                key={project.id} 
-                project={project} 
-                className={project._isOptimistic ? 'optimistic-item' : ''}
-              />
-            ))}
-          </div>
+          <>
+            <div className="projects-grid" role="list" aria-label="Lista de proyectos">
+              {projects.map((project) => (
+                <ProjectCard 
+                  key={project.id} 
+                  project={project} 
+                  className={project._isOptimistic ? 'optimistic-item' : ''}
+                />
+              ))}
+            </div>
+
+            <div className="pagination-wrapper">
+              <div className="pagination-controls">
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={() => {
+                    setPage(p => Math.max(1, p - 1));
+                    window.scrollTo(0, 0);
+                  }}
+                  disabled={page === 1}
+                >
+                  <FiChevronLeft /> Anterior
+                </button>
+                
+                <span className="page-number">Página <strong>{page}</strong></span>
+
+                <button 
+                  className="btn btn-ghost" 
+                  onClick={() => {
+                    setPage(p => p + 1);
+                    window.scrollTo(0, 0);
+                  }}
+                  disabled={!projectsResponse?.next}
+                >
+                  Siguiente <FiChevronRight />
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="empty-state glass-card" role="status">
             <FiBriefcase className="empty-state-icon" />
