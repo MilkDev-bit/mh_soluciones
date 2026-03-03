@@ -2,10 +2,20 @@ import api from './api';
 
 export const getTasks = async (projectId = null) => {
   try {
-    const url = projectId ? `/tasks/?project=${projectId}` : '/tasks/';
+    let url = '/tasks/';
+    
+    if (projectId && projectId !== 'all') {
+      const cleanId = typeof projectId === 'object' ? projectId.id : projectId;
+      
+      if (cleanId && cleanId !== '[object Object]') {
+        url = `/tasks/?project=${cleanId}`;
+      }
+    }
+
     const response = await api.get(url);
     return response.data;
   } catch (error) {
+    console.error("Error en getTasks:", error);
     throw error.response?.data || new Error('Error al obtener tareas');
   }
 };
