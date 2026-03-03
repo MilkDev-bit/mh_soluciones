@@ -23,8 +23,7 @@ import {
   FiUser,
   FiPaperclip
 } from 'react-icons/fi';
-// IMPORTANTE: Se agregó isValid para prevenir crasheos por fechas corruptas
-import { format, parseISO, isPast, isFuture, addDays, isWithinInterval, isValid } from 'date-fns';
+import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
@@ -37,13 +36,15 @@ const TasksPage = () => {
 
   const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
+  // Fetch user data with React Query
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUserFromSession,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 15 * 60 * 1000,
   });
 
+  // Fetch tasks with React Query
   const { 
     data: tasksData, 
     isLoading: tasksLoading,
@@ -51,32 +52,29 @@ const TasksPage = () => {
     refetch: refetchTasks 
   } = useQuery({
     queryKey: ['tasks', selectedProject, currentPage], 
-    queryFn: () => getTasks(selectedProject, currentPage),
+    queryFn: () => getTasks(selectedProject, currentPage), // Pasamos parámetros limpios
     placeholderData: (previousData) => previousData,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     select: (data) => {
-      let tasksList = Array.isArray(data?.results) ? data.results : [];
+      const tasksList = Array.isArray(data.results) ? data.results : [];
       
+      // For students, filter to only show their assigned tasks
       if (user?.role === 'STUDENT') {
-        tasksList = tasksList.filter(task => {
-          const isAssignedTo = task?.assigned_to?.id === user?.id;
-          const isInAssignedStudents = Array.isArray(task?.assigned_students_data) && 
-            task.assigned_students_data.some(student => student?.id === user?.id);
+        return tasksList.filter(task => {
+          const isAssignedTo = task.assigned_to?.id === user.id;
+          const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
+            task.assigned_students_data.some(student => student.id === user.id);
           return isAssignedTo || isInAssignedStudents;
         });
       }
       
-      return {
-        results: tasksList,
-        next: data?.next,
-        previous: data?.previous,
-        count: data?.count
-      };
+      return tasksList;
     },
-    enabled: !!user,
+    enabled: !!user, // Only fetch when user is available
   });
 
+  // Fetch projects with React Query
   const { 
     data: projectsData,
     isLoading: projectsLoading 
@@ -86,20 +84,23 @@ const TasksPage = () => {
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
-      const projectsList = Array.isArray(data?.results) ? data.results : [];
+      const projectsList = Array.isArray(data.results) ? data.results : [];
       
+      // For students, filter to only show their projects
       if (user?.role === 'STUDENT') {
         return projectsList.filter(project => 
-          project?.members?.some(member => 
-            member?.user?.id === user?.id || member?.id === user?.id
+          project.members?.some(member => 
+            member.user?.id === user.id || member.id === user.id
           )
         );
       }
+      
       return projectsList;
     },
     enabled: !!user,
   });
 
+  // Fetch project members when a project is selected
   const { data: projectMembers = [] } = useQuery({
     queryKey: ['projectMembers', selectedProject],
     queryFn: () => getProjectMembers(selectedProject),
@@ -108,23 +109,19 @@ const TasksPage = () => {
     enabled: selectedProject !== 'all',
   });
 
-  const tasks = tasksData?.results || [];
-  const projects = projectsData || [];
-  const loading = tasksLoading || projectsLoading;
-  const isRefreshing = tasksFetching;
-
+  // Memoize task IDs for stable query key
   const taskIds = useMemo(() => 
-    tasks.map(t => t?.id).filter(Boolean).sort().join(',') || '', 
-    [tasks]
+    tasksData?.map(t => t.id).sort().join(',') || '', 
+    [tasksData]
   );
 
+  // Fetch documents for all tasks
   const { data: taskDocuments = {} } = useQuery({
     queryKey: ['taskDocuments', taskIds],
     queryFn: async () => {
-      if (!tasks || tasks.length === 0) return {};
+      if (!tasksData || tasksData.length === 0) return {};
       
-      const documentsPromises = tasks.map(async (task) => {
-        if (!task?.id) return { taskId: null, documents: [] };
+      const documentsPromises = tasksData.map(async (task) => {
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -137,15 +134,21 @@ const TasksPage = () => {
       const documentsResults = await Promise.all(documentsPromises);
       const documentsMap = {};
       documentsResults.forEach(result => {
-        if (result.taskId) documentsMap[result.taskId] = result.documents;
+        documentsMap[result.taskId] = result.documents;
       });
       
       return documentsMap;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!tasks && tasks.length > 0,
+    enabled: !!tasksData && tasksData.length > 0,
   });
 
+  const tasks = tasksData || [];
+  const projects = projectsData || [];
+  const loading = tasksLoading || projectsLoading;
+  const isRefreshing = tasksFetching;
+
+  // Listen for task updates from other components
   useEffect(() => {
     if (tasksUpdated) {
       refetchTasks();
@@ -153,37 +156,39 @@ const TasksPage = () => {
     }
   }, [tasksUpdated, refetchTasks, consumeTasksUpdate]);
 
-  const handleRefresh = useCallback(() => refetchTasks(), [refetchTasks]);
+  const handleRefresh = useCallback(() => {
+    refetchTasks();
+  }, [refetchTasks]);
 
   const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
+    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setIsModalOpen(false);
-    notifyTaskChange(newTask?.id, newTask?.project, isEditMode ? 'update' : 'create');
+    notifyTaskChange(newTask.id, newTask.project, isEditMode ? 'update' : 'create');
     toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskUpdated = useCallback((updatedTask) => {
+    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
-    notifyTaskChange(updatedTask?.id, updatedTask?.project, 'update');
+    notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskDeleted = useCallback((taskId) => {
+    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setSelectedTask(null);
     notifyTaskChange(taskId, null, 'delete');
   }, [queryClient, notifyTaskChange]);
 
-  // Función segura para formatear fechas sin crashear
-  const renderSafeDate = (dateString) => {
-    if (!dateString) return null;
-    const parsedDate = parseISO(dateString);
-    if (!isValid(parsedDate)) return 'Fecha inválida';
-    return format(parsedDate, 'dd MMM yyyy', { locale: es });
-  };
-
+  // Categorize tasks based on Microsoft Teams style
+  // Tasks are categorized into 3 groups:
+  // - Upcoming: Tasks due within the next 7 days (configurable)
+  // - Overdue: Tasks past their due date
+  // - Completed: All completed tasks
   const UPCOMING_DAYS_THRESHOLD = 7;
   
   const categorizeTasks = (tasksList) => {
@@ -192,26 +197,24 @@ const TasksPage = () => {
 
     return {
       upcoming: tasksList.filter(task => {
-        if (!task?.due_date || task?.status === 'COMPLETED') return false;
+        if (!task.due_date || task.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        return isValid(dueDate) && isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
+        // Include all future tasks (not just within 7 days) to ensure no tasks are hidden
+        return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
       }),
       overdue: tasksList.filter(task => {
-        if (!task?.due_date || task?.status === 'COMPLETED') return false;
+        if (!task.due_date || task.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        return isValid(dueDate) && isPast(dueDate);
+        return isPast(dueDate);
       }),
-      completed: tasksList.filter(task => task?.status === 'COMPLETED')
+      completed: tasksList.filter(task => task.status === 'COMPLETED')
     };
   };
 
   const filteredTasks = useMemo(() => {
     if (selectedProject === 'all') return tasks;
     return tasks.filter((task) => {
-      // Validación estricta para evitar error al leer properties de null
-      const taskProjectId = (task?.project && typeof task.project === 'object') 
-        ? task.project.id 
-        : task?.project;
+      const taskProjectId = typeof task.project === 'object' ? task.project.id : task.project;
       return String(taskProjectId) === String(selectedProject);
     });
   }, [tasks, selectedProject]);
@@ -223,7 +226,6 @@ const TasksPage = () => {
   }
 
   const TaskCard = ({ task }) => {
-    if (!task) return null;
     const documents = taskDocuments[task.id] || [];
     
     return (
@@ -232,22 +234,34 @@ const TasksPage = () => {
         onClick={() => setSelectedTask(task)}
         role="button"
         tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setSelectedTask(task);
+          }
+        }}
       >
         <div className="task-card-header">
-          <div className="task-icon"><FiCheckSquare /></div>
-          <h3 className="task-title">{task.title || 'Sin título'}</h3>
+          <div className="task-icon">
+            <FiCheckSquare />
+          </div>
+          <h3 className="task-title">{task.title}</h3>
         </div>
         
         <div className="task-card-body">
-          {task.description && <p className="task-description">{task.description}</p>}
+          {task.description && (
+            <p className="task-description">{task.description}</p>
+          )}
           
           <div className="task-meta">
-            {task.project_name && <div className="task-project-badge">{task.project_name}</div>}
+            <div className="task-project-badge">
+              {task.project_name}
+            </div>
             
             {task.due_date && (
               <div className="task-deadline">
                 <FiCalendar />
-                <span>{renderSafeDate(task.due_date)}</span>
+                <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
               </div>
             )}
             
@@ -276,12 +290,13 @@ const TasksPage = () => {
         <Icon style={{ color }} />
         <h2>{title}</h2>
         <span className="task-count" style={{ backgroundColor: color }}>
-          {Array.isArray(tasks) ? tasks.length : 0}
+          {tasks.length}
         </span>
       </div>
+      
       <div className="task-column-content">
-        {Array.isArray(tasks) && tasks.length > 0 ? (
-          tasks.map(task => <TaskCard key={task?.id || Math.random()} task={task} />)
+        {tasks.length > 0 ? (
+          tasks.map(task => <TaskCard key={task.id} task={task} />)
         ) : (
           <div className="empty-state">
             <Icon size={48} />
@@ -295,23 +310,28 @@ const TasksPage = () => {
   return (
     <>
       <Helmet>
-        <title>{isStudent(user?.role) ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
+        <title>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'} | MH Soluciones</title>
       </Helmet>
 
       {isModalOpen && (
-        <Modal title="Nueva Tarea" onClose={() => setIsModalOpen(false)}>
+        <Modal 
+          title="Nueva Tarea" 
+          onClose={() => setIsModalOpen(false)}
+        >
           {selectedProject !== 'all' ? (
             <TaskForm
               onCancel={() => setIsModalOpen(false)}
-              // Comparación segura como String en lugar de parseInt
-              project={projects.find(p => String(p?.id) === String(selectedProject))}
+              project={projects.find(p => p.id === parseInt(selectedProject))}
               projectMembers={projectMembers}
               onTaskSaved={handleTaskCreated}
             />
           ) : (
             <div className="p-4">
               <p className="text-warning">Por favor selecciona un proyecto primero</p>
-              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setIsModalOpen(false)}
+              >
                 Cerrar
               </button>
             </div>
@@ -320,13 +340,19 @@ const TasksPage = () => {
       )}
 
       {selectedTask && (
-        <Modal title="Detalles de la Tarea" onClose={() => setSelectedTask(null)} size="large">
+        <Modal
+          title="Detalles de la Tarea"
+          onClose={() => setSelectedTask(null)}
+          size="large"
+        >
           <TaskDetailsView
             task={selectedTask}
             user={user}
             onClose={() => setSelectedTask(null)}
-            documents={taskDocuments[selectedTask?.id] || []}
-            onDocumentUpload={() => queryClient.invalidateQueries(['taskDocuments'])}
+            documents={taskDocuments[selectedTask.id] || []}
+            onDocumentUpload={() => {
+              queryClient.invalidateQueries(['taskDocuments']);
+            }}
             onTaskUpdated={handleTaskUpdated}
             onTaskDeleted={handleTaskDeleted}
           />
@@ -336,22 +362,27 @@ const TasksPage = () => {
       <div className="tasks-page animate-slide-up">
         <div className="page-header">
           <div className="header-content">
-            <h1>{isStudent(user?.role) ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
+            <h1>{isStudent(user.role) ? 'Mis Tareas' : 'Gestor de Tareas'}</h1>
           </div>
           <div className="header-actions">
-            {isRefreshing && <Loading inline size="small" text="Actualizando..." />}
+            {isRefreshing && (
+              <Loading inline size="small" text="Actualizando..." />
+            )}
             <button
               className="btn btn-secondary btn-icon"
               onClick={handleRefresh}
               disabled={isRefreshing}
+              aria-label="Actualizar lista de tareas"
+              title="Actualizar"
             >
               <FiRefreshCw className={isRefreshing ? 'spinning' : ''} />
             </button>
-            {canCreateTasks(user?.role) && (
+            {canCreateTasks(user.role) && (
               <button 
                 className="btn btn-primary" 
                 onClick={() => setIsModalOpen(true)}
                 disabled={selectedProject === 'all'}
+                title={selectedProject === 'all' ? 'Selecciona un proyecto primero' : 'Crear nueva tarea'}
               >
                 + Nueva Tarea
               </button>
@@ -359,7 +390,7 @@ const TasksPage = () => {
           </div>
         </div>
 
-        <div className="glass-card" style={{ opacity: isFetching ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+        <div className="glass-card">
           <div className="filters-bar">
             <div className="filter-group">
               <FiFilter />
@@ -368,22 +399,21 @@ const TasksPage = () => {
                 id="project-filter"
                 className="form-select"
                 value={selectedProject}
-                onChange={(e) => {
-                  setSelectedProject(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSelectedProject(e.target.value)}
               >
                 <option value="all">Todos los Proyectos</option>
-                {Array.isArray(projects) && projects.map((project) => (
-                  <option key={project?.id || Math.random()} value={project?.id}>
-                    {project?.name || 'Proyecto sin nombre'}
-                  </option>
-                ))}
+                {Array.isArray(projects) &&
+                  projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
 
-          {isStudent(user?.role) ? (
+          {isStudent(user.role) ? (
+            // Student view - Board with 3 columns
             <div className="tasks-board">
               <TaskColumn
                 title="Próximamente"
@@ -392,6 +422,7 @@ const TasksPage = () => {
                 emptyMessage="No hay tareas próximas"
                 color="#f59e0b"
               />
+              
               <TaskColumn
                 title="Vencidas"
                 icon={FiAlertCircle}
@@ -399,6 +430,7 @@ const TasksPage = () => {
                 emptyMessage="No hay tareas vencidas"
                 color="#ef4444"
               />
+              
               <TaskColumn
                 title="Completadas"
                 icon={FiCheckCircle}
@@ -408,95 +440,102 @@ const TasksPage = () => {
               />
             </div>
           ) : (
+            // Non-student view (Task creators/reviewers) - List view
             <div className="tasks-list">
               {filteredTasks.length > 0 ? (
                 <div className="tasks-list-container">
-                  {filteredTasks.map(task => {
-                    if (!task) return null;
-                    // Se asegura el status para evitar .toLowerCase() en un null
-                    const statusVal = task.status || 'PENDING';
-                    
-                    return (
-                      <div
-                        key={task.id || Math.random()}
-                        className="task-list-item"
-                        onClick={() => setSelectedTask(task)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="task-list-item-content">
-                          <div className="task-list-header">
-                            <div className="task-icon"><FiCheckSquare /></div>
-                            <h3 className="task-title">{task.title || 'Sin título'}</h3>
-                            <div className={`task-status-badge status-${statusVal.toLowerCase()}`}>
-                              {statusVal === 'COMPLETED' ? 'Completada' : 
-                               statusVal === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
-                            </div>
+                  {filteredTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className="task-list-item"
+                      onClick={() => setSelectedTask(task)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedTask(task);
+                        }
+                      }}
+                    >
+                      <div className="task-list-item-content">
+                        <div className="task-list-header">
+                          <div className="task-icon">
+                            <FiCheckSquare />
                           </div>
-                          
-                          {task.description && <p className="task-description">{task.description}</p>}
-                          
-                          <div className="task-list-meta">
-                            {task.project_name && <div className="task-project-badge">{task.project_name}</div>}
-                            
-                            {task.due_date && (
-                              <div className="task-meta-item">
-                                <FiCalendar />
-                                <span>{renderSafeDate(task.due_date)}</span>
-                              </div>
-                            )}
-                            
-                            {task.assigned_to && (
-                              <div className="task-meta-item">
-                                <FiUser />
-                                <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
-                              </div>
-                            )}
-                            
-                            {taskDocuments[task.id] && taskDocuments[task.id].length > 0 && (
-                              <div className="task-meta-item">
-                                <FiPaperclip />
-                                <span>{taskDocuments[task.id].length} archivo(s)</span>
-                              </div>
-                            )}
+                          <h3 className="task-title">{task.title}</h3>
+                          <div className={`task-status-badge status-${task.status.toLowerCase()}`}>
+                            {task.status === 'COMPLETED' ? 'Completada' : 
+                             task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                           </div>
                         </div>
+                        
+                        {task.description && (
+                          <p className="task-description">{task.description}</p>
+                        )}
+                        
+                        <div className="task-list-meta">
+                          <div className="task-project-badge">
+                            {task.project_name}
+                          </div>
+                          
+                          {task.due_date && (
+                            <div className="task-meta-item">
+                              <FiCalendar />
+                              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+                            </div>
+                          )}
+                          
+                          {task.assigned_to && (
+                            <div className="task-meta-item">
+                              <FiUser />
+                              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+                            </div>
+                          )}
+                          
+                          {taskDocuments[task.id] && taskDocuments[task.id].length > 0 && (
+                            <div className="task-meta-item">
+                              <FiPaperclip />
+                              <span>{taskDocuments[task.id].length} archivo(s)</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="empty-state">
                   <FiCheckSquare size={48} />
-                  <p>No hay tareas disponibles en esta página o proyecto.</p>
+                  <p>No hay tareas disponibles</p>
                 </div>
               )}
             </div>
           )}
-
-          <div className="pagination-bar" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-            <button 
-              className="btn btn-secondary"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => prev - 1)}
-            >
-              Anterior
-            </button>
-            
-            <span className="page-info" style={{ display: 'flex', alignItems: 'center' }}>
-              Página <strong>{currentPage}</strong>
-            </span>
-
-            <button 
-              className="btn btn-secondary"
-              disabled={!tasksData?.next}
-              onClick={() => setCurrentPage(prev => prev + 1)}
-            >
-              Siguiente
-            </button>
-          </div>
         </div>
       </div>
+
+      <div className="pagination-bar">
+  <button 
+    className="btn btn-secondary"
+    disabled={currentPage === 1}
+    onClick={() => setCurrentPage(prev => prev - 1)}
+  >
+    Anterior
+  </button>
+  
+  <span className="page-info">
+    Página <strong>{currentPage}</strong>
+  </span>
+
+  <button 
+    className="btn btn-secondary"
+    disabled={!tasksData?.next}
+    onClick={() => setCurrentPage(prev => prev + 1)}
+  >
+    Siguiente
+  </button>
+</div>
     </>
   );
 };
