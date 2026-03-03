@@ -52,7 +52,7 @@ const TasksPage = () => {
     refetch: refetchTasks 
   } = useQuery({
     queryKey: ['tasks', selectedProject, currentPage], 
-    queryFn: () => getTasks(selectedProject, currentPage), // Pasamos parámetros limpios
+    queryFn: () => getTasks(selectedProject, currentPage), // CAMBIO 1: Pasamos parámetros explícitos
     placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
@@ -61,15 +61,17 @@ const TasksPage = () => {
       
       // For students, filter to only show their assigned tasks
       if (user?.role === 'STUDENT') {
-        return tasksList.filter(task => {
+        const filteredTasks = tasksList.filter(task => {
           const isAssignedTo = task.assigned_to?.id === user.id;
           const isInAssignedStudents = Array.isArray(task.assigned_students_data) && 
             task.assigned_students_data.some(student => student.id === user.id);
           return isAssignedTo || isInAssignedStudents;
         });
+        // CAMBIO 2: Retornamos el objeto completo para no perder la paginación (next/count)
+        return { ...data, results: filteredTasks };
       }
       
-      return tasksList;
+      return { ...data, results: tasksList };
     },
     enabled: !!user, // Only fetch when user is available
   });
@@ -80,7 +82,7 @@ const TasksPage = () => {
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => getProjects(),
+    queryFn: () => getProjects(), // CAMBIO 3: Función anónima para evitar el [object Object]
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
@@ -109,19 +111,25 @@ const TasksPage = () => {
     enabled: selectedProject !== 'all',
   });
 
+  // CAMBIO 4: Extraemos el arreglo de tareas aquí para que el useMemo y useQuery de abajo no exploten
+  const tasks = tasksData?.results || [];
+  const projects = projectsData || [];
+  const loading = tasksLoading || projectsLoading;
+  const isRefreshing = tasksFetching;
+
   // Memoize task IDs for stable query key
   const taskIds = useMemo(() => 
-    tasksData?.map(t => t.id).sort().join(',') || '', 
-    [tasksData]
+    tasks.map(t => t.id).sort().join(',') || '', 
+    [tasks]
   );
 
   // Fetch documents for all tasks
   const { data: taskDocuments = {} } = useQuery({
     queryKey: ['taskDocuments', taskIds],
     queryFn: async () => {
-      if (!tasksData || tasksData.length === 0) return {};
+      if (!tasks || tasks.length === 0) return {};
       
-      const documentsPromises = tasksData.map(async (task) => {
+      const documentsPromises = tasks.map(async (task) => {
         try {
           const documents = await getDocumentsByTask(task.id);
           return { taskId: task.id, documents };
@@ -140,13 +148,8 @@ const TasksPage = () => {
       return documentsMap;
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!tasksData && tasksData.length > 0,
+    enabled: !!tasks && tasks.length > 0,
   });
-
-  const tasks = tasksData || [];
-  const projects = projectsData || [];
-  const loading = tasksLoading || projectsLoading;
-  const isRefreshing = tasksFetching;
 
   // Listen for task updates from other components
   useEffect(() => {
@@ -399,7 +402,10 @@ const TasksPage = () => {
                 id="project-filter"
                 className="form-select"
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
+                onChange={(e) => {
+                  setSelectedProject(e.target.value);
+                  setCurrentPage(1); // CAMBIO 5: Reseteamos la página al filtrar
+                }}
               >
                 <option value="all">Todos los Proyectos</option>
                 {Array.isArray(projects) &&
@@ -516,26 +522,26 @@ const TasksPage = () => {
       </div>
 
       <div className="pagination-bar">
-  <button 
-    className="btn btn-secondary"
-    disabled={currentPage === 1}
-    onClick={() => setCurrentPage(prev => prev - 1)}
-  >
-    Anterior
-  </button>
-  
-  <span className="page-info">
-    Página <strong>{currentPage}</strong>
-  </span>
+        <button 
+          className="btn btn-secondary"
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(prev => prev - 1)}
+        >
+          Anterior
+        </button>
+        
+        <span className="page-info">
+          Página <strong>{currentPage}</strong>
+        </span>
 
-  <button 
-    className="btn btn-secondary"
-    disabled={!tasksData?.next}
-    onClick={() => setCurrentPage(prev => prev + 1)}
-  >
-    Siguiente
-  </button>
-</div>
+        <button 
+          className="btn btn-secondary"
+          disabled={!tasksData?.next}
+          onClick={() => setCurrentPage(prev => prev + 1)}
+        >
+          Siguiente
+        </button>
+      </div>
     </>
   );
 };
