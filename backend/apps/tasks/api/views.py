@@ -829,18 +829,29 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
 
     def _create_structured_filename(self, task_submission, original_filename):
         """
-        Crea un nombre de archivo estructurado similar al de upload_document
+        Crea un nombre de archivo 100% seguro para Google Drive,
+        eliminando cualquier carácter especial, acentos o espacios.
         """
+        from django.utils.text import slugify
+        import os
+        import uuid
+
         task = task_submission.task
         user = task_submission.submitted_by
         
-        task_title = slugify(task.title)
-        responsible_name = slugify(user.get_full_name() or user.username)
+        base_name, extension = os.path.splitext(original_filename)
+
+        clean_task_title = slugify(task.title)[:30]
+        clean_user_name = slugify(user.get_full_name() or user.username)[:20]
         date_str = task_submission.created_at.strftime('%d-%m-%y')
         
-        filename, extension = os.path.splitext(original_filename)
+        unique_id = str(uuid.uuid4())[:8]
+    
+        safe_name = f"entrega_{clean_task_title}_{clean_user_name}_{date_str}_{unique_id}"
         
-        return f"entrega_{task_title}_{responsible_name}_{date_str}{extension}"
+        safe_extension = slugify(extension.replace('.', ''))
+        
+        return f"{safe_name}.{safe_extension}"
 
     def _get_destination_folder(self, drive_service, task, user, submission):
         """
