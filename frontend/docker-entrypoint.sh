@@ -81,6 +81,8 @@ server {
     
     # Server name (Railway sets this via Host header)
     server_name _;
+
+    client_max_body_size 100M;
     
     # Root directory where Vite build output is stored
     root /usr/share/nginx/html;
