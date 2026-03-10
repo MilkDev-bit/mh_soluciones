@@ -454,13 +454,18 @@ const ProjectDetailPage = () => {
       const eventsData = await getEventsByProject(projectId);
       const eventList = eventsData?.results || eventsData || [];
       const currentDate = new Date();
+      
       const upcomingEvents = eventList
         .filter((event) => {
-          if (!event?.start_time) return false;
-          const eventDate = parseISO(event.start_time);
-          return !isAfter(currentDate, eventDate);
+          const timeToCompare = event?.end_time || event?.start_time;
+          if (!timeToCompare) return false;
+          
+          const eventEndDate = parseISO(timeToCompare);
+          
+          return !isAfter(currentDate, eventEndDate);
         })
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        
       return upcomingEvents.slice(0, 3);
     },
     staleTime: 5 * 60 * 1000,
