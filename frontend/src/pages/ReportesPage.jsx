@@ -1,5 +1,6 @@
 import { useState, useContext, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { 
   FiCheckSquare, 
   FiClock, 
@@ -7,7 +8,9 @@ import {
   FiTrendingUp,
   FiUsers,
   FiFolder,
-  FiDownload
+  FiDownload,
+  FiAward,
+  FiFileText
 } from 'react-icons/fi';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement } from 'chart.js';
 import { Pie, Bar, Line } from 'react-chartjs-2';
@@ -24,26 +27,36 @@ import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import logo from '../assets/img/logo.png';
 import './ReportesPage.scss';
 
-// Registrar componentes de Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement);
 
 const ReportesPage = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [rangoFecha, setRangoFecha] = useState('30_dias');
+  const [proyectoFiltro, setProyectoFiltro] = useState('');
   const reporteRef = useRef();
+  const { data: proyectosData } = useQuery({
+    queryKey: ['projectsList'],
+    queryFn: () => getProjects(),
+    staleTime: 300000,
+  });
 
-  // Use React Query for statistics
   const { data: estadisticas, isLoading: cargando } = useQuery({
-    queryKey: ['statistics', rangoFecha],
-    queryFn: () => getStatistics(rangoFecha),
+    queryKey: ['statistics', rangoFecha, proyectoFiltro],
+    queryFn: () => getStatistics(rangoFecha, proyectoFiltro),
     onError: (error) => {
       console.error('Error cargando estadísticas:', error);
       toast.error('Error al cargar las estadísticas');
     },
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 
-  // Función para formatear el rango de fecha en texto legible
+  const getHealthState = (porcentaje) => {
+    if(porcentaje >= 80) return { texto: 'Excelente', color: '#10b981' }; 
+    if(porcentaje >= 50) return { texto: 'Aceptable', color: '#f59e0b' }; 
+    return { texto: 'Crítico', color: '#ef4444' }; 
+  };
+
   const obtenerTextoRango = (rango) => {
     const rangos = {
       '7_dias': 'Últimos 7 días',
@@ -54,9 +67,35 @@ const ReportesPage = () => {
     return rangos[rango] || 'Últimos 30 días';
   };
 
-  // Función para exportar a PDF mejorada
+  const exportarCSV = () => {
+    if (!estadisticas) return toast.error('No hay datos para exportar');
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Metrica,Valor\n";
+    csvContent += `Total de Tareas,${estadisticas.tareasTotales || 0}\n`;
+    csvContent += `Tareas Completadas,${estadisticas.tareasCompletadas || 0}\n`;
+    csvContent += `Tareas En Progreso,${estadisticas.tareasEnProgreso || 0}\n`;
+    csvContent += `Tareas Vencidas,${estadisticas.tareasVencidas || 0}\n`;
+    csvContent += `Tiempo Promedio Resolucion (Dias),${estadisticas.tiempoPromedioDias || 0}\n`;
+    csvContent += `Porcentaje General (Salud),${estadisticas.porcentajeCompletado || 0}%\n`;
+    
+    if(estadisticas.tareasPorProyecto?.length > 0){
+      csvContent += "\nProyecto,Tareas Asignadas\n";
+      estadisticas.tareasPorProyecto.forEach(p => {
+        csvContent += `${p.project_name},${p.task_count}\n`;
+      });
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Reporte_Estadisticas_${rangoFecha}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Excel descargado correctamente');
+  };
   const exportarPDF = async () => {
-    // Validate data exists
     if (!estadisticas || Object.keys(estadisticas).length === 0) {
       toast.error('No hay datos disponibles para generar el reporte');
       return;
@@ -68,9 +107,6 @@ const ReportesPage = () => {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      // PÁGINA 1: Portada
-      // Logo centrado
       const LOGO_LOAD_TIMEOUT = 3000;
       const logoImg = new Image();
       logoImg.src = logo;
@@ -84,27 +120,21 @@ const ReportesPage = () => {
           if (import.meta.env.DEV) {
             console.warn('Could not load logo, continuing without it');
           }
-          resolve(); // Continue without logo
+          resolve();
         };
-        setTimeout(resolve, LOGO_LOAD_TIMEOUT); // Timeout after 3 seconds
+        setTimeout(resolve, LOGO_LOAD_TIMEOUT);
       });
-      
-      // Only add logo if it loaded successfully
+
       if (logoLoaded) {
         pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
       }
       
-      // Título principal
       pdf.setFontSize(28);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Reportes y Estadísticas', pageWidth / 2, 85, { align: 'center' });
-      
-      // Subtítulo
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Análisis detallado del progreso y rendimiento', pageWidth / 2, 95, { align: 'center' });
-      
-      // Metadata
       pdf.setFontSize(11);
       const today = new Date();
       const fechaGeneracion = today.toLocaleDateString('es-ES', { 
@@ -114,31 +144,22 @@ const ReportesPage = () => {
         day: 'numeric' 
       });
       
-      const rangoTexto = {
-        '7_dias': 'Últimos 7 días',
-        '30_dias': 'Últimos 30 días',
-        '90_dias': 'Últimos 90 días',
-        '12_meses': 'Últimos 12 meses'
-      }[rangoFecha];
+      const rangoTexto = obtenerTextoRango(rangoFecha);
       
       pdf.text(`Fecha de generación: ${fechaGeneracion}`, pageWidth / 2, 120, { align: 'center' });
       pdf.text(`Período analizado: ${rangoTexto}`, pageWidth / 2, 128, { align: 'center' });
       pdf.text(`Generado por: ${user?.first_name || user?.username || 'Usuario'}`, pageWidth / 2, 136, { align: 'center' });
-      
-      // PÁGINA 2: Lista de Proyectos
       pdf.addPage();
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Proyectos Activos', 20, 20);
       
-      // Obtener proyectos desde estadísticas o desde el servicio
       let proyectos = estadisticas?.tareasPorProyecto || [];
       
-      // Si no hay proyectos en estadísticas, intentar obtenerlos del servicio
       if (proyectos.length === 0) {
         try {
-          const proyectosData = await getProjects();
-          proyectos = proyectosData.results?.map((p, idx) => ({
+          const proyectosDataQuery = await getProjects();
+          proyectos = proyectosDataQuery.results?.map((p, idx) => ({
             project_name: p.name,
             task_count: p.task_count || 0,
             status: p.status || 'N/A',
@@ -154,7 +175,6 @@ const ReportesPage = () => {
       pdf.setFont('helvetica', 'normal');
       
       if (proyectos.length > 0) {
-        // Preparar datos para la tabla
         const tableData = proyectos.map((proyecto, index) => [
           index + 1,
           proyecto.project_name,
@@ -162,7 +182,6 @@ const ReportesPage = () => {
           proyecto.status || 'Activo'
         ]);
         
-        // Usar autoTable para una tabla profesional
         pdf.autoTable({
           startY: 35,
           head: [['#', 'Nombre del Proyecto', 'Tareas', 'Estado']],
@@ -189,7 +208,6 @@ const ReportesPage = () => {
         pdf.text('No hay proyectos disponibles', 25, yPos);
       }
       
-      // PÁGINA 3+: Gráficos y Estadísticas
       pdf.addPage();
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
@@ -201,7 +219,7 @@ const ReportesPage = () => {
       }
       
       const canvas = await html2canvas(elemento, {
-        scale: 3,  // Mayor calidad
+        scale: 3, 
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -210,12 +228,11 @@ const ReportesPage = () => {
       });
       
       const imgData = canvas.toDataURL('image/png', 1.0);
-      const imgWidth = pageWidth - 20; // Margen de 10mm a cada lado
+      const imgWidth = pageWidth - 20;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       let position = 30;
       
-      // Si la imagen es más alta que la página, dividirla
       if (imgHeight > pageHeight - 40) {
         let heightLeft = imgHeight;
         let srcY = 0;
@@ -223,19 +240,14 @@ const ReportesPage = () => {
         while (heightLeft > 0) {
           const pageContentHeight = pageHeight - 40;
           const heightToAdd = Math.min(heightLeft, pageContentHeight);
-          
-          // Crear canvas temporal para la porción actual
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
-          
-          // Calcular la altura en píxeles del canvas original
           const scaleFactor = canvas.width / imgWidth;
           const srcHeight = heightToAdd * scaleFactor;
           
           tempCanvas.width = canvas.width;
           tempCanvas.height = srcHeight;
           
-          // Copiar la porción relevante
           ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
           const tempImgData = tempCanvas.toDataURL('image/png', 1.0);
           
@@ -253,7 +265,6 @@ const ReportesPage = () => {
         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       }
       
-      // Guardar PDF
       const rangoTextoFinal = rangoTexto || 'periodo-seleccionado';
       const fileName = `reporte-estadisticas-${rangoTextoFinal.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
@@ -263,7 +274,6 @@ const ReportesPage = () => {
     } catch (error) {
       toast.dismiss();
       
-      // Specific error messages
       let errorMessage = 'Error al generar el PDF';
       
       if (error.name === 'SecurityError') {
@@ -276,7 +286,6 @@ const ReportesPage = () => {
       
       toast.error(errorMessage);
       
-      // Only log in development
       if (import.meta.env.DEV) {
         console.error('PDF Generation Error:', error);
       }
@@ -337,43 +346,19 @@ const ReportesPage = () => {
     }
   };
 
+  const opcionesBarrasHorizontales = {
+    ...opcionesGrafico,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } }
+  };
+
   const tarjetasEstadisticas = [
-    {
-      titulo: 'Total de Tareas',
-      valor: estadisticas?.tareasTotales || 0,
-      icono: <FiCheckSquare />,
-      color: '#3b82f6'
-    },
-    {
-      titulo: 'Tareas Completadas',
-      valor: estadisticas?.tareasCompletadas || 0,
-      icono: <FiCheckSquare />,
-      color: '#10b981'
-    },
-    {
-      titulo: 'En Progreso',
-      valor: estadisticas?.tareasEnProgreso || 0,
-      icono: <FiClock />,
-      color: '#f59e0b'
-    },
-    {
-      titulo: 'Tareas Vencidas',
-      valor: estadisticas?.tareasVencidas || 0,
-      icono: <FiAlertCircle />,
-      color: '#ef4444'
-    },
-    {
-      titulo: 'Proyectos Activos',
-      valor: estadisticas?.proyectosActivos || 0,
-      icono: <FiFolder />,
-      color: '#8b5cf6'
-    },
-    {
-      titulo: 'Usuarios Activos',
-      valor: estadisticas?.usuariosActivos || 0,
-      icono: <FiUsers />,
-      color: '#06b6d4'
-    }
+    { titulo: 'Total de Tareas', valor: estadisticas?.tareasTotales || 0, icono: <FiCheckSquare />, color: '#3b82f6', link: '/tasks' },
+    { titulo: 'Tareas Completadas', valor: estadisticas?.tareasCompletadas || 0, icono: <FiCheckSquare />, color: '#10b981', link: '/tasks?status=COMPLETED' },
+    { titulo: 'En Progreso', valor: estadisticas?.tareasEnProgreso || 0, icono: <FiClock />, color: '#f59e0b', link: '/tasks?status=IN_PROGRESS' },
+    { titulo: 'Tareas Vencidas', valor: estadisticas?.tareasVencidas || 0, icono: <FiAlertCircle />, color: '#ef4444', link: '/tasks?status=PENDING' },
+    { titulo: 'Promedio Cierre', valor: `${estadisticas?.tiempoPromedioDias || 0} días`, icono: <FiTrendingUp />, color: '#6366f1', link: null },
+    { titulo: 'Proyectos Activos', valor: estadisticas?.proyectosActivos || 0, icono: <FiFolder />, color: '#06b6d4', link: '/projects' }
   ];
 
   return (
@@ -385,7 +370,20 @@ const ReportesPage = () => {
             Análisis detallado del progreso y rendimiento del proyecto
           </p>
         </div>
-        <div className="header-acciones">
+        <div className="header-acciones" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          
+          <select 
+            className="rango-select" 
+            value={proyectoFiltro} 
+            onChange={(e) => setProyectoFiltro(e.target.value)}
+            style={{ minWidth: '180px' }}
+          >
+            <option value="">Todos los Proyectos</option>
+            {proyectosData?.results?.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
           <select 
             className="rango-select"
             value={rangoFecha}
@@ -396,6 +394,11 @@ const ReportesPage = () => {
             <option value="90_dias">Últimos 90 días</option>
             <option value="12_meses">Últimos 12 meses</option>
           </select>
+
+          <button className="btn-exportar" style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }} onClick={exportarCSV}>
+            <FiFileText /> <span>Excel</span>
+          </button>
+
           <button className="btn-exportar" onClick={exportarPDF}>
             <FiDownload />
             <span>Exportar PDF</span>
@@ -407,9 +410,17 @@ const ReportesPage = () => {
         <DashboardSkeleton />
       ) : (
         <div ref={reporteRef}>
+          
           <div className="tarjetas-estadisticas">
             {tarjetasEstadisticas.map((tarjeta, index) => (
-              <div key={index} className="tarjeta-estadistica">
+              <div 
+                key={index} 
+                className="tarjeta-estadistica"
+                style={{ cursor: tarjeta.link ? 'pointer' : 'default', transition: 'transform 0.2s' }}
+                onClick={() => tarjeta.link && navigate(tarjeta.link)}
+                onMouseEnter={(e) => tarjeta.link && (e.currentTarget.style.transform = 'translateY(-5px)')}
+                onMouseLeave={(e) => tarjeta.link && (e.currentTarget.style.transform = 'translateY(0)')}
+              >
                 <div className="tarjeta-icono" style={{ backgroundColor: tarjeta.color }}>
                   {tarjeta.icono}
                 </div>
@@ -421,56 +432,57 @@ const ReportesPage = () => {
             ))}
           </div>
 
-          <div className="graficos-container">
-            <div className="grafico-card">
+          <div className="graficos-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+            
+            <div className="grafico-card" style={{ position: 'relative' }}>
               <h3>Distribución de Tareas</h3>
-              <div className="grafico">
-                <Pie data={datosGraficoTareas} options={opcionesGrafico} />
+              <div className="grafico" style={{ position: 'relative', height: '300px' }}>
+                <Pie data={datosGraficoTareas} options={{...opcionesGrafico, cutout: '70%'}} />
+                
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                    <span style={{ display: 'block', fontSize: '2rem', fontWeight: 'bold', color: getHealthState(estadisticas?.porcentajeCompletado || 0).color }}>
+                      {estadisticas?.porcentajeCompletado || 0}%
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '500', color: '#6b7280' }}>
+                      {getHealthState(estadisticas?.porcentajeCompletado || 0).texto}
+                    </span>
+                </div>
               </div>
             </div>
 
             <div className="grafico-card grafico-grande">
               <h3>Tendencia de Completado</h3>
-              <div className="grafico">
+              <div className="grafico" style={{ height: '300px' }}>
                 <Line data={datosGraficoTendencia} options={opcionesGrafico} />
               </div>
             </div>
 
-            <div className="grafico-card grafico-grande">
-              <h3>Tareas por Proyecto</h3>
-              <div className="grafico">
-                <Bar data={datosGraficoProyectos} options={opcionesGrafico} />
+            {estadisticas?.topPerformers?.length > 0 && (
+              <div className="grafico-card" style={{ padding: '20px' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FiAward color="#f59e0b"/> Top Rendimiento
+                </h3>
+                <ul style={{ listStyle: 'none', padding: 0, marginTop: '15px' }}>
+                  {estadisticas.topPerformers.map((user, idx) => (
+                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <span style={{ fontWeight: '500' }}>{idx + 1}. {user.name}</span>
+                      <span style={{ color: '#10b981', fontWeight: 'bold' }}>{user.count} tareas</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            <div className="grafico-card">
-              <h3>Progreso General</h3>
-              <div className="progreso-general">
-                <div className="progreso-circulo">
-                  <svg viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f0f0f0" strokeWidth="8"/>
-                    <circle 
-                      cx="50" 
-                      cy="50" 
-                      r="40" 
-                      fill="none" 
-                      stroke="#ff7c15" 
-                      strokeWidth="8"
-                      strokeDasharray={`${(estadisticas?.porcentajeCompletado || 0) * 2.51} 251`}
-                      strokeLinecap="round"
-                      transform="rotate(-90 50 50)"
-                    />
-                  </svg>
-                  <div className="progreso-texto">
-                    <span className="progreso-porcentaje">
-                      {estadisticas?.porcentajeCompletado || 0}%
-                    </span>
-                    <span className="progreso-etiqueta">Completado</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
+
+          {!proyectoFiltro && (
+            <div className="grafico-card grafico-grande" style={{ marginTop: '20px', width: '100%' }}>
+              <h3>Carga Operativa por Proyecto</h3>
+              <div className="grafico" style={{ height: `${Math.max(300, (estadisticas?.tareasPorProyecto?.length || 0) * 40)}px` }}>
+                <Bar data={datosGraficoProyectos} options={opcionesBarrasHorizontales} />
+              </div>
+            </div>
+          )}
+          
         </div>
       )}
     </div>

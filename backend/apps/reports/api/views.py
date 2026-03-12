@@ -1,6 +1,5 @@
 from datetime import timedelta
-
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg, F, ExpressionWrapper, fields
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -16,7 +15,6 @@ from .serializers import (
     UserActivitySerializer
 )
 
-# Role constants to avoid repetition
 ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
 SEARCH_ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'RH')
 
@@ -136,19 +134,19 @@ class DashboardDataAPIView(APIView):
             'projects_summary': ProjectStatusSerializer(client_projects, many=True).data,
         }
 
-
 class StatisticsAPIView(APIView):
     """
-    Vista de API que devuelve estadísticas detalladas para la página de reportes.
-    Incluye distribución de tareas, tendencias y datos por proyecto.
+    Vista de API que devuelve estadísticas avanzadas.
+    Incluye filtros por proyecto y usuario, lead time y ranking.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
         rango = request.query_params.get('rango', '30_dias')
+        proyecto_id = request.query_params.get('proyecto', None)
+        usuario_id = request.query_params.get('usuario', None)
         
-        # Calculate date range based on parameter
         now = timezone.now()
         if rango == '7_dias':
             start_date = now - timedelta(days=7)
@@ -159,11 +157,10 @@ class StatisticsAPIView(APIView):
         elif rango == '12_meses':
             start_date = now - timedelta(days=365)
             weeks = 52
-        else:  # 30_dias default
+        else:
             start_date = now - timedelta(days=30)
             weeks = 4
         
-        # Get tasks based on user role
         if user.role in ADMIN_ROLES:
             tasks = Task.objects.all()
             projects = Project.objects.all()
@@ -177,43 +174,52 @@ class StatisticsAPIView(APIView):
             tasks = Task.objects.filter(project__in=projects)
             users = CustomUser.objects.none()
         
-        # Filter by date range
+        if proyecto_id:
+            tasks = tasks.filter(project_id=proyecto_id)
+        if usuario_id:
+            tasks = tasks.filter(assigned_to_id=usuario_id)
+        
         tasks_in_range = tasks.filter(created_at__gte=start_date)
         
-        # Basic statistics
         total_tasks = tasks_in_range.count()
-        completed_tasks = tasks_in_range.filter(status=Task.TaskStatus.COMPLETED).count()
-        in_progress_tasks = tasks_in_range.filter(status=Task.TaskStatus.IN_PROGRESS).count()
+        completed_tasks = tasks_in_range.filter(status='COMPLETED').count()
+        in_progress_tasks = tasks_in_range.filter(status='IN_PROGRESS').count()
         overdue_tasks = tasks_in_range.filter(
             due_date__lt=timezone.now().date(),
-            status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]
+            status__in=['PENDING', 'IN_PROGRESS']
         ).count()
         
-        active_projects = projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
+        active_projects = projects.filter(status='IN_PROGRESS').count()
         active_users = users.count() if users.exists() else 0
         completion_percentage = round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0
         
-        # Weekly trend data
+        completed_tasks_qs = tasks_in_range.filter(status='COMPLETED')
+        avg_time = completed_tasks_qs.annotate(
+            duration=ExpressionWrapper(F('updated_at') - F('created_at'), output_field=fields.DurationField())
+        ).aggregate(avg_duration=Avg('duration'))['avg_duration']
+        
+        tiempo_promedio = round(avg_time.total_seconds() / 86400, 1) if avg_time else 0
+        
+        top_performers = []
+        if user.role in ADMIN_ROLES or user.role in ['DIRECTOR', 'PROFESSOR']:
+            top_users = CustomUser.objects.filter(
+                assigned_tasks__in=completed_tasks_qs
+            ).annotate(completed_count=Count('assigned_tasks')).order_by('-completed_count')[:5]
+            
+            top_performers = [{'name': u.get_full_name() or u.username, 'count': u.completed_count} for u in top_users]
+
         weekly_data = []
         week_delta = timedelta(days=7)
-        for i in range(min(weeks, 4)):  # Limit to 4 weeks for chart
+        for i in range(min(weeks, 4)):
             week_start = now - week_delta * (i + 1)
             week_end = now - week_delta * i
-            week_completed = tasks.filter(
-                status=Task.TaskStatus.COMPLETED,
-                updated_at__gte=week_start,
-                updated_at__lt=week_end
-            ).count()
+            week_completed = tasks.filter(status='COMPLETED', updated_at__gte=week_start, updated_at__lt=week_end).count()
             weekly_data.insert(0, week_completed)
         
         project_task_counts = []
-        proyectos_con_tareas = projects.annotate(task_count=Count('tasks')).filter(task_count__gt=0).order_by('-task_count')
-        
-        for project in proyectos_con_tareas:
-            project_task_counts.append({
-                'project_name': project.name,
-                'task_count': project.task_count
-            })
+        if not proyecto_id:
+            proyectos_con_tareas = projects.annotate(task_count=Count('tasks')).filter(task_count__gt=0).order_by('-task_count')
+            project_task_counts = [{'project_name': p.name, 'task_count': p.task_count} for p in proyectos_con_tareas]
         
         return Response({
             'tareasTotales': total_tasks,
@@ -223,10 +229,11 @@ class StatisticsAPIView(APIView):
             'proyectosActivos': active_projects,
             'usuariosActivos': active_users,
             'porcentajeCompletado': completion_percentage,
+            'tiempoPromedioDias': tiempo_promedio,
+            'topPerformers': top_performers,
             'tendenciaSemanal': weekly_data,
             'tareasPorProyecto': project_task_counts,
         })
-
 
 class GlobalSearchAPIView(APIView):
     """
