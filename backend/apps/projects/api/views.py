@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, date
 
 from django.db import IntegrityError
-from django.db.models import Q, Count, Case, When, IntegerField
+from django.db.models import Q, Count, Case, When, IntegerField, F
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -52,20 +52,30 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        base_qs = Project.objects.annotate(
+            tasks_count=Count('tasks', distinct=True),
+            completed_tasks=Count('tasks', filter=Q(tasks__status='COMPLETED'), distinct=True)
+        ).annotate(
+            progress=Case(
+                When(tasks_count=0, then=0),
+                default=(F('completed_tasks') * 100) / F('tasks_count'),
+                output_field=IntegerField()
+            )
+        ).prefetch_related('members')
 
         if user.role in ADMIN_ROLES:
-            return Project.objects.all().prefetch_related('members')
+            return base_qs.all()
 
         if user.role == 'STUDENT':
             project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-            return Project.objects.filter(id__in=project_ids).prefetch_related('members')
+            return base_qs.filter(id__in=project_ids)
 
         project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-        return Project.objects.filter(
+        return base_qs.filter(
             Q(id__in=project_ids) |
             Q(created_by=user) |
             Q(client=user)
-        ).distinct().prefetch_related('members')
+        ).distinct()
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

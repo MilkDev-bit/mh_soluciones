@@ -20,6 +20,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     """
     member_count = serializers.SerializerMethodField()
     progress = serializers.IntegerField(read_only=True)
+    tasks_count = serializers.IntegerField(read_only=True)
     status_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -35,11 +36,12 @@ class ProjectSerializer(serializers.ModelSerializer):
             'created_at',
             'member_count',
             'progress',
+            'tasks_count',
         ]
 
     def get_member_count(self, obj):
-        """Devuelve la cantidad de miembros en el proyecto."""
         return obj.members.count()
+
     def get_status_display(self, obj):
         return obj.get_status_display()
 
