@@ -35,7 +35,6 @@ const ReportesPage = () => {
   const [rangoFecha, setRangoFecha] = useState('30_dias');
   const [proyectoFiltro, setProyectoFiltro] = useState('');
   const reporteRef = useRef();
-
   const { data: proyectosData } = useQuery({
     queryKey: ['projectsList'],
     queryFn: () => getProjects(),
@@ -96,7 +95,6 @@ const ReportesPage = () => {
     document.body.removeChild(link);
     toast.success('Excel descargado correctamente');
   };
-
   const exportarPDF = async () => {
     if (!estadisticas || Object.keys(estadisticas).length === 0) {
       toast.error('No hay datos disponibles para generar el reporte');
@@ -113,7 +111,6 @@ const ReportesPage = () => {
       const logoImg = new Image();
       logoImg.src = logo;
       let logoLoaded = false;
-
       await new Promise((resolve) => {
         logoImg.onload = () => {
           logoLoaded = true;
@@ -139,7 +136,6 @@ const ReportesPage = () => {
       pdf.setFont('helvetica', 'normal');
       pdf.text('Análisis detallado del progreso y rendimiento', pageWidth / 2, 95, { align: 'center' });
       pdf.setFontSize(11);
-
       const today = new Date();
       const fechaGeneracion = today.toLocaleDateString('es-ES', { 
         weekday: 'long', 
@@ -153,7 +149,6 @@ const ReportesPage = () => {
       pdf.text(`Fecha de generación: ${fechaGeneracion}`, pageWidth / 2, 120, { align: 'center' });
       pdf.text(`Período analizado: ${rangoTexto}`, pageWidth / 2, 128, { align: 'center' });
       pdf.text(`Generado por: ${user?.first_name || user?.username || 'Usuario'}`, pageWidth / 2, 136, { align: 'center' });
-      
       pdf.addPage();
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
@@ -192,9 +187,21 @@ const ReportesPage = () => {
           head: [['#', 'Nombre del Proyecto', 'Tareas', 'Estado']],
           body: tableData,
           theme: 'striped',
-          headStyles: { fillColor: [255, 124, 21], textColor: 255, fontStyle: 'bold' },
-          styles: { fontSize: 10, cellPadding: 3 },
-          columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30 }, 3: { cellWidth: 30 } },
+          headStyles: { 
+            fillColor: [255, 124, 21],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 10,
+            cellPadding: 3
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 }
+          },
           margin: { top: 35, left: 20, right: 20 }
         });
       } else {
@@ -212,7 +219,7 @@ const ReportesPage = () => {
       }
       
       const canvas = await html2canvas(elemento, {
-        scale: 2, 
+        scale: 3, 
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -266,7 +273,9 @@ const ReportesPage = () => {
       toast.success('PDF generado correctamente');
     } catch (error) {
       toast.dismiss();
+      
       let errorMessage = 'Error al generar el PDF';
+      
       if (error.name === 'SecurityError') {
         errorMessage = 'Error de seguridad al generar el PDF. Intente descargar desde una conexión segura.';
       } else if (error.message?.includes('canvas')) {
@@ -274,8 +283,12 @@ const ReportesPage = () => {
       } else if (error.message?.includes('logo')) {
         errorMessage = 'Error al cargar el logo. El PDF se generará sin logo.';
       }
+      
       toast.error(errorMessage);
-      console.error('PDF Generation Error:', error);
+      
+      if (import.meta.env.DEV) {
+        console.error('PDF Generation Error:', error);
+      }
     }
   };
 
@@ -449,9 +462,9 @@ const ReportesPage = () => {
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <FiAward color="#f59e0b"/> Top Rendimiento
                 </h3>
-                <ul style={{ listStyle: 'none', padding: 0, marginTop: '15px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                <ul style={{ listStyle: 'none', padding: 0, marginTop: '15px' }}>
                   {estadisticas.topPerformers.map((user, idx) => (
-                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 15px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #f3f4f6' }}>
+                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
                       <span style={{ fontWeight: '500' }}>{idx + 1}. {user.name}</span>
                       <span style={{ color: '#10b981', fontWeight: 'bold' }}>{user.count} tareas</span>
                     </li>
