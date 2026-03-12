@@ -67,34 +67,6 @@ const ReportesPage = () => {
     return rangos[rango] || 'Últimos 30 días';
   };
 
-  const exportarCSV = () => {
-    if (!estadisticas) return toast.error('No hay datos para exportar');
-    
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Metrica,Valor\n";
-    csvContent += `Total de Tareas,${estadisticas.tareasTotales || 0}\n`;
-    csvContent += `Tareas Completadas,${estadisticas.tareasCompletadas || 0}\n`;
-    csvContent += `Tareas En Progreso,${estadisticas.tareasEnProgreso || 0}\n`;
-    csvContent += `Tareas Vencidas,${estadisticas.tareasVencidas || 0}\n`;
-    csvContent += `Tiempo Promedio Resolucion (Dias),${estadisticas.tiempoPromedioDias || 0}\n`;
-    csvContent += `Porcentaje General (Salud),${estadisticas.porcentajeCompletado || 0}%\n`;
-    
-    if(estadisticas.tareasPorProyecto?.length > 0){
-      csvContent += "\nProyecto,Tareas Asignadas\n";
-      estadisticas.tareasPorProyecto.forEach(p => {
-        csvContent += `${p.project_name},${p.task_count}\n`;
-      });
-    }
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Reporte_Estadisticas_${rangoFecha}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Excel descargado correctamente');
-  };
   const exportarPDF = async () => {
     if (!estadisticas || Object.keys(estadisticas).length === 0) {
       toast.error('No hay datos disponibles para generar el reporte');
@@ -102,29 +74,21 @@ const ReportesPage = () => {
     }
 
     try {
-      toast.loading('Generando PDF profesional...');
+      toast.loading('Generando PDF profesional...', { id: 'pdf-toast' });
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const LOGO_LOAD_TIMEOUT = 3000;
+      
       const logoImg = new Image();
       logoImg.src = logo;
       let logoLoaded = false;
       await new Promise((resolve) => {
-        logoImg.onload = () => {
-          logoLoaded = true;
-          resolve();
-        };
-        logoImg.onerror = () => {
-          if (import.meta.env.DEV) {
-            console.warn('Could not load logo, continuing without it');
-          }
-          resolve();
-        };
-        setTimeout(resolve, LOGO_LOAD_TIMEOUT);
+        logoImg.onload = () => { logoLoaded = true; resolve(); };
+        logoImg.onerror = () => { resolve(); };
+        setTimeout(resolve, 3000); 
       });
-
+      
       if (logoLoaded) {
         pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
       }
@@ -132,22 +96,17 @@ const ReportesPage = () => {
       pdf.setFontSize(28);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Reportes y Estadísticas', pageWidth / 2, 85, { align: 'center' });
+      
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Análisis detallado del progreso y rendimiento', pageWidth / 2, 95, { align: 'center' });
+      
       pdf.setFontSize(11);
       const today = new Date();
-      const fechaGeneracion = today.toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-      
-      const rangoTexto = obtenerTextoRango(rangoFecha);
+      const fechaGeneracion = today.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       
       pdf.text(`Fecha de generación: ${fechaGeneracion}`, pageWidth / 2, 120, { align: 'center' });
-      pdf.text(`Período analizado: ${rangoTexto}`, pageWidth / 2, 128, { align: 'center' });
+      pdf.text(`Período analizado: ${obtenerTextoRango(rangoFecha)}`, pageWidth / 2, 128, { align: 'center' });
       pdf.text(`Generado por: ${user?.first_name || user?.username || 'Usuario'}`, pageWidth / 2, 136, { align: 'center' });
       pdf.addPage();
       pdf.setFontSize(20);
@@ -156,33 +115,12 @@ const ReportesPage = () => {
       
       let proyectos = estadisticas?.tareasPorProyecto || [];
       
-      if (proyectos.length === 0) {
-        try {
-          const proyectosDataQuery = await getProjects();
-          proyectos = proyectosDataQuery.results?.map((p, idx) => ({
-            project_name: p.name,
-            task_count: p.task_count || 0,
-            status: p.status || 'N/A',
-            order: idx + 1
-          })) || [];
-        } catch (error) {
-          console.warn('No se pudieron obtener proyectos:', error);
-        }
-      }
-      
-      let yPos = 35;
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      
       if (proyectos.length > 0) {
         const tableData = proyectos.map((proyecto, index) => [
-          index + 1,
-          proyecto.project_name,
-          proyecto.task_count || 0,
-          proyecto.status || 'Activo'
+          index + 1, proyecto.project_name, proyecto.task_count || 0, proyecto.status || 'Activo'
         ]);
         
-        autoTable(pdf, {
+        pdf.autoTable({
           startY: 35,
           head: [['#', 'Nombre del Proyecto', 'Tareas', 'Estado']],
           body: tableData,
@@ -193,7 +131,9 @@ const ReportesPage = () => {
           margin: { top: 35, left: 20, right: 20 }
         });
       } else {
-        pdf.text('No hay proyectos disponibles', 25, yPos);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('No hay proyectos disponibles', 25, 35);
       }
       
       pdf.addPage();
@@ -202,18 +142,17 @@ const ReportesPage = () => {
       pdf.text('Estadísticas y Gráficos', 20, 20);
       
       const elemento = reporteRef.current;
-      if (!elemento) {
-        throw new Error('No se pudo capturar el contenido del reporte');
-      }
-      
+      if (!elemento) throw new Error('No se encontró el contenedor de los gráficos (reporteRef)');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("Iniciando captura html2canvas...");
       const canvas = await html2canvas(elemento, {
-        scale: 3, 
+        scale: 1.5,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: elemento.scrollWidth,
-        windowHeight: elemento.scrollHeight
+        backgroundColor: '#ffffff'
       });
+      console.log("Captura terminada exitosamente.");
       
       const imgData = canvas.toDataURL('image/png', 1.0);
       const imgWidth = pageWidth - 20;
@@ -228,6 +167,7 @@ const ReportesPage = () => {
         while (heightLeft > 0) {
           const pageContentHeight = pageHeight - 40;
           const heightToAdd = Math.min(heightLeft, pageContentHeight);
+          
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
           const scaleFactor = canvas.width / imgWidth;
@@ -235,48 +175,30 @@ const ReportesPage = () => {
           
           tempCanvas.width = canvas.width;
           tempCanvas.height = srcHeight;
-          
           ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
-          const tempImgData = tempCanvas.toDataURL('image/png', 1.0);
           
+          const tempImgData = tempCanvas.toDataURL('image/png', 1.0);
           pdf.addImage(tempImgData, 'PNG', 10, position, imgWidth, heightToAdd);
           
           heightLeft -= heightToAdd;
           srcY += srcHeight;
-          
-          if (heightLeft > 0) {
-            pdf.addPage();
-            position = 10;
-          }
+          if (heightLeft > 0) { pdf.addPage(); position = 10; }
         }
       } else {
         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       }
       
-      const rangoTextoFinal = rangoTexto || 'periodo-seleccionado';
-      const fileName = `reporte-estadisticas-${rangoTextoFinal.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
+      pdf.save(`Reporte-Estadisticas-${today.toISOString().split('T')[0]}.pdf`);
       
-      toast.dismiss();
-      toast.success('PDF generado correctamente');
+      toast.success('PDF generado correctamente', { id: 'pdf-toast' });
     } catch (error) {
-      toast.dismiss();
+      console.error('==== ERROR FATAL AL GENERAR PDF ====', error);
       
       let errorMessage = 'Error al generar el PDF';
+      if (error.name === 'SecurityError') errorMessage = 'Error de seguridad CORS en las imágenes.';
+      else if (error.message?.includes('canvas')) errorMessage = 'Error al procesar los gráficos en pantalla.';
       
-      if (error.name === 'SecurityError') {
-        errorMessage = 'Error de seguridad al generar el PDF. Intente descargar desde una conexión segura.';
-      } else if (error.message?.includes('canvas')) {
-        errorMessage = 'Error al procesar los gráficos. Intente nuevamente.';
-      } else if (error.message?.includes('logo')) {
-        errorMessage = 'Error al cargar el logo. El PDF se generará sin logo.';
-      }
-      
-      toast.error(errorMessage);
-      
-      if (import.meta.env.DEV) {
-        console.error('PDF Generation Error:', error);
-      }
+      toast.error(errorMessage, { id: 'pdf-toast' });
     }
   };
 
