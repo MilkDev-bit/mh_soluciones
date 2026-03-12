@@ -206,9 +206,10 @@ class StatisticsAPIView(APIView):
             ).count()
             weekly_data.insert(0, week_completed)
         
-        # Tasks per project (top 5)
         project_task_counts = []
-        for project in projects.annotate(task_count=Count('tasks')).order_by('-task_count')[:5]:
+        proyectos_con_tareas = projects.annotate(task_count=Count('tasks')).filter(task_count__gt=0).order_by('-task_count')
+        
+        for project in proyectos_con_tareas:
             project_task_counts.append({
                 'project_name': project.name,
                 'task_count': project.task_count
