@@ -82,7 +82,7 @@ const ProjectCard = memo(({ project }) => {
               <FiCheckSquare />
               <span>{tasksCount}</span>
             </div>
-            <div className="stat-item" title={`${progress}% completado`}>
+            <div className="stat-item" title={`${progress}% Del proyecto`}>
               <FiTrendingUp />
               <span>{progress}%</span>
             </div>

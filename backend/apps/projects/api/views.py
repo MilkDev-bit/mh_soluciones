@@ -53,14 +53,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         base_qs = Project.objects.annotate(
-            tasks_count=Count('tasks', distinct=True),
-            completed_tasks=Count('tasks', filter=Q(tasks__status='COMPLETED'), distinct=True)
-        ).annotate(
-            progress=Case(
-                When(tasks_count=0, then=0),
-                default=(F('completed_tasks') * 100) / F('tasks_count'),
-                output_field=IntegerField()
-            )
+            tasks_count=Count('tasks', distinct=True)
         ).prefetch_related('members')
 
         if user.role in ADMIN_ROLES:

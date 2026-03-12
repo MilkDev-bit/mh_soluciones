@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from datetime import date
 from ..models import Project, ProjectMember, ProjectComment, ProjectSubmission
 from apps.authentication.models import CustomUser
 from apps.authentication.api.serializers import UserSerializer
@@ -19,7 +20,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     Serializador para la lista de proyectos (vista general).
     """
     member_count = serializers.SerializerMethodField()
-    progress = serializers.IntegerField(read_only=True)
+    progress = serializers.SerializerMethodField()
     tasks_count = serializers.IntegerField(read_only=True)
     status_display = serializers.SerializerMethodField()
 
@@ -44,6 +45,30 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_status_display(self, obj):
         return obj.get_status_display()
+
+    def get_progress(self, obj):
+        """
+        Calcula el progreso basado en el tiempo transcurrido 
+        entre la fecha de inicio y la fecha de fin.
+        """
+        if not obj.start_date or not obj.end_date:
+            return 0 
+            
+        today = date.today()
+        
+        if today < obj.start_date:
+            return 0
+            
+        if today > obj.end_date:
+            return 100
+            
+        total_days = (obj.end_date - obj.start_date).days
+        passed_days = (today - obj.start_date).days
+        
+        if total_days <= 0:
+            return 100
+            
+        return int((passed_days / total_days) * 100)
 
 
 class ProjectCommentSerializer(serializers.ModelSerializer):
