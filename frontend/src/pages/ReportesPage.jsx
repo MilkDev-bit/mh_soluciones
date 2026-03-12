@@ -17,7 +17,7 @@ import { Pie, Bar, Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
@@ -182,26 +182,14 @@ const ReportesPage = () => {
           proyecto.status || 'Activo'
         ]);
         
-        pdf.autoTable({
+        autoTable(pdf, {
           startY: 35,
           head: [['#', 'Nombre del Proyecto', 'Tareas', 'Estado']],
           body: tableData,
           theme: 'striped',
-          headStyles: { 
-            fillColor: [255, 124, 21],
-            textColor: 255,
-            fontStyle: 'bold'
-          },
-          styles: { 
-            fontSize: 10,
-            cellPadding: 3
-          },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 30 },
-            3: { cellWidth: 30 }
-          },
+          headStyles: { fillColor: [255, 124, 21], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 10, cellPadding: 3 },
+          columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 30 }, 3: { cellWidth: 30 } },
           margin: { top: 35, left: 20, right: 20 }
         });
       } else {
