@@ -11,7 +11,6 @@ export const FOLDER_TYPES = {
   OTROS: 'OTROS'
 };
 
-// Filter type constants for backward compatibility
 export const FILTER_TYPES = {
   ALL: 'TODOS',
   IMAGES: 'IMAGENES',
