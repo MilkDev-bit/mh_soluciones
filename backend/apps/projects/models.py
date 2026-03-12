@@ -108,17 +108,16 @@ class Project(TimeStampedModel):
 
 @property
 def progress(self):
-    """
-    Calcula el porcentaje de progreso del proyecto basándose en las tareas completadas o cerradas.
-    """
-    total_tasks = self.tasks.count()
-    if total_tasks == 0:
-        return 0
+        """
+        Calcula el porcentaje de progreso del proyecto basándose en las tareas completadas.
+        """
+        total_tasks = self.tasks.count()
+        if total_tasks == 0:
+            return 0
         
-    completed_tasks = self.tasks.filter(status__in=['CLOSED', 'COMPLETED']).count()
-        
-    progress_percentage = (completed_tasks / total_tasks) * 100
-    return round(progress_percentage)
+        completed_tasks = self.tasks.filter(status='COMPLETED').count()
+        progress_percentage = (completed_tasks / total_tasks) * 100
+        return round(progress_percentage)
 
 class ProjectMember(models.Model):
     """
