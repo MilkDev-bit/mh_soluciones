@@ -434,7 +434,7 @@ const ReportesPage = () => {
 
           <div className="graficos-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
             
-            <div className="grafico-card" style={{ position: 'relative' }}>
+            <div className="grafico-card grafico-grande" style={{ position: 'relative' }}>
               <h3>Distribución de Tareas</h3>
               <div className="grafico" style={{ position: 'relative', height: '300px' }}>
                 <Pie data={datosGraficoTareas} options={{...opcionesGrafico, cutout: '70%'}} />
@@ -458,7 +458,7 @@ const ReportesPage = () => {
             </div>
 
             {estadisticas?.topPerformers?.length > 0 && (
-              <div className="grafico-card" style={{ padding: '20px' }}>
+              <div className="grafico-card grafico-grande" style={{ padding: '20px' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <FiAward color="#f59e0b"/> Top Rendimiento
                 </h3>
