@@ -19,9 +19,8 @@ class ProjectSerializer(serializers.ModelSerializer):
     Serializador para la lista de proyectos (vista general).
     """
     member_count = serializers.SerializerMethodField()
+    progress = serializers.IntegerField(read_only=True)
     status_display = serializers.SerializerMethodField()
-    progress = serializers.SerializerMethodField()
-    tasks_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -35,8 +34,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'end_date', 
             'created_at',
             'member_count',
-            'progress',      
-            'tasks_count',
+            'progress',
         ]
 
     def get_member_count(self, obj):
@@ -44,10 +42,6 @@ class ProjectSerializer(serializers.ModelSerializer):
         return obj.members.count()
     def get_status_display(self, obj):
         return obj.get_status_display()
-    def get_progress(self, obj):
-        return obj.progress
-    def get_tasks_count(self, obj):
-        return obj.tasks.count()
 
 
 class ProjectCommentSerializer(serializers.ModelSerializer):
