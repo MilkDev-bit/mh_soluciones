@@ -19,9 +19,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     Serializador para la lista de proyectos (vista general).
     """
     member_count = serializers.SerializerMethodField()
+    status_display = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     tasks_count = serializers.SerializerMethodField()
-    status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
