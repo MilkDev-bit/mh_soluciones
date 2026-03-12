@@ -17,7 +17,7 @@ import { Pie, Bar, Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
@@ -35,6 +35,7 @@ const ReportesPage = () => {
   const [rangoFecha, setRangoFecha] = useState('30_dias');
   const [proyectoFiltro, setProyectoFiltro] = useState('');
   const reporteRef = useRef();
+
   const { data: proyectosData } = useQuery({
     queryKey: ['projectsList'],
     queryFn: () => getProjects(),
@@ -67,6 +68,35 @@ const ReportesPage = () => {
     return rangos[rango] || 'Últimos 30 días';
   };
 
+  const exportarCSV = () => {
+    if (!estadisticas) return toast.error('No hay datos para exportar');
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Metrica,Valor\n";
+    csvContent += `Total de Tareas,${estadisticas.tareasTotales || 0}\n`;
+    csvContent += `Tareas Completadas,${estadisticas.tareasCompletadas || 0}\n`;
+    csvContent += `Tareas En Progreso,${estadisticas.tareasEnProgreso || 0}\n`;
+    csvContent += `Tareas Vencidas,${estadisticas.tareasVencidas || 0}\n`;
+    csvContent += `Tiempo Promedio Resolucion (Dias),${estadisticas.tiempoPromedioDias || 0}\n`;
+    csvContent += `Porcentaje General (Salud),${estadisticas.porcentajeCompletado || 0}%\n`;
+    
+    if(estadisticas.tareasPorProyecto?.length > 0){
+      csvContent += "\nProyecto,Tareas Asignadas\n";
+      estadisticas.tareasPorProyecto.forEach(p => {
+        csvContent += `${p.project_name},${p.task_count}\n`;
+      });
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Reporte_Estadisticas_${rangoFecha}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Excel descargado correctamente');
+  };
+
   const exportarPDF = async () => {
     if (!estadisticas || Object.keys(estadisticas).length === 0) {
       toast.error('No hay datos disponibles para generar el reporte');
@@ -74,21 +104,30 @@ const ReportesPage = () => {
     }
 
     try {
-      toast.loading('Generando PDF profesional...', { id: 'pdf-toast' });
+      toast.loading('Generando PDF profesional...');
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      
+      const LOGO_LOAD_TIMEOUT = 3000;
       const logoImg = new Image();
       logoImg.src = logo;
       let logoLoaded = false;
+
       await new Promise((resolve) => {
-        logoImg.onload = () => { logoLoaded = true; resolve(); };
-        logoImg.onerror = () => { resolve(); };
-        setTimeout(resolve, 3000); 
+        logoImg.onload = () => {
+          logoLoaded = true;
+          resolve();
+        };
+        logoImg.onerror = () => {
+          if (import.meta.env.DEV) {
+            console.warn('Could not load logo, continuing without it');
+          }
+          resolve();
+        };
+        setTimeout(resolve, LOGO_LOAD_TIMEOUT);
       });
-      
+
       if (logoLoaded) {
         pdf.addImage(logoImg, 'PNG', (pageWidth - 40) / 2, 30, 40, 40);
       }
@@ -96,18 +135,25 @@ const ReportesPage = () => {
       pdf.setFontSize(28);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Reportes y Estadísticas', pageWidth / 2, 85, { align: 'center' });
-      
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Análisis detallado del progreso y rendimiento', pageWidth / 2, 95, { align: 'center' });
-      
       pdf.setFontSize(11);
+
       const today = new Date();
-      const fechaGeneracion = today.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const fechaGeneracion = today.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      const rangoTexto = obtenerTextoRango(rangoFecha);
       
       pdf.text(`Fecha de generación: ${fechaGeneracion}`, pageWidth / 2, 120, { align: 'center' });
-      pdf.text(`Período analizado: ${obtenerTextoRango(rangoFecha)}`, pageWidth / 2, 128, { align: 'center' });
+      pdf.text(`Período analizado: ${rangoTexto}`, pageWidth / 2, 128, { align: 'center' });
       pdf.text(`Generado por: ${user?.first_name || user?.username || 'Usuario'}`, pageWidth / 2, 136, { align: 'center' });
+      
       pdf.addPage();
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
@@ -115,9 +161,30 @@ const ReportesPage = () => {
       
       let proyectos = estadisticas?.tareasPorProyecto || [];
       
+      if (proyectos.length === 0) {
+        try {
+          const proyectosDataQuery = await getProjects();
+          proyectos = proyectosDataQuery.results?.map((p, idx) => ({
+            project_name: p.name,
+            task_count: p.task_count || 0,
+            status: p.status || 'N/A',
+            order: idx + 1
+          })) || [];
+        } catch (error) {
+          console.warn('No se pudieron obtener proyectos:', error);
+        }
+      }
+      
+      let yPos = 35;
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
       if (proyectos.length > 0) {
         const tableData = proyectos.map((proyecto, index) => [
-          index + 1, proyecto.project_name, proyecto.task_count || 0, proyecto.status || 'Activo'
+          index + 1,
+          proyecto.project_name,
+          proyecto.task_count || 0,
+          proyecto.status || 'Activo'
         ]);
         
         pdf.autoTable({
@@ -131,9 +198,7 @@ const ReportesPage = () => {
           margin: { top: 35, left: 20, right: 20 }
         });
       } else {
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text('No hay proyectos disponibles', 25, 35);
+        pdf.text('No hay proyectos disponibles', 25, yPos);
       }
       
       pdf.addPage();
@@ -142,17 +207,18 @@ const ReportesPage = () => {
       pdf.text('Estadísticas y Gráficos', 20, 20);
       
       const elemento = reporteRef.current;
-      if (!elemento) throw new Error('No se encontró el contenedor de los gráficos (reporteRef)');
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log("Iniciando captura html2canvas...");
+      if (!elemento) {
+        throw new Error('No se pudo capturar el contenido del reporte');
+      }
+      
       const canvas = await html2canvas(elemento, {
-        scale: 1.5,
+        scale: 2, 
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: elemento.scrollWidth,
+        windowHeight: elemento.scrollHeight
       });
-      console.log("Captura terminada exitosamente.");
       
       const imgData = canvas.toDataURL('image/png', 1.0);
       const imgWidth = pageWidth - 20;
@@ -167,7 +233,6 @@ const ReportesPage = () => {
         while (heightLeft > 0) {
           const pageContentHeight = pageHeight - 40;
           const heightToAdd = Math.min(heightLeft, pageContentHeight);
-          
           const tempCanvas = document.createElement('canvas');
           const ctx = tempCanvas.getContext('2d');
           const scaleFactor = canvas.width / imgWidth;
@@ -175,30 +240,42 @@ const ReportesPage = () => {
           
           tempCanvas.width = canvas.width;
           tempCanvas.height = srcHeight;
-          ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
           
+          ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
           const tempImgData = tempCanvas.toDataURL('image/png', 1.0);
+          
           pdf.addImage(tempImgData, 'PNG', 10, position, imgWidth, heightToAdd);
           
           heightLeft -= heightToAdd;
           srcY += srcHeight;
-          if (heightLeft > 0) { pdf.addPage(); position = 10; }
+          
+          if (heightLeft > 0) {
+            pdf.addPage();
+            position = 10;
+          }
         }
       } else {
         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       }
       
-      pdf.save(`Reporte-Estadisticas-${today.toISOString().split('T')[0]}.pdf`);
+      const rangoTextoFinal = rangoTexto || 'periodo-seleccionado';
+      const fileName = `reporte-estadisticas-${rangoTextoFinal.toLowerCase().replace(/\s/g, '-')}-${today.toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
       
-      toast.success('PDF generado correctamente', { id: 'pdf-toast' });
+      toast.dismiss();
+      toast.success('PDF generado correctamente');
     } catch (error) {
-      console.error('==== ERROR FATAL AL GENERAR PDF ====', error);
-      
+      toast.dismiss();
       let errorMessage = 'Error al generar el PDF';
-      if (error.name === 'SecurityError') errorMessage = 'Error de seguridad CORS en las imágenes.';
-      else if (error.message?.includes('canvas')) errorMessage = 'Error al procesar los gráficos en pantalla.';
-      
-      toast.error(errorMessage, { id: 'pdf-toast' });
+      if (error.name === 'SecurityError') {
+        errorMessage = 'Error de seguridad al generar el PDF. Intente descargar desde una conexión segura.';
+      } else if (error.message?.includes('canvas')) {
+        errorMessage = 'Error al procesar los gráficos. Intente nuevamente.';
+      } else if (error.message?.includes('logo')) {
+        errorMessage = 'Error al cargar el logo. El PDF se generará sin logo.';
+      }
+      toast.error(errorMessage);
+      console.error('PDF Generation Error:', error);
     }
   };
 
@@ -372,9 +449,9 @@ const ReportesPage = () => {
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <FiAward color="#f59e0b"/> Top Rendimiento
                 </h3>
-                <ul style={{ listStyle: 'none', padding: 0, marginTop: '15px' }}>
+                <ul style={{ listStyle: 'none', padding: 0, marginTop: '15px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                   {estadisticas.topPerformers.map((user, idx) => (
-                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f3f4f6' }}>
+                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 15px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #f3f4f6' }}>
                       <span style={{ fontWeight: '500' }}>{idx + 1}. {user.name}</span>
                       <span style={{ color: '#10b981', fontWeight: 'bold' }}>{user.count} tareas</span>
                     </li>
