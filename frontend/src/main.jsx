@@ -13,6 +13,13 @@ import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import { LayoutProvider } from './contexts/LayoutContext.jsx';
 import './assets/styles/main.scss';
 
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('Hay una nueva versión disponible. ¿Deseas actualizar?')) {
+      updateSW(true);
+    }
+  },
+
 // Configure React Query client with optimal settings
 const queryClient = new QueryClient({
   defaultOptions: {
