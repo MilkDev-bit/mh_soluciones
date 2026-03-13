@@ -5,7 +5,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
@@ -19,6 +19,7 @@ const updateSW = registerSW({
       updateSW(true);
     }
   },
+});
 
 // Configure React Query client with optimal settings
 const queryClient = new QueryClient({
