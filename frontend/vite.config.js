@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -25,18 +24,25 @@ export default defineConfig({
             src: '/icons/android-chrome-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any' // Ícono estándar
           },
           {
             src: '/icons/android-chrome-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any' // Ícono estándar
+          },
+          {
+            src: '/icons/android-chrome-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable' // Ícono enmascarable (Requisito de Lighthouse)
           }
         ]
       },
       workbox: {
         cleanupOutdatedCaches: true,
+        importScripts: ['custom-sw.js'], // <-- ¡IMPORTANTE! Se restauró para que no se rompan tus notificaciones
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
         runtimeCaching: [
           {
