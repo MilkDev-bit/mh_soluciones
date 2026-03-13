@@ -15,13 +15,15 @@ import './assets/styles/main.scss';
 
 const updateSW = registerSW({
   onNeedRefresh() {
-    if (confirm('Hay una nueva versión disponible. ¿Deseas actualizar?')) {
+    if (confirm('Nueva versión disponible. ¿Actualizar ahora?')) {
       updateSW(true);
     }
   },
+  onOfflineReady() {
+    console.log('App lista para trabajar offline');
+  },
 });
 
-// Configure React Query client with optimal settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -39,15 +41,12 @@ const queryClient = new QueryClient({
 });
 
 // Register Service Worker for Push Notifications
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && !import.meta.env.DEV) {
   window.addEventListener('load', () => {
+    // Registramos tu SW de notificaciones SOLO si no hay conflictos
     navigator.serviceWorker.register('/custom-sw.js', { scope: '/' })
-      .then((registration) => {
-        console.log('Service Worker registered:', registration);
-      })
-      .catch((error) => {
-        console.error('Service Worker registration failed:', error);
-      });
+      .then((reg) => console.log('Push SW registrado'))
+      .catch((err) => console.error('Error en Push SW', err));
   });
 }
 
