@@ -185,7 +185,7 @@ class StatisticsAPIView(APIView):
         task_stats = tasks_in_range.aggregate(
             totales=Count('id'),
             completadas=Count('id', filter=Q(status='COMPLETED')),
-            en_progreso=Count('id', filter=Q(status='IN_PROGRESS')),
+            en_progreso=Count('id', filter=Q(status='PENDING')),
             vencidas=Count('id', filter=Q(due_date__lt=today, status__in=['PENDING', 'IN_PROGRESS'])),
             tiempo_promedio=Avg(
                 ExpressionWrapper(F('updated_at') - F('created_at'), output_field=fields.DurationField()),
