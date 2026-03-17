@@ -928,11 +928,23 @@ class LoginActivityListView(generics.ListAPIView):
         return LoginActivity.objects.filter(user=user).order_by('-timestamp')
     
 class BlockedIPViewSet(viewsets.ModelViewSet):
-    queryset = BlockedIP.objects.all().order_by('-blocked_at')
+    queryset = BlockedIP.objects.all().order_by('-created_at')
     serializer_class = BlockedIPSerializer
+    permission_classes = [permissions.IsAdminUser]
 
     @action(detail=True, methods=['post'])
     def unblock(self, request, pk=None):
+        """
+        Acción personalizada para desbloquear una IP manualmente.
+        Se accede vía: POST /api/v1/auth/blocked-ips/{id}/unblock/
+        """
         ip_block = self.get_object()
         ip_block.delete()
         return Response({'message': 'IP desbloqueada correctamente'}, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Esto permite que el botón "Borrar" estándar del frontend también funcione.
+        Se accede vía: DELETE /api/v1/auth/blocked-ips/{id}/
+        """
+        return super().destroy(request, *args, **kwargs)

@@ -216,18 +216,17 @@ class BlockedIPSerializer(serializers.ModelSerializer):
         fields = [
             'id', 
             'ip_address', 
-            'attempts', 
-            'blocked_at', 
-            'unblocked_at', 
             'reason', 
+            'created_at',
+            'is_active',
             'time_since_blocked'
         ]
-        read_only_fields = ['blocked_at', 'attempts']
+        read_only_fields = ['created_at']
 
     def get_time_since_blocked(self, obj):
         from django.utils import timezone
         now = timezone.now()
-        diff = now - obj.blocked_at
+        diff = now - obj.created_at
         
         if diff.days > 0:
             return f"Hace {diff.days} días"
