@@ -33,7 +33,8 @@ from .views import (
     GoogleAuthCallbackView,
     GoogleConnectionStatusView,
     GoogleOAuthDebugView,
-    forgot_password
+    forgot_password,
+    LoginActivityListView
 )
 
 router = SimpleRouter()
@@ -59,4 +60,5 @@ urlpatterns = [
     path('google/callback/', google_callback_view, name='google-auth-callback'),
     path('google/status/', GoogleConnectionStatusView.as_view(), name='google-status'),
     path('google/debug/', GoogleOAuthDebugView.as_view(), name='google-oauth-debug'),
+    path('login-activity/', LoginActivityListView.as_view(), name='login-activity'),
 ]

@@ -15,6 +15,7 @@ const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'
 const TasksPage = lazy(() => import('./pages/tasks/TasksPage'));
 const CalendarPage = lazy(() => import('./pages/calendar/CalendarPage'));
 const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
+const AccesosPage = lazy(() => import('./pages/admin/AccesosPage'));
 const HRPage = lazy(() => import('./pages/hr/HRPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -60,6 +61,13 @@ const AppRoutes = () => {
               <UsersPage />
             </ProtectedRoute>
           } />
+
+          <Route path="/admin/accesos" element={
+            <ProtectedRoute roles={['SUPERADMIN', 'ADMIN']}>
+              <AccesosPage />
+            </ProtectedRoute>
+          } />
+
           <Route path="/hr" element={
             <ProtectedRoute roles={['RH', 'SUPERADMIN']}>
               <HRPage />

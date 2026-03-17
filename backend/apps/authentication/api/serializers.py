@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from rest_framework import serializers
 
-from ..models import CustomUser
+from ..models import CustomUser, LoginActivity
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -196,3 +196,14 @@ class ForgotPasswordSerializer(serializers.Serializer):
         if hasattr(self, '_user'):
             data['user'] = self._user
         return data
+    
+class LoginActivitySerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+
+    class Meta:
+        model = LoginActivity
+        fields = (
+            'id', 'user', 'username', 'first_name', 
+            'timestamp', 'ip_address', 'successful', 'user_agent'
+        )

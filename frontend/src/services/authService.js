@@ -53,3 +53,13 @@ export const confirmTwoFactor = async (payload) => {
     throw error.response?.data || error;
   }
 };
+
+export const getLoginActivity = async (page = 1) => {
+  try {
+    const response = await api.get(`/users/login-activity/?page=${page}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener la actividad de inicio de sesión:', error);
+    throw error;
+  }
+};

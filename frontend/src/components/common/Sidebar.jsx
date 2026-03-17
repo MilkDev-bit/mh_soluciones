@@ -30,7 +30,8 @@ import {
   FiMessageSquare,
   FiFile,
   FiBarChart2,
-  FiBell
+  FiBell,
+  FiShield
 } from 'react-icons/fi';
 import './Sidebar.scss';
 import matrixMhLogo from '/icons/MatrixMh.png';
@@ -334,6 +335,15 @@ const Sidebar = () => {
                   >
                     <FiUsers />
                     {!isSidebarCollapsed && <span>Usuarios</span>}
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/accesos"
+                    className="menu-item"
+                    onClick={closeMobileMenu}
+                  >
+                    <FiShield />
+                    {!isSidebarCollapsed && <span>Accesos</span>}
                   </NavLink>
                 </div>
               </div>

@@ -47,7 +47,8 @@ from .serializers import (
     UserCreateSerializer,
     UserSerializer,
     UserUpdateSerializer,
-    ForgotPasswordSerializer
+    ForgotPasswordSerializer,
+    LoginActivitySerializer
 )
 
 User = get_user_model()
@@ -882,3 +883,13 @@ Fecha y hora: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
             {'detail': 'Error al enviar la solicitud. Por favor, intenta más tarde o contacta al soporte.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+class LoginActivityListView(generics.ListAPIView):
+    serializer_class = LoginActivitySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['SUPERADMIN', 'ADMIN']:
+            return LoginActivity.objects.all().order_by('-timestamp')
+        return LoginActivity.objects.filter(user=user).order_by('-timestamp')
