@@ -63,3 +63,13 @@ export const getLoginActivity = async (page = 1) => {
     throw error;
   }
 };
+
+export const getBlockedIPs = async () => {
+    const response = await api.get('/auth/blocked-ips/');
+    return response.data;
+};
+
+export const unblockIP = async (id) => {
+    const response = await api.delete(`/auth/blocked-ips/${id}/`);
+    return response.data;
+};

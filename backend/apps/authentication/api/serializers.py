@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from rest_framework import serializers
 
-from ..models import CustomUser, LoginActivity
+from ..models import CustomUser, LoginActivity, BlockedIP
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -207,3 +207,32 @@ class LoginActivitySerializer(serializers.ModelSerializer):
             'id', 'user', 'username', 'first_name', 
             'timestamp', 'ip_address', 'successful', 'user_agent'
         )
+
+class BlockedIPSerializer(serializers.ModelSerializer):
+    time_since_blocked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BlockedIP
+        fields = [
+            'id', 
+            'ip_address', 
+            'attempts', 
+            'blocked_at', 
+            'unblocked_at', 
+            'reason', 
+            'time_since_blocked'
+        ]
+        read_only_fields = ['blocked_at', 'attempts']
+
+    def get_time_since_blocked(self, obj):
+        from django.utils import timezone
+        now = timezone.now()
+        diff = now - obj.blocked_at
+        
+        if diff.days > 0:
+            return f"Hace {diff.days} días"
+        hours = diff.seconds // 3600
+        if hours > 0:
+            return f"Hace {hours} horas"
+        minutes = (diff.seconds // 60) % 60
+        return f"Hace {minutes} minutos"

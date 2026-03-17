@@ -34,11 +34,13 @@ from .views import (
     GoogleConnectionStatusView,
     GoogleOAuthDebugView,
     forgot_password,
+    BlockedIPViewSet,
     LoginActivityListView
 )
 
 router = SimpleRouter()
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'blocked-ips', BlockedIPViewSet, basename='blocked-ips')
 
 # Prepare the OAuth callback view with decorators
 # Applied in order: view -> logging wrapper -> CSRF exemption

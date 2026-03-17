@@ -48,7 +48,8 @@ from .serializers import (
     UserSerializer,
     UserUpdateSerializer,
     ForgotPasswordSerializer,
-    LoginActivitySerializer
+    LoginActivitySerializer,
+    BlockedIPSerializer
 )
 
 User = get_user_model()
@@ -925,3 +926,13 @@ class LoginActivityListView(generics.ListAPIView):
         if user.role in ['SUPERADMIN', 'ADMIN']:
             return LoginActivity.objects.all().order_by('-timestamp')
         return LoginActivity.objects.filter(user=user).order_by('-timestamp')
+    
+class BlockedIPViewSet(viewsets.ModelViewSet):
+    queryset = BlockedIP.objects.all().order_by('-blocked_at')
+    serializer_class = BlockedIPSerializer
+
+    @action(detail=True, methods=['post'])
+    def unblock(self, request, pk=None):
+        ip_block = self.get_object()
+        ip_block.delete()
+        return Response({'message': 'IP desbloqueada correctamente'}, status=status.HTTP_200_OK)

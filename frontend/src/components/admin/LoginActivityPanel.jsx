@@ -1,141 +1,142 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { FiCheckCircle, FiXCircle, FiMonitor, FiGlobe, FiClock } from 'react-icons/fi';
-import { getLoginActivity } from '../../services/authService';
-import '../../pages/admin/UsersPage.scss'; 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FiCheckCircle, FiXCircle, FiMonitor, FiGlobe, FiClock, FiShield, FiUnlock, FiAlertOctagon } from 'react-icons/fi';
+import { getLoginActivity, getBlockedIPs, unblockIP } from '../../services/authService';
+import { toast } from 'react-hot-toast';
+import '../../pages/admin/UsersPage.scss';
 
 const LoginActivityPanel = () => {
+    const [activeTab, setActiveTab] = useState('history');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 20; 
+    const queryClient = useQueryClient();
 
-    const { 
-        data: activityData, 
-        isLoading, 
-        isError 
-    } = useQuery({
+    const { data: activityData, isLoading: isLoadingHistory } = useQuery({
         queryKey: ['loginActivity', currentPage],
         queryFn: () => getLoginActivity(currentPage),
-        staleTime: 5 * 60 * 1000, 
-        keepPreviousData: true, 
+        enabled: activeTab === 'history',
+    });
+
+    const { data: blockedData, isLoading: isLoadingBlocked } = useQuery({
+        queryKey: ['blockedIPs'],
+        queryFn: getBlockedIPs,
+        enabled: activeTab === 'blocked',
+    });
+
+    const unblockMutation = useMutation({
+        mutationFn: unblockIP,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['blockedIPs']);
+            toast.success('IP desbloqueada correctamente');
+        },
+        onError: () => toast.error('Error al desbloquear la IP')
     });
 
     const activities = activityData?.results || activityData || [];
-    const totalCount = activityData?.count || activities.length;
-    const totalPages = activityData?.count ? Math.ceil(activityData.count / itemsPerPage) : 1;
-
-    const handlePageChange = (newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            setCurrentPage(newPage);
-        }
-    };
-
-    if (isLoading && !activities.length) {
-        return <div className="p-4 text-center">Cargando historial de accesos...</div>;
-    }
-
-    if (isError) {
-        return <div className="p-4 text-center text-red-500">Error al cargar el historial.</div>;
-    }
+    const totalPages = activityData?.count ? Math.ceil(activityData.count / 20) : 1;
 
     return (
-        <div className="users-page" style={{ padding: '0' }}> 
-            <div className="users-header" style={{ marginBottom: '1.5rem' }}>
-                <div className="users-header-top">
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Historial de Accesos</h2>
+        <div className="users-page" style={{ padding: '0' }}>
+            <div className="users-header" style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div style={{ display: 'flex', gap: '1.5rem' }}>
+                        <h2 
+                            onClick={() => setActiveTab('history')}
+                            style={{ 
+                                cursor: 'pointer', fontSize: '1.2rem', margin: 0,
+                                color: activeTab === 'history' ? '#f05423' : '#6b7280',
+                                borderBottom: activeTab === 'history' ? '2px solid #f05423' : 'none',
+                                paddingBottom: '5px'
+                            }}
+                        >
+                            Historial de Accesos
+                        </h2>
+                        <h2 
+                            onClick={() => setActiveTab('blocked')}
+                            style={{ 
+                                cursor: 'pointer', fontSize: '1.2rem', margin: 0,
+                                color: activeTab === 'blocked' ? '#f05423' : '#6b7280',
+                                borderBottom: activeTab === 'blocked' ? '2px solid #f05423' : 'none',
+                                paddingBottom: '5px'
+                            }}
+                        >
+                            IPs Bloqueadas
+                        </h2>
+                    </div>
                 </div>
             </div>
 
             <div className="users-table-container">
-                <table className="users-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha y Hora</th>
-                            <th>Usuario</th>
-                            <th>IP</th>
-                            <th>Dispositivo</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {activities.map((activity) => (
-                            <tr key={activity.id}>
-                                <td data-label="Fecha y Hora">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <FiClock style={{ color: '#9ca3af' }} />
-                                        {new Date(activity.timestamp).toLocaleString('es-MX')}
-                                    </div>
-                                </td>
-                                
-                                <td data-label="Usuario">
-                                    <div className="user-cell">
-                                        <div>
-                                            <div className="user-cell-name">
-                                                {activity.first_name || activity.username}
-                                            </div>
-                                            <div className="user-cell-username">@{activity.username}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td data-label="IP">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <FiGlobe style={{ color: '#9ca3af' }} />
-                                        {activity.ip_address}
-                                    </div>
-                                </td>
-                                
-                                <td data-label="Dispositivo" title={activity.user_agent}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <FiMonitor style={{ color: '#9ca3af' }} />
-                                        {activity.user_agent ? activity.user_agent.split(' ')[0] : 'Desconocido'}
-                                    </div>
-                                </td>
-                                
-                                <td data-label="Estado">
-                                    <span className={`status-badge ${activity.successful ? 'status-active' : 'status-inactive'}`}>
-                                        {activity.successful ? (
-                                            <>
-                                                <FiCheckCircle />
-                                                <span>Exitoso</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FiXCircle />
-                                                <span>Fallido</span>
-                                            </>
-                                        )}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                        {activities.length === 0 && (
+                {activeTab === 'history' ? (
+                    <table className="users-table">
+                        <thead>
                             <tr>
-                                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>
-                                    No hay registros de actividad disponibles.
-                                </td>
+                                <th>Fecha y Hora</th>
+                                <th>Usuario</th>
+                                <th>IP</th>
+                                <th>Dispositivo</th>
+                                <th>Estado</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {activities.map((activity) => (
+                                <tr key={activity.id}>
+                                    <td><div style={{display:'flex', alignItems:'center', gap:'5px'}}><FiClock/>{new Date(activity.timestamp).toLocaleString()}</div></td>
+                                    <td><strong>{activity.username}</strong></td>
+                                    <td><FiGlobe/> {activity.ip_address}</td>
+                                    <td><FiMonitor/> {activity.user_agent?.split(' ')[0]}</td>
+                                    <td>
+                                        <span className={`status-badge ${activity.successful ? 'status-active' : 'status-inactive'}`}>
+                                            {activity.successful ? <FiCheckCircle/> : <FiXCircle/>}
+                                            {activity.successful ? 'Exitoso' : 'Fallido'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <table className="users-table">
+                        <thead>
+                            <tr>
+                                <th>Dirección IP</th>
+                                <th>Fecha Bloqueo</th>
+                                <th>Intentos</th>
+                                <th>Razón</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(blockedData || []).map((block) => (
+                                <tr key={block.id}>
+                                    <td><strong>{block.ip_address}</strong></td>
+                                    <td>{new Date(block.blocked_at).toLocaleString()}</td>
+                                    <td><span className="status-badge status-inactive">{block.attempts} intentos</span></td>
+                                    <td><FiAlertOctagon style={{color: '#ef4444', marginRight: '5px'}}/> {block.reason || 'Fuerza bruta'}</td>
+                                    <td>
+                                        <button 
+                                            className="action-btn edit" 
+                                            onClick={() => unblockMutation.mutate(block.id)}
+                                            title="Desbloquear IP"
+                                            style={{ background: '#ecfdf5', color: '#10b981', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer' }}
+                                        >
+                                            <FiUnlock size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {blockedData?.length === 0 && (
+                                <tr><td colSpan="5" style={{textAlign:'center', padding:'2rem'}}>No hay IPs bloqueadas actualmente.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
-
-            {totalPages > 1 && (
+            
+            {activeTab === 'history' && totalPages > 1 && (
                 <div className="pagination">
-                    <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                    >
-                        Anterior
-                    </button>
-                    <span>
-                        Página {currentPage} de {totalPages} ({totalCount} registros)
-                    </span>
-                    <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                    >
-                        Siguiente
-                    </button>
+                    <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>Anterior</button>
+                    <span>Página {currentPage} de {totalPages}</span>
+                    <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>Siguiente</button>
                 </div>
             )}
         </div>
