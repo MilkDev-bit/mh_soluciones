@@ -37,31 +37,29 @@ const LoginActivityPanel = () => {
     return (
         <div className="users-page" style={{ padding: '0' }}>
             <div className="users-header" style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <div style={{ display: 'flex', gap: '1.5rem' }}>
-                        <h2 
-                            onClick={() => setActiveTab('history')}
-                            style={{ 
-                                cursor: 'pointer', fontSize: '1.2rem', margin: 0,
-                                color: activeTab === 'history' ? '#f05423' : '#6b7280',
-                                borderBottom: activeTab === 'history' ? '2px solid #f05423' : 'none',
-                                paddingBottom: '5px'
-                            }}
-                        >
-                            Historial de Accesos
-                        </h2>
-                        <h2 
-                            onClick={() => setActiveTab('blocked')}
-                            style={{ 
-                                cursor: 'pointer', fontSize: '1.2rem', margin: 0,
-                                color: activeTab === 'blocked' ? '#f05423' : '#6b7280',
-                                borderBottom: activeTab === 'blocked' ? '2px solid #f05423' : 'none',
-                                paddingBottom: '5px'
-                            }}
-                        >
-                            IPs Bloqueadas
-                        </h2>
-                    </div>
+                <div style={{ display: 'flex', gap: '1.5rem' }}>
+                    <h2 
+                        onClick={() => setActiveTab('history')}
+                        style={{ 
+                            cursor: 'pointer', fontSize: '1.2rem', margin: 0,
+                            color: activeTab === 'history' ? '#f05423' : '#6b7280',
+                            borderBottom: activeTab === 'history' ? '2px solid #f05423' : 'none',
+                            paddingBottom: '5px'
+                        }}
+                    >
+                        Historial de Accesos
+                    </h2>
+                    <h2 
+                        onClick={() => setActiveTab('blocked')}
+                        style={{ 
+                            cursor: 'pointer', fontSize: '1.2rem', margin: 0,
+                            color: activeTab === 'blocked' ? '#f05423' : '#6b7280',
+                            borderBottom: activeTab === 'blocked' ? '2px solid #f05423' : 'none',
+                            paddingBottom: '5px'
+                        }}
+                    >
+                        IPs Bloqueadas
+                    </h2>
                 </div>
             </div>
 
@@ -100,7 +98,7 @@ const LoginActivityPanel = () => {
                             <tr>
                                 <th>Dirección IP</th>
                                 <th>Fecha Bloqueo</th>
-                                <th>Intentos</th>
+                                <th>Tiempo Transcurrido</th>
                                 <th>Razón</th>
                                 <th>Acciones</th>
                             </tr>
@@ -109,9 +107,9 @@ const LoginActivityPanel = () => {
                             {(blockedData || []).map((block) => (
                                 <tr key={block.id}>
                                     <td><strong>{block.ip_address}</strong></td>
-                                    <td>{new Date(block.blocked_at).toLocaleString()}</td>
-                                    <td><span className="status-badge status-inactive">{block.attempts} intentos</span></td>
-                                    <td><FiAlertOctagon style={{color: '#ef4444', marginRight: '5px'}}/> {block.reason || 'Fuerza bruta'}</td>
+                                    <td>{new Date(block.created_at).toLocaleString()}</td>
+                                    <td>{block.time_since_blocked}</td>
+                                    <td><FiAlertOctagon style={{color: '#ef4444', marginRight: '5px'}}/> {block.reason || 'Actividad sospechosa'}</td>
                                     <td>
                                         <button 
                                             className="action-btn edit" 
