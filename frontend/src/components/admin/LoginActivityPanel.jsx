@@ -15,18 +15,17 @@ const LoginActivityPanel = () => {
 
     const { 
         data: activityData, 
-        isLoading: isLoadingHistory, 
-        isError: isErrorHistory 
+        isLoading: isLoadingHistory 
     } = useQuery({
         queryKey: ['loginActivity', currentPage],
         queryFn: () => getLoginActivity(currentPage),
         enabled: activeTab === 'history',
+        keepPreviousData: true,
     });
 
     const { 
         data: blockedData, 
-        isLoading: isLoadingBlocked, 
-        isError: isErrorBlocked 
+        isLoading: isLoadingBlocked 
     } = useQuery({
         queryKey: ['blockedIPs'],
         queryFn: getBlockedIPs,
@@ -43,11 +42,15 @@ const LoginActivityPanel = () => {
     });
 
     const filteredBlockedIPs = useMemo(() => {
-        const data = blockedData || [];
-        return data.filter(item => 
-            item.ip_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.reason && item.reason.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
+        const data = Array.isArray(blockedData) ? blockedData : [];
+        if (!searchTerm) return data;
+
+        return data.filter(item => {
+            const ip = item?.ip_address?.toLowerCase() || '';
+            const reason = item?.reason?.toLowerCase() || '';
+            const search = searchTerm.toLowerCase();
+            return ip.includes(search) || reason.includes(search);
+        });
     }, [blockedData, searchTerm]);
 
     const totalBlockedPages = Math.ceil(filteredBlockedIPs.length / itemsPerPage);
@@ -59,9 +62,10 @@ const LoginActivityPanel = () => {
     const handleTabChange = useCallback((tab) => {
         setActiveTab(tab);
         setSearchTerm('');
+        setCurrentBlockedPage(1);
     }, []);
 
-    const activities = activityData?.results || activityData || [];
+    const activities = activityData?.results || (Array.isArray(activityData) ? activityData : []);
     const totalHistoryPages = activityData?.count ? Math.ceil(activityData.count / 20) : 1;
 
     const getTabStyle = (tabName) => ({
@@ -106,7 +110,7 @@ const LoginActivityPanel = () => {
                     <FiSearch style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} />
                     <input 
                         type="text"
-                        placeholder="Buscar por IP o motivo..."
+                        placeholder="Buscar IP o motivo..."
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
@@ -118,12 +122,8 @@ const LoginActivityPanel = () => {
                             borderRadius: '8px',
                             border: '1px solid #d1d5db',
                             fontSize: '0.95rem',
-                            outline: 'none',
-                            transition: 'border-color 0.2s',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            outline: 'none'
                         }}
-                        onFocus={(e) => e.target.style.borderColor = '#f05423'}
-                        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
                     />
                 </div>
             </div>
@@ -148,7 +148,7 @@ const LoginActivityPanel = () => {
                                     <tbody>
                                         {activities.map((activity) => (
                                             <tr key={activity.id}>
-                                                <td>{new Date(activity.timestamp).toLocaleString()}</td>
+                                                <td>{new Date(activity.timestamp).toLocaleString('es-MX')}</td>
                                                 <td><strong>{activity.username}</strong></td>
                                                 <td>{activity.ip_address}</td>
                                                 <td>{activity.user_agent?.split(' ')[0] || 'Web'}</td>
@@ -190,31 +190,32 @@ const LoginActivityPanel = () => {
                                     <tbody>
                                         {paginatedBlockedIPs.length > 0 ? (
                                             paginatedBlockedIPs.map((block) => (
-                                                <tr key={block.id} style={{ height: '70px' }}>
+                                                <tr key={block.id || block.ip_address} style={{ height: '70px' }}>
                                                     <td style={{ padding: '15px' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                             <FiGlobe color="#6b7280" />
                                                             <strong style={{ fontSize: '1.05rem' }}>{block.ip_address}</strong>
                                                         </div>
                                                     </td>
-                                                    <td>{new Date(block.created_at).toLocaleString()}</td>
-                                                    <td style={{ color: '#6b7280' }}>{block.time_since_blocked}</td>
+                                                    <td>{block.created_at ? new Date(block.created_at).toLocaleString('es-MX') : '---'}</td>
+                                                    <td style={{ color: '#6b7280' }}>{block.time_since_blocked || 'Recién'}</td>
                                                     <td>
                                                         <div style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                            <FiAlertOctagon /> {block.reason}
+                                                            <FiAlertOctagon /> {block.reason || 'Sometido a revisión'}
                                                         </div>
                                                     </td>
                                                     <td style={{ textAlign: 'center' }}>
                                                         <button 
                                                             className="action-btn"
                                                             onClick={() => unblockMutation.mutate(block.id)}
+                                                            disabled={unblockMutation.isLoading}
                                                             style={{ 
                                                                 background: '#ecfdf5', color: '#10b981', border: '1px solid #10b981', 
                                                                 padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
-                                                                fontWeight: '600'
+                                                                fontWeight: '600', opacity: unblockMutation.isLoading ? 0.5 : 1
                                                             }}
                                                         >
-                                                            <FiUnlock /> Liberar IP
+                                                            <FiUnlock /> {unblockMutation.isLoading ? 'Liberando...' : 'Liberar IP'}
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -223,7 +224,7 @@ const LoginActivityPanel = () => {
                                             <tr>
                                                 <td colSpan="5" style={{ textAlign: 'center', padding: '5rem' }}>
                                                     <FiShield size={50} style={{ opacity: 0.1, marginBottom: '15px' }} /><br/>
-                                                    {searchTerm ? 'No se encontraron resultados para tu búsqueda.' : 'No hay amenazas detectadas.'}
+                                                    {searchTerm ? 'No hay coincidencias.' : 'Sin IPs bloqueadas.'}
                                                 </td>
                                             </tr>
                                         )}
