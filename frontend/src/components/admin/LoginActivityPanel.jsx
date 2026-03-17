@@ -62,12 +62,9 @@ const LoginActivityPanel = () => {
                     >
                         <FiClock size={18} /> Historial de Accesos
                     </h2>
-                    <h2 
-                        onClick={() => setActiveTab('blocked')}
-                        style={getTabStyle('blocked')}
-                    >
-                        <FiShield size={18} /> IPs Bloqueadas
-                    </h2>
+                    <button onClick={() => setActiveTab('blocked')} style={{ zIndex: 9999, position: 'relative' }}>
+                        PROBAR CAMBIO A BLOQUEADAS
+                    </button>
                 </div>
             </div>
 
