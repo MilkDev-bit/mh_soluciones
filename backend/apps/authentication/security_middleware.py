@@ -1,13 +1,16 @@
 """
 Middleware de seguridad para rastreo de actividad y timeout de sesión.
 """
+import logging
+from datetime import timedelta
+from django.http import HttpResponseForbidden
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
-from datetime import timedelta
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from ipware import get_client_ip
 from rest_framework.exceptions import AuthenticationFailed
-import logging
-from .constants import SESSION_INACTIVITY_MINUTES, GOOGLE_OAUTH_CALLBACK_PATH
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from .constants import GOOGLE_OAUTH_CALLBACK_PATH, SESSION_INACTIVITY_MINUTES
+from .models import BlockedIP
 
 logger = logging.getLogger(__name__)
 
@@ -103,3 +106,19 @@ class PasswordExpiryMiddleware(MiddlewareMixin):
             }, status=403)
         
         return None
+
+class IPBlockerMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        client_ip, _ = get_client_ip(request)
+        
+        if client_ip:
+            # Verificar si la IP está en la base de datos y el bloqueo está activo
+            is_blocked = BlockedIP.objects.filter(ip_address=client_ip, is_active=True).exists()
+            if is_blocked:
+                return HttpResponseForbidden("Tu dirección IP ha sido bloqueada por actividad sospechosa.")
+
+        response = self.get_response(request)
+        return response

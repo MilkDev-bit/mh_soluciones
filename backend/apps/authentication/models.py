@@ -237,3 +237,17 @@ class GoogleApiCredentials(models.Model):
     
     def __str__(self):
         return f"Credenciales de Google para {self.user.username}"
+
+
+class BlockedIP(models.Model):
+    ip_address = models.GenericIPAddressField(unique=True, verbose_name=_('Dirección IP'))
+    reason = models.CharField(max_length=255, blank=True, verbose_name=_('Motivo del bloqueo'))
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True, verbose_name=_('Bloqueo Activo'))
+
+    class Meta:
+        verbose_name = _('IP Bloqueada')
+        verbose_name_plural = _('IPs Bloqueadas')
+
+    def __str__(self):
+        return f"{self.ip_address} - {self.reason}"

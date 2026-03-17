@@ -38,7 +38,7 @@ from apps.core.utils import (
     updated_response, deleted_response, validation_error_response,
     forbidden_response, unauthorized_response
 )
-from ..models import GoogleApiCredentials, CustomUser, LoginActivity
+from ..models import GoogleApiCredentials, CustomUser, LoginActivity, BlockedIP
 from ..constants import SENSITIVE_OAUTH_PARAMS, SENSITIVE_HEADERS
 from .serializers import (
     LoginSerializer, 
@@ -212,7 +212,6 @@ class UserProfileAPIView(generics.RetrieveUpdateAPIView):
         
         return UserSerializer
 
-
 @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
 class LoginAPIView(APIView):
     authentication_classes = []
@@ -220,13 +219,50 @@ class LoginAPIView(APIView):
     serializer_class = LoginSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        
         client_ip, _ = get_client_ip(request)
         
-        # Verificar si la cuenta está bloqueada
+        if client_ip and BlockedIP.objects.filter(ip_address=client_ip, is_active=True).exists():
+            return Response(
+                {'error': 'Tu dirección IP ha sido bloqueada por actividad sospechosa.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if client_ip:
+            time_threshold = timezone.now() - timedelta(minutes=15)
+            failed_attempts = LoginActivity.objects.filter(
+                ip_address=client_ip, 
+                successful=False, 
+                timestamp__gte=time_threshold
+            ).count()
+
+            if failed_attempts >= 10:
+                BlockedIP.objects.get_or_create(
+                    ip_address=client_ip,
+                    defaults={'reason': 'Múltiples intentos de login fallidos (Fuerza bruta)'}
+                )
+                return Response(
+                    {'error': 'Tu dirección IP ha sido bloqueada temporal o permanentemente por múltiples intentos fallidos.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as e:
+            username = request.data.get('username')
+            user_obj = CustomUser.objects.filter(username=username).first()
+            if user_obj and client_ip:
+                LoginActivity.objects.create(
+                    user=user_obj,
+                    ip_address=client_ip,
+                    successful=False,
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
+            raise e
+
+        user = serializer.validated_data['user']
+        
         if user.is_account_locked():
             LoginActivity.objects.create(
                 user=user, 
@@ -242,7 +278,6 @@ class LoginAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Verificar si se requiere cambio de contraseña
         if user.force_password_change or user.is_password_expired():
             return Response(
                 {
@@ -253,7 +288,6 @@ class LoginAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Verificar IPs permitidas
         if user.allowed_ips:
             allowed_ips = [ip.strip() for ip in user.allowed_ips.split(',')]
             if client_ip not in allowed_ips and client_ip != '127.0.0.1':
@@ -269,7 +303,6 @@ class LoginAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        # Login exitoso - resetear intentos fallidos
         user.reset_failed_login()
         user.last_login = timezone.now()
         user.last_login_ip = client_ip
@@ -300,7 +333,6 @@ class LoginAPIView(APIView):
             'access': str(refresh.access_token), 
             'user': user_data
         }, status=status.HTTP_200_OK)
-
 
 class TwoFactorVerifyAPIView(APIView):
     authentication_classes = []
