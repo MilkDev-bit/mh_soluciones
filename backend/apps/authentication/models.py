@@ -251,3 +251,5 @@ class BlockedIP(models.Model):
 
     def __str__(self):
         return f"{self.ip_address} - {self.reason}"
+
+        # Escudo de seguridad de IPs activado
