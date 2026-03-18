@@ -430,6 +430,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+CELERY_WORKER_CONCURRENCY = config('CELERY_WORKER_CONCURRENCY', default=2, cast=int)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100
+
 # ============================================
 # SECURITY SETTINGS - Enhanced for Production
 # ============================================
