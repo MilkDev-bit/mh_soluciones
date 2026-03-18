@@ -164,13 +164,14 @@ const TasksPage = () => {
   }, [refetchTasks]);
 
   const handleTaskCreated = useCallback((newTask, isEditMode = false) => {
-    // Invalidate and refetch tasks
-    queryClient.invalidateQueries(['tasks']);
-    queryClient.invalidateQueries(['taskDocuments']);
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['taskDocuments'] });
+    
     setIsModalOpen(false);
     notifyTaskChange(newTask.id, newTask.project, isEditMode ? 'update' : 'create');
     toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
   }, [queryClient, notifyTaskChange]);
+
 
   const handleTaskUpdated = useCallback((updatedTask) => {
     // Invalidate and refetch tasks

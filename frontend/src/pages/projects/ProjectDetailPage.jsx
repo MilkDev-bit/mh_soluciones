@@ -575,10 +575,10 @@ const ProjectDetailPage = () => {
   };
 
   const handleTaskCreated = (newTask, isEditMode = false) => {
-    queryClient.invalidateQueries(['projectTasks', projectId]);
-    queryClient.invalidateQueries(['projectTaskDocuments', projectId]);
+    queryClient.invalidateQueries({ queryKey: ['projectTasks'] });
+    queryClient.invalidateQueries({ queryKey: ['projectTaskDocuments'] });
+    
     setIsModalOpen(false);
-    // Notify other components about the task change
     notifyTaskChange(newTask.id, projectId, isEditMode ? 'update' : 'create');
     toast.success(isEditMode ? '¡Tarea actualizada!' : '¡Tarea creada exitosamente!');
   };

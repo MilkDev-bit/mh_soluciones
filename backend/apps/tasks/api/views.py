@@ -78,16 +78,15 @@ class TaskViewSet(viewsets.ModelViewSet):
                     Q(created_by=user)                       # Student created the task
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
                 
-                # Debug logging to help diagnose visibility issues
                 logger.info(f"Student {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
 
         project_id = getattr(self.request, 'query_params', self.request.GET).get('project', None)
         if project_id:
             filtered = base_queryset.filter(project_id=project_id)
             logger.info(f"Filtered by project {project_id}: {filtered.count()} tasks (user: {user.username})")
-            return filtered
+            return filtered.order_by('-created_at')
 
-        return base_queryset
+        return base_queryset.order_by('-created_at')
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
