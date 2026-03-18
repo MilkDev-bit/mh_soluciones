@@ -42,7 +42,7 @@ if 'DATABASE_URL' in os.environ:
     
     DATABASES = {
         'default': dj_database_url.config(
-            conn_max_age=600,
+            conn_max_age=60,  # Reducido a 60s para evitar saturar el límite de conexiones en Railway
             ssl_require=ssl_require,
             conn_health_checks=True,
         )
