@@ -1,14 +1,14 @@
 import api from './api';
 
-export const getTasks = async (projectId = null) => {
+export const getTasks = async (projectId = null, page = 1) => {
   try {
-    let url = '/tasks/';
+    let url = `/tasks/?page=${page}`;
     
     if (projectId && projectId !== 'all') {
       const cleanId = typeof projectId === 'object' ? projectId.id : projectId;
       
       if (cleanId && cleanId !== '[object Object]') {
-        url = `/tasks/?project=${cleanId}`;
+        url = `/tasks/?project=${cleanId}&page=${page}&page_size=100`;
       }
     }
 
