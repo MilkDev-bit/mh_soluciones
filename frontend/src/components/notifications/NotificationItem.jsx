@@ -1,4 +1,4 @@
-// Componente individual para cada notificación
+import { useNavigate } from 'react-router-dom';
 import { 
   FiCheckSquare, 
   FiAlertCircle, 
@@ -14,7 +14,7 @@ import {
 import './NotificationItem.scss';
 
 const NotificationItem = ({ notification, onMarkAsRead }) => {
-  // Map notification types to icons and colors
+  const navigate = useNavigate();
   const getNotificationConfig = (type) => {
     const configs = {
       'TASK_ASSIGNED': { icon: FiCheckSquare, color: '#4CAF50', label: 'Tarea' },
@@ -70,13 +70,16 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
     if (!notification.is_read) {
       onMarkAsRead(notification.id);
     }
+    
+    if (notification.action_url) {
+      navigate(notification.action_url);
+    }
   };
 
   const handleKeyDown = (e) => {
-    // Activate on Enter or Space key
-    if ((e.key === 'Enter' || e.key === ' ') && !notification.is_read) {
-      e.preventDefault(); // Prevent page scroll on Space
-      onMarkAsRead(notification.id);
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
     }
   };
 

@@ -14,8 +14,25 @@ class NotificationSerializer(serializers.ModelSerializer):
             'is_read',
             'notification_type',
             'created_at',
+            'action_url'
         ]
 
+    def get_action_url(self, obj):
+        """Genera dinámicamente la URL dependiendo del objeto vinculado a la notificación"""
+        if not obj.content_type:
+            return None
+            
+        if obj.content_type.model == 'task':
+            task = obj.content_object
+            if task and getattr(task, 'project', None):
+                return f"/projects/{task.project.id}"
+                
+        elif obj.content_type.model == 'project':
+            project = obj.content_object
+            if project:
+                return f"/projects/{project.id}"
+                
+        return None
 
 class PushSubscriptionSerializer(serializers.ModelSerializer):
     """

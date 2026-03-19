@@ -113,24 +113,21 @@ def create_task_submission_notification(sender, instance, created, **kwargs):
                 logger.info(f"Email notification sent for graded task: {instance.task.title}")
         except Exception as e:
             logger.error(f"Error sending email notification for graded task {instance.task.id}: {str(e)}")
-    
+            
     elif created:
-        # Notify task creator/project members that a task was submitted
         task = instance.task
-        recipients = []
         
-        # Notify task creator
+        recipients = set()
+        
         if task.created_by and task.created_by != instance.submitted_by:
-            recipients.append(task.created_by)
+            recipients.add(task.created_by)
         
-        # Notify project admins
         if hasattr(task.project, 'members'):
             admin_members = [m for m in task.project.members.all() 
                            if m.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR'] 
                            and m != instance.submitted_by]
-            recipients.extend(admin_members)
+            recipients.update(admin_members)
         
-        # Create notifications
         for recipient in recipients:
             notification = Notification.objects.create(
                 user=recipient,
@@ -152,7 +149,6 @@ def create_task_submission_notification(sender, instance, created, **kwargs):
                 }
             )
 
-        # Send email notifications
         try:
             from utils.email_notifications import send_email_notification
             from django.conf import settings
