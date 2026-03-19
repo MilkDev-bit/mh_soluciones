@@ -2,10 +2,15 @@ import React from 'react';
 import { FiDownload, FiTrash2, FiFile } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { handleViewFile } from '../../utils/fileUtils';
 
 const DocumentList = ({ documents, onDeleteDocument, canDelete = false }) => {
-  const handleDownload = (document) => {
-    window.open(document.file, '_blank');
+  const handleDownload = async (document) => {
+    try {
+      await handleViewFile(document);
+    } catch (error) {
+      console.error('Error al descargar:', error);
+    }
   };
 
   

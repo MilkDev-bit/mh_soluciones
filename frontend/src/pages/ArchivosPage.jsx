@@ -15,6 +15,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
 import { getProjects } from '../services/projectService';
+import { handleViewFile } from '../utils/fileUtils';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
 import './ArchivosPage.scss';
@@ -303,15 +304,10 @@ const ArchivosPage = () => {
 
   const handleDownloadArchivo = async (archivo) => {
     try {
-      // If file has a direct URL, open it
-      if (archivo.file_url) {
-        window.open(archivo.file_url, '_blank');
-      } else {
-        toast.error('URL de archivo no disponible');
-      }
+      await handleViewFile(archivo);
     } catch (error) {
       console.error('Error descargando archivo:', error);
-      toast.error('Error al descargar el archivo');
+      toast.error('Error al procesar el archivo');
     }
   };
 
