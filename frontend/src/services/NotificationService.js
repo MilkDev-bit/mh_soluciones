@@ -1,50 +1,31 @@
 import api from './api';
 
-// Timeout constants for API requests
-const NOTIFICATIONS_TIMEOUT = 10000; // 10 seconds
-const UNREAD_COUNT_TIMEOUT = 5000; // 5 seconds
+const NOTIFICATIONS_TIMEOUT = 10000;
+const UNREAD_COUNT_TIMEOUT = 5000; 
 
-/**
- * Utility function to get WebSocket base URL from environment variables
- * Converts HTTP(S) URLs to WS(S) URLs
- * 
- * Note: In production with Nginx proxy, WebSocket connections should use
- * the same domain as the frontend with /ws/ path (to be proxied by Nginx).
- * In development, we use the backend URL directly.
- */
 function getWebSocketBaseURL() {
-  // Use explicit WebSocket URL if provided
   if (import.meta.env.VITE_WS_URL_BASE) {
     return import.meta.env.VITE_WS_URL_BASE;
   }
 
-  // In production, use relative WebSocket URL (same domain via Nginx proxy)
-  // In development, use localhost backend
   if (!import.meta.env.DEV) {
-    // Production: use current domain with wss://
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}`;
   }
 
-  // Development: derive from API URL or use localhost
   const apiUrl = import.meta.env.VITE_API_URL_BASE || 'http://localhost:8000/api/v1';
 
-  // Extract base URL without /api/v1 suffix
   const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
 
-  // Convert HTTP(S) to WS(S)
   if (baseUrl.startsWith('https://')) {
     return baseUrl.replace('https://', 'wss://');
   } else if (baseUrl.startsWith('http://')) {
     return baseUrl.replace('http://', 'ws://');
   }
 
-  // Fallback to localhost WebSocket
   return 'ws://localhost:8000';
 }
 
-// Cache the WebSocket base URL at module load time
-// This is safe because Vite environment variables are resolved at build time
 const WS_BASE_URL = getWebSocketBaseURL();
 
 /**
@@ -67,14 +48,12 @@ async function apiCallWithTimeout(apiCall, timeout, defaultValue, onAuthError = 
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      // Timeout - return default value silently
       if (import.meta.env.DEV) {
         console.warn('[NotificationService] Request timeout');
       }
       return defaultValue;
     }
     
-    // Handle 401 errors with callback
     if (error.response?.status === 401) {
       if (onAuthError && typeof onAuthError === 'function') {
         onAuthError();
@@ -85,7 +64,6 @@ async function apiCallWithTimeout(apiCall, timeout, defaultValue, onAuthError = 
       return defaultValue;
     }
     
-    // Log other errors only in development
     if (import.meta.env.DEV) {
       console.error('[NotificationService] API error:', error);
     }
@@ -103,14 +81,14 @@ class NotificationService {
     this.listeners = new Set();
     this.connecting = false;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 3; // Reduced from 5 to 3 for faster fallback
-    this.maxReconnectDelay = 30000; // 30 seconds
+    this.maxReconnectAttempts = 3;
+    this.maxReconnectDelay = 30000;
     this.reconnectTimeout = null;
-    this.hasWebSocketFailed = false; // Track if WebSocket has permanently failed
-    this.isDegraded = false; // Degraded state (working with polling)
-    this.onAuthError = null; // Callback for authentication errors
+    this.hasWebSocketFailed = false;
+    this.isDegraded = false;
+    this.onAuthError = null;
     this.lastReconnectAttempt = null;
-    this.minReconnectInterval = 5000; // Minimum 5 seconds between reconnections
+    this.minReconnectInterval = 5000;
   }
 
   getWebSocketURL() {
@@ -135,33 +113,26 @@ class NotificationService {
       try {
         const result = listener(data);
         
-        // If the listener returns a promise, handle async errors
         if (result && typeof result.then === 'function') {
           result.catch(error => {
             if (import.meta.env.DEV) {
               console.error('Error in async notification listener:', error);
             }
-            // Don't propagate - just log
           });
         }
       } catch (error) {
-        // Synchronous error
-        // Only log in development, prevent one listener from breaking others
         if (import.meta.env.DEV) {
           console.error('Error in notification listener:', error);
         }
-        // DO NOT propagate the error
       }
     });
   }
 
-  // Method to register authentication error callback
   setAuthErrorHandler(callback) {
     this.onAuthError = callback;
   }
 
   connectWebSocket(userId) {
-    // Prevenir reconexiones muy frecuentes
     const now = Date.now();
     if (this.lastReconnectAttempt && (now - this.lastReconnectAttempt) < this.minReconnectInterval) {
       if (import.meta.env.DEV) {
@@ -171,13 +142,11 @@ class NotificationService {
     }
     this.lastReconnectAttempt = now;
 
-    // Agregar al inicio para prevenir múltiples reconexiones simultáneas
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
 
-    // If WebSocket has permanently failed, go straight to polling
     if (this.hasWebSocketFailed) {
       if (!this.isPolling) {
         this.startPolling(userId);
@@ -186,7 +155,6 @@ class NotificationService {
     }
 
     if (!window.WebSocket) {
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('WebSocket no soportado, usando polling');
       }
@@ -195,7 +163,6 @@ class NotificationService {
       return;
     }
 
-    // If already connected or connecting, don't reconnect
     if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
       return;
     }
@@ -203,7 +170,6 @@ class NotificationService {
     if (this.connecting) return;
     this.connecting = true;
 
-    // Close existing connection if closing or closed to be safe
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -211,7 +177,6 @@ class NotificationService {
 
     try {
       const wsUrl = this.getWebSocketURL();
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('Conectando WebSocket a:', wsUrl);
       }
@@ -221,8 +186,7 @@ class NotificationService {
       this.socket.onopen = () => {
         this.websocketEnabled = true;
         this.connecting = false;
-        this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-        // Only log in development mode
+        this.reconnectAttempts = 0;
         if (import.meta.env.DEV) {
           console.log('WebSocket conectado exitosamente');
         }
@@ -231,20 +195,15 @@ class NotificationService {
       this.socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          // Only log in development mode
           if (import.meta.env.DEV) {
             console.log('Mensaje WebSocket recibido:', data);
           }
 
           if (data.type === 'new_notification' && data.payload) {
-            // Show browser notification
             this.showBrowserNotification(data.payload);
-
-            // Notify all listeners - FIXED: pass full data object, not just payload
             this.notifyListeners(data);
           }
         } catch (error) {
-          // Only log in development mode
           if (import.meta.env.DEV) {
             console.error('Error procesando mensaje WebSocket:', error);
           }
@@ -252,7 +211,6 @@ class NotificationService {
       };
 
       this.socket.onerror = (error) => {
-        // Only log in development mode - make errors completely silent in production
         if (import.meta.env.DEV) {
           console.error('WebSocket error:', error);
         }
@@ -265,17 +223,14 @@ class NotificationService {
         this.connecting = false;
         this.socket = null;
         
-        // Only log in development mode
         if (import.meta.env.DEV) {
           console.log('WebSocket closed:', event.code, event.reason);
         }
 
-        // Attempt reconnection with exponential backoff
         if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
           const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxReconnectDelay);
           this.reconnectAttempts++;
           
-          // Only log in development mode
           if (import.meta.env.DEV) {
             console.log(`WebSocket disconnected. Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
           }
@@ -284,24 +239,20 @@ class NotificationService {
             this.connectWebSocket(userId);
           }, delay);
         } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          // Max reconnect attempts reached, fallback to polling permanently
-          // Only log in development mode
           if (import.meta.env.DEV) {
             console.log('Max WebSocket reconnection attempts reached. Falling back to polling permanently.');
           }
-          this.hasWebSocketFailed = true; // Mark WebSocket as permanently failed
-          this.isDegraded = true; // Degraded state (working with polling)
-          this.reconnectAttempts = 0; // Reset for future manual attempts
+          this.hasWebSocketFailed = true;
+          this.isDegraded = true; 
+          this.reconnectAttempts = 0;
           this.startPolling(userId);
         }
       };
     } catch (error) {
-      // Only log in development mode - make errors completely silent in production
       if (import.meta.env.DEV) {
         console.error('Error creating WebSocket connection:', error);
       }
       this.connecting = false;
-      // Fallback to polling on connection error
       this.startPolling(userId);
     }
   }
@@ -310,12 +261,10 @@ class NotificationService {
     if (this.isPolling) return;
 
     this.isPolling = true;
-    // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('Iniciando polling de notificaciones');
     }
 
-    // Start polling immediately
     this.pollNotifications();
 
     this.pollingInterval = setInterval(async () => {
@@ -327,23 +276,18 @@ class NotificationService {
     try {
       const unreadCount = await this.getUnreadCount();
       
-      // Notify listeners with polling update event
-      // This ensures components can refresh their state even when WebSocket is not available
       this.notifyListeners({ 
         type: 'polling_update', 
         unreadCount: unreadCount 
       });
       
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log(`[Polling] Notified listeners with count: ${unreadCount}`);
       }
     } catch (error) {
-      // Only log in development mode - silently fail in production
       if (import.meta.env.DEV) {
         console.error('Error en polling de notificaciones:', error);
       }
-      // Don't throw - just continue polling
     }
   }
 
@@ -352,7 +296,6 @@ class NotificationService {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
       this.isPolling = false;
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.log('Polling de notificaciones detenido');
       }
@@ -360,14 +303,6 @@ class NotificationService {
   }
 
   disconnect() {
-    // Only disconnect if we really want to shutdown app-wide (e.g. logout)
-    // Removed forceful close on unmount of components since it's a singleton now.
-    // We add a method forceDisconnect for Logout.
-
-    // Changing behavior: 'disconnect' now actually disconnects. 
-    // Components should no longer call disconnect() on unmount.
-
-    // Clear any pending reconnection attempts
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -383,11 +318,10 @@ class NotificationService {
     this.websocketEnabled = false;
     this.connecting = false;
     this.reconnectAttempts = 0;
-    this.hasWebSocketFailed = false; // Reset the permanent failure flag on disconnect
-    this.isDegraded = false; // Reset degraded state on disconnect
-    this.lastReconnectAttempt = null; // Reset last reconnect timestamp
+    this.hasWebSocketFailed = false; 
+    this.isDegraded = false;
+    this.lastReconnectAttempt = null;
     
-    // Only log in development mode
     if (import.meta.env.DEV) {
       console.log('Servicio de notificaciones desconectado');
     }
@@ -431,7 +365,6 @@ class NotificationService {
 
       setTimeout(() => notification.close(), 5000);
     } catch (error) {
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.error('Error mostrando notificación del navegador:', error);
       }
@@ -452,47 +385,43 @@ class NotificationService {
   async getNotifications(params = {}) {
     return apiCallWithTimeout(
       async (signal) => {
-        // Asegurar que params siempre incluya el usuario actual
-        const response = await api.get('/notifications/', { 
-          params, 
-          signal,
-          // El interceptor de axios ya agrega el token, pero verificar que esté presente
-        });
+        const response = await api.get('/notifications/', { params, signal });
         
-        // Log para depuración (solo en desarrollo)
         if (import.meta.env.DEV) {
-          console.log('[NotificationService] Notifications fetched for current user:', response.data);
+          console.log('[NotificationService] Raw Response:', response);
         }
         
-        // Handle paginated response - return results array or empty array
-        return Array.isArray(response.data.results)
-          ? response.data.results
-          : (Array.isArray(response.data) ? response.data : []);
+        const resData = response.data !== undefined ? response.data : response;
+        
+        if (resData && Array.isArray(resData.results)) {
+          return resData.results;      
+        } else if (Array.isArray(resData)) {
+          return resData;              
+        } else if (response && Array.isArray(response.results)) {
+          return response.results;      
+        }
+        
+        return [];
       },
       NOTIFICATIONS_TIMEOUT,
-      [], // default empty array
+      [],
       this.onAuthError
     );
   }
 
   async markAsRead(notificationId) {
     try {
-      // Try WebSocket first for real-time update
       const sentViaWS = this.markAsReadViaWebSocket(notificationId);
 
-      // Always call API as well to ensure persistence
       await api.post(`/notifications/${notificationId}/mark_as_read/`);
 
-      // Only log in development mode
       if (import.meta.env.DEV && sentViaWS) {
         console.log(`Notificación ${notificationId} marcada como leída vía WebSocket y API`);
       }
     } catch (error) {
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.error('Error marcando notificación como leída:', error);
       }
-      // Don't throw - fail silently to prevent breaking UI
     }
   }
 
@@ -500,12 +429,9 @@ class NotificationService {
     try {
       await api.post('/notifications/mark_all_as_read/');
     } catch (error) {
-      // Only log in development mode
       if (import.meta.env.DEV) {
         console.error('Error marking all notifications as read:', error);
       }
-      // Don't throw - fail silently to prevent breaking UI
-      // Caller can handle by checking if unread count changed
     }
   }
 
@@ -516,7 +442,7 @@ class NotificationService {
         return response.data.unread_count;
       },
       UNREAD_COUNT_TIMEOUT,
-      0, // default to 0
+      0,
       this.onAuthError
     );
   }
@@ -536,7 +462,6 @@ class NotificationService {
 
 const notificationService = new NotificationService();
 
-// Export both the class instance and convenience functions
 export default notificationService;
 
 export const getNotifications = (params) => notificationService.getNotifications(params);
