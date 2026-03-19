@@ -155,17 +155,18 @@ const ArchivosPage = () => {
       const params = {};
       
       // Apply type filter if selected (IMAGENES, DOCUMENTOS, etc.)
-      // This is separate from the folder filter
       if (filtroTipo !== FILTER_TYPES.ALL) {
         params.folder_type = filtroTipo;
       }
       
-      // Note: We don't send folder filter to backend when using dynamic folders
-      // Instead, we filter client-side by drive_parent_folder_name
-      
       // Filter by selected project
       if (proyectoSeleccionado) {
         params.project = proyectoSeleccionado;
+      }
+
+      // Filter by selected Drive folder (send folder ID to backend)
+      if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
+        params.drive_folder_id = filtroCarpeta;
       }
       
       const documentos = await getAllDocuments(params);
@@ -177,7 +178,7 @@ const ArchivosPage = () => {
     } finally {
       setCargando(false);
     }
-  }, [filtroTipo, proyectoSeleccionado]);
+  }, [filtroTipo, proyectoSeleccionado, filtroCarpeta, carpetasDrive]);
 
   useEffect(() => {
     cargarProyectos();
@@ -370,18 +371,13 @@ const ArchivosPage = () => {
       coincideTipo = archivo.folder_type === filtroTipo;
     }
     
-    // Filter by selected Drive folder
+    // Filter by selected Drive folder (client-side fallback using folder ID)
     let coincideCarpeta = true;
     if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
-      // Find the selected folder
-      const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
-      if (carpetaSeleccionada) {
-        // Filter files that are in this folder using the drive_parent_folder_name
-        // The parent folder name is either:
-        // - Task title (if file has a task)
-        // - User name (if file has no task - user folder is directly under project)
-        coincideCarpeta = archivo.drive_parent_folder_name === carpetaSeleccionada.name;
-      }
+      // Since we already filter by drive_folder_id in the backend fetch,
+      // this client-side check uses drive_parent_folder_id as a secondary guard.
+      // Files whose parent folder ID matches the selected folder are shown.
+      coincideCarpeta = archivo.drive_parent_folder_id === filtroCarpeta;
     }
     
     // Filter by date
