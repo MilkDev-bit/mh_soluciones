@@ -1,8 +1,21 @@
 import api from './api';
 
-export const getProjects = async (page = 1) => {
+export const getProjects = async (page = null) => {
   try {
-    const { data } = await api.get(`projects/?page=${page}`);
+    const url = page ? `projects/?page=${page}` : 'projects/?all=true';
+    const { data } = await api.get(url);
+    
+    // If backend returns a direct array (all=true), wrap it in paginated format 
+    // to maintain backwards compatibility with components that expect .results
+    if (Array.isArray(data)) {
+      return {
+        results: data,
+        count: data.length,
+        next: null,
+        previous: null
+      };
+    }
+    
     return {
       ...data,
       results: Array.isArray(data.results) ? data.results : [],

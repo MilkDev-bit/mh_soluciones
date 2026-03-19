@@ -70,6 +70,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Q(client=user)
         ).distinct()
 
+    def paginate_queryset(self, queryset):
+        """Disable pagination if '?all=true' is in the request (useful for select dropdowns)"""
+        if self.request.query_params.get('all') == 'true':
+            return None
+        return super().paginate_queryset(queryset)
+
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return ProjectCreateUpdateSerializer
