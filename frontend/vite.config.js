@@ -42,6 +42,7 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
+        navigateFallbackDenylist: [/^\/api/, /^\/media/, /^\/admin/, /^\/djangoadmin/],
         importScripts: ['custom-sw.js'], // <-- ¡IMPORTANTE! Se restauró para que no se rompan tus notificaciones
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
         runtimeCaching: [
