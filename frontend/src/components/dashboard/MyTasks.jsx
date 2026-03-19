@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiCheckSquare } from 'react-icons/fi';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './Dashboard.scss';
 
@@ -19,21 +19,29 @@ const MyTasks = ({ tasks }) => {
     <div className="dashboard-widget">
       <h2>Mis Tareas Pendientes</h2>
       <ul className="widget-list">
-        {tasks.map(task => (
-          <li key={task.id}>
-            <Link to={`/projects/${task.project}`}>
-              <div className="widget-list-item">
-                <FiCheckSquare className="item-icon" />
-                <div className="item-info">
-                  <span className="item-title">{task.title}</span>
-                  <span className="item-details">
-                    Vence: {format(new Date(task.due_date), 'dd MMMM, yyyy', { locale: es })}
-                  </span>
+        {tasks.map(task => {
+          const projectId = task.project?.id || task.project_id || task.project;
+          
+          const hasDate = Boolean(task.due_date);
+
+          return (
+            <li key={task.id}>
+              <Link to={`/projects/${projectId}`}>
+                <div className="widget-list-item">
+                  <FiCheckSquare className="item-icon" />
+                  <div className="item-info">
+                    <span className="item-title">{task.title}</span>
+                    <span className="item-details">
+                      {hasDate 
+                        ? `Vence: ${format(parseISO(task.due_date), 'dd MMMM, yyyy', { locale: es })}`
+                        : 'Sin fecha de vencimiento'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

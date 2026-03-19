@@ -34,7 +34,7 @@
     grid-column: span 2;
   }
 
-  &.recent-projects {
+ &.recent-projects, &.my-tasks {
     @media (min-width: 768px) {
       grid-column: span 2;
     }
