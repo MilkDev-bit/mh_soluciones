@@ -34,7 +34,7 @@ class TaskSummarySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Task
-        fields = ['id', 'title', 'project_name', 'due_date', 'status', 'status_display']
+        fields = ['id', 'title', 'project', 'project_name', 'due_date', 'status', 'status_display']
 
 class UserActivitySerializer(serializers.ModelSerializer):
     """Serializador para mostrar la actividad reciente de un usuario."""
