@@ -9,3 +9,6 @@ class CalendarConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.calendar'
     verbose_name = _('Calendar')
+
+    def ready(self):
+        import apps.calendar.signals
