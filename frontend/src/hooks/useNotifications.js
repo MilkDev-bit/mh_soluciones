@@ -35,7 +35,7 @@ export const useNotifications = () => {
       try {
         // Solo cargar notificaciones no leídas
         const data = await notificationService.getNotifications({ include_read: false });
-        const notifsList = Array.isArray(data) ? data : [];
+        const notifsList = Array.isArray(data) ? data : (data?.results || []);
         
         // Log para verificar que las notificaciones pertenecen al usuario correcto
         if (import.meta.env.DEV && notifsList.length > 0) {
