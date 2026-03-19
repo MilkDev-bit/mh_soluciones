@@ -34,6 +34,9 @@ const TasksPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
+  // NUEVO: Estado para el filtro del Superadmin
+  const [adminTaskFilter, setAdminTaskFilter] = useState('ALL'); 
+
   const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
   // Fetch user data with React Query
@@ -52,7 +55,7 @@ const TasksPage = () => {
     refetch: refetchTasks 
   } = useQuery({
     queryKey: ['tasks', selectedProject, currentPage], 
-    queryFn: () => getTasks(selectedProject, currentPage), // CAMBIO 1: Pasamos parámetros explícitos
+    queryFn: () => getTasks(selectedProject, currentPage),
     placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
@@ -67,7 +70,6 @@ const TasksPage = () => {
             task.assigned_students_data.some(student => student.id === user.id);
           return isAssignedTo || isInAssignedStudents;
         });
-        // CAMBIO 2: Retornamos el objeto completo para no perder la paginación (next/count)
         return { ...data, results: filteredTasks };
       }
       
@@ -82,7 +84,7 @@ const TasksPage = () => {
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => getProjects(), // CAMBIO 3: Función anónima para evitar el [object Object]
+    queryFn: () => getProjects(), 
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     select: (data) => {
@@ -111,7 +113,6 @@ const TasksPage = () => {
     enabled: selectedProject !== 'all',
   });
 
-  // CAMBIO 4: Extraemos el arreglo de tareas aquí para que el useMemo y useQuery de abajo no exploten
   const tasks = tasksData?.results || [];
   const projects = projectsData || [];
   const loading = tasksLoading || projectsLoading;
@@ -172,27 +173,19 @@ const TasksPage = () => {
     toast.success(isEditMode ? 'Tarea actualizada!' : 'Tarea creada exitosamente!');
   }, [queryClient, notifyTaskChange]);
 
-
   const handleTaskUpdated = useCallback((updatedTask) => {
-    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     notifyTaskChange(updatedTask.id, updatedTask.project, 'update');
   }, [queryClient, notifyTaskChange]);
 
   const handleTaskDeleted = useCallback((taskId) => {
-    // Invalidate and refetch tasks
     queryClient.invalidateQueries(['tasks']);
     queryClient.invalidateQueries(['taskDocuments']);
     setSelectedTask(null);
     notifyTaskChange(taskId, null, 'delete');
   }, [queryClient, notifyTaskChange]);
 
-  // Categorize tasks based on Microsoft Teams style
-  // Tasks are categorized into 3 groups:
-  // - Upcoming: Tasks due within the next 7 days (configurable)
-  // - Overdue: Tasks past their due date
-  // - Completed: All completed tasks
   const UPCOMING_DAYS_THRESHOLD = 7;
   
   const categorizeTasks = (tasksList) => {
@@ -203,7 +196,6 @@ const TasksPage = () => {
       upcoming: tasksList.filter(task => {
         if (!task.due_date || task.status === 'COMPLETED') return false;
         const dueDate = parseISO(task.due_date);
-        // Include all future tasks (not just within 7 days) to ensure no tasks are hidden
         return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
       }),
       overdue: tasksList.filter(task => {
@@ -215,13 +207,43 @@ const TasksPage = () => {
     };
   };
 
+  // NUEVO: Lógica combinada para filtrar por proyecto Y por filtro de Superadmin
   const filteredTasks = useMemo(() => {
-    if (selectedProject === 'all') return tasks;
-    return tasks.filter((task) => {
-      const taskProjectId = typeof task.project === 'object' ? task.project.id : task.project;
-      return String(taskProjectId) === String(selectedProject);
-    });
-  }, [tasks, selectedProject]);
+    let result = tasks;
+
+    // 1. Filtrar por proyecto si no es 'all'
+    if (selectedProject !== 'all') {
+      result = result.filter((task) => {
+        const taskProjectId = typeof task.project === 'object' ? task.project.id : task.project;
+        return String(taskProjectId) === String(selectedProject);
+      });
+    }
+
+    // 2. Filtrar por botones del Superadmin (solo si es SUPERADMIN)
+    if (user?.role === 'SUPERADMIN' && adminTaskFilter !== 'ALL') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+
+      result = result.filter(task => {
+        if (adminTaskFilter === 'PENDING') {
+          return task.status === 'PENDING' || task.status === 'IN_PROGRESS' || task.status === 'OPEN';
+        }
+        if (adminTaskFilter === 'COMPLETED') {
+          return task.status === 'COMPLETED' || task.status === 'CLOSED';
+        }
+        if (adminTaskFilter === 'THIS_WEEK') {
+          if (!task.due_date) return false;
+          const dueDate = new Date(task.due_date);
+          return dueDate >= today && dueDate <= nextWeek;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [tasks, selectedProject, adminTaskFilter, user?.role]);
 
   const categorizedTasks = categorizeTasks(filteredTasks);
 
@@ -395,7 +417,9 @@ const TasksPage = () => {
         </div>
 
         <div className="glass-card">
-          <div className="filters-bar">
+          <div className="filters-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+            
+            {/* Select original de Proyectos */}
             <div className="filter-group">
               <FiFilter />
               <label htmlFor="project-filter">Filtrar por Proyecto:</label>
@@ -405,7 +429,7 @@ const TasksPage = () => {
                 value={selectedProject}
                 onChange={(e) => {
                   setSelectedProject(e.target.value);
-                  setCurrentPage(1); // CAMBIO 5: Reseteamos la página al filtrar
+                  setCurrentPage(1); 
                 }}
               >
                 <option value="all">Todos los Proyectos</option>
@@ -417,6 +441,36 @@ const TasksPage = () => {
                   ))}
               </select>
             </div>
+
+            {/* NUEVO: Botones de filtro rápidos solo para SUPERADMIN */}
+            {user?.role === 'SUPERADMIN' && (
+              <div className="admin-filters" style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('ALL')}
+                >
+                  Todas
+                </button>
+                <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'PENDING' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('PENDING')}
+                >
+                  Pendientes
+                </button>
+                <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('COMPLETED')}
+                >
+                  Completadas
+                </button>
+                <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'THIS_WEEK' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('THIS_WEEK')}
+                >
+                  Esta Semana
+                </button>
+              </div>
+            )}
           </div>
 
           {isStudent(user.role) ? (
