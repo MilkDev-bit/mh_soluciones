@@ -89,7 +89,7 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
       />
       <div className="comment-content">
         <div className="comment-header">
-          <strong>{(user.first_name || 'Usuario') + ' ' + (user.last_name || '')}</strong>
+          <strong>{(user.first_name || 'Usuario') + ' ' + (user.last_name || '')}</strong>// ...
           <span>
             {comment?.created_at ? format(parseISO(comment.created_at), 'dd MMM yyyy, HH:mm', { locale: es }) : ''}
           </span>
@@ -370,17 +370,6 @@ const ProjectDetailPage = () => {
     queryKey: ['project', projectId],
     queryFn: async () => {
       const projectData = await getProjectById(projectId);
-      
-      // Check access for students
-      if (currentUser?.role === 'STUDENT') {
-        const isMember = (projectData?.members || []).some(
-          (m) => m?.user?.id === currentUser?.id || m?.id === currentUser?.id
-        );
-        if (!isMember) {
-          toast.error('No tienes acceso a este proyecto.');
-          return null;
-        }
-      }
       
       const safeMembers = Array.isArray(projectData?.members) ? projectData.members.filter(Boolean) : [];
       return { ...projectData, members: safeMembers };
