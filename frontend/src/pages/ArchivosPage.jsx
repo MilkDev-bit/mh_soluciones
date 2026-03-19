@@ -358,7 +358,7 @@ const ArchivosPage = () => {
 
   const archivosFiltrados = archivos.filter(archivo => {
     const nombreArchivo = archivo.name || '';
-    const proyectoNombre = archivo.project?.name || '';
+    const proyectoNombre = archivo.project_info?.name || '';
     
     const coincideBusqueda = nombreArchivo.toLowerCase().includes(busqueda.toLowerCase()) ||
                              proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
@@ -602,10 +602,10 @@ const ArchivosPage = () => {
                     <span>{formatearTamano(archivo.file_size)}</span>
                     <span>•</span>
                     <span>{archivo.uploaded_by?.username || 'Usuario'}</span>
-                    {archivo.project?.name && (
+                    {archivo.project_info?.name && (
                       <>
                         <span>•</span>
-                        <span>{archivo.project.name}</span>
+                        <span>{archivo.project_info.name}</span>
                       </>
                     )}
                   </div>
