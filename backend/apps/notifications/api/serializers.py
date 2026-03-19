@@ -2,6 +2,9 @@ from rest_framework import serializers
 from apps.notifications.models import Notification, PushSubscription
 
 class NotificationSerializer(serializers.ModelSerializer):
+
+    action_url = serializers.SerializerMethodField()
+
     """
     Serializador para el modelo Notification.
     """
