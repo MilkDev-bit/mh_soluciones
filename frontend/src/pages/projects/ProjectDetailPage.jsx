@@ -667,9 +667,8 @@ const ProjectDetailPage = () => {
 
   const membersList = Array.isArray(project?.members) ? project.members.filter(Boolean) : [];
 
-  // Filter tasks to exclude completed ones by default
   const displayedTasks = showCompletedTasks 
-    ? tasks 
+    ? tasks.filter(task => task.status === 'COMPLETED') 
     : tasks.filter(task => task.status !== 'COMPLETED');
 
   return (
