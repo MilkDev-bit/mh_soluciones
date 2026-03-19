@@ -20,6 +20,8 @@ const MyTasks = ({ tasks }) => {
       <h2>Mis Tareas Pendientes</h2>
       <ul className="widget-list">
         {tasks.map(task => {
+
+          console.log("Tarea desde la API:", task);
           const projectId = task.project?.id || task.project_id || task.project;
           
           const hasDate = Boolean(task.due_date);
