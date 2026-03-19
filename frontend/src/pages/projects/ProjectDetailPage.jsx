@@ -376,10 +376,9 @@ const ProjectDetailPage = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    enabled: !!projectId && !!currentUser,
+    enabled: !!projectId && projectId !== 'undefined' && !!currentUser,
   });
 
-  // Fetch project tasks
   // Fetch project tasks
   const { 
     data: tasks = [],
@@ -413,7 +412,7 @@ const ProjectDetailPage = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    enabled: !!projectId && !!currentUser,
+    enabled: !!projectId && projectId !== 'undefined' && !!currentUser,
   });
 
   // Memoize task IDs for stable query key
@@ -473,7 +472,7 @@ const ProjectDetailPage = () => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    enabled: !!projectId,
+    enabled: !!projectId && projectId !== 'undefined',
   });
 
   const loading = projectLoading || tasksLoading;
