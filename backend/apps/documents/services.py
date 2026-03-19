@@ -179,6 +179,7 @@ class GoogleDriveService:
                 
                 parent_folder_id = target_folder_id
                 parent_folder_name = folder_name
+                file_upload_parent_id = target_folder_id  # Upload directly to selected folder
                 filename = document_instance.file.name
                 
                 logger.info(
@@ -205,11 +206,11 @@ class GoogleDriveService:
                 
                 # Level 3 - Task name folder (NOMBRE_TAREA) - only if task exists
                 task_name = None
-                task_id = None
+                task_folder_id = None
                 if document_instance.task:
                     task_name = document_instance.task.title
-                    task_id = self._get_or_create_folder(task_name, parent_id=project_id)
-                    parent_for_user = task_id
+                    task_folder_id = self._get_or_create_folder(task_name, parent_id=project_id)
+                    parent_for_user = task_folder_id
                 else:
                     # If no task, user folder goes directly under project
                     parent_for_user = project_id
@@ -223,26 +224,39 @@ class GoogleDriveService:
                     user_name = "Usuario Desconocido"
                     user_id = self._get_or_create_folder(user_name, parent_id=parent_for_user)
                 
-                parent_folder_id = user_id
+                # File physically lives in user folder
+                file_upload_parent_id = user_id
+                
+                # For filtering purposes, store the project-level subfolder ID:
+                # - If task exists: task folder (direct child of project, shown in dropdown)
+                # - If no task: user folder IS direct child of project
+                if task_folder_id:
+                    parent_folder_id = task_folder_id
+                    parent_folder_name = task_name
+                else:
+                    parent_folder_id = user_id
+                    parent_folder_name = user_name
                 
                 # Create filename - keep original name, no version subfolder
                 filename = document_instance.file.name
                 
                 # Build path for logging
                 project_name = document_instance.project.name if document_instance.project else 'General'
-                task_name = document_instance.task.title if document_instance.task else ''
+                task_name_log = document_instance.task.title if document_instance.task else ''
                 path_parts = [current_year, project_name]
-                if task_name:
-                    path_parts.append(task_name)
+                if task_name_log:
+                    path_parts.append(task_name_log)
                 path_parts.append(user_name)
-                parent_folder_name = user_name
                 
                 logger.info(f"Subiendo archivo: {filename} a estructura {'/'.join(path_parts)}")
 
+
             # Upload file to Drive
+            # file_upload_parent_id = actual Drive folder the file goes into
+            # parent_folder_id = project-level subfolder stored in DB for filtering
             file_metadata = {
                 'name': filename,
-                'parents': [parent_folder_id]
+                'parents': [file_upload_parent_id]
             }
 
             if hasattr(document_instance.file, 'path') and os.path.exists(document_instance.file.path):

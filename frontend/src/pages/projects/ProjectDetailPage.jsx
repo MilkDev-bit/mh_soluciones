@@ -254,6 +254,21 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
   );
 };
 
+const EventItem = ({ event }) => {
+  const eventDate = event?.start_time ? parseISO(event.start_time) : null;
+  const formattedDate = eventDate ? format(eventDate, 'dd MMM yyyy, HH:mm', { locale: es }) : 'Fecha no definida';
+  return (
+    <div className="event-item" style={{ borderLeftColor: event?.color || '#3B82F6' }}>
+      <div className="event-color-indicator" style={{ backgroundColor: event?.color || '#3B82F6' }} />
+      <div className="event-content">
+        <h4 className="event-title">{event?.title || 'Evento sin título'}</h4>
+        <p className="event-date">{formattedDate}</p>
+        {event?.description && <p className="event-description">{event.description}</p>}
+      </div>
+    </div>
+  );
+};
+
 const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => {
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
   const list = (members || []).filter(Boolean);
@@ -640,20 +655,6 @@ const ProjectDetailPage = () => {
     }
   };
 
-  const EventItem = ({ event }) => {
-    const eventDate = event?.start_time ? parseISO(event.start_time) : null;
-    const formattedDate = eventDate ? format(eventDate, 'dd MMM yyyy, HH:mm', { locale: es }) : 'Fecha no definida';
-    return (
-      <div className="event-item" style={{ borderLeftColor: event?.color || '#3B82F6' }}>
-        <div className="event-color-indicator" style={{ backgroundColor: event?.color || '#3B82F6' }} />
-        <div className="event-content">
-          <h4 className="event-title">{event?.title || 'Evento sin título'}</h4>
-          <p className="event-date">{formattedDate}</p>
-          {event?.description && <p className="event-description">{event.description}</p>}
-        </div>
-      </div>
-    );
-  };
 
   if (loading) return <Loading fullscreen text="Cargando proyecto..." />;
 

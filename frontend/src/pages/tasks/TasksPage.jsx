@@ -27,6 +27,95 @@ import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'd
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
+const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
+  const documents = taskDocuments[task.id] || [];
+
+  return (
+    <div
+      className="task-card"
+      onClick={() => setSelectedTask(task)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setSelectedTask(task);
+        }
+      }}
+    >
+      <div className="task-card-header">
+        <div className="task-icon">
+          <FiCheckSquare />
+        </div>
+        <h3 className="task-title">{task.title}</h3>
+      </div>
+
+      <div className="task-card-body">
+        {task.description && (
+          <p className="task-description">{task.description}</p>
+        )}
+
+        <div className="task-meta">
+          <div className="task-project-badge">
+            {task.project_name}
+          </div>
+
+          {task.due_date && (
+            <div className="task-deadline">
+              <FiCalendar />
+              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+            </div>
+          )}
+
+          {task.assigned_to && (
+            <div className="task-assignee">
+              <FiUser />
+              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+            </div>
+          )}
+
+          {documents.length > 0 && (
+            <div className="task-documents">
+              <FiPaperclip />
+              <span>{documents.length} archivo(s)</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TaskColumn = ({ title, icon: Icon, tasks, emptyMessage, color, taskDocuments, setSelectedTask }) => (
+  <div className="task-column">
+    <div className="task-column-header" style={{ borderColor: color }}>
+      <Icon style={{ color }} />
+      <h2>{title}</h2>
+      <span className="task-count" style={{ backgroundColor: color }}>
+        {tasks.length}
+      </span>
+    </div>
+
+    <div className="task-column-content">
+      {tasks.length > 0 ? (
+        tasks.map(task => (
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            taskDocuments={taskDocuments} 
+            setSelectedTask={setSelectedTask} 
+          />
+        ))
+      ) : (
+        <div className="empty-state">
+          <Icon size={48} />
+          <p>{emptyMessage}</p>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 const TasksPage = () => {
   const queryClient = useQueryClient();
   const [selectedProject, setSelectedProject] = useState('all');
@@ -251,87 +340,7 @@ const TasksPage = () => {
     return <Loading fullscreen text="Cargando tareas..." />;
   }
 
-  const TaskCard = ({ task }) => {
-    const documents = taskDocuments[task.id] || [];
-    
-    return (
-      <div
-        className="task-card"
-        onClick={() => setSelectedTask(task)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setSelectedTask(task);
-          }
-        }}
-      >
-        <div className="task-card-header">
-          <div className="task-icon">
-            <FiCheckSquare />
-          </div>
-          <h3 className="task-title">{task.title}</h3>
-        </div>
-        
-        <div className="task-card-body">
-          {task.description && (
-            <p className="task-description">{task.description}</p>
-          )}
-          
-          <div className="task-meta">
-            <div className="task-project-badge">
-              {task.project_name}
-            </div>
-            
-            {task.due_date && (
-              <div className="task-deadline">
-                <FiCalendar />
-                <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
-              </div>
-            )}
-            
-            {task.assigned_to && (
-              <div className="task-assignee">
-                <FiUser />
-                <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
-              </div>
-            )}
-            
-            {documents.length > 0 && (
-              <div className="task-documents">
-                <FiPaperclip />
-                <span>{documents.length} archivo(s)</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
-  const TaskColumn = ({ title, icon: Icon, tasks, emptyMessage, color }) => (
-    <div className="task-column">
-      <div className="task-column-header" style={{ borderColor: color }}>
-        <Icon style={{ color }} />
-        <h2>{title}</h2>
-        <span className="task-count" style={{ backgroundColor: color }}>
-          {tasks.length}
-        </span>
-      </div>
-      
-      <div className="task-column-content">
-        {tasks.length > 0 ? (
-          tasks.map(task => <TaskCard key={task.id} task={task} />)
-        ) : (
-          <div className="empty-state">
-            <Icon size={48} />
-            <p>{emptyMessage}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -482,6 +491,8 @@ const TasksPage = () => {
                 tasks={categorizedTasks.upcoming}
                 emptyMessage="No hay tareas próximas"
                 color="#f59e0b"
+                taskDocuments={taskDocuments}
+                setSelectedTask={setSelectedTask}
               />
               
               <TaskColumn

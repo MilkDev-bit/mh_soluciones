@@ -50,8 +50,14 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
 
     const unsubscribe = notificationService.subscribe((notificationOrCount) => {
       // Handle both full notification object or simple count update
-      if (typeof notificationOrCount === 'object') {
-        const newNotification = notificationOrCount;
+      if (typeof notificationOrCount === 'object' && notificationOrCount.type !== 'polling_update') {
+        const newNotification =
+          notificationOrCount.type === 'new_notification'
+            ? notificationOrCount.payload
+            : notificationOrCount;
+
+        // Skip if there's no actual notification object
+        if (!newNotification || !newNotification.id) return;
         
         // Check if we've already seen this notification to prevent duplicates
         setSeenNotificationIds(prevIds => {
