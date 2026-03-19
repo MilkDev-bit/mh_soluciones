@@ -33,7 +33,7 @@ def create_task_assignment_notification(sender, instance, created, **kwargs):
             title=title,
             message=message,
             notification_type=Notification.NotificationType.TASK_ASSIGNED,
-            content_object=instance.project
+            content_object=instance
         )
 
         channel_layer = get_channel_layer()

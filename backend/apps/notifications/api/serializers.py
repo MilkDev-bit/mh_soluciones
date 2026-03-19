@@ -28,7 +28,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             if obj.content_type.model == 'task':
                 task = obj.content_object
                 if task and hasattr(task, 'project') and task.project:
-                    return f"/projects/{task.project.id}"
+                    return f"/projects/{task.project.id}?taskId={task.id}"
                     
             elif obj.content_type.model == 'project':
                 project = obj.content_object

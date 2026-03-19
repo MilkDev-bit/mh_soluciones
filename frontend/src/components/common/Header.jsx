@@ -161,6 +161,16 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
     }
   };
 
+  const handleNotificationClick = async (notif) => {
+    if (!notif.is_read) {
+      await handleMarkAsRead(notif.id);
+    }
+    if (notif.action_url) {
+      navigate(notif.action_url);
+      setIsNotificationsOpen(false);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -206,14 +216,19 @@ const Header = ({ onToggleSidebar, sidebarOpen }) => {
                   </div>
                 ) : (
                   notifications.map(notif => (
-                    <div key={notif.id} className={`notification-item ${notif.is_read ? 'read' : ''}`}>
+                    <div 
+                      key={notif.id} 
+                      className={`notification-item ${notif.is_read ? 'read' : ''} ${notif.action_url ? 'clickable' : ''}`}
+                      onClick={() => notif.action_url ? handleNotificationClick(notif) : null}
+                      style={notif.action_url ? { cursor: 'pointer' } : {}}
+                    >
                       <div className="notification-content">
                         <p className="title">{notif.title}</p>
                         <p className="message">{notif.message}</p>
                         <span className="time">{formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: es })}</span>
                       </div>
                       {!notif.is_read && (
-                        <button className="mark-read-btn" onClick={() => handleMarkAsRead(notif.id)} title="Marcar como leída"><FiCheck /></button>
+                        <button className="mark-read-btn" onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }} title="Marcar como leída"><FiCheck /></button>
                       )}
                     </div>
                   ))

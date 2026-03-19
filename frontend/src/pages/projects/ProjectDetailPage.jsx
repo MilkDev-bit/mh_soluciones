@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
@@ -342,6 +342,7 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -420,6 +421,21 @@ const ProjectDetailPage = () => {
     tasks?.map(t => t.id).sort().join(',') || '', 
     [tasks]
   );
+
+  useEffect(() => {
+    const taskIdParam = searchParams.get('taskId');
+    if (taskIdParam && tasks && tasks.length > 0) {
+      const taskToOpen = tasks.find(t => String(t.id) === taskIdParam);
+      if (taskToOpen && (!selectedTask || selectedTask.id !== taskToOpen.id)) {
+        setSelectedTask(taskToOpen);
+        
+        // Remove taskId from URL so it doesn't persistently re-open on refresh
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('taskId');
+        navigate({ search: newSearchParams.toString() }, { replace: true });
+      }
+    }
+  }, [searchParams, tasks, selectedTask, navigate]);
 
   // Fetch task documents
   const { data: taskDocuments = {} } = useQuery({
