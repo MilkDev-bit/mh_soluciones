@@ -28,7 +28,7 @@ import { es } from 'date-fns/locale';
 import './TasksPage.scss';
 
 const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
-  const documents = taskDocuments[task.id] || [];
+  const documents = taskDocuments?.[task.id] || [];
 
   return (
     <div
@@ -501,6 +501,8 @@ const TasksPage = () => {
                 tasks={categorizedTasks.overdue}
                 emptyMessage="No hay tareas vencidas"
                 color="#ef4444"
+                taskDocuments={taskDocuments}
+                setSelectedTask={setSelectedTask}
               />
               
               <TaskColumn
@@ -509,6 +511,8 @@ const TasksPage = () => {
                 tasks={categorizedTasks.completed}
                 emptyMessage="No hay tareas completadas"
                 color="#10b981"
+                taskDocuments={taskDocuments}
+                setSelectedTask={setSelectedTask}
               />
             </div>
           ) : (
