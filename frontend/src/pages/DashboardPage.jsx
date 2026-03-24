@@ -169,17 +169,9 @@ const DashboardPage = () => {
           />
         );
       case 'recent-projects':
-        return (
-          <div className="widget-full-width">
-            <RecentProjects projects={displayData.recent_activity?.projects || displayData.projects_summary} />
-          </div>
-        );
+        return <RecentProjects projects={displayData.recent_activity?.projects || displayData.projects_summary} />;
       case 'my-tasks':
-        return (
-          <div className="widget-full-width">
-            <MyTasks tasks={displayData.upcoming_deadlines || displayData.my_pending_tasks} />
-          </div>
-        );
+        return <MyTasks tasks={displayData.upcoming_deadlines || displayData.my_pending_tasks} />;
       default:
         return null;
     }
