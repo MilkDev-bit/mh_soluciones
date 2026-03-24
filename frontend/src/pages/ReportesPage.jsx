@@ -263,46 +263,41 @@ const ReportesPage = () => {
       {/* Header */}
       <div className="page-header">
         <div className="header-title-block">
-          <span className="header-eyebrow">Panel de análisis</span>
-          <h1>Reportes <span className="accent">&</span> Estadísticas</h1>
+          <h1>Reportes <span className="accent">&amp;</span> Estadísticas</h1>
           <p className="page-subtitle">Visualiza el progreso y rendimiento en tiempo real</p>
         </div>
 
         <div className="header-acciones">
-          <div className="filters-row">
-            <select 
-              className="rango-select" 
-              value={proyectoFiltro} 
-              onChange={(e) => setProyectoFiltro(e.target.value)}
-            >
-              <option value="">Todos los Proyectos</option>
-              {proyectosData?.results?.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+          <select 
+            className="rango-select" 
+            value={proyectoFiltro} 
+            onChange={(e) => setProyectoFiltro(e.target.value)}
+          >
+            <option value="">Todos los Proyectos</option>
+            {proyectosData?.results?.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
 
-            <select 
-              className="rango-select"
-              value={rangoFecha}
-              onChange={(e) => setRangoFecha(e.target.value)}
-            >
-              <option value="7_dias">Últimos 7 días</option>
-              <option value="30_dias">Últimos 30 días</option>
-              <option value="90_dias">Últimos 90 días</option>
-              <option value="12_meses">Últimos 12 meses</option>
-            </select>
-          </div>
+          <select 
+            className="rango-select"
+            value={rangoFecha}
+            onChange={(e) => setRangoFecha(e.target.value)}
+          >
+            <option value="7_dias">Últimos 7 días</option>
+            <option value="30_dias">Últimos 30 días</option>
+            <option value="90_dias">Últimos 90 días</option>
+            <option value="12_meses">Últimos 12 meses</option>
+          </select>
 
-          <div className="export-row">
-            <button className="btn-exportar btn-csv" onClick={exportarCSV}>
-              <FiFileText />
-              <span>Excel</span>
-            </button>
-            <button className="btn-exportar btn-pdf" onClick={exportarPDF}>
-              <FiDownload />
-              <span>PDF</span>
-            </button>
-          </div>
+          <button className="btn-exportar btn-csv" onClick={exportarCSV}>
+            <FiFileText />
+            <span>Excel</span>
+          </button>
+          <button className="btn-exportar btn-pdf" onClick={exportarPDF}>
+            <FiDownload />
+            <span>PDF</span>
+          </button>
         </div>
       </div>
 
