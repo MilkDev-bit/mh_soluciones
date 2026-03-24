@@ -23,15 +23,16 @@
     gap: $spacing-4;
     margin-bottom: $spacing-6;
   }
-}
 
-.header-title-block {
   h1 {
-    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-size: 2rem;
     font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.02em;
     margin-bottom: $spacing-2;
+
+    @media (max-width: $breakpoint-md) { font-size: 1.75rem; }
+    @media (max-width: $breakpoint-sm) { font-size: 1.5rem; }
 
     .accent {
       color: $primary-500;
@@ -54,6 +55,7 @@
   flex-wrap: wrap;
 
   @media (max-width: $breakpoint-md) { width: 100%; }
+
   @media (max-width: $breakpoint-sm) {
     flex-direction: column;
     align-items: stretch;
@@ -93,6 +95,7 @@
   font-size: 0.9375rem;
   min-height: 44px;
   transition: all $transition;
+  white-space: nowrap;
 
   svg { font-size: 1.125rem; }
 
@@ -101,9 +104,9 @@
     color: #fff;
 
     &:hover {
-      background: darken(#10b981, 6%);
+      background: #059669;
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(#10b981, 0.35);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
     }
   }
 
@@ -115,7 +118,7 @@
     &:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 16px rgba($primary-500, 0.4);
-      filter: brightness(1.06);
+      filter: brightness(1.08);
     }
   }
 
@@ -126,9 +129,19 @@
 
 .tarjetas-estadisticas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: $spacing-4;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-5;
   margin-bottom: $spacing-8;
+
+  @media (max-width: $breakpoint-xl) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-4;
+  }
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-4;
+  }
 
   @media (max-width: $breakpoint-sm) {
     grid-template-columns: repeat(2, 1fr);
@@ -141,7 +154,6 @@
 }
 
 .tarjeta-estadistica {
-  position: relative;
   background: var(--bg-card);
   border-radius: $border-radius-xl;
   padding: $spacing-5 $spacing-6;
@@ -149,18 +161,15 @@
   display: flex;
   align-items: center;
   gap: $spacing-4;
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 
   &.clickable {
     cursor: pointer;
 
     &:hover {
-      transform: translateY(-4px);
       box-shadow: var(--shadow-xl);
       border-color: $primary-500;
-
-      .tarjeta-glow { opacity: 0.07; transform: scale(1.5); }
     }
   }
 
@@ -180,7 +189,6 @@
   color: #fff;
   font-size: 1.375rem;
   flex-shrink: 0;
-  background: var(--card-color);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 
   @media (max-width: $breakpoint-sm) {
@@ -190,7 +198,10 @@
   }
 }
 
-.tarjeta-contenido { flex: 1; min-width: 0; }
+.tarjeta-contenido {
+  flex: 1;
+  min-width: 0;
+}
 
 .tarjeta-label {
   font-size: 0.75rem;
@@ -208,23 +219,13 @@
   line-height: 1.1;
   letter-spacing: -0.02em;
 
-  @media (max-width: $breakpoint-sm) { font-size: 1.625rem; }
+  @media (max-width: $breakpoint-sm) { font-size: 1.75rem; }
   @media (max-width: $breakpoint-xs) { font-size: 1.5rem; }
 }
 
-.tarjeta-glow {
-  position: absolute;
-  right: -16px;
-  bottom: -16px;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.3s, transform 0.3s;
-  pointer-events: none;
+.charts-section {
+  margin-top: $spacing-2;
 }
-
-.charts-section { margin-top: $spacing-2; }
 
 .charts-header {
   display: flex;
@@ -237,10 +238,12 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
 }
 
-.scroll-controls { display: flex; gap: $spacing-2; }
+.scroll-controls {
+  display: flex;
+  gap: $spacing-2;
+}
 
 .scroll-btn {
   display: flex;
@@ -292,7 +295,7 @@
 }
 
 .grafico-card {
-  flex: 0 0 360px;
+  flex: 0 0 380px;
   scroll-snap-align: start;
   background: var(--bg-card);
   border-radius: $border-radius-xl;
@@ -308,13 +311,13 @@
     border-color: rgba($primary-500, 0.4);
   }
 
-  &--wide { flex: 0 0 520px; }
+  &--wide { flex: 0 0 540px; }
 
   @media (max-width: $breakpoint-sm) {
-    flex: 0 0 82vw;
+    flex: 0 0 84vw;
     padding: $spacing-4;
 
-    &--wide { flex: 0 0 88vw; }
+    &--wide { flex: 0 0 90vw; }
   }
 }
 
@@ -371,7 +374,7 @@
 
 .grafico {
   flex: 1;
-  min-height: 260px;
+  min-height: 270px;
   position: relative;
 
   @media (max-width: $breakpoint-sm) { min-height: 220px; }
@@ -432,6 +435,8 @@
 .performer-count {
   position: absolute;
   right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 0.6875rem;
   font-weight: 700;
   color: var(--text-secondary);
@@ -458,10 +463,4 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-@media (max-width: $breakpoint-2xl) {
-  .reportes-page .graficos-container {
-    grid-template-columns: 1fr;
-  }
 }

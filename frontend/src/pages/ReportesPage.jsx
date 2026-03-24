@@ -260,7 +260,6 @@ const ReportesPage = () => {
 
   return (
     <div className="reportes-page">
-      {/* Header */}
       <div className="page-header">
         <div className="header-title-block">
           <h1>Reportes <span className="accent">&amp;</span> Estadísticas</h1>
@@ -305,28 +304,26 @@ const ReportesPage = () => {
         <DashboardSkeleton />
       ) : (
         <div ref={reporteRef}>
-
-          {/* Stat Cards */}
           <div className="tarjetas-estadisticas">
             {tarjetasEstadisticas.map((tarjeta, index) => (
               <div
                 key={index}
                 className={`tarjeta-estadistica${tarjeta.link ? ' clickable' : ''}`}
                 onClick={() => tarjeta.link && navigate(tarjeta.link)}
+                onMouseEnter={(e) => tarjeta.link && (e.currentTarget.style.transform = 'translateY(-4px)')}
+                onMouseLeave={(e) => tarjeta.link && (e.currentTarget.style.transform = 'translateY(0)')}
               >
-                <div className="tarjeta-icono" style={{ '--card-color': tarjeta.color }}>
+                <div className="tarjeta-icono" style={{ backgroundColor: tarjeta.color }}>
                   {tarjeta.icono}
                 </div>
                 <div className="tarjeta-contenido">
                   <p className="tarjeta-label">{tarjeta.titulo}</p>
                   <p className="tarjeta-valor">{tarjeta.valor}</p>
                 </div>
-                <div className="tarjeta-glow" style={{ background: tarjeta.color }} />
               </div>
             ))}
           </div>
 
-          {/* Charts Section with horizontal scroll */}
           <div className="charts-section">
             <div className="charts-header">
               <h2 className="section-title">Análisis Visual</h2>
@@ -341,7 +338,6 @@ const ReportesPage = () => {
             </div>
 
             <div className="graficos-scroll-wrapper" ref={scrollRef}>
-              {/* Donut Chart */}
               <div className="grafico-card">
                 <div className="card-header">
                   <h3>Distribución de Tareas</h3>
@@ -363,7 +359,6 @@ const ReportesPage = () => {
                 </div>
               </div>
 
-              {/* Line Chart */}
               <div className="grafico-card">
                 <div className="card-header">
                   <h3>Tendencia de Completado</h3>
@@ -374,7 +369,6 @@ const ReportesPage = () => {
                 </div>
               </div>
 
-              {/* Top Performers */}
               {estadisticas?.topPerformers?.length > 0 && (
                 <div className="grafico-card">
                   <div className="card-header">
@@ -401,7 +395,6 @@ const ReportesPage = () => {
                 </div>
               )}
 
-              {/* Bar Chart — only when no project filter */}
               {!proyectoFiltro && (
                 <div className="grafico-card grafico-card--wide">
                   <div className="card-header">
