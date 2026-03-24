@@ -2,10 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-/**
- * Hook personalizado para rastrear inactividad del usuario
- * y cerrar sesión automáticamente después de 15 minutos
- */
+
 const useInactivityLogout = () => {
   const { user, logout } = useAuth();
   const timeoutRef = useRef(null);
