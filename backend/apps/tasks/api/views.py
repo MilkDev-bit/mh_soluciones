@@ -209,12 +209,20 @@ class TaskViewSet(viewsets.ModelViewSet):
                 'error': 'Este endpoint es solo para estudiantes'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Get all tasks assigned to this student
         tasks = Task.objects.filter(
             Q(assigned_students=user) | Q(assigned_to=user)
         ).exclude(status='DRAFT').distinct()
         
-        # Categorize tasks
+        all_submissions = TaskSubmission.objects.filter(
+            task__in=tasks,
+            submitted_by=user
+        ).order_by('task_id', '-version')
+        
+        latest_submissions = {}
+        for submission in all_submissions:
+            if submission.task_id not in latest_submissions:
+                latest_submissions[submission.task_id] = submission
+        
         now = timezone.now()
         to_submit = []
         submitted = []
@@ -222,11 +230,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         overdue = []
         
         for task in tasks:
-            # Check if student has submitted
-            submission = TaskSubmission.objects.filter(
-                task=task,
-                submitted_by=user
-            ).order_by('-version').first()
+            submission = latest_submissions.get(task.id)
             
             if submission:
                 if submission.status == 'GRADED':
@@ -234,17 +238,16 @@ class TaskViewSet(viewsets.ModelViewSet):
                 else:
                     submitted.append(task)
             else:
-                # Not submitted
                 if task.close_date and task.close_date < now:
                     overdue.append(task)
                 else:
                     to_submit.append(task)
         
         return Response({
-            'to_submit': TaskSerializer(to_submit, many=True).data,
-            'submitted': TaskSerializer(submitted, many=True).data,
-            'graded': TaskSerializer(graded, many=True).data,
-            'overdue': TaskSerializer(overdue, many=True).data
+            'to_submit': self.get_serializer(to_submit, many=True).data,
+            'submitted': self.get_serializer(submitted, many=True).data,
+            'graded': self.get_serializer(graded, many=True).data,
+            'overdue': self.get_serializer(overdue, many=True).data
         })
     
     @action(detail=False, methods=['get'], url_path='completed')

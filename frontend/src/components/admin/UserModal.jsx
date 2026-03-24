@@ -49,7 +49,6 @@ const UserModal = ({ userToEdit, onClose, onUserSaved }) => {
     } catch (error) {
       console.error('Error saving user:', error);
       if (error.response?.data) {
-        // Show backend validation errors
         const backendErrors = error.response.data;
         Object.keys(backendErrors).forEach(key => {
           if (Array.isArray(backendErrors[key])) {

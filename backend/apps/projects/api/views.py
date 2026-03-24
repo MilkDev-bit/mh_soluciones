@@ -251,24 +251,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
         try:
             project = self.get_object()
             user = request.user
-            
-            # Validate CLIENT access
             self._validate_client_access(user, project)
             
-            # Get all students assigned to tasks in this project
             student_ids = project.tasks.filter(
                 assigned_students__role='STUDENT'
             ).values_list('assigned_students__id', flat=True).distinct()
             
-            # Also get students assigned to individual tasks
             individual_student_ids = project.tasks.filter(
                 assigned_to__role='STUDENT'
             ).values_list('assigned_to__id', flat=True).distinct()
-            
-            # Get students who are members of the project
+
             try:
-                # project.members returns CustomUser objects (not ProjectMember)
-                # Filter directly on CustomUser.role field
                 project_member_student_ids = project.members.filter(
                     role='STUDENT'
                 ).values_list('id', flat=True).distinct()
@@ -276,7 +269,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
                 project_member_student_ids = []
             
-            # Combine all sets of student IDs efficiently
             all_student_ids = set(student_ids) | set(individual_student_ids) | set(project_member_student_ids)
             
             if not all_student_ids:
@@ -285,30 +277,29 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'message': 'No hay estudiantes asignados a este proyecto'
                 }, status=status.HTTP_200_OK)
             
+            students = CustomUser.objects.filter(id__in=all_student_ids, role='STUDENT')
+            
+            all_submissions = TaskSubmission.objects.filter(
+                task__project=project,
+                submitted_by_id__in=all_student_ids
+            ).select_related('task')
+            
+            submissions_by_student = {student.id: [] for student in students}
+            for submission in all_submissions:
+                if submission.submitted_by_id in submissions_by_student:
+                    submissions_by_student[submission.submitted_by_id].append(submission)
+
             students_data = []
             
-            for student_id in all_student_ids:
-                try:
-                    student = CustomUser.objects.get(id=student_id, role='STUDENT')
-                except CustomUser.DoesNotExist:
-                    logger.warning(f"Estudiante con ID {student_id} no encontrado o no tiene rol STUDENT")
-                    continue
-                
-                # Get all submissions for this student in this project
-                submissions = TaskSubmission.objects.filter(
-                    task__project=project,
-                    submitted_by=student
-                ).select_related('task')
-                
-                total_submissions = submissions.count()
+            for student in students:
+                student_submissions = submissions_by_student.get(student.id, [])
+                total_submissions = len(student_submissions)
                 on_time_count = 0
                 late_count = 0
                 
-                for submission in submissions:
+                for submission in student_submissions:
                     task = submission.task
-                    # Check if submission was on time
                     if task.due_date and submission.created_at:
-                        # Convert datetime to date for comparison if needed
                         if isinstance(submission.created_at, datetime):
                             submission_date = submission.created_at.date()
                         elif isinstance(submission.created_at, date):
@@ -316,16 +307,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
                         else:
                             continue
                         
-                        # Compare dates (task.due_date is a DateField)
                         if submission_date <= task.due_date:
                             on_time_count += 1
                         else:
                             late_count += 1
                     else:
-                        # If no due date, count as on time
                         on_time_count += 1
-                
-                # Calculate on-time percentage
+
                 on_time_percentage = 0
                 if total_submissions > 0:
                     on_time_percentage = round((on_time_count / total_submissions) * 100)
@@ -340,7 +328,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     'on_time_percentage': on_time_percentage
                 })
             
-            # Sort by on_time_percentage descending
             students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
             
             return Response({
@@ -349,14 +336,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
             
         except PermissionDenied:
-            # Re-raise permission errors
             raise
         except Exception as e:
-            # Safely get project ID for logging (pk is a method parameter, always available)
             try:
                 project_id = project.id
             except (NameError, AttributeError):
-                # Fallback to pk parameter if project.id is not accessible
                 project_id = pk if pk else 'unknown'
             
             logger.error(f"Error inesperado en student_performance para proyecto {project_id}: {str(e)}", exc_info=True)
