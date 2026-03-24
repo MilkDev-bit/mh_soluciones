@@ -252,16 +252,6 @@
     background: #f0f0f0;
     border: 2px dashed #ccc;
   }
-
-  &:has(.widget-full-width) {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-}
-
-.widget-full-width {
-  width: 100%;
-  height: 100%;
 }
 
 /* Dark Mode Styles */
