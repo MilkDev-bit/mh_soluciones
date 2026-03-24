@@ -23,7 +23,7 @@ const ICONS = {
 
 const DashboardPage = () => {
   const { user } = useAuth();
-  
+
   // Dashboard items state
   const [items, setItems] = useState([]);
 
@@ -169,9 +169,17 @@ const DashboardPage = () => {
           />
         );
       case 'recent-projects':
-        return <RecentProjects projects={displayData.recent_activity?.projects || displayData.projects_summary} />;
+        return (
+          <div className="widget-full-width">
+            <RecentProjects projects={displayData.recent_activity?.projects || displayData.projects_summary} />
+          </div>
+        );
       case 'my-tasks':
-        return <MyTasks tasks={displayData.upcoming_deadlines || displayData.my_pending_tasks} />;
+        return (
+          <div className="widget-full-width">
+            <MyTasks tasks={displayData.upcoming_deadlines || displayData.my_pending_tasks} />
+          </div>
+        );
       default:
         return null;
     }
