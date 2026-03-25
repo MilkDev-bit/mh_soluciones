@@ -24,26 +24,26 @@ export default defineConfig({
             src: '/icons/android-chrome-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any' // Ícono estándar
+            purpose: 'any'
           },
           {
             src: '/icons/android-chrome-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any' // Ícono estándar
+            purpose: 'any'
           },
           {
             src: '/icons/android-chrome-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable' // Ícono enmascarable (Requisito de Lighthouse)
+            purpose: 'maskable'
           }
         ]
       },
       workbox: {
         cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/api/, /^\/media/, /^\/admin/, /^\/djangoadmin/],
-        importScripts: ['custom-sw.js'], // <-- ¡IMPORTANTE! Se restauró para que no se rompan tus notificaciones
+        importScripts: ['custom-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
         runtimeCaching: [
           {
@@ -53,7 +53,7 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -67,7 +67,7 @@ export default defineConfig({
               cacheName: 'gstatic-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -75,15 +75,13 @@ export default defineConfig({
             }
           },
           {
-            // API cache strategy - matches the backend API base path
-            // Update this pattern if API version or base path changes
             urlPattern: /\/api\/v1\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 5 // 5 minutes
+                maxAgeSeconds: 60 * 5
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -97,7 +95,7 @@ export default defineConfig({
               cacheName: 'image-cache',
               expiration: {
                 maxEntries: 60,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30
               }
             }
           }
@@ -146,6 +144,7 @@ export default defineConfig({
   },
 
   build: {
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {
@@ -157,6 +156,9 @@ export default defineConfig({
           'console.info',
           'console.warn'            
         ]
+      },
+      format: {
+        comments: false
       }
     },
     rollupOptions: {
