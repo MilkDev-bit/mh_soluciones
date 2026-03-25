@@ -138,8 +138,8 @@
         transition: all 0.2s ease;
 
         &:hover {
-          color: $error-500;
-          background: rgba($error-500, 0.05);
+          color: $error;
+          background: rgba($error, 0.05);
         }
       }
     }
