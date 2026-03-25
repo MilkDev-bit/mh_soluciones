@@ -132,6 +132,26 @@ server {
     }
     
     # ===========================================================================
+    # WEBSOCKET PROXY - Routes /ws/* to backend service
+    # ===========================================================================
+    location /ws/ {
+        proxy_pass http://backend.railway.internal:8080/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Forward original request headers
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Evitar que la conexión se cierre por inactividad (24 horas)
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+    
+    # ===========================================================================
     # MEDIA PROXY - Routes /media/* to backend service for user uploads
     # ===========================================================================
     # Django serves media files (user uploads, profile pictures, etc)
@@ -178,7 +198,7 @@ server {
         # (one of the documented safe uses of 'if' in nginx location blocks)
         set \$download_disposition "";
         
-        if (\$request_uri ~* \\.(docx?|xlsx?|pptx?|zip|rar|7z)\$) {
+        if (\$request_uri ~* \.(docx?|xlsx?|pptx?|zip|rar|7z)\$) {
             set \$download_disposition "attachment";
         }
         
@@ -239,6 +259,7 @@ echo "📄 Configuration summary:"
 echo "   - Listening on port: $PORT"
 echo "   - Backend origin (for logs): $BACKEND_ORIGIN"
 echo "   - API proxy: /api/* -> http://backend.railway.internal:8080/api/*"
+echo "   - WS proxy: /ws/* -> http://backend.railway.internal:8080/ws/*"
 echo "   - Media proxy: /media/* -> http://backend.railway.internal:8080/media/*"
 echo "   - Static files: /assets/* -> served from /usr/share/nginx/html/assets/*"
 echo "   - SPA routing: /* -> /usr/share/nginx/html/index.html"
