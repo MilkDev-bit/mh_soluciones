@@ -1,14 +1,14 @@
 const AUTH_TOKEN_KEY = 'authToken';
 
 export const getToken = () => {
-  return localStorage.getItem('access_token');
+  // Tokens are now in HttpOnly cookies and managed by the browser
+  return null; 
 };
 
 export const setToken = (token) => {
-  localStorage.setItem('access_token', token);
+  // Tokens are now set by the backend via Set-Cookie header
 };
 
 export const removeToken = () => {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
+  // Tokens are now removed by the backend /logout/ endpoint
 };

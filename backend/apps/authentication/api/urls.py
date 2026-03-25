@@ -35,6 +35,8 @@ from .views import (
     GoogleOAuthDebugView,
     forgot_password,
     BlockedIPViewSet,
+    LogoutAPIView,
+    CookieTokenRefreshView,
     LoginActivityListView
 )
 
@@ -49,6 +51,8 @@ google_callback_view = csrf_exempt(log_oauth_callback(GoogleAuthCallbackView.as_
 urlpatterns = [
     path('', include(router.urls)),
     path('login/', LoginAPIView.as_view(), name='auth_login'),
+    path('logout/', LogoutAPIView.as_view(), name='auth_logout'),
+    path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
     path('forgot-password/', forgot_password, name='forgot-password'),
     path('profile/', UserProfileAPIView.as_view(), name='auth_profile'),
     path('profile/change-password/', PasswordChangeAPIView.as_view(), name='auth_change_password'),

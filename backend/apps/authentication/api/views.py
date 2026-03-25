@@ -8,11 +8,12 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from ipware import get_client_ip
-from rest_framework import status, viewsets, generics, permissions
+from rest_framework import status, viewsets, generics, permissions, exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_otp import devices_for_user
 from rest_framework.decorators import api_view, permission_classes, action
@@ -250,7 +251,7 @@ class LoginAPIView(APIView):
         
         try:
             serializer.is_valid(raise_exception=True)
-        except ValidationError as e:
+        except exceptions.ValidationError as e:
             username = request.data.get('username')
             user_obj = CustomUser.objects.filter(username=username).first()
             if user_obj and client_ip:
@@ -329,11 +330,32 @@ class LoginAPIView(APIView):
         refresh = RefreshToken.for_user(user)
         user_data = UserSerializer(user, context={'request': request}).data
         
-        return Response({
-            'refresh': str(refresh), 
-            'access': str(refresh.access_token), 
+        response = Response({
             'user': user_data
         }, status=status.HTTP_200_OK)
+
+        # Set cookies
+        cookie_settings = settings.SIMPLE_JWT
+        response.set_cookie(
+            cookie_settings['AUTH_COOKIE'],
+            str(refresh.access_token),
+            expires=timezone.now() + cookie_settings['ACCESS_TOKEN_LIFETIME'],
+            secure=cookie_settings['AUTH_COOKIE_SECURE'],
+            httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+            path=cookie_settings['AUTH_COOKIE_PATH']
+        )
+        response.set_cookie(
+            cookie_settings['AUTH_COOKIE_REFRESH'],
+            str(refresh),
+            expires=timezone.now() + cookie_settings['REFRESH_TOKEN_LIFETIME'],
+            secure=cookie_settings['AUTH_COOKIE_SECURE'],
+            httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+            path=cookie_settings['AUTH_COOKIE_PATH']
+        )
+        
+        return response
 
 class TwoFactorVerifyAPIView(APIView):
     authentication_classes = []
@@ -357,11 +379,78 @@ class TwoFactorVerifyAPIView(APIView):
         )
 
         refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': UserSerializer(user, context={'request': request}).data
+        user_data = UserSerializer(user, context={'request': request}).data
+        
+        response = Response({
+            'user': user_data
         }, status=status.HTTP_200_OK)
+
+        # Set cookies
+        cookie_settings = settings.SIMPLE_JWT
+        response.set_cookie(
+            cookie_settings['AUTH_COOKIE'],
+            str(refresh.access_token),
+            expires=timezone.now() + cookie_settings['ACCESS_TOKEN_LIFETIME'],
+            secure=cookie_settings['AUTH_COOKIE_SECURE'],
+            httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+            path=cookie_settings['AUTH_COOKIE_PATH']
+        )
+        response.set_cookie(
+            cookie_settings['AUTH_COOKIE_REFRESH'],
+            str(refresh),
+            expires=timezone.now() + cookie_settings['REFRESH_TOKEN_LIFETIME'],
+            secure=cookie_settings['AUTH_COOKIE_SECURE'],
+            httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+            samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+            path=cookie_settings['AUTH_COOKIE_PATH']
+        )
+        
+        return response
+
+class LogoutAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        response = Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+        
+        cookie_settings = settings.SIMPLE_JWT
+        response.delete_cookie(cookie_settings['AUTH_COOKIE'], path=cookie_settings['AUTH_COOKIE_PATH'])
+        response.delete_cookie(cookie_settings['AUTH_COOKIE_REFRESH'], path=cookie_settings['AUTH_COOKIE_PATH'])
+        
+        return response
+
+class CookieTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])
+        
+        if refresh_token:
+            data = request.data.copy()
+            data['refresh'] = refresh_token
+            request._full_data = data
+            
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            access_token = response.data.get('access')
+            if access_token:
+                cookie_settings = settings.SIMPLE_JWT
+                response.set_cookie(
+                    cookie_settings['AUTH_COOKIE'],
+                    access_token,
+                    expires=timezone.now() + cookie_settings['ACCESS_TOKEN_LIFETIME'],
+                    secure=cookie_settings['AUTH_COOKIE_SECURE'],
+                    httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+                    samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+                    path=cookie_settings['AUTH_COOKIE_PATH']
+                )
+                # Remove access and refresh from body if they are there
+                if 'access' in response.data:
+                    del response.data['access']
+                if 'refresh' in response.data:
+                    del response.data['refresh']
+        
+        return response
 
 
 class PasswordChangeAPIView(APIView):

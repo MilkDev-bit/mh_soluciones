@@ -23,14 +23,12 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      // Log warning si no hay token pero se está haciendo una petición autenticada
-      if (import.meta.env.DEV && config.url !== '/auth/login/') {
-        console.warn('[API] No auth token found for request:', config.url);
-      }
+    // Bearer token is now handled by HttpOnly cookies automatically
+    // No need to manually inject Authorization header from localStorage
+    
+    // Log warning in dev for non-login requests if we want to trace
+    if (import.meta.env.DEV && !['/auth/login/', '/token/refresh/'].includes(config.url)) {
+      // With cookies, we don't know if a token exists until the request fails with 401
     }
     
     // Detectar si estamos enviando FormData (para uploads de archivos)
@@ -69,38 +67,17 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          // No refresh token available, redirect to login
-          console.error('No refresh token available');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
-          return Promise.reject(error);
-        }
-
         // Use a separate axios instance for token refresh to avoid circular interceptor calls
-        // But still include the base URL configuration
-        const refreshResponse = await axios.post(`${API_BASE_URL}/token/refresh/`, {
-          refresh: refreshToken
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
+        // backend will use the refresh cookie automatically
+        await axios.post(`${API_BASE_URL}/token/refresh/`, {}, {
           withCredentials: true
         });
 
-        const newToken = refreshResponse.data.access;
-        localStorage.setItem('access_token', newToken);
-
-        // Update the failed request with new token and retry
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        // Retry the original request (it will now include the new access cookie)
         return api(originalRequest);
       } catch (refreshError) {
-        // Token refresh failed - clear tokens and redirect to login
+        // Token refresh failed - redirect to login
         console.error('Token refresh failed:', refreshError);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
         
         // Only redirect if we're not already on the login page
         if (window.location.pathname !== '/login') {
