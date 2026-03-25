@@ -305,8 +305,8 @@ CSRF_TRUSTED_ORIGINS = get_csrf_origins()
 
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = False 
-CSRF_COOKIE_SECURE = False     
+SESSION_COOKIE_SECURE = True 
+CSRF_COOKIE_SECURE = True     
 SESSION_COOKIE_SAMESITE = 'Lax' 
 CSRF_COOKIE_SAMESITE = 'Lax'  
 
@@ -476,7 +476,7 @@ CSP_IMG_SRC = ("'self'", "data:", "https:")
 CSP_CONNECT_SRC = ("'self'", "https:")
 
 # Session Security
-SESSION_COOKIE_AGE = 900  # 15 minutos
+SESSION_COOKIE_AGE = 1800  # 15 minutos
 SESSION_SAVE_EVERY_REQUEST = True  # Renovar sesión en cada request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
