@@ -64,10 +64,11 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files configuration for Railway
-# Option 1: Local storage with Railway Volume (recommended for persistence)
-# Option 2: Google Drive (existing integration)
-MEDIA_URL = '/media/'
+if FRONTEND_URL and FRONTEND_URL.startswith('https://'):
+    MEDIA_URL = f'{FRONTEND_URL}/media/'
+else:
+    MEDIA_URL = '/media/'
+
 MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 # Check if AWS credentials are provided (for backward compatibility)
