@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from apps.core.models import TimeStampedModel
+from apps.core.validators import validate_file_extension
 
 class EmployeeDocument(TimeStampedModel):
     """
@@ -31,6 +32,7 @@ class EmployeeDocument(TimeStampedModel):
     )
     file = models.FileField(
         upload_to='hr_documents/%Y/%m/',
+        validators=[validate_file_extension],
         verbose_name=_("Archivo")
     )
     uploaded_by = models.ForeignKey(

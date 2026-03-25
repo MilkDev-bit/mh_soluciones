@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from apps.core.models import TimeStampedModel
+from apps.core.validators import validate_file_extension
 
 class Project(TimeStampedModel):
     """
@@ -203,7 +204,13 @@ class ProjectSubmission(TimeStampedModel):
     )
     notes = models.TextField(blank=True, verbose_name=_("Notas de la entrega"))
     link = models.URLField(blank=True, null=True, verbose_name=_("Enlace de entrega"))
-    file = models.FileField(upload_to='project_submissions/', blank=True, null=True, verbose_name=_("Archivo adjunto"))
+    file = models.FileField(
+        upload_to='project_submissions/', 
+        blank=True, 
+        null=True, 
+        validators=[validate_file_extension],
+        verbose_name=_("Archivo adjunto")
+    )
 
     class Meta:
         verbose_name = _("Entrega de Proyecto")

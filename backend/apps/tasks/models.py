@@ -4,6 +4,7 @@ from django.conf import settings
 from apps.core.models import TimeStampedModel
 from apps.projects.models import Project
 from apps.core.utils import get_document_upload_path
+from apps.core.validators import validate_file_extension
 
 
 class Task(TimeStampedModel):
@@ -108,6 +109,7 @@ class Task(TimeStampedModel):
         upload_to='task_attachments/',
         null=True,
         blank=True,
+        validators=[validate_file_extension],
         verbose_name=_("Archivo Adjunto")
     )
     allow_late_submissions = models.BooleanField(
@@ -165,6 +167,7 @@ class TaskSubmission(TimeStampedModel):
     )
     file = models.FileField(
         upload_to=get_document_upload_path,
+        validators=[validate_file_extension],
         verbose_name=_("Archivo Entregado"),
         null=True,
         blank=True

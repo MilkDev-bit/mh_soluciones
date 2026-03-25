@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from apps.core.models import TimeStampedModel
 from apps.core.utils import get_document_upload_path
+from apps.core.validators import validate_file_extension
 from .services import GoogleDriveService
 
 class Document(TimeStampedModel):
@@ -64,6 +65,7 @@ class Document(TimeStampedModel):
     )
     file = models.FileField(
         upload_to=get_document_upload_path,
+        validators=[validate_file_extension],
         verbose_name=_("Archivo")
     )
     name = models.CharField(

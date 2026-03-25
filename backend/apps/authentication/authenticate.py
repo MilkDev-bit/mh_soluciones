@@ -20,8 +20,29 @@ class CookieJWTAuthentication(JWTAuthentication):
         try:
             validated_token = self.get_validated_token(raw_token)
         except exceptions.AuthenticationFailed:
-            # If token in cookie is invalid, we don't want to fail the whole request
-            # if there might be other authentication methods (like SessionAuthentication for admin)
             return None
 
-        return self.get_user(validated_token), validated_token
+        user = self.get_user(validated_token)
+        
+        # Enforce CSRF validation for cookie-based authentication
+        if header is None:
+            self.enforce_csrf(request)
+            
+        return user, validated_token
+
+    def enforce_csrf(self, request):
+        """
+        Enforce CSRF validation for session-like authentication.
+        """
+        from rest_framework.authentication import CSRFCheck
+        
+        def dummy_get_response(request):
+            return None
+        
+        check = CSRFCheck(dummy_get_response)
+        # populates request.META['CSRF_COOKIE']
+        check.process_view(request, None, (), {})
+        reason = check.process_view(request, None, (), {})
+        if reason:
+            # CSRF failed, raise a 403 error.
+            raise exceptions.PermissionDenied('CSRF Failed: %s' % reason)
