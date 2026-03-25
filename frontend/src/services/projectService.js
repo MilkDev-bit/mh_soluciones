@@ -1,8 +1,11 @@
 import api from './api';
 
-export const getProjects = async (page = null) => {
+export const getProjects = async (page = null, search = '') => {
   try {
-    const url = page ? `projects/?page=${page}` : 'projects/?all=true';
+    let url = page ? `projects/?page=${page}` : 'projects/?all=true';
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
+    }
     const { data } = await api.get(url);
     
     // If backend returns a direct array (all=true), wrap it in paginated format 

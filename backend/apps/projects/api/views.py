@@ -40,6 +40,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     - Others: Based on project membership
     """
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description']
 
     def _validate_client_access(self, user, project):
         """

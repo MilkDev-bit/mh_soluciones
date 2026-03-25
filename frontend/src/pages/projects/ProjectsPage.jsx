@@ -12,7 +12,7 @@ import { SkeletonList } from '../../components/common/Skeleton';
 import Modal from '../../components/common/Modal';
 import ProjectForm from '../../components/projects/ProjectForm';
 import GradesWidget from '../../components/common/GradesWidget';
-import { FiPlus, FiRefreshCw, FiBriefcase, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiRefreshCw, FiBriefcase, FiChevronLeft, FiChevronRight, FiSearch, FiX } from 'react-icons/fi';
 import './ProjectsPage.scss';
 
 const ProjectsPage = () => {
@@ -22,6 +22,8 @@ const ProjectsPage = () => {
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   const { 
     data: projectsResponse,
@@ -30,8 +32,8 @@ const ProjectsPage = () => {
     refetch,
     isError 
   } = useQuery({
-    queryKey: ['projects', user?.id, user?.role, page],
-    queryFn: () => getProjects(page),
+    queryKey: ['projects', user?.id, user?.role, page, searchTerm],
+    queryFn: () => getProjects(page, searchTerm),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     enabled: !!user,
@@ -68,6 +70,18 @@ const ProjectsPage = () => {
     setIsModalOpen(false);
     setEditingProject(null);
   }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setSearchTerm(searchInput);
+    setPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setPage(1);
+  };
 
   if (isLoading || !user) {
     return (
@@ -122,6 +136,20 @@ const ProjectsPage = () => {
             </div>
           </div>
           <div className="header-actions">
+            <form className="search-box" onSubmit={handleSearch}>
+              <FiSearch className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Buscar por región o nombre..." 
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+              {searchInput && (
+                <button type="button" className="clear-search" onClick={handleClearSearch}>
+                  <FiX />
+                </button>
+              )}
+            </form>
             {isFetching && (
               <Loading inline size="small" text="Actualizando..." />
             )}

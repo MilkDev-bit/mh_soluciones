@@ -84,6 +84,65 @@
     gap: $spacing-3;
     position: relative;
     z-index: 1;
+
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba($white, 0.6);
+      border: 1px solid rgba($primary-500, 0.2);
+      border-radius: $border-radius-lg;
+      padding: 0 $spacing-3;
+      transition: all 0.3s ease;
+      min-width: 280px;
+
+      @media (max-width: $breakpoint-md) {
+        width: 100%;
+        min-width: auto;
+      }
+
+      &:focus-within {
+        background: $white;
+        border-color: $primary-500;
+        box-shadow: 0 0 0 4px rgba($primary-500, 0.1);
+      }
+
+      .search-icon {
+        color: $neutral-400;
+        font-size: 1.1rem;
+      }
+
+      input {
+        border: none;
+        background: transparent;
+        padding: $spacing-2 $spacing-2;
+        font-size: 0.9rem;
+        color: $neutral-800;
+        width: 100%;
+        outline: none;
+
+        &::placeholder {
+          color: $neutral-400;
+        }
+      }
+
+      .clear-search {
+        background: transparent;
+        border: none;
+        color: $neutral-400;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        padding: $spacing-1;
+        border-radius: $border-radius-full;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: $error-500;
+          background: rgba($error-500, 0.05);
+        }
+      }
+    }
   }
 
   .btn {
