@@ -52,6 +52,7 @@ boto3
 # Security enhancements
 django-ratelimit==4.1.0
 cryptography==42.0.0
+django-csp==3.7
 
 # Web Push Notifications
 pywebpush==1.14.0

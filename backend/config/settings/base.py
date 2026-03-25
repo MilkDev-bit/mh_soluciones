@@ -123,6 +123,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
     'django_otp.middleware.OTPMiddleware',
     'apps.authentication.security_middleware.SessionSecurityMiddleware',
     'apps.authentication.security_middleware.PasswordExpiryMiddleware',
@@ -299,11 +300,8 @@ def get_csrf_origins():
 CSRF_TRUSTED_ORIGINS = get_csrf_origins()
 
 # Allow CORS from Railway subdomains when in Railway environment
-if IS_RAILWAY:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://.*\.railway\.app$",
-        r"^https://.*\.up\.railway\.app$",
-    ]
+
+# Build CSRF trusted origins based on environment
 
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

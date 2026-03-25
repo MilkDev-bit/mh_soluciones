@@ -42,7 +42,7 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        navigateFallbackDenylist: [/^\/api/, /^\/media/, /^\/admin/, /^\/djangoadmin/],
+        navigateFallbackDenylist: [/^\/api/, /^\/media/, /^\/admin/, /^\/djangoadmin/, /^\/portal-mh-secreto-admin/],
         importScripts: ['custom-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
         runtimeCaching: [
