@@ -214,7 +214,10 @@ class UserProfileAPIView(generics.RetrieveUpdateAPIView):
         
         return UserSerializer
 
+from django.views.decorators.csrf import ensure_csrf_cookie
+
 @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]

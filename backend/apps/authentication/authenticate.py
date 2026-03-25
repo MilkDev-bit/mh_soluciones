@@ -45,4 +45,7 @@ class CookieJWTAuthentication(JWTAuthentication):
         reason = check.process_view(request, None, (), {})
         if reason:
             # CSRF failed, raise a 403 error.
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"CSRF Validation Failed for user {request.user}: {reason}")
             raise exceptions.PermissionDenied('CSRF Failed: %s' % reason)
