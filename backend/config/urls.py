@@ -34,14 +34,23 @@ def recover_submissions_view(request):
         return JsonResponse({'error': 'unauthorized'}, status=403)
     
     from django.core.management import call_command
-    import io
-    from django.http import HttpResponse
+    import threading
+    import logging
     
-    out = io.StringIO()
-    # Run the command for today and retry drive uploads
-    call_command('recover_submission_files', date='2026-03-26', retry_drive=True, stdout=out)
+    logger = logging.getLogger('recovery_tool')
     
-    return HttpResponse(out.getvalue(), content_type='text/plain')
+    def run_recovery():
+        logger.info("Starting recovery background task...")
+        try:
+            call_command('recover_submission_files', date='2026-03-26', retry_drive=True)
+            logger.info("Recovery background task completed.")
+        except Exception as e:
+            logger.error(f"Recovery task failed: {str(e)}")
+
+    thread = threading.Thread(target=run_recovery)
+    thread.start()
+    
+    return JsonResponse({'status': 'recovery_started_in_background', 'check_logs': True})
 
 urlpatterns = [
     # API root view

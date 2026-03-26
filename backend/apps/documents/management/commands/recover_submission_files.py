@@ -171,9 +171,9 @@ class Command(BaseCommand):
         from apps.documents.services import GoogleDriveService
         from apps.tasks.api.views import TaskSubmissionViewSet
 
-        self.stdout.write(self.style.WARNING(
-            f"         🔄 Reintentando subida a Drive para Doc #{doc.id}..."
-        ))
+        msg = f"         🔄 Reintentando subida a Drive para Doc #{doc.id} ({doc.name})..."
+        self.stdout.write(self.style.WARNING(msg))
+        logger.info(msg)
         try:
             # Use institutional credentials
             drive_service = GoogleDriveService(use_institutional=True)
@@ -186,6 +186,7 @@ class Command(BaseCommand):
                 submission.submitted_by, 
                 submission
             )
+            logger.info(f"Target folder ID: {folder_id}")
             
             result = drive_service.upload_document(doc, target_folder_id=folder_id)
             
