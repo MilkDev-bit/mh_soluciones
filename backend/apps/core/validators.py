@@ -1,11 +1,23 @@
 import os
-import magic
-import pyclamd
 import logging
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
+
+# Optional imports for security features
+try:
+    import magic
+except ImportError:
+    magic = None
+    logger.warning("python-magic not installed. MIME type validation will be skipped.")
+
+try:
+    import pyclamd
+except ImportError:
+    pyclamd = None
+    logger.warning("pyclamd not installed. Malware scanning will be skipped.")
+
 
 # Map typical extensions to common mime types for quick basic allow-listing.
 ALLOWED_MIME_TYPES = {
@@ -29,14 +41,17 @@ ALLOWED_MIME_TYPES = {
 def scan_with_clamav(file_obj):
     """
     Scans a file object with ClamAV (if available).
-    Falls back gracefully if pyclamd connection fails.
+    Falls back gracefully if pyclamd connection fails or is not installed.
     """
+    if not pyclamd:
+        return
+
     try:
         # Try local unix socket or network socket
         try:
             cd = pyclamd.ClamdUnixSocket()
             cd.ping()
-        except pyclamd.ConnectionError:
+        except (pyclamd.ConnectionError, AttributeError):
             cd = pyclamd.ClamdNetworkSocket()
             cd.ping()
             
@@ -49,15 +64,13 @@ def scan_with_clamav(file_obj):
             logger.warning(f"Virus detected in upload: {result}")
             raise ValidationError(_('Se ha detectado contenido malicioso en el archivo.'))
             
-    except pyclamd.ConnectionError:
+    except (pyclamd.ConnectionError, AttributeError):
         # ClamAV not set up, gracefully skip.
         logger.info("ClamAV no está configurado o no responde. Saltando escaneo de virus.")
         file_obj.seek(0)
     except Exception as e:
         logger.error(f"Error during ClamAV scan: {str(e)}")
         file_obj.seek(0)
-        # We don't fail the upload just because the scanner crashed, 
-        # unless strict security is mandated. For now, just log.
 
 def validate_file_extension(value):
     """
@@ -70,15 +83,20 @@ def validate_file_extension(value):
     if ext not in valid_extensions:
         raise ValidationError(_('Tipo de archivo no soportado. Extensiones permitidas: ') + ', '.join(valid_extensions))
         
-    # Check MIME with magic
-    value.file.seek(0)
-    file_mime = magic.from_buffer(value.file.read(2048), mime=True)
-    value.file.seek(0)
-    
-    allowed_mimes = ALLOWED_MIME_TYPES.get(ext, [])
-    if file_mime not in allowed_mimes:
-        logger.warning(f"File {value.name} has fake extension. Real MIME is {file_mime}.")
-        raise ValidationError(_('El contenido del archivo no coincide con su extensión.'))
+    # Check MIME with magic if available
+    if magic:
+        try:
+            value.file.seek(0)
+            file_mime = magic.from_buffer(value.file.read(2048), mime=True)
+            value.file.seek(0)
+            
+            allowed_mimes = ALLOWED_MIME_TYPES.get(ext, [])
+            if allowed_mimes and file_mime not in allowed_mimes:
+                logger.warning(f"File {value.name} has fake extension. Real MIME is {file_mime}.")
+                raise ValidationError(_('El contenido del archivo no coincide con su extensión.'))
+        except Exception as e:
+            logger.error(f"Error validating MIME with magic: {e}")
+            value.file.seek(0)
         
     # Malware scan
     scan_with_clamav(value.file)
@@ -98,16 +116,21 @@ class FileExtensionWhitelistValidator:
                 params={'ext': ext, 'allowed': ', '.join(self.allowed_extensions)},
             )
             
-        # Check MIME with magic
-        value.file.seek(0)
-        file_mime = magic.from_buffer(value.file.read(2048), mime=True)
-        value.file.seek(0)
-        
-        # Verify the MIME falls into known good types for the extension
-        allowed_mimes = ALLOWED_MIME_TYPES.get(ext, [])
-        if allowed_mimes and file_mime not in allowed_mimes:
-            logger.warning(f"File {value.name} has fake extension. Real MIME is {file_mime}.")
-            raise ValidationError(_('El contenido del archivo no coincide con su extensión.'))
+        # Check MIME with magic if available
+        if magic:
+            try:
+                value.file.seek(0)
+                file_mime = magic.from_buffer(value.file.read(2048), mime=True)
+                value.file.seek(0)
+                
+                # Verify the MIME falls into known good types for the extension
+                allowed_mimes = ALLOWED_MIME_TYPES.get(ext, [])
+                if allowed_mimes and file_mime not in allowed_mimes:
+                    logger.warning(f"File {value.name} has fake extension. Real MIME is {file_mime}.")
+                    raise ValidationError(_('El contenido del archivo no coincide con su extensión.'))
+            except Exception as e:
+                logger.error(f"Error validating MIME with magic: {e}")
+                value.file.seek(0)
             
         # Malware scan
         scan_with_clamav(value.file)
