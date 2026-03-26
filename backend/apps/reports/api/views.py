@@ -214,7 +214,7 @@ class StatisticsAPIView(APIView):
                 'assigned_to__username', 
                 'assigned_to__first_name', 
                 'assigned_to__last_name'
-            ).annotate(count=Count('id')).order_by('-count')[:5]
+            ).annotate(count=Count('id')).order_by('-count')
             
             for u in top_users_qs:
                 nombre = f"{u['assigned_to__first_name']} {u['assigned_to__last_name']}".strip()
