@@ -937,10 +937,12 @@ const ProjectDetailPage = () => {
                                 })}
                               </span>
                             )}
-                            {documents.length > 0 && (
+                            {(documents.length > 0 || task.has_attachment || task.attachment) && (
                               <div className="task-documents-badge">
                                 <FiPaperclip size={12} />
-                                <span>{documents.length} documento(s)</span>
+                                <span>
+                                  {documents.length > 0 ? `${documents.length} documento(s)` : 'Tiene adjunto'}
+                                </span>
                               </div>
                             )}
                           </div>

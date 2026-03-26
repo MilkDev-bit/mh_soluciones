@@ -102,6 +102,7 @@ class TaskSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source='project.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    has_attachment = serializers.SerializerMethodField()
     
     class Meta:
         model = Task
@@ -110,8 +111,11 @@ class TaskSerializer(serializers.ModelSerializer):
             'priority_display', 'due_date', 'assigned_to', 'project', 'project_name',
             'open_date', 'close_date', 'max_score', 'assigned_students', 
             'assigned_students_data', 'allow_late_submissions', 'accept_after_close',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'has_attachment'
         ]
+
+    def get_has_attachment(self, obj):
+        return bool(obj.attachment)
 
 
 class TaskDetailSerializer(TaskSerializer):
