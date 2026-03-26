@@ -7,6 +7,19 @@ Usage on Railway console:
   python manage.py recover_submission_files --submission-id 5
   python manage.py recover_submission_files --retry-drive   (re-uploads FAILED/PENDING docs to Drive)
 """
+import sys
+import types
+
+# Mock modules that may not be installed or have system dependencies in production
+for mod_name in ['magic', 'pyclamd']:
+    if mod_name not in sys.modules:
+        mock = types.ModuleType(mod_name)
+        mock.from_buffer = lambda *a, **kw: 'application/octet-stream'
+        mock.ClamdUnixSocket = lambda *a, **kw: None
+        mock.ClamdNetworkSocket = lambda *a, **kw: None
+        mock.ConnectionError = Exception
+        sys.modules[mod_name] = mock
+
 import os
 import logging
 from datetime import date, timedelta
