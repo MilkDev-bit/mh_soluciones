@@ -929,19 +929,12 @@ const ProjectDetailPage = () => {
                           <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
                           <div className="task-info">
                             <p className="task-title">{task.title || 'Tarea sin título'}</p>
-                            {task?.due_date && (
-                              <span className="task-due-date">
-                                Vence:{' '}
-                                {format(parseISO(task.due_date), 'dd MMMM, yyyy', {
-                                  locale: es
-                                })}
-                              </span>
-                            )}
-                            {(documents.length > 0 || task.has_attachment || task.attachment) && (
+                            {(documents.length > 0 || task.has_attachment || task.attachment || task.submissions_count > 0) && (
                               <div className="task-documents-badge">
                                 <FiPaperclip size={12} />
                                 <span>
-                                  {documents.length > 0 ? `${documents.length} documento(s)` : 'Tiene adjunto'}
+                                  {task.submissions_count > 0 ? `${task.submissions_count} entrega(s)` : 
+                                   documents.length > 0 ? `${documents.length} documento(s)` : 'Tiene adjunto'}
                                 </span>
                               </div>
                             )}
