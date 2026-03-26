@@ -202,7 +202,7 @@ const ReportesPage = () => {
     <div className="reportes-page">
       <header className="page-header">
         <div className="header-title">
-          <h1>Analytics Engine</h1>
+          <h1>Reportes</h1>
           <p className="page-subtitle">Panel de Control de Rendimiento Operativo</p>
         </div>
 
@@ -272,9 +272,9 @@ const ReportesPage = () => {
                 </div>
 
                 <div className="top-performers">
-                  <h4><FiAward /> Top Rendimiento</h4>
+                  <h4><FiAward /> Rendimiento General</h4>
                   {estadisticas?.topPerformers?.length > 0 ? (
-                    estadisticas.topPerformers.slice(0, 3).map((tp, idx) => (
+                    estadisticas.topPerformers.map((tp, idx) => (
                       <div key={idx} className="performer-item">
                         <span>{tp.name}</span>
                         <b>{tp.count}</b>
