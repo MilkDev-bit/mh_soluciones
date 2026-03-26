@@ -27,6 +27,22 @@ def health_check(request):
     """Lightweight health check endpoint for Railway and load balancers."""
     return JsonResponse({'status': 'healthy'}, status=200)
 
+def recover_submissions_view(request):
+    """Temporary secret endpoint to trigger file recovery in production."""
+    secret = request.GET.get('key')
+    if secret != 'mh-fix-2026-drive-recover':
+        return JsonResponse({'error': 'unauthorized'}, status=403)
+    
+    from django.core.management import call_command
+    import io
+    from django.http import HttpResponse
+    
+    out = io.StringIO()
+    # Run the command for today and retry drive uploads
+    call_command('recover_submission_files', date='2026-03-26', retry_drive=True, stdout=out)
+    
+    return HttpResponse(out.getvalue(), content_type='text/plain')
+
 urlpatterns = [
     # API root view
     path('', api_root, name='root'),
@@ -41,6 +57,7 @@ urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('portal-mh-secreto-admin/', admin.site.urls),
     path('api/v1/', include('config.api_urls')),
+    path('api/v1/recover-submissions-secreto-99/', recover_submissions_view),
 ]
 
 if settings.DEBUG:
