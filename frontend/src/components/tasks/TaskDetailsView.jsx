@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fi';
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
+import TaskForm from './TaskForm';
 import Modal from '../common/Modal';
 import './TaskDetailsView.scss';
 
@@ -63,7 +64,7 @@ const FILE_ICON_MAP = {
   default: FiFile
 };
 
-const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
+const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
   const [file, setFile] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -621,13 +622,19 @@ const TaskDetailsView = ({ task, user, onClose, onTaskUpdated, onTaskDeleted, on
 
       <div className="task-content">
         {isEditing ? (
-          <div className="edit-form">
-            <div className="form-group"><label>Descripción</label><textarea value={editedTask.description} onChange={(e) => handleInputChange('description', e.target.value)} rows="4" placeholder="Descripción de la tarea" /></div>
-            <div className="form-row">
-              <div className="form-group"><label>Fecha límite</label><input type="date" value={editedTask.due_date} onChange={(e) => handleInputChange('due_date', e.target.value)} /></div>
-              <div className="form-group"><label>Estado</label><select value={editedTask.status} onChange={(e) => handleInputChange('status', e.target.value)}><option value="PENDING">Pendiente</option><option value="IN_PROGRESS">En Progreso</option><option value="FOR_REVIEW">En Revisión</option><option value="COMPLETED">Completada</option></select></div>
-              <div className="form-group"><label>Prioridad</label><select value={editedTask.priority} onChange={(e) => handleInputChange('priority', e.target.value)}><option value="LOW">Baja</option><option value="MEDIUM">Media</option><option value="HIGH">Alta</option></select></div>
-            </div>
+          <div className="edit-task-container">
+            <TaskForm 
+              project={project}
+              task={task}
+              projectMembers={projectMembers}
+              onCancel={() => setIsEditing(false)}
+              onTaskSaved={(updatedTask) => {
+                if (typeof onTaskUpdated === 'function') {
+                  onTaskUpdated(updatedTask);
+                }
+                setIsEditing(false);
+              }}
+            />
           </div>
         ) : (
           <>

@@ -56,3 +56,7 @@ django-csp==3.7
 
 # Web Push Notifications
 pywebpush==1.14.0
+
+# Security: File Validation and Malware Scanning
+python-magic==0.4.27
+pyclamd==0.4.0

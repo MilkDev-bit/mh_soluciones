@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev gcc curl jq && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev gcc curl jq libmagic1 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -31,10 +31,11 @@ RUN chmod +x /app/entrypoint.sh
 # - Default fallback is port 8080 if PORT is not set
 EXPOSE 8080
 
-# Health Check:
-# - Railway uses external health checks via healthcheckPath in railway.json
-# - Endpoint: GET /health/ returns 200 with Django health check response
-# - Internal HEALTHCHECK directive is not needed and can cause issues with dynamic ports
+# Create a non-root user
+RUN groupadd -r django && useradd -r -g django django && \
+    chown -R django:django /app
+
+USER django
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 # CMD is not needed as entrypoint.sh directly starts Daphne with the configured PORT

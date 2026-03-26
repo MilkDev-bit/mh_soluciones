@@ -41,7 +41,8 @@ import {
   FiTrash2,
   FiSave,
   FiX,
-  FiCalendar
+  FiCalendar,
+  FiClock
 } from 'react-icons/fi';
 import { format, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -363,7 +364,7 @@ const ProjectDetailPage = () => {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [taskFilter, setTaskFilter] = useState('ACTIVE');
 
   const { notifyProjectChange, notifyTaskChange, tasksUpdated, consumeTasksUpdate } = useProjectContext();
   const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
@@ -672,9 +673,21 @@ const ProjectDetailPage = () => {
 
   const membersList = Array.isArray(project?.members) ? project.members.filter(Boolean) : [];
 
-  const displayedTasks = showCompletedTasks 
-    ? tasks.filter(task => task.status === 'COMPLETED') 
-    : tasks.filter(task => task.status !== 'COMPLETED');
+  const currentDate = new Date();
+  const displayedTasks = tasks.filter(task => {
+    const isOverdueTask = task.due_date && task.status !== 'COMPLETED' && isAfter(currentDate, parseISO(task.due_date));
+    
+    if (taskFilter === 'COMPLETED') {
+      return task.status === 'COMPLETED';
+    } else if (taskFilter === 'OVERDUE') {
+      return isOverdueTask;
+    } else {
+      // ACTIVE view
+      if (task.status === 'COMPLETED') return false;
+      if (currentUser?.role === 'STUDENT' && isOverdueTask) return false;
+      return true;
+    }
+  });
 
   return (
     <>
@@ -718,6 +731,8 @@ const ProjectDetailPage = () => {
           <TaskDetailsView
             task={selectedTask}
             user={currentUser}
+            project={project}
+            projectMembers={membersList}
             onClose={() => setSelectedTask(null)}
             documents={taskDocuments[selectedTask.id] || []}
             onDocumentUpload={() => {
@@ -880,11 +895,18 @@ const ProjectDetailPage = () => {
                   </h2>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button 
-                      className="btn btn-secondary btn-sm" 
-                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                      title={showCompletedTasks ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
+                      className={`btn btn-sm ${taskFilter === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`} 
+                      onClick={() => setTaskFilter(taskFilter === 'COMPLETED' ? 'ACTIVE' : 'COMPLETED')}
+                      title={taskFilter === 'COMPLETED' ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
                     >
-                      <FiCheckSquare /> {showCompletedTasks ? 'Ocultar' : 'Mostrar'} Completadas
+                      <FiCheckSquare /> {taskFilter === 'COMPLETED' ? 'Ocultar' : 'Mostrar'} Completadas
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${taskFilter === 'OVERDUE' ? 'btn-danger' : 'btn-secondary'}`} 
+                      onClick={() => setTaskFilter(taskFilter === 'OVERDUE' ? 'ACTIVE' : 'OVERDUE')}
+                      title={taskFilter === 'OVERDUE' ? 'Ocultar tareas vencidas' : 'Mostrar tareas vencidas'}
+                    >
+                      <FiClock /> {taskFilter === 'OVERDUE' ? 'Ocultar' : 'Mostrar'} Vencidas
                     </button>
                     {currentUser && isAdmin(currentUser.role) && (
                       <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
@@ -931,7 +953,7 @@ const ProjectDetailPage = () => {
                       );
                     })
                   ) : (
-                    <p>No hay tareas {showCompletedTasks ? '' : 'activas en '}este proyecto todavía.</p>
+                    <p>No hay tareas en esta vista para este proyecto todavía.</p>
                   )}
                 </div>
               </div>

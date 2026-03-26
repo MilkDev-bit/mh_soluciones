@@ -30,6 +30,7 @@ if USE_S3_STORAGE:
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
+        'ContentDisposition': 'attachment',
     }
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
