@@ -111,54 +111,77 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
         </div>
       )}
 
-      {submission.documents && submission.documents.length > 0 && (
-        <div className="submission-files-preview">
-          <h4><FiFile /> Archivos entregados ({submission.documents.length})</h4>
-          <div className="files-list">
-            {submission.documents.map((doc) => (
-              <div key={doc.id} className="file-item-preview">
-                <FiFile className="file-icon" />
-                <div className="file-info">
-                  <span className="file-name" title={doc.name}>{doc.name}</span>
-                  {doc.file_size && <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>}
+      {/* ── Unified file display: shows ANY file regardless of which upload flow was used ── */}
+      {(() => {
+        const hasDocs = submission.documents && submission.documents.length > 0;
+        const hasMeta = submission.files_metadata && submission.files_metadata.length > 0;
+        const hasDriveLink = submission.google_drive_link && submission.uploaded_to_drive;
+        const hasDirectFile = submission.file;
+        const anyFile = hasDocs || hasMeta || hasDriveLink || hasDirectFile;
+        if (!anyFile) return null;
+        return (
+          <div className="submission-files-preview">
+            <h4><FiFile /> Archivos entregados</h4>
+            <div className="files-list">
+              {hasDocs && submission.documents.map((doc) => (
+                <div key={doc.id} className="file-item-preview">
+                  <FiFile className="file-icon" />
+                  <div className="file-info">
+                    <span className="file-name" title={doc.name}>{doc.name}</span>
+                    {doc.file_size && <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>}
+                  </div>
+                  <div className="file-actions">
+                    {doc.drive_file_url ? (
+                      <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
+                        <FiExternalLink /> Drive
+                      </a>
+                    ) : doc.file_url ? (
+                      <a href={doc.file_url} download className="btn-file-action btn-download">
+                        <FiDownload /> Descargar
+                      </a>
+                    ) : <span style={{fontSize:'0.75rem',color:'#9ca3af'}}>⏳ Procesando...</span>}
+                  </div>
                 </div>
-                <div className="file-actions">
-                  {doc.drive_file_url ? (
-                    <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive" title="Ver en Google Drive">
-                      <FiExternalLink /> Drive
+              ))}
+              {hasMeta && !hasDocs && submission.files_metadata.map((file, idx) => (
+                <div key={idx} className="file-item-preview">
+                  <FiFile className="file-icon" />
+                  <div className="file-info"><span className="file-name">{file.name}</span></div>
+                  <div className="file-actions">
+                    {file.web_view_link && (
+                      <a href={file.web_view_link} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
+                        <FiExternalLink /> Drive
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {hasDriveLink && !hasDocs && !hasMeta && (
+                <div className="file-item-preview">
+                  <FiLink className="file-icon" />
+                  <div className="file-info"><span className="file-name">Archivo en Google Drive</span></div>
+                  <div className="file-actions">
+                    <a href={submission.google_drive_link} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
+                      <FiExternalLink /> Abrir en Drive
                     </a>
-                  ) : doc.file_url ? (
-                    <a href={doc.file_url} download className="btn-file-action btn-download" title="Descargar">
+                  </div>
+                </div>
+              )}
+              {hasDirectFile && !hasDocs && !hasMeta && !hasDriveLink && (
+                <div className="file-item-preview">
+                  <FiFile className="file-icon" />
+                  <div className="file-info"><span className="file-name">Archivo adjunto</span></div>
+                  <div className="file-actions">
+                    <a href={submission.file} download className="btn-file-action btn-download">
                       <FiDownload /> Descargar
                     </a>
-                  ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        </div>
-      )}
-
-      {(!submission.documents || submission.documents.length === 0) && submission.files_metadata && submission.files_metadata.length > 0 && (
-        <div className="submission-files-preview">
-          <h4><FiFile /> Archivos en Drive ({submission.files_metadata.length})</h4>
-          <div className="files-list">
-            {submission.files_metadata.map((file, idx) => (
-              <div key={idx} className="file-item-preview">
-                <FiFile className="file-icon" />
-                <div className="file-info"><span className="file-name">{file.name}</span></div>
-                <div className="file-actions">
-                  {file.web_view_link && (
-                    <a href={file.web_view_link} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
-                      <FiExternalLink /> Drive
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {criteria.length > 0 && (
         <div className="form-group">

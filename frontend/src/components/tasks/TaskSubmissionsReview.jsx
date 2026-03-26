@@ -179,84 +179,104 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           </div>
                         )}
 
-                        {/* Show documents from Document model */}
-                        {submission.documents && submission.documents.length > 0 && (
-                          <div className="submission-files">
-                            <h5><FiFile /> Archivos adjuntos ({submission.documents.length}):</h5>
-                            <div className="files-list">
-                              {submission.documents.map((doc) => (
-                                <div key={doc.id} className="file-item">
-                                  <FiFile />
-                                  <div className="file-info">
-                                    <span className="file-name">{doc.name}</span>
-                                    {doc.file_size && (
-                                      <span className="file-size">
-                                        {(doc.file_size / 1024).toFixed(2)} KB
-                                      </span>
-                                    )}
+                        {/* ── Unified file display covering ALL possible sources ── */}
+                        {(() => {
+                          // Source 1: linked Document objects (post-refactor flow)
+                          const hasDocs = submission.documents && submission.documents.length > 0;
+                          // Source 2: files_metadata JSON (multifile drive flow)
+                          const hasMeta = submission.files_metadata && submission.files_metadata.length > 0;
+                          // Source 3: direct google_drive_link on the submission (legacy flow)
+                          const hasDriveLink = submission.google_drive_link && submission.uploaded_to_drive;
+                          // Source 4: direct file field on the submission (very old flow)
+                          const hasDirectFile = submission.file;
+
+                          const anyFile = hasDocs || hasMeta || hasDriveLink || hasDirectFile;
+
+                          if (!anyFile) return null;
+
+                          return (
+                            <div className="submission-files">
+                              <h5><FiFile /> Archivos entregados:</h5>
+                              <div className="files-list">
+
+                                {/* Source 1: Document objects */}
+                                {hasDocs && submission.documents.map((doc) => (
+                                  <div key={doc.id} className="file-item">
+                                    <FiFile />
+                                    <div className="file-info">
+                                      <span className="file-name">{doc.name}</span>
+                                      {doc.file_size && (
+                                        <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>
+                                      )}
+                                    </div>
+                                    <div className="file-actions">
+                                      {doc.drive_file_url ? (
+                                        <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="file-download" title="Ver en Google Drive">
+                                          <FiLink /> Drive
+                                        </a>
+                                      ) : doc.file_url ? (
+                                        <a href={doc.file_url} download className="file-download" title="Descargar archivo">
+                                          <FiDownload /> Descargar
+                                        </a>
+                                      ) : (
+                                        <span className="file-pending">⏳ Procesando...</span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="file-actions">
-                                    {doc.drive_file_url ? (
-                                      <a
-                                        href={doc.drive_file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="file-download"
-                                        title="Ver en Google Drive"
-                                      >
-                                        <FiLink /> Drive
+                                ))}
+
+                                {/* Source 2: files_metadata JSON */}
+                                {hasMeta && !hasDocs && submission.files_metadata.map((file, idx) => (
+                                  <div key={idx} className="file-item">
+                                    <FiFile />
+                                    <div className="file-info">
+                                      <span className="file-name">{file.name}</span>
+                                      {file.size && <span className="file-size">{(file.size / 1024).toFixed(1)} KB</span>}
+                                    </div>
+                                    <div className="file-actions">
+                                      {file.web_view_link ? (
+                                        <a href={file.web_view_link} target="_blank" rel="noopener noreferrer" className="file-download" title="Ver en Google Drive">
+                                          <FiLink /> Drive
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {/* Source 3: legacy google_drive_link on submission itself */}
+                                {hasDriveLink && !hasDocs && !hasMeta && (
+                                  <div className="file-item">
+                                    <FiLink />
+                                    <div className="file-info">
+                                      <span className="file-name">Archivo en Google Drive</span>
+                                    </div>
+                                    <div className="file-actions">
+                                      <a href={submission.google_drive_link} target="_blank" rel="noopener noreferrer" className="file-download">
+                                        <FiLink /> Abrir en Drive
                                       </a>
-                                    ) : doc.file_url ? (
-                                      <a
-                                        href={doc.file_url}
-                                        download
-                                        className="file-download"
-                                        title="Descargar archivo"
-                                      >
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Source 4: direct file field on submission */}
+                                {hasDirectFile && !hasDocs && !hasMeta && !hasDriveLink && (
+                                  <div className="file-item">
+                                    <FiFile />
+                                    <div className="file-info">
+                                      <span className="file-name">Archivo adjunto</span>
+                                    </div>
+                                    <div className="file-actions">
+                                      <a href={submission.file} download className="file-download" title="Descargar archivo">
                                         <FiDownload /> Descargar
                                       </a>
-                                    ) : null}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                                )}
 
-                        {/* Show files from files_metadata JSON field */}
-                        {submission.files_metadata && submission.files_metadata.length > 0 && (
-                          <div className="submission-files">
-                            <h5><FiFile /> Archivos adicionales ({submission.files_metadata.length}):</h5>
-                            <div className="files-list">
-                              {submission.files_metadata.map((file, idx) => (
-                                <div key={idx} className="file-item">
-                                  <FiFile />
-                                  <div className="file-info">
-                                    <span className="file-name">{file.name}</span>
-                                    {file.size && (
-                                      <span className="file-size">
-                                        {(file.size / 1024).toFixed(2)} KB
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="file-actions">
-                                    {file.web_view_link ? (
-                                      <a
-                                        href={file.web_view_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="file-download"
-                                        title="Ver en Google Drive"
-                                      >
-                                        <FiLink /> Drive
-                                      </a>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {submission.status === 'GRADED' && (
                           <div className="grading-info">
