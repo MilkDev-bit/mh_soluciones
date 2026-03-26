@@ -857,61 +857,58 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
 
     def _get_destination_folder(self, drive_service, task, user, submission):
         """
-        Crea estructura de carpetas institucional por proyecto:
-        MH Soluciones/[Año]/[Proyecto]/Tareas/[Tarea]/[Estudiante]/Entrega_v[N]
+        Crea estructura de carpetas consistente con el resto del sistema:
+        [Año]/[Proyecto]/[Tarea]/[Estudiante]/Entrega_v[N]
+
+        Esta ruta es idéntica a la usada por upload_document y list_folders_for_project,
+        lo que garantiza que los archivos sean visibles en el explorador de Drive.
         """
         try:
             date = submission.created_at
             current_year = date.strftime('%Y')
-            
-            # Root: MH Soluciones
-            base_folder_id = drive_service._get_or_create_folder(
-                "MH Soluciones", 
+
+            # Level 1 - Year folder (root of the institutional structure)
+            year_id = drive_service._get_or_create_folder(
+                current_year,
                 parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
             )
-            
-            # Year folder
-            year_id = drive_service._get_or_create_folder(current_year, parent_id=base_folder_id)
-            
-            # Project folder
+
+            # Level 2 - Project folder
             if task.project:
-                project_name = slugify(task.project.name)
+                project_name = task.project.name
             else:
                 project_name = "General"
-            project_id = drive_service._get_or_create_folder(project_name, parent_id=year_id)
-            
-            # Tareas folder
-            tareas_id = drive_service._get_or_create_folder("Tareas", parent_id=project_id)
-            
-            # Task folder
-            task_name = slugify(task.title)
-            task_id = drive_service._get_or_create_folder(task_name, parent_id=tareas_id)
-            
-            # Student folder
-            student_name = slugify(user.get_full_name() or user.username)
-            student_id = drive_service._get_or_create_folder(student_name, parent_id=task_id)
-            
-            # Version folder
+            project_folder_id = drive_service._get_or_create_folder(project_name, parent_id=year_id)
+
+            # Level 3 - Task folder (using actual task title, consistent with upload_document)
+            task_folder_id = drive_service._get_or_create_folder(task.title, parent_id=project_folder_id)
+
+            # Level 4 - Student folder
+            student_name = user.get_full_name() or user.username
+            student_folder_id = drive_service._get_or_create_folder(student_name, parent_id=task_folder_id)
+
+            # Level 5 - Version folder
             version_folder = f"Entrega_v{submission.version}"
-            version_id = drive_service._get_or_create_folder(version_folder, parent_id=student_id)
-            
-            logger.info(f"Estructura de carpetas creada: {version_folder}")
+            version_id = drive_service._get_or_create_folder(version_folder, parent_id=student_folder_id)
+
+            logger.info(
+                f"📁 [Drive] Estructura creada: {current_year}/{project_name}/{task.title}"
+                f"/{student_name}/{version_folder}"
+            )
             return version_id
-                
+
         except Exception as e:
-            logger.error(f"Error al crear estructura de carpetas: {e}")
-            # Fallback to simple structure
+            logger.error(f"❌ [Drive] Error al crear estructura de carpetas: {e}")
+            # Fallback: upload directly to root folder
             try:
-                base_folder_id = drive_service._get_or_create_folder(
-                    "MH Soluciones", 
+                date = submission.created_at
+                current_year = date.strftime('%Y')
+                year_id = drive_service._get_or_create_folder(
+                    current_year,
                     parent_id=settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
                 )
-                year_id = drive_service._get_or_create_folder(
-                    current_year, 
-                    parent_id=base_folder_id
-                )
                 return drive_service._get_or_create_folder("Entregas de Tareas", parent_id=year_id)
-            except:
+            except Exception:
                 return settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
 
     def _get_mime_type(self, filename):

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { gradeSubmission } from '../../services/taskService';
-import { FiAward, FiCheck } from 'react-icons/fi';
+import { FiAward, FiCheck, FiFile, FiDownload, FiExternalLink, FiLink, FiMessageSquare } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 
 const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) => {
@@ -95,6 +95,70 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
         <p><strong>Fecha de entrega:</strong> {new Date(submission.created_at).toLocaleString('es-MX')}</p>
         <p><strong>Versión:</strong> v{submission.version}</p>
       </div>
+
+      {submission.notes && (
+        <div className="submission-notes-preview">
+          <FiMessageSquare />
+          <p>{submission.notes}</p>
+        </div>
+      )}
+
+      {submission.link && (
+        <div className="submission-link-preview">
+          <FiLink />
+          <a href={submission.link} target="_blank" rel="noopener noreferrer">{submission.link}</a>
+          <FiExternalLink size={12} />
+        </div>
+      )}
+
+      {submission.documents && submission.documents.length > 0 && (
+        <div className="submission-files-preview">
+          <h4><FiFile /> Archivos entregados ({submission.documents.length})</h4>
+          <div className="files-list">
+            {submission.documents.map((doc) => (
+              <div key={doc.id} className="file-item-preview">
+                <FiFile className="file-icon" />
+                <div className="file-info">
+                  <span className="file-name" title={doc.name}>{doc.name}</span>
+                  {doc.file_size && <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>}
+                </div>
+                <div className="file-actions">
+                  {doc.drive_file_url ? (
+                    <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive" title="Ver en Google Drive">
+                      <FiExternalLink /> Drive
+                    </a>
+                  ) : doc.file_url ? (
+                    <a href={doc.file_url} download className="btn-file-action btn-download" title="Descargar">
+                      <FiDownload /> Descargar
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(!submission.documents || submission.documents.length === 0) && submission.files_metadata && submission.files_metadata.length > 0 && (
+        <div className="submission-files-preview">
+          <h4><FiFile /> Archivos en Drive ({submission.files_metadata.length})</h4>
+          <div className="files-list">
+            {submission.files_metadata.map((file, idx) => (
+              <div key={idx} className="file-item-preview">
+                <FiFile className="file-icon" />
+                <div className="file-info"><span className="file-name">{file.name}</span></div>
+                <div className="file-actions">
+                  {file.web_view_link && (
+                    <a href={file.web_view_link} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
+                      <FiExternalLink /> Drive
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {criteria.length > 0 && (
         <div className="form-group">
@@ -308,6 +372,83 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
           align-items: center;
           gap: 0.5rem;
         }
+
+        .submission-files-preview {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        .submission-files-preview h4 {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #166534;
+          margin: 0 0 0.75rem;
+        }
+        .file-item-preview {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.6rem 0.75rem;
+          background: white;
+          border: 1px solid #d1fae5;
+          border-radius: 6px;
+          margin-bottom: 0.5rem;
+        }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name {
+          display: block;
+          font-weight: 500;
+          font-size: 0.875rem;
+          color: #1f2937;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .file-size { display: block; font-size: 0.75rem; color: #6b7280; }
+        .btn-file-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          padding: 0.35rem 0.65rem;
+          border-radius: 5px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          text-decoration: none;
+        }
+        .btn-drive { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .btn-drive:hover { background: #bfdbfe; }
+        .btn-download { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+        .btn-download:hover { background: #e5e7eb; }
+        .submission-link-preview {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+          font-size: 0.875rem;
+        }
+        .submission-link-preview a { color: #1d4ed8; text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .submission-notes-preview {
+          display: flex;
+          gap: 0.5rem;
+          padding: 0.75rem;
+          background: #fafafa;
+          border-left: 3px solid #d1d5db;
+          border-radius: 4px;
+          margin-bottom: 1rem;
+          font-size: 0.875rem;
+          color: #4b5563;
+          font-style: italic;
+        }
+        .submission-notes-preview p { margin: 0; }
       `}</style>
     </form>
   );
