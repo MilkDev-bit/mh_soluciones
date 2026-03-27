@@ -9,14 +9,15 @@ import {
   addTaskComment,
   addTaskSubmission,
   getTaskComments,
-  getTaskSubmissions
+  getTaskSubmissions,
+  duplicateTask
 } from '../../services/taskService';
 import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/documentService';
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
   FiAlertCircle, FiEdit, FiTrash2, FiSave, FiRotateCw, FiPaperclip,
   FiEye, FiMessageSquare, FiSend, FiLink, FiUploadCloud, FiCalendar, FiRefreshCw, FiAward, FiUsers, FiExternalLink,
-  FiFileText, FiImage, FiMusic, FiVideo, FiArchive, FiBarChart
+  FiFileText, FiImage, FiMusic, FiVideo, FiArchive, FiBarChart, FiCopy
 } from 'react-icons/fi';
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
@@ -82,6 +83,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const [taskComments, setTaskComments] = useState([]);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isReassigning, setIsReassigning] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [showSubmissionsReview, setShowSubmissionsReview] = useState(false);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
 
@@ -391,6 +393,26 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
     }
   };
 
+  const handleDuplicateTask = async () => {
+    if (!task || !task.id) return;
+    if (!window.confirm('¿Duplicar esta tarea? Se creará una nueva tarea con el mismo nombre y los estudiantes asignados. La fecha de apertura será hoy y la de cierre el próximo sábado.')) {
+      return;
+    }
+    setIsDuplicating(true);
+    try {
+      await duplicateTask(task.id);
+      toast.success('Tarea duplicada exitosamente');
+      if (typeof onTaskUpdated === 'function') {
+        onTaskUpdated();
+      }
+    } catch (error) {
+      toast.error(error?.message || 'No se pudo duplicar la tarea.');
+      console.error('Error al duplicar tarea:', error);
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   const handleReassignTask = async () => {
     if (!task || !task.id) return;
     if (!window.confirm('¿Estás seguro de que deseas solicitar cambios? El estado de la tarea volverá a "En Progreso".')) {
@@ -602,6 +624,17 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                     <button className="btn btn-icon btn-primary" onClick={() => setIsEditing(true)}><FiEdit size={18} />Editar</button>
                     <button className="btn btn-icon btn-danger" onClick={handleDeleteTask} disabled={deleteLoading}><FiTrash2 size={18} />{deleteLoading ? 'Eliminando...' : 'Eliminar'}</button>
                   </>
+                )}
+                {task?.status === 'COMPLETED' && userRole === 'SUPERADMIN' && !isEditing && (
+                  <button
+                    className="btn btn-icon btn-secondary"
+                    onClick={handleDuplicateTask}
+                    disabled={isDuplicating}
+                    title="Duplicar tarea para esta semana"
+                  >
+                    <FiCopy size={18} />
+                    {isDuplicating ? 'Duplicando...' : 'Duplicar'}
+                  </button>
                 )}
               </div>
             )}

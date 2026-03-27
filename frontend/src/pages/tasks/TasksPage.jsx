@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
-import { getTasks } from '../../services/taskService';
+import { getTasks, duplicateTask } from '../../services/taskService';
 import { getProjects, getProjectMembers } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getDocumentsByTask } from '../../services/documentService';
@@ -21,7 +21,8 @@ import {
   FiCheckCircle,
   FiCalendar,
   FiUser,
-  FiPaperclip
+  FiPaperclip,
+  FiCopy
 } from 'react-icons/fi';
 import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -124,7 +125,22 @@ const TasksPage = () => {
   const [selectedTask, setSelectedTask] = useState(null);
 
   // NUEVO: Estado para el filtro del Superadmin
-  const [adminTaskFilter, setAdminTaskFilter] = useState('ALL'); 
+  const [adminTaskFilter, setAdminTaskFilter] = useState('ALL');
+  const [duplicatingTaskId, setDuplicatingTaskId] = useState(null);
+
+  const handleDuplicateTask = async (taskId, e) => {
+    e.stopPropagation();
+    setDuplicatingTaskId(taskId);
+    try {
+      await duplicateTask(taskId);
+      toast.success('Tarea duplicada exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (err) {
+      toast.error(err?.message || 'Error al duplicar la tarea');
+    } finally {
+      setDuplicatingTaskId(null);
+    }
+  };
 
   const { tasksUpdated, consumeTasksUpdate, notifyTaskChange } = useProjectContext();
 
@@ -544,6 +560,18 @@ const TasksPage = () => {
                             {task.status === 'COMPLETED' ? 'Completada' : 
                              task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                           </div>
+                          {task.status === 'COMPLETED' && user?.role === 'SUPERADMIN' && (
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              title="Duplicar tarea"
+                              disabled={duplicatingTaskId === task.id}
+                              onClick={(e) => handleDuplicateTask(task.id, e)}
+                              style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <FiCopy size={14} />
+                              {duplicatingTaskId === task.id ? 'Duplicando...' : 'Duplicar'}
+                            </button>
+                          )}
                         </div>
                         
                         {task.description && (

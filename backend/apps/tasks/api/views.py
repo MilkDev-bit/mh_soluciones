@@ -197,6 +197,53 @@ class TaskViewSet(viewsets.ModelViewSet):
             'task': TaskDetailSerializer(task).data
         })
     
+    @action(detail=True, methods=['post'], url_path='duplicate')
+    def duplicate(self, request, pk=None):
+        """
+        Duplicar una tarea completada para una nueva semana.
+        Establece open_date a hoy y close_date al próximo sábado.
+        Solo SUPERADMIN puede duplicar tareas.
+        """
+        if request.user.role != 'SUPERADMIN':
+            raise PermissionDenied("No tienes permisos para duplicar tareas.")
+            
+        original_task = self.get_object()
+        
+        # Calcular fechas
+        from django.utils import timezone
+        import datetime
+        
+        now = timezone.now()
+        # Días hasta el próximo sábado (5 es sábado en weekday() donde 0 es lunes)
+        days_to_saturday = (5 - now.weekday()) % 7
+        
+        # Si hoy es sábado (5-5=0), se queda hoy.
+        # Si hoy es domingo (5-6=-1 % 7 = 6), el próximo sábado es en 6 días.
+        
+        close_date = now + datetime.timedelta(days=days_to_saturday)
+        # Establecer a fin de día
+        close_date = close_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        # Crear duplicado — solo título, proyecto, fechas y estudiantes
+        new_task = Task.objects.create(
+            title=original_task.title,
+            project=original_task.project,
+            created_by=request.user,
+            status=Task.TaskStatus.OPEN,
+            due_date=close_date.date(),
+            open_date=now,
+            close_date=close_date,
+        )
+        
+        # Copiar estudiantes asignados
+        if original_task.assigned_students.exists():
+            new_task.assigned_students.set(original_task.assigned_students.all())
+            
+        return Response({
+            'message': 'Tarea duplicada exitosamente',
+            'task': TaskSerializer(new_task).data
+        }, status=status.HTTP_201_CREATED)
+
     @action(detail=False, methods=['get'], url_path='my-tasks')
     def my_tasks(self, request):
         """

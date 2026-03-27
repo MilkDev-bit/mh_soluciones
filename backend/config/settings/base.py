@@ -49,7 +49,6 @@ MEDIA_ROOT = BASE_DIR / 'mediafiles'
 def get_allowed_hosts():
     """Get allowed hosts based on environment"""
     hosts = [
-        'app.mhsolucionesempresariales.com',
         'localhost',
         '127.0.0.1',
     ]
@@ -74,7 +73,7 @@ def get_allowed_hosts():
             '192.168.0.0/16',
         ])
     
-    # Add custom ALLOWED_HOSTS from environment
+    # Add custom ALLOWED_HOSTS from environment (Railway Variables o .env)
     custom_hosts = config('ALLOWED_HOSTS', default='')
     if custom_hosts:
         hosts.extend([h.strip() for h in custom_hosts.split(',') if h.strip()])

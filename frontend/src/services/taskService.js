@@ -73,6 +73,15 @@ export const reopenTask = async (taskId, reopenData) => {
   }
 };
 
+export const duplicateTask = async (taskId) => {
+  try {
+    const { data } = await api.post(`/tasks/${taskId}/duplicate/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al duplicar la tarea');
+  }
+};
+
 export const getTaskSubmissions = async (taskId) => {
   try {
     const response = await api.get(`/tasks/${taskId}/submissions/`);
