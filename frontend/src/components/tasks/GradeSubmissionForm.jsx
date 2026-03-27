@@ -83,6 +83,13 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
     }
   };
 
+  if (!submission || !task) {
+    return <div style={{padding:'20px', color:'red'}}>Error: Datos de entrega faltantes.</div>;
+  }
+
+  // Debug: check for names
+  console.log("Rendering GradeSubmissionForm for student:", submission.submitted_by?.full_name);
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grading-form">
       <div className="grading-header">
