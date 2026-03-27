@@ -125,7 +125,14 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                             {latestSubmission.score}/{task.max_score}
                           </span>
                         )}
-                        <span className="submission-version">
+                        <span 
+                          className="submission-version clickable"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSubmission(latestSubmission);
+                          }}
+                          title="Haga clic para ver o calificar la entrega más reciente"
+                        >
                           v{latestSubmission.version}
                         </span>
                       </>
@@ -143,7 +150,10 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           <div className="submission-meta">
                             <span 
                               className="submission-version-badge clickable"
-                              onClick={() => setSelectedSubmission(submission)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSubmission(submission);
+                              }}
                               title="Haga clic para ver o calificar esta entrega"
                             >
                               Versión {submission.version}
