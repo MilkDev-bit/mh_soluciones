@@ -90,23 +90,16 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
   // Debug: check for names
   console.log("Rendering GradeSubmissionForm for student:", submission.submitted_by?.full_name);
 
-  // Aggressive debugging
-  const debugInfo = `Form detectado: Sub ID ${submission?.id}, Student: ${submission?.submitted_by?.username}`;
-  console.log(debugInfo);
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grading-form">
-      {/* Test marker */}
-      <div style={{fontSize:'8px', color:'#999'}}>Form v2703-0955</div>
-      
       <div className="grading-header">
         <FiAward size={24} />
-        <h3>Calificar Entrega (#{submission?.id})</h3>
+        <h3>Calificar Entrega</h3>
       </div>
 
-      <div className="student-info" style={{border: '1px solid #eee', padding: '10px', background: '#f5f5f5', borderRadius: '4px', marginBottom: '10px'}}>
+      <div className="student-info">
         <p><strong>Estudiante:</strong> {submission?.submitted_by?.first_name} {submission?.submitted_by?.last_name || submission?.submitted_by?.username} </p>
-        <p><strong>Fecha:</strong> {submission?.created_at}</p>
+        <p><strong>Fecha:</strong> {submission?.created_at ? new Date(submission.created_at).toLocaleString('es-MX') : 'Fecha desconocida'}</p>
         <p><strong>Versión:</strong> v{submission?.version}</p>
       </div>
 

@@ -78,13 +78,6 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
         <h2>Entregas de Estudiantes</h2>
         <div className="task-info">
           <span className="task-name">{task.title}</span>
-          <button 
-            onClick={() => alert("¡Nueva versión cargada!")}
-            style={{padding: '2px 5px', fontSize: '10px', marginLeft: '10px', background: '#e5e7eb', border: '1px solid #ccc', cursor: 'pointer'}}
-          >
-            TEST DEPLOY
-          </button>
-          <span style={{fontSize: '9px', color: '#ccc', marginLeft: '10px'}}>Build: 2703-0947</span>
           <span className="submissions-count">
             {studentsSubmissions.length} {studentsSubmissions.length === 1 ? 'estudiante' : 'estudiantes'}
           </span>
@@ -137,7 +130,6 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           className="submission-version clickable"
                           onClick={(e) => {
                             e.stopPropagation();
-                            alert("Click en v-header ID: " + latestSubmission.id);
                             setSelectedSubmission(latestSubmission);
                           }}
                           title="Haga clic para ver o calificar la entrega más reciente"
@@ -161,7 +153,6 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                               className="submission-version-badge clickable"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                alert("Click en v-history ID: " + submission.id);
                                 setSelectedSubmission(submission);
                               }}
                               title="Haga clic para ver o calificar esta entrega"
@@ -182,7 +173,6 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                                className="btn btn-primary btn-sm"
                                onClick={(e) => {
                                  e.stopPropagation();
-                                 alert("Click en botón Calificar ID: " + submission.id);
                                  setSelectedSubmission(submission);
                                }}
                              >
