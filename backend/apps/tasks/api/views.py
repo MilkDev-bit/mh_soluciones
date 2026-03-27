@@ -374,8 +374,10 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        # Get files from request
+        # Get files from request (support both 'file' and 'files[]' for frontend compatibility)
         files = request.FILES.getlist('files[]')
+        if not files:
+            files = request.FILES.getlist('file')
         
         # Validate that at least one of: files, notes, or link is provided
         notes = request.data.get('notes', '').strip()
@@ -424,8 +426,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     folder_type='TASK_SUBMISSION'
                 )
                 
-                # Upload to Google Drive (happens automatically in Document.save via thread)
-                # But we can also try to upload synchronously for better feedback
+                # Upload to Google Drive
                 upload_success = self._upload_file_to_drive(document, task, request.user, task_submission)
                 
                 if upload_success:
@@ -448,6 +449,11 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 logger.error(f'❌ Error processing file {file.name}: {file_error}')
                 failed_count += 1
                 continue
+        
+        # PERSIST METADATA to the database
+        if uploaded_documents:
+            task_submission.files_metadata = uploaded_documents
+            task_submission.save(update_fields=['files_metadata'])
         
         # Prepare response
         response_data = serializer.data
