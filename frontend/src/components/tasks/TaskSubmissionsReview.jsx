@@ -194,14 +194,7 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           
                           return (
                             <div className="submission-files">
-                              {/* DEBUG: Always visible if the component renders the card body */}
-                              <div style={{fontSize: '10px', color: '#999', marginBottom: '8px', background: '#f8f8f8', padding: '4px', border: '1px solid #eee', borderRadius: '4px'}}>
-                                🔍 DEBUG # {submission.id} | Docs: {submission.documents?.length || 0} | Meta: {submission.files_metadata?.length || 0} | Drive: {submission.uploaded_to_drive ? 'Y' : 'N'}
-                              </div>
-
-                              {!anyFile ? (
-                                <p style={{fontSize: '12px', color: '#999', fontStyle: 'italic'}}>No se detectaron archivos en esta entrega.</p>
-                              ) : (
+                              {anyFile && (
                                 <>
                                   <h5><FiFile /> Archivos entregados:</h5>
                                   <div className="files-list">
