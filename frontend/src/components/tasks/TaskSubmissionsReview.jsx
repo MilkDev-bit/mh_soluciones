@@ -141,7 +141,11 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                       <div key={submission.id} className="submission-item">
                         <div className="submission-header">
                           <div className="submission-meta">
-                            <span className="submission-version-badge">
+                            <span 
+                              className="submission-version-badge clickable"
+                              onClick={() => setSelectedSubmission(submission)}
+                              title="Haga clic para ver o calificar esta entrega"
+                            >
                               Versión {submission.version}
                             </span>
                             <span className="submission-date">
