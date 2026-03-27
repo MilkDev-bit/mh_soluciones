@@ -12,7 +12,7 @@
   justify-content: center;
   padding: $spacing-4;
 
-  z-index: 9999 !important;
+  z-index: 9999; /* Removed !important to allow inline override */
 
   animation: modalFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(12px) saturate(180%);

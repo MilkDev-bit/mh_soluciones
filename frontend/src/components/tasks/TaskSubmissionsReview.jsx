@@ -63,6 +63,7 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
           title="Calificar Entrega"
           onClose={() => setSelectedSubmission(null)}
           size="large"
+          zIndex={10050}
         >
           <GradeSubmissionForm
             task={task}
@@ -77,7 +78,13 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
         <h2>Entregas de Estudiantes</h2>
         <div className="task-info">
           <span className="task-name">{task.title}</span>
-          <span style={{fontSize: '9px', color: '#ccc', marginLeft: '10px'}}>Build: 2703-0940</span>
+          <button 
+            onClick={() => alert("¡Nueva versión cargada!")}
+            style={{padding: '2px 5px', fontSize: '10px', marginLeft: '10px', background: '#e5e7eb', border: '1px solid #ccc', cursor: 'pointer'}}
+          >
+            TEST DEPLOY
+          </button>
+          <span style={{fontSize: '9px', color: '#ccc', marginLeft: '10px'}}>Build: 2703-0947</span>
           <span className="submissions-count">
             {studentsSubmissions.length} {studentsSubmissions.length === 1 ? 'estudiante' : 'estudiantes'}
           </span>

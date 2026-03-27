@@ -6,7 +6,7 @@ import './Modal.scss';
 /**
  * Accessible Modal component with keyboard navigation and focus trap
  */
-const Modal = ({ title, children, onClose, size = 'medium' }) => {
+const Modal = ({ title, children, onClose, size = 'medium', zIndex }) => {
   const modalRef = useRef(null);
   const previousActiveElement = useRef(null);
 
@@ -76,6 +76,7 @@ const Modal = ({ title, children, onClose, size = 'medium' }) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      style={zIndex ? { zIndex } : {}}
       onKeyDown={handleKeyDown}
     >
       <div
