@@ -91,9 +91,9 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
       </div>
 
       <div className="student-info">
-        <p><strong>Estudiante:</strong> {submission.submitted_by.first_name} {submission.submitted_by.last_name}</p>
-        <p><strong>Fecha de entrega:</strong> {new Date(submission.created_at).toLocaleString('es-MX')}</p>
-        <p><strong>Versión:</strong> v{submission.version}</p>
+        <p><strong>Estudiante:</strong> {submission.submitted_by?.first_name || ''} {submission.submitted_by?.last_name || submission.submitted_by?.full_name || 'Estudiante'}</p>
+        <p><strong>Fecha de entrega:</strong> {submission.created_at ? new Date(submission.created_at).toLocaleString('es-MX') : 'Fecha desconocida'}</p>
+        <p><strong>Versión:</strong> v{submission.version || '?'}</p>
       </div>
 
       {submission.notes && (
