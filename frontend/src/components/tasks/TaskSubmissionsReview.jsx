@@ -196,6 +196,10 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
 
                           return (
                             <div className="submission-files">
+                              {/* DEBUG: Only for the next 5 mins to help resolve the issue */}
+                              <div style={{fontSize: '10px', color: '#ccc', marginBottom: '10px', background: '#f5f5f5', padding: '5px'}}>
+                                DEBUG - id: {submission.id} | hasDocs: {String(hasDocs)} | hasMeta: {String(hasMeta)} | docsCount: {submission.documents?.length || 0}
+                              </div>
                               <h5><FiFile /> Archivos entregados:</h5>
                               <div className="files-list">
 
