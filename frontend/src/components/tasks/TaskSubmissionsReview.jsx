@@ -191,17 +191,20 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                           const hasDirectFile = submission.file;
 
                           const anyFile = hasDocs || hasMeta || hasDriveLink || hasDirectFile;
-
-                          if (!anyFile) return null;
-
+                          
                           return (
                             <div className="submission-files">
-                              {/* DEBUG: Only for the next 5 mins to help resolve the issue */}
-                              <div style={{fontSize: '10px', color: '#ccc', marginBottom: '10px', background: '#f5f5f5', padding: '5px'}}>
-                                DEBUG - id: {submission.id} | hasDocs: {String(hasDocs)} | hasMeta: {String(hasMeta)} | docsCount: {submission.documents?.length || 0}
+                              {/* DEBUG: Always visible if the component renders the card body */}
+                              <div style={{fontSize: '10px', color: '#999', marginBottom: '8px', background: '#f8f8f8', padding: '4px', border: '1px solid #eee', borderRadius: '4px'}}>
+                                🔍 DEBUG # {submission.id} | Docs: {submission.documents?.length || 0} | Meta: {submission.files_metadata?.length || 0} | Drive: {submission.uploaded_to_drive ? 'Y' : 'N'}
                               </div>
-                              <h5><FiFile /> Archivos entregados:</h5>
-                              <div className="files-list">
+
+                              {!anyFile ? (
+                                <p style={{fontSize: '12px', color: '#999', fontStyle: 'italic'}}>No se detectaron archivos en esta entrega.</p>
+                              ) : (
+                                <>
+                                  <h5><FiFile /> Archivos entregados:</h5>
+                                  <div className="files-list">
 
                                 {/* Source 1: Document objects */}
                                 {hasDocs && submission.documents.map((doc) => (
@@ -276,8 +279,9 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                                     </div>
                                   </div>
                                 )}
-
-                              </div>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           );
                         })()}
