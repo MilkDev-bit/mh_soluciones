@@ -35,6 +35,9 @@ CORS_ALLOWED_ORIGINS = []
 
 frontend_url = os.environ.get('FRONTEND_URL', '')
 if frontend_url:
+    # Asegurar que tenga scheme
+    if not frontend_url.startswith('http://') and not frontend_url.startswith('https://'):
+        frontend_url = f'https://{frontend_url}'
     CORS_ALLOWED_ORIGINS.append(frontend_url)
 
 if railway_public_domain:
@@ -44,7 +47,15 @@ cors_origins_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
 if cors_origins_env:
     for origin in cors_origins_env.split(','):
         origin = origin.strip()
-        if origin and origin not in CORS_ALLOWED_ORIGINS:
+        if not origin:
+            continue
+        # Saltar wildcards — no son válidos en CORS_ALLOWED_ORIGINS
+        if '*' in origin:
+            continue
+        # Asegurar que tenga scheme
+        if not origin.startswith('http://') and not origin.startswith('https://'):
+            origin = f'https://{origin}'
+        if origin not in CORS_ALLOWED_ORIGINS:
             CORS_ALLOWED_ORIGINS.append(origin)
 
 # Static / Media
