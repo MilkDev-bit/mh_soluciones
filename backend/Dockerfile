@@ -31,11 +31,11 @@ RUN chmod +x /app/entrypoint.sh
 # - Default fallback is port 8080 if PORT is not set
 EXPOSE 8080
 
-# Create a non-root user
-RUN groupadd -r django && useradd -r -g django django && \
-    chown -R django:django /app
+# Create a non-root user (Disabled to fix Railway Volume permissions)
+# RUN groupadd -r django && useradd -r -g django django && \
+#     chown -R django:django /app
 
-USER django
+# USER django
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 # CMD is not needed as entrypoint.sh directly starts Daphne with the configured PORT

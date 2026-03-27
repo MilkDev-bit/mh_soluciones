@@ -40,7 +40,10 @@ def get_document_upload_path(instance, filename):
     elif task and hasattr(task, 'project'):
         project = task.project
 
-    current_year = instance.created_at.strftime('%Y') if hasattr(instance, 'created_at') and instance.created_at else "SIN_FECHA"
+    from django.utils import timezone
+    now = timezone.now()
+    created_at = instance.created_at if hasattr(instance, 'created_at') and instance.created_at else now
+    current_year = created_at.strftime('%Y')
 
     active_statuses = ['PLANNING', 'IN_PROGRESS']
     project_status_folder = "Proyectos Activos"

@@ -4,6 +4,10 @@ set -e
 
 echo "🚀 Iniciando entrypoint..."
 
+# Ensure media directory exists
+mkdir -p /app/mediafiles /app/staticfiles
+chmod -R 777 /app/mediafiles
+
 # Detect Railway environment
 if [ -n "$RAILWAY_ENVIRONMENT" ] || [ -n "$RAILWAY_PROJECT_ID" ]; then
     echo "🚂 Entorno Railway detectado."
