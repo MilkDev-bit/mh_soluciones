@@ -121,17 +121,14 @@ else:
     
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
-# Trusted origins for CSRF - important for Railway
-CSRF_TRUSTED_ORIGINS = [
-    'https://app.mhsolucionesempresariales.com',
-]
+# Trusted origins for CSRF - desde variables de entorno
+CSRF_TRUSTED_ORIGINS = []
 
 # Add Railway domains to trusted origins
 if IS_RAILWAY:
     railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
     if railway_domain:
         CSRF_TRUSTED_ORIGINS.append(f'https://{railway_domain}')
-    # Generic Railway domains
     CSRF_TRUSTED_ORIGINS.extend([
         'https://*.railway.app',
         'https://*.up.railway.app',
@@ -140,6 +137,14 @@ if IS_RAILWAY:
 # Add FRONTEND_URL to trusted origins
 if FRONTEND_URL and FRONTEND_URL not in CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+
+# Add CSRF_TRUSTED_ORIGINS from Railway Variables
+csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_env:
+    for _origin in csrf_env.split(','):
+        _origin = _origin.strip()
+        if _origin and _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
 
 LOGGING = {
     'version': 1,

@@ -75,7 +75,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post(`${API_BASE_URL}/token/refresh/`, {}, {
+        await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, {
           withCredentials: true
         });
 
