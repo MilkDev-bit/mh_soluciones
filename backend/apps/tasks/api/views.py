@@ -229,13 +229,14 @@ class TaskViewSet(viewsets.ModelViewSet):
             title=original_task.title,
             project=original_task.project,
             created_by=request.user,
+            assigned_to=original_task.assigned_to,
             status=Task.TaskStatus.OPEN,
             due_date=close_date.date(),
             open_date=now,
             close_date=close_date,
         )
         
-        # Copiar estudiantes asignados
+        # Copiar estudiantes asignados (M2M)
         if original_task.assigned_students.exists():
             new_task.assigned_students.set(original_task.assigned_students.all())
             
