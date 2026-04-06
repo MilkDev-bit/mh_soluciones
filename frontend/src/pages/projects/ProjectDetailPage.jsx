@@ -924,6 +924,16 @@ const ProjectDetailPage = () => {
                         `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
                       const documents = taskDocuments[task.id] || [];
 
+                      let uploadDateDisplay = null;
+                      if (task.last_submission_date) {
+                        uploadDateDisplay = format(parseISO(task.last_submission_date), 'dd MMM', { locale: es });
+                      } else if (documents.length > 0) {
+                        const latestDoc = [...documents].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+                        if (latestDoc && latestDoc.created_at) {
+                          uploadDateDisplay = format(parseISO(latestDoc.created_at), 'dd MMM', { locale: es });
+                        }
+                      }
+
                       return (
                         <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
                           <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
@@ -935,6 +945,7 @@ const ProjectDetailPage = () => {
                                 <span>
                                   {task.submissions_count > 0 ? `${task.submissions_count} entrega(s)` : 
                                    documents.length > 0 ? `${documents.length} documento(s)` : 'Tiene adjunto'}
+                                  {uploadDateDisplay ? ` el ${uploadDateDisplay}` : ''}
                                 </span>
                               </div>
                             )}
