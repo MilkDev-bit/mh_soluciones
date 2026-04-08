@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import notificationService from '../services/NotificationService';
 import { useSafeAsync } from './useSafeAsync';
@@ -12,6 +12,7 @@ export const useNotifications = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useAuth();
   const safeAsync = useSafeAsync();
+  const lastRefreshRef = useRef(0);
 
   const loadNotifications = useCallback(async () => {
     if (!user || isRefreshing) {
@@ -143,10 +144,14 @@ export const useNotifications = () => {
             return data.unreadCount;
           });
         } else {
-          // Fallback for other events or legacy format
-          console.log('[useNotifications] Other event received, refreshing data');
-          loadNotifications();
-          loadUnreadCount();
+          // Fallback for other events or legacy format — with 5s debounce
+          const now = Date.now();
+          if (now - lastRefreshRef.current > 5000) {
+            lastRefreshRef.current = now;
+            console.log('[useNotifications] Other event received, refreshing data');
+            loadNotifications();
+            loadUnreadCount();
+          }
         }
       });
 
@@ -158,6 +163,13 @@ export const useNotifications = () => {
       console.log('[useNotifications] No user detected');
     }
   }, [user, loadNotifications, loadUnreadCount]);
+
+  useEffect(() => {
+    if (error?.response?.status === 401 || error?.response?.status === 400) {
+      console.warn('[useNotifications] Auth error detected, stopping polling');
+      notificationService.stopPolling();
+    }
+  }, [error]);
 
   
   return {

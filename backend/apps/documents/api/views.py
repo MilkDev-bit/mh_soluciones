@@ -40,7 +40,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
         según los permisos del usuario.
         """
         user = self.request.user
-        queryset = Document.objects.all()
+        queryset = Document.objects.select_related(
+            'task', 'task__project', 'project', 'uploaded_by', 'task_submission'
+        ).all()
 
         if not user.is_anonymous and user.role not in ADMIN_ROLES:
             user_projects = user.projects.all()
