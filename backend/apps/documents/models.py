@@ -219,39 +219,6 @@ class Document(TimeStampedModel):
         is_new = not self.pk 
         super().save(*args, **kwargs)
 
-        # Only start background upload if this is a new document with a file
-        # and it hasn't been uploaded to Drive yet
-        if is_new and self.file and not self.drive_file_id:
-            print(f"🔄 Nuevo documento detectado, iniciando subida a Google Drive institucional...")
-            
-            import threading
-            import time
-            
-            def delayed_upload():
-                try:
-                    time.sleep(2)
-                    # Check again if it was already uploaded (e.g., by the viewset)
-                    current_doc = Document.objects.get(pk=self.pk)
-                    if not current_doc.drive_file_id:
-                        self._upload_to_google_drive()
-                        Document.objects.filter(pk=self.pk).update(
-                            upload_status=self.upload_status,
-                            drive_file_id=self.drive_file_id,
-                            drive_file_url=self.drive_file_url,
-                            drive_parent_folder_id=self.drive_parent_folder_id,
-                            drive_parent_folder_name=self.drive_parent_folder_name
-                        )
-                    else:
-                        print(f"ℹ️ Documento {self.name} ya fue subido a Drive, omitiendo upload en segundo plano")
-                except Document.DoesNotExist:
-                    print(f"⚠️ Documento {self.pk} fue eliminado antes de la subida en segundo plano")
-                except Exception as e:
-                    print(f"❌ Error en subida en segundo plano: {e}")
-            
-            thread = threading.Thread(target=delayed_upload)
-            thread.daemon = True
-            thread.start()
-
     def upload_to_drive(self):
         """
         Método para forzar la subida a Google Drive manualmente
