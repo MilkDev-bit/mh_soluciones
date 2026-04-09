@@ -22,6 +22,7 @@ from apps.core.utils import (
 )
 from apps.documents.models import Document
 from apps.documents.services import GoogleDriveService
+from apps.documents.tasks import upload_document_to_drive
 from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
 from .serializers import (
     TaskSerializer,
@@ -475,8 +476,14 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     folder_type='TASK_SUBMISSION'
                 )
                 
-                # Upload to Google Drive (if configured)
-                uploaded_count += 1 # Assume success for now or check return
+                # Encolar subida a Google Drive via Celery
+                try:
+                    upload_document_to_drive.delay(document.id)
+                    logger.info(f"📤 Tarea Drive encolada para documento ID={document.id}")
+                except Exception as drive_error:
+                    logger.error(f"❌ Error al encolar subida a Drive para doc {document.id}: {drive_error}")
+
+                uploaded_count += 1
                 
                 uploaded_documents.append({
                     'id': document.id,
