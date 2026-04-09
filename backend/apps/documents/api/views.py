@@ -130,9 +130,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
             upload_document_to_drive.delay(document.id, target_folder_id=target_folder_id)
             logger.info(f"Tarea para subir el documento {document.id} a Google Drive ha sido encolada.")
         except Exception as e:
-            logger.error(f"Error al encolar la tarea de subida a Drive: {e}")
-            document.upload_status = Document.UploadStatus.FAILED
-            document.save(update_fields=['upload_status'])
+            logger.warning(
+                f"⚠️ No se pudo encolar tarea Celery para doc {document.id}: {e}. "
+                f"Intentando subida síncrona..."
+            )
+            try:
+                from apps.documents.tasks import upload_document_to_drive as upload_sync
+                upload_sync(document.id, target_folder_id=target_folder_id)
+                logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
+            except Exception as sync_error:
+                logger.error(f"❌ Error en subida síncrona para doc {document.id}: {sync_error}")
+                document.upload_status = Document.UploadStatus.FAILED
+                document.save(update_fields=['upload_status'])
 
     @action(detail=False, methods=['get'], url_path='folders')
     def list_folders(self, request):
