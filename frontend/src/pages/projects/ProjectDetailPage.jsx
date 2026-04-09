@@ -19,7 +19,7 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
-import { getDocumentsByTask } from '../../services/documentService';
+import { getDocumentsByProject } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
@@ -453,32 +453,16 @@ const ProjectDetailPage = () => {
     }
   }, [searchParams, tasks, selectedTask, navigate]);
 
-  // Fetch task documents
+  // Fetch task documents — ONE request per project instead of one per task (fixes N+1)
   const { data: taskDocuments = {} } = useQuery({
     queryKey: ['projectTaskDocuments', projectId, taskIds],
     queryFn: async () => {
       if (!tasks || tasks.length === 0) return {};
-      
-      const documentsPromises = tasks.map(async (task) => {
-        try {
-          const documents = await getDocumentsByTask(task.id);
-          return { taskId: task.id, documents };
-        } catch (error) {
-          console.error(`Error fetching documents for task ${task.id}:`, error);
-          return { taskId: task.id, documents: [] };
-        }
-      });
-      
-      const documentsResults = await Promise.all(documentsPromises);
-      const documentsMap = {};
-      documentsResults.forEach((r) => {
-        documentsMap[r.taskId] = r.documents;
-      });
-      
-      return documentsMap;
+      const ids = tasks.map(t => t.id);
+      return await getDocumentsByProject(projectId, ids);
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!tasks && tasks.length > 0,
+    enabled: !!tasks && tasks.length > 0 && !!projectId,
   });
 
   // Fetch project events

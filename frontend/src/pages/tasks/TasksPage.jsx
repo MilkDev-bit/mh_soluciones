@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { getTasks, duplicateTask } from '../../services/taskService';
 import { getProjects, getProjectMembers } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
-import { getDocumentsByTask } from '../../services/documentService';
+import { getDocumentsByProject } from '../../services/documentService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isStudent, canCreateTasks } from '../../constants/roles';
 import Loading from '../../components/common/Loading';
@@ -229,29 +229,35 @@ const TasksPage = () => {
     [tasks]
   );
 
-  // Fetch documents for all tasks
+  // Fetch documents for all tasks — batched by project to avoid N+1
   const { data: taskDocuments = {} } = useQuery({
-    queryKey: ['taskDocuments', taskIds],
+    queryKey: ['taskDocuments', taskIds, selectedProject],
     queryFn: async () => {
       if (!tasks || tasks.length === 0) return {};
-      
-      const documentsPromises = tasks.map(async (task) => {
-        try {
-          const documents = await getDocumentsByTask(task.id);
-          return { taskId: task.id, documents };
-        } catch (error) {
-          console.error(`Error fetching documents for task ${task.id}:`, error);
-          return { taskId: task.id, documents: [] };
-        }
+
+      if (selectedProject !== 'all') {
+        // Single project selected — one API call
+        const ids = tasks.map(t => t.id);
+        return await getDocumentsByProject(selectedProject, ids);
+      }
+
+      // All projects — group tasks by project, one call per unique project
+      const projectTasksMap = {};
+      tasks.forEach(task => {
+        const pid = typeof task.project === 'object' ? task.project?.id : task.project;
+        if (!pid) return;
+        if (!projectTasksMap[pid]) projectTasksMap[pid] = [];
+        projectTasksMap[pid].push(task.id);
       });
-      
-      const documentsResults = await Promise.all(documentsPromises);
-      const documentsMap = {};
-      documentsResults.forEach(result => {
-        documentsMap[result.taskId] = result.documents;
-      });
-      
-      return documentsMap;
+
+      const results = await Promise.all(
+        Object.entries(projectTasksMap).map(([pid, tids]) =>
+          getDocumentsByProject(pid, tids)
+        )
+      );
+
+      // Merge all per-project maps into one flat map
+      return Object.assign({}, ...results);
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!tasks && tasks.length > 0,

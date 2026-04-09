@@ -51,6 +51,47 @@ export const getDocumentsByTask = async (taskId) => {
   }
 };
 
+/**
+ * Get all documents for a project and group them by task ID.
+ * Uses a single API call instead of one per task (fixes N+1 problem).
+ * @param {number|string} projectId - The project ID
+ * @param {Array} taskIds - Array of task IDs to include in the map
+ * @returns {Promise<Object>} Map of { taskId: [documents] }
+ */
+export const getDocumentsByProject = async (projectId, taskIds = []) => {
+  try {
+    const response = await api.get('/documents/', { params: { project: projectId } });
+    const data = response.data;
+
+    let docs = [];
+    if (data && Array.isArray(data.results)) {
+      docs = data.results;
+    } else if (Array.isArray(data)) {
+      docs = data;
+    } else if (data && data.documents && Array.isArray(data.documents)) {
+      docs = data.documents;
+    }
+
+    // Build a map { taskId: [docs] } initialized with all known task IDs
+    const map = {};
+    taskIds.forEach(id => { map[id] = []; });
+    docs.forEach(doc => {
+      const tid = doc.task;
+      if (tid !== null && tid !== undefined) {
+        if (!map[tid]) map[tid] = [];
+        map[tid].push(doc);
+      }
+    });
+    return map;
+  } catch (error) {
+    console.error('Error fetching documents by project:', error);
+    // Return empty map so the UI degrades gracefully
+    const map = {};
+    taskIds.forEach(id => { map[id] = []; });
+    return map;
+  }
+};
+
 export const uploadDocument = async (formData) => {
   try {
     // Let the browser set Content-Type with boundary automatically
