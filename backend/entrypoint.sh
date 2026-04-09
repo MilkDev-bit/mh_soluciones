@@ -136,6 +136,9 @@ else:
     print('ℹ️ Superusuario ya existe')
 "
 
+echo "📤 Reintentando documentos pendientes de subir a Drive..."
+python manage.py retry_pending_uploads || echo "⚠️ Error al reintentar documentos pendientes, el servidor continuará iniciando..."
+
 echo "✅ Configuración completada"
 echo "🚀 Iniciando servidor Daphne en puerto $PORT..."
 echo "📍 Health check disponible en http://localhost:$PORT/health/"
