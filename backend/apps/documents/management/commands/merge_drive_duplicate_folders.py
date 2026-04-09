@@ -149,12 +149,16 @@ class Command(BaseCommand):
     def _list_children(self, drive_service, parent_id, only_folders=False):
         """Returns all (non-trashed) children of *parent_id*.
 
-        If *only_folders* is True, restricts to folder mime-type.
+        If *only_folders* is True, returns only folders.
+        If *only_folders* is False, returns only non-folder files (excludes folders).
         """
         items = []
         page_token = None
-        mime_filter = "mimeType='application/vnd.google-apps.folder'" if only_folders else \
-                      "mimeType!='application/vnd.google-apps.folder'"
+        if only_folders:
+            mime_filter = "mimeType='application/vnd.google-apps.folder'"
+        else:
+            # Exclude folders; return regular files only
+            mime_filter = "mimeType!='application/vnd.google-apps.folder'"
         query = f"{mime_filter} and '{parent_id}' in parents and trashed=false"
 
         while True:
@@ -210,8 +214,10 @@ class Command(BaseCommand):
                     db_updated += r_db
                 continue
 
-            # Sort by createdTime ascending → oldest first (primary)
-            group.sort(key=lambda f: f.get('createdTime', ''))
+            # Sort by createdTime ascending → oldest first (primary).
+            # Folders without createdTime are treated as the newest to avoid
+            # accidentally selecting them as primary.
+            group.sort(key=lambda f: f.get('createdTime') or '9999')
             primary = group[0]
             duplicates = group[1:]
             display_name = group[0]['name']
