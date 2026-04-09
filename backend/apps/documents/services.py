@@ -98,6 +98,7 @@ class GoogleDriveService:
         """
         Busca una carpeta por nombre dentro de una carpeta padre.
         Si no existe, la crea. Devuelve el ID de la carpeta.
+        Si existen múltiples carpetas con el mismo nombre, retorna la más antigua (determinista).
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
@@ -107,9 +108,19 @@ class GoogleDriveService:
             query += f" and '{parent_id}' in parents"
 
         try:
-            response = self.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+            response = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name, createdTime)',
+                orderBy='createdTime'
+            ).execute()
             files = response.get('files', [])
             if files:
+                if len(files) > 1:
+                    logger.warning(
+                        f"Se encontraron {len(files)} carpetas duplicadas con nombre '{folder_name}' "
+                        f"(parent_id={parent_id}). Usando la más antigua: {files[0].get('id')}"
+                    )
                 logger.debug(f"Carpeta encontrada: {folder_name} (ID: {files[0].get('id')})")
                 return files[0].get('id')
             else:
