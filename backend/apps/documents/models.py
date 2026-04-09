@@ -164,6 +164,7 @@ class Document(TimeStampedModel):
             except ValueError as e:
                 # Error de configuración - no reintentar
                 self.upload_status = Document.UploadStatus.FAILED
+                self.save(update_fields=['upload_status'])
                 error_msg = (
                     f"Error de configuración: {e}. "
                     "Verifica que GOOGLE_DRIVE_ADMIN_USER_ID esté configurado correctamente."
@@ -179,6 +180,13 @@ class Document(TimeStampedModel):
                 self.drive_parent_folder_id = result.get('parent_folder_id')
                 self.drive_parent_folder_name = result.get('parent_folder_name')
                 self.upload_status = Document.UploadStatus.COMPLETE
+                self.save(update_fields=[
+                    'drive_file_id',
+                    'drive_file_url',
+                    'drive_parent_folder_id',
+                    'drive_parent_folder_name',
+                    'upload_status',
+                ])
                 
                 print(f"✅ Archivo subido exitosamente a Google Drive institucional")
                 print(f"🔗 Enlace: {self.drive_file_url}")
@@ -187,11 +195,13 @@ class Document(TimeStampedModel):
                 return True
             else:
                 self.upload_status = Document.UploadStatus.FAILED
+                self.save(update_fields=['upload_status'])
                 print("❌ Falló la subida a Google Drive")
                 return False
 
         except Exception as e:
             self.upload_status = Document.UploadStatus.FAILED
+            self.save(update_fields=['upload_status'])
             print(f"❌ Error en la subida a Google Drive: {e}")
             import traceback
             traceback.print_exc()
