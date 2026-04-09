@@ -476,12 +476,21 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     folder_type='TASK_SUBMISSION'
                 )
                 
-                # Encolar subida a Google Drive via Celery
+                # Subir a Google Drive: intentar async via Celery, fallback a síncrono
                 try:
                     upload_document_to_drive.delay(document.id)
                     logger.info(f"📤 Tarea Drive encolada para documento ID={document.id}")
                 except Exception as drive_error:
-                    logger.error(f"❌ Error al encolar subida a Drive para doc {document.id}: {drive_error}")
+                    logger.warning(
+                        f"⚠️ No se pudo encolar tarea Celery para doc {document.id}: {drive_error}. "
+                        f"Intentando subida síncrona..."
+                    )
+                    try:
+                        from apps.documents.tasks import upload_document_to_drive as upload_sync
+                        upload_sync(document.id)
+                        logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
+                    except Exception as sync_error:
+                        logger.error(f"❌ Error en subida síncrona para doc {document.id}: {sync_error}")
 
                 uploaded_count += 1
                 
