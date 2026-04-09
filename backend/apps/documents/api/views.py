@@ -25,6 +25,34 @@ from .serializers import DocumentSerializer
 logger = logging.getLogger(__name__)
 
 
+def _is_celery_worker_available():
+    """
+    Verifica si hay al menos un Celery worker activo consultando Redis.
+    Retorna False si no hay workers o si hay cualquier error.
+    """
+    try:
+        from config.celery_app import app as celery_app
+        inspector = celery_app.control.inspect(timeout=0.5)
+        active = inspector.active()
+        return bool(active)
+    except Exception:
+        return False
+
+
+def _run_upload_sync(document, target_folder_id=None):
+    """
+    Ejecuta la subida a Google Drive de forma síncrona (sin Celery).
+    """
+    from apps.documents.tasks import upload_document_to_drive as _upload_task
+    try:
+        _upload_task(document.id, target_folder_id=target_folder_id)
+        logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
+    except Exception as e:
+        logger.error(f"❌ Error en subida síncrona para doc {document.id}: {e}")
+        document.upload_status = Document.UploadStatus.FAILED
+        document.save(update_fields=['upload_status'])
+
+
 class DocumentViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar los documentos.
@@ -125,23 +153,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
             f"para proyecto ID={project_id}, carpeta destino ID={target_folder_id or 'auto-generada'}"
         )
         
-        try:
-            # Pass target_folder_id to the upload task
-            upload_document_to_drive.delay(document.id, target_folder_id=target_folder_id)
-            logger.info(f"Tarea para subir el documento {document.id} a Google Drive ha sido encolada.")
-        except Exception as e:
-            logger.warning(
-                f"⚠️ No se pudo encolar tarea Celery para doc {document.id}: {e}. "
-                f"Intentando subida síncrona..."
-            )
+        # Intentar subida asíncrona con Celery; si no hay worker activo, ejecutar síncronamente
+        celery_worker_available = _is_celery_worker_available()
+        if celery_worker_available:
             try:
-                from apps.documents.tasks import upload_document_to_drive as upload_sync
-                upload_sync(document.id, target_folder_id=target_folder_id)
-                logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
-            except Exception as sync_error:
-                logger.error(f"❌ Error en subida síncrona para doc {document.id}: {sync_error}")
-                document.upload_status = Document.UploadStatus.FAILED
-                document.save(update_fields=['upload_status'])
+                upload_document_to_drive.delay(document.id, target_folder_id=target_folder_id)
+                logger.info(f"📤 Tarea Drive encolada para documento ID={document.id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Error al encolar tarea Celery para doc {document.id}: {e}. Ejecutando síncronamente...")
+                _run_upload_sync(document, target_folder_id)
+        else:
+            logger.info(f"⚡ Sin worker Celery disponible, subida síncrona para documento ID={document.id}")
+            _run_upload_sync(document, target_folder_id)
 
     @action(detail=False, methods=['get'], url_path='folders')
     def list_folders(self, request):

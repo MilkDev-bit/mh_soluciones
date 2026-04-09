@@ -476,21 +476,18 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     folder_type='TASK_SUBMISSION'
                 )
                 
-                # Subir a Google Drive: intentar async via Celery, fallback a síncrono
-                try:
-                    upload_document_to_drive.delay(document.id)
-                    logger.info(f"📤 Tarea Drive encolada para documento ID={document.id}")
-                except Exception as drive_error:
-                    logger.warning(
-                        f"⚠️ No se pudo encolar tarea Celery para doc {document.id}: {drive_error}. "
-                        f"Intentando subida síncrona..."
-                    )
+                # Subir a Drive: síncrono si no hay Celery worker, async si hay worker disponible
+                from apps.documents.api.views import _is_celery_worker_available, _run_upload_sync
+                if _is_celery_worker_available():
                     try:
-                        from apps.documents.tasks import upload_document_to_drive as upload_sync
-                        upload_sync(document.id)
-                        logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
-                    except Exception as sync_error:
-                        logger.error(f"❌ Error en subida síncrona para doc {document.id}: {sync_error}")
+                        upload_document_to_drive.delay(document.id)
+                        logger.info(f"📤 Tarea Drive encolada para documento ID={document.id}")
+                    except Exception as drive_error:
+                        logger.warning(f"⚠️ Error al encolar tarea Celery: {drive_error}. Ejecutando síncronamente...")
+                        _run_upload_sync(document)
+                else:
+                    logger.info(f"⚡ Sin worker Celery disponible, subida síncrona para documento ID={document.id}")
+                    _run_upload_sync(document)
 
                 uploaded_count += 1
                 
