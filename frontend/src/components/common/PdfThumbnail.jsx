@@ -3,6 +3,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Use the worker as a static file served from /public to avoid MIME type issues
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Suppress internal PDF.js warnings (TT font hints, number format warnings, etc.)
+pdfjsLib.verbosity = pdfjsLib.VerbosityLevel ? pdfjsLib.VerbosityLevel.ERRORS : 0;
 
 const THUMBNAIL_WIDTH = 280;
 
