@@ -84,12 +84,22 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
         """
-        Marcar una notificación específica como leída
+        Marcar una notificación específica como leída.
+        Busca en TODAS las notificaciones del usuario (no solo las no leídas)
+        para evitar 404 cuando se llama dos veces o cuando el WebSocket ya
+        marcó la notificación antes de que llegue la petición HTTP.
         """
-        notification = self.get_object()
+        try:
+            notification = request.user.notifications.get(pk=pk)
+        except Notification.DoesNotExist:
+            return Response(
+                {'error': 'Notificación no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         if not notification.is_read:
             notification.is_read = True
-            notification.save()
+            notification.save(update_fields=['is_read'])
             return Response({'status': 'marked_as_read'})
         return Response({'status': 'already_read'})
 
