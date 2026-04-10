@@ -37,6 +37,7 @@ const ArchivosPage = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [errorFecha, setErrorFecha] = useState('');
+  const [imageErrors, setImageErrors] = useState({});
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
@@ -335,29 +336,39 @@ const ArchivosPage = () => {
     const url = archivo.file_url || archivo.drive_file_url || '';
 
     if (tipo.startsWith('image/') && url) {
+      if (imageErrors[archivo.id]) {
+        return <span className="icono-tipo-grande">{obtenerIconoArchivo(tipo)}</span>;
+      }
       return (
         <img
           src={url}
           alt={archivo.name}
           className="archivo-thumbnail-img"
-          onError={(e) => {
-            e.target.style.display = 'none';
-            const fallback = e.target.parentElement.querySelector('.archivo-icono-fallback');
-            if (fallback) fallback.style.display = 'flex';
-          }}
+          onError={() => setImageErrors(prev => ({ ...prev, [archivo.id]: true }))}
         />
       );
     }
 
-    if (tipo.includes('pdf') && archivo.file_url && !archivo.file_url.includes('drive.google.com')) {
-      return (
-        <iframe
-          src={`${archivo.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=fitH`}
-          className="archivo-thumbnail-pdf"
-          title={archivo.name}
-          scrolling="no"
-        />
-      );
+    if (tipo.includes('pdf') && archivo.file_url) {
+      let isExternal = true;
+      try {
+        const parsedUrl = new URL(archivo.file_url);
+        isExternal = !(parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') ||
+          parsedUrl.hostname === 'drive.google.com' ||
+          parsedUrl.hostname.endsWith('.drive.google.com');
+      } catch {
+        isExternal = true;
+      }
+      if (!isExternal) {
+        return (
+          <iframe
+            src={`${archivo.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=fitH`}
+            className="archivo-thumbnail-pdf"
+            title={archivo.name}
+            scrolling="no"
+          />
+        );
+      }
     }
 
     return (
@@ -622,9 +633,6 @@ const ArchivosPage = () => {
               <div key={archivo.id} className="archivo-item">
                 <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
                   {obtenerThumbnail(archivo)}
-                  <div className="archivo-icono-fallback" style={{ display: 'none' }}>
-                    <span className="icono-tipo-grande">{obtenerIconoArchivo(archivo.file_type)}</span>
-                  </div>
                 </div>
                 <div className="archivo-info">
                   <h4 className="archivo-nombre">{archivo.name}</h4>
