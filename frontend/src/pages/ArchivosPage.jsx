@@ -353,8 +353,7 @@ const ArchivosPage = () => {
       let isExternal = true;
       try {
         const parsedUrl = new URL(archivo.file_url);
-        isExternal = !(parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') ||
-          parsedUrl.hostname === 'drive.google.com' ||
+        isExternal = parsedUrl.hostname === 'drive.google.com' ||
           parsedUrl.hostname.endsWith('.drive.google.com');
       } catch {
         isExternal = true;

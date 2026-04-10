@@ -452,6 +452,8 @@
           }
 
           .archivo-thumbnail-pdf {
+            /* Scale the iframe at 2x then shrink with transform so the
+               first page renders at higher resolution inside the thumbnail */
             width: 200%;
             height: 200%;
             transform: scale(0.5);
