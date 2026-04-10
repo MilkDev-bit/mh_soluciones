@@ -18,6 +18,7 @@ import { getProjects } from '../services/projectService';
 import { handleViewFile } from '../utils/fileUtils';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
+import PdfThumbnail from '../components/common/PdfThumbnail';
 import './ArchivosPage.scss';
 
 const ArchivosPage = () => {
@@ -349,25 +350,14 @@ const ArchivosPage = () => {
       );
     }
 
-    if (tipo.includes('pdf') && archivo.file_url) {
-      let isExternal = true;
-      try {
-        const parsedUrl = new URL(archivo.file_url);
-        isExternal = parsedUrl.hostname === 'drive.google.com' ||
-          parsedUrl.hostname.endsWith('.drive.google.com');
-      } catch {
-        isExternal = true;
-      }
-      if (!isExternal) {
-        return (
-          <iframe
-            src={`${archivo.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=fitH`}
-            className="archivo-thumbnail-pdf"
-            title={archivo.name}
-            scrolling="no"
-          />
-        );
-      }
+    if (tipo.includes('pdf') && url) {
+      return (
+        <PdfThumbnail
+          url={url}
+          fileName={archivo.name}
+          fallbackIcon={obtenerIconoArchivo(tipo)}
+        />
+      );
     }
 
     return (

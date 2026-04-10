@@ -451,17 +451,6 @@
             object-fit: cover;
           }
 
-          .archivo-thumbnail-pdf {
-            /* Scale the iframe at 2x then shrink with transform so the
-               first page renders at higher resolution inside the thumbnail */
-            width: 200%;
-            height: 200%;
-            transform: scale(0.5);
-            transform-origin: top left;
-            pointer-events: none;
-            border: none;
-          }
-
           .icono-tipo-grande {
             font-size: 3.5rem;
           }
@@ -623,15 +612,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-          }
-
-          .archivo-thumbnail-pdf {
-            width: 200%;
-            height: 200%;
-            transform: scale(0.5);
-            transform-origin: top left;
-            pointer-events: none;
-            border: none;
           }
 
           .icono-tipo-grande {
