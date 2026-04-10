@@ -37,6 +37,7 @@ const ArchivosPage = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [errorFecha, setErrorFecha] = useState('');
+  const [imageErrors, setImageErrors] = useState({});
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
@@ -330,6 +331,50 @@ const ArchivosPage = () => {
     return '📁';
   };
 
+  const obtenerThumbnail = (archivo) => {
+    const tipo = archivo.file_type || '';
+    const url = archivo.file_url || archivo.drive_file_url || '';
+
+    if (tipo.startsWith('image/') && url) {
+      if (imageErrors[archivo.id]) {
+        return <span className="icono-tipo-grande">{obtenerIconoArchivo(tipo)}</span>;
+      }
+      return (
+        <img
+          src={url}
+          alt={archivo.name}
+          className="archivo-thumbnail-img"
+          onError={() => setImageErrors(prev => ({ ...prev, [archivo.id]: true }))}
+        />
+      );
+    }
+
+    if (tipo.includes('pdf') && archivo.file_url) {
+      let isExternal = true;
+      try {
+        const parsedUrl = new URL(archivo.file_url);
+        isExternal = parsedUrl.hostname === 'drive.google.com' ||
+          parsedUrl.hostname.endsWith('.drive.google.com');
+      } catch {
+        isExternal = true;
+      }
+      if (!isExternal) {
+        return (
+          <iframe
+            src={`${archivo.file_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=fitH`}
+            className="archivo-thumbnail-pdf"
+            title={archivo.name}
+            scrolling="no"
+          />
+        );
+      }
+    }
+
+    return (
+      <span className="icono-tipo-grande">{obtenerIconoArchivo(tipo)}</span>
+    );
+  };
+
   const obtenerEstadoDrive = (estado) => {
     switch (estado) {
       case 'COMPLETE':
@@ -585,8 +630,8 @@ const ArchivosPage = () => {
           ) : (
             archivosFiltrados.map(archivo => (
               <div key={archivo.id} className="archivo-item">
-                <div className="archivo-icono">
-                  <span className="icono-tipo">{obtenerIconoArchivo(archivo.file_type)}</span>
+                <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
+                  {obtenerThumbnail(archivo)}
                 </div>
                 <div className="archivo-info">
                   <h4 className="archivo-nombre">{archivo.name}</h4>
