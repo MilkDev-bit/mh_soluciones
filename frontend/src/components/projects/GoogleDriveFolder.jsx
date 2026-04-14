@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getProjectDriveFolder } from '../../services/projectService';
 import { FiFolder, FiDownload, FiExternalLink, FiFile, FiSearch } from 'react-icons/fi';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './GoogleDriveFolder.scss';
 
@@ -38,7 +38,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
         setErrorType(null);
         const params = {
           page: 1,
-          page_size: 20
+          page_size: 100
         };
         
         if (searchTerm) {
@@ -121,18 +121,32 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
 
   const { project_name, total_documents, documents } = folderData;
 
+  // Filtrar solo documentos de la semana en curso (lunes a domingo)
+  const now = new Date();
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+  const weekDocuments = (documents || []).filter((doc) => {
+    if (!doc.created_at) return false;
+    try {
+      return isWithinInterval(parseISO(doc.created_at), { start: weekStart, end: weekEnd });
+    } catch {
+      return false;
+    }
+  });
+
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
   const getEmptyMessage = () => {
     if (searchTerm) {
-      return 'No hay archivos que coincidan con la búsqueda en la carpeta de Google Drive de este proyecto.';
+      return 'No hay archivos de esta semana que coincidan con la búsqueda.';
     }
-    return 'No hay archivos en la carpeta de Google Drive de este proyecto.';
+    return 'No hay archivos subidos esta semana en la carpeta de Google Drive de este proyecto.';
   };
 
-  if (!documents || documents.length === 0) {
+  if (!weekDocuments || weekDocuments.length === 0) {
     return (
       <div className="drive-folder-empty">
         <FiFolder size={48} />
@@ -148,7 +162,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
           <FiFolder /> Carpeta de Google Drive
         </h3>
         <p className="folder-subtitle">
-          {project_name} - {total_documents} {total_documents === 1 ? 'archivo' : 'archivos'}
+          {project_name} — Semana en curso: {weekDocuments.length} {weekDocuments.length === 1 ? 'archivo' : 'archivos'}
         </p>
       </div>
 
@@ -166,7 +180,7 @@ const GoogleDriveFolder = ({ projectId, userRole }) => {
       </div>
 
       <div className="documents-list">
-        {documents.map((doc) => (
+        {weekDocuments.map((doc) => (
           <div key={doc.id} className="document-item">
             <div className="document-icon">
               {getFileIcon(doc.file_type)}
