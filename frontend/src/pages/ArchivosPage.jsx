@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  FiFile, 
+import {
+  FiFile,
   FiUpload,
   FiDownload,
   FiTrash2,
@@ -43,7 +43,7 @@ const ArchivosPage = () => {
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
     let hoy;
-    switch(rangoTipo) {
+    switch (rangoTipo) {
       case 'week':
         hoy = new Date();
         hoy.setDate(hoy.getDate() - 7);
@@ -78,7 +78,7 @@ const ArchivosPage = () => {
   const handleFiltroFechaChange = (value) => {
     setFiltroFecha(value);
     setErrorFecha('');
-    
+
     // Reset custom dates when switching to predefined range
     if (value !== 'custom') {
       setFechaDesde('');
@@ -91,7 +91,7 @@ const ArchivosPage = () => {
     if (filtroFecha === 'custom' && fechaDesde && fechaHasta) {
       const desde = new Date(fechaDesde);
       const hasta = new Date(fechaHasta);
-      
+
       if (desde > hasta) {
         setErrorFecha('La fecha desde no puede ser posterior a la fecha hasta');
         return false;
@@ -128,7 +128,7 @@ const ArchivosPage = () => {
       setFiltroCarpeta('ALL');
     } catch (error) {
       console.error('Error cargando carpetas:', error);
-      
+
       // Handle specific error types
       if (error.statusCode === 403) {
         // Permission error - user doesn't have access to this project
@@ -153,15 +153,15 @@ const ArchivosPage = () => {
     try {
       setCargando(true);
       setError(null);
-      
+
       // Build query params based on folder_type mapping
       const params = {};
-      
+
       // Apply type filter if selected (IMAGENES, DOCUMENTOS, etc.)
       if (filtroTipo !== FILTER_TYPES.ALL) {
         params.folder_type = filtroTipo;
       }
-      
+
       // Filter by selected project
       if (proyectoSeleccionado) {
         params.project = proyectoSeleccionado;
@@ -171,7 +171,7 @@ const ArchivosPage = () => {
       if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
         params.drive_folder_id = filtroCarpeta;
       }
-      
+
       const documentos = await getAllDocuments(params);
       setArchivos(documentos);
     } catch (error) {
@@ -203,45 +203,45 @@ const ArchivosPage = () => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
       if (archivosAceptados.length === 0) return;
-      
+
       // Validate project is selected
       if (!proyectoSeleccionado) {
         toast.error('Por favor selecciona un proyecto primero');
         return;
       }
-      
+
       setSubiendo(true);
       try {
         // Get the selected folder name for display
         const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
         const nombreCarpetaDestino = carpetaSeleccionada?.name || null;
-        
+
         // Upload each file
         const promises = archivosAceptados.map(async (file) => {
           const formData = new FormData();
           formData.append('file', file);
-          
+
           // Determine folder_type for upload
           // Use the type filter if it's not 'ALL', otherwise use default DOCUMENTS
-          const selectedFolderType = filtroTipo !== FILTER_TYPES.ALL 
-            ? filtroTipo 
+          const selectedFolderType = filtroTipo !== FILTER_TYPES.ALL
+            ? filtroTipo
             : FILTER_TYPES.DOCUMENTS;
           formData.append('folder_type', selectedFolderType);
-          
+
           // Add project ID (required)
           formData.append('project', proyectoSeleccionado);
-          
+
           // Add target folder ID if a specific folder is selected
           // Only send if it's not 'ALL' and we have actual folder data
           if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
             formData.append('target_folder_id', filtroCarpeta);
           }
-          
+
           return uploadDocument(formData);
         });
-        
+
         await Promise.all(promises);
-        
+
         // Show success message with folder destination
         if (nombreCarpetaDestino) {
           toast.success(
@@ -252,15 +252,15 @@ const ArchivosPage = () => {
             `${archivosAceptados.length} archivo(s) subido(s) correctamente`
           );
         }
-        
+
         // Recargar archivos después de la subida
         await cargarArchivos();
       } catch (error) {
         console.error('Error subiendo archivos:', error);
-        
+
         // Show specific error message based on error type
         let errorMessage = 'No se pudo subir el documento - Verifique acceso/estructura en Drive';
-        
+
         if (error.type === 'refresh_error') {
           errorMessage = 'No se pudo subir el documento - Las credenciales de Google Drive han expirado. Contacte al administrador.';
         } else if (error.type === 'permission_error') {
@@ -270,7 +270,7 @@ const ArchivosPage = () => {
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         toast.error(errorMessage);
       } finally {
         setSubiendo(false);
@@ -391,17 +391,17 @@ const ArchivosPage = () => {
   const archivosFiltrados = archivos.filter(archivo => {
     const nombreArchivo = archivo.name || '';
     const proyectoNombre = archivo.project_info?.name || '';
-    
+
     const coincideBusqueda = nombreArchivo.toLowerCase().includes(busqueda.toLowerCase()) ||
-                             proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
-    
+      proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
+
     // Filter by folder_type which matches backend model
     let coincideTipo = true;
     if (filtroTipo !== FILTER_TYPES.ALL) {
       // Match folder_type from backend
       coincideTipo = archivo.folder_type === filtroTipo;
     }
-    
+
     // Filter by selected Drive folder (client-side fallback using folder ID)
     let coincideCarpeta = true;
     if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
@@ -410,12 +410,12 @@ const ArchivosPage = () => {
       // Files whose parent folder ID matches the selected folder are shown.
       coincideCarpeta = archivo.drive_parent_folder_id === filtroCarpeta;
     }
-    
+
     // Filter by date
     let coincideFecha = true;
     if (filtroFecha !== 'all' && archivo.created_at) {
       const fechaArchivo = new Date(archivo.created_at);
-      
+
       if (filtroFecha === 'custom') {
         // Don't apply filter if there's a validation error
         if (errorFecha) {
@@ -438,7 +438,7 @@ const ArchivosPage = () => {
         }
       }
     }
-    
+
     return coincideBusqueda && coincideTipo && coincideCarpeta && coincideFecha;
   });
 
@@ -480,7 +480,7 @@ const ArchivosPage = () => {
               onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
-          <select 
+          <select
             className="filtro-tipo"
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
@@ -491,7 +491,7 @@ const ArchivosPage = () => {
             <option value={FILTER_TYPES.VIDEOS}>Videos</option>
             <option value={FILTER_TYPES.FILES}>Archivos</option>
           </select>
-          <select 
+          <select
             className="filtro-carpeta"
             value={filtroCarpeta}
             onChange={(e) => setFiltroCarpeta(e.target.value)}
@@ -516,7 +516,7 @@ const ArchivosPage = () => {
             ))}
           </select>
           <div className="fecha-filter-container">
-            <select 
+            <select
               className="fecha-rango-select"
               value={filtroFecha}
               onChange={(e) => handleFiltroFechaChange(e.target.value)}
@@ -552,13 +552,13 @@ const ArchivosPage = () => {
         </div>
         <div className="toolbar-derecha">
           <div className="vista-toggle">
-            <button 
+            <button
               className={vistaTipo === 'grid' ? 'activo' : ''}
               onClick={() => setVistaTipo('grid')}
             >
               <FiGrid />
             </button>
-            <button 
+            <button
               className={vistaTipo === 'list' ? 'activo' : ''}
               onClick={() => setVistaTipo('list')}
             >
@@ -640,7 +640,7 @@ const ArchivosPage = () => {
                 </div>
                 <div className="archivo-acciones">
                   {archivo.drive_file_url && (
-                    <button 
+                    <button
                       className="btn-icono"
                       title="Ver en Drive"
                       onClick={() => window.open(archivo.drive_file_url, '_blank')}
@@ -648,15 +648,15 @@ const ArchivosPage = () => {
                       <FiExternalLink />
                     </button>
                   )}
-                  <button 
-                    className="btn-icono" 
-                    title="Descargar"
+                  <button
+                    className="btn-icono"
+                    title=""
                     onClick={() => handleDownloadArchivo(archivo)}
                   >
                     <FiDownload />
                   </button>
-                  <button 
-                    className="btn-icono btn-peligro" 
+                  <button
+                    className="btn-icono btn-peligro"
                     title="Eliminar"
                     onClick={() => handleDeleteArchivo(archivo.id)}
                   >

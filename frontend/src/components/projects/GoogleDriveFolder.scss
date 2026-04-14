@@ -343,14 +343,80 @@
       }
     }
 
-    .pagination-controls {
-      flex-direction: column;
-      gap: 1rem;
+  }
+}
 
-      .pagination-btn {
-        width: 100%;
-        justify-content: center;
+[data-theme="light"] {
+  .google-drive-folder {
+    .folder-header {
+      h3 {
+        color: #1e293b;
       }
+
+      .folder-subtitle {
+        color: #475569;
+      }
+    }
+
+    .folder-filters {
+      .search-container {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+
+        &:focus-within {
+          background: #fff;
+          border-color: #4285f4;
+        }
+
+        svg {
+          color: #64748b;
+        }
+
+        input {
+          color: #1e293b;
+
+          &::placeholder {
+            color: #94a3b8;
+          }
+        }
+      }
+    }
+
+    .document-item {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+
+      &:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+      }
+
+      .document-info {
+        .document-name {
+          color: #1e293b;
+        }
+
+        .document-meta {
+          color: #475569;
+
+          .document-separator {
+            color: #94a3b8;
+          }
+        }
+
+        .document-uploader {
+          color: #64748b;
+        }
+      }
+    }
+  }
+
+  .drive-folder-loading,
+  .drive-folder-empty {
+    color: #475569;
+
+    p {
+      color: #475569;
     }
   }
 }
