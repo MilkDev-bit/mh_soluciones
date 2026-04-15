@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_save, pre_save, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
@@ -12,6 +12,9 @@ import logging
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+# Estados que se consideran "completados"
+_ESTADOS_COMPLETADOS = {'COMPLETED', 'CLOSED'}
 
 
 def _log_actividad(accion, descripcion, usuario, tarea_id=None, proyecto_id=None, metadata=None):
@@ -30,17 +33,43 @@ def _log_actividad(accion, descripcion, usuario, tarea_id=None, proyecto_id=None
         logger.error("Error al registrar actividad de auditoría [%s]: %s", accion, exc)
 
 
+@receiver(pre_save, sender=Task)
+def capture_task_previous_status(sender, instance, **kwargs):
+    """
+    Guarda el estado anterior de la tarea en el instance antes de guardar,
+    para que audit_task_save pueda detectar cambios de estado.
+    """
+    if instance.pk:
+        try:
+            instance._previous_status = Task.objects.only('status').get(pk=instance.pk).status
+        except Task.DoesNotExist:
+            instance._previous_status = None
+    else:
+        instance._previous_status = None
+
+
 @receiver(post_save, sender=Task)
 def audit_task_save(sender, instance, created, **kwargs):
-    """Registra creación y edición de tareas en el log de auditoría."""
+    """Registra creación, completado y edición de tareas en el log de auditoría."""
     actor = get_current_audit_user() or instance.created_by
     if actor is None:
         return
+
+    previous_status = getattr(instance, '_previous_status', None)
 
     if created:
         accion = 'TAREA_CREADA'
         descripcion = (
             f"{actor.username} creó la tarea '{instance.title}' "
+            f"en el proyecto '{instance.project.name}'."
+        )
+    elif (
+        instance.status in _ESTADOS_COMPLETADOS
+        and previous_status not in _ESTADOS_COMPLETADOS
+    ):
+        accion = 'TAREA_COMPLETADA'
+        descripcion = (
+            f"{actor.username} marcó como completada la tarea '{instance.title}' "
             f"en el proyecto '{instance.project.name}'."
         )
     else:
@@ -56,7 +85,12 @@ def audit_task_save(sender, instance, created, **kwargs):
         usuario=actor,
         tarea_id=instance.pk,
         proyecto_id=instance.project_id,
-        metadata={'tarea_titulo': instance.title, 'proyecto_id': instance.project_id},
+        metadata={
+            'tarea_titulo': instance.title,
+            'proyecto_id': instance.project_id,
+            'status': instance.status,
+            'status_anterior': previous_status,
+        },
     )
 
 

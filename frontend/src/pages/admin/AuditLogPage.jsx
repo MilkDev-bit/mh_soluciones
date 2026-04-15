@@ -11,6 +11,7 @@ const PAGE_SIZE = 30;
 const ACCIONES_LABELS = {
   TAREA_CREADA: 'Tarea Creada',
   TAREA_ACTUALIZADA: 'Tarea Editada',
+  TAREA_COMPLETADA: 'Tarea Completada',
   TAREA_ELIMINADA: 'Tarea Eliminada',
   PROYECTO_CREADO: 'Proyecto Creado',
   PROYECTO_ACTUALIZADO: 'Proyecto Editado',
@@ -22,6 +23,7 @@ const ACCIONES_LABELS = {
 const ACCION_COLORES = {
   TAREA_CREADA: 'badge--green',
   TAREA_ACTUALIZADA: 'badge--blue',
+  TAREA_COMPLETADA: 'badge--teal',
   TAREA_ELIMINADA: 'badge--red',
   PROYECTO_CREADO: 'badge--purple',
   PROYECTO_ACTUALIZADO: 'badge--orange',
