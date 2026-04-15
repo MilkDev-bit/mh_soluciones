@@ -1,16 +1,83 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from apps.notifications.models import Notification
 from apps.notifications.api.serializers import NotificationSerializer
+from apps.core.middleware import get_current_audit_user
 from .models import Task, TaskSubmission
 from utils.email_notifications import send_task_assignment_notification
 import logging
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def _log_actividad(accion, descripcion, usuario, tarea_id=None, proyecto_id=None, metadata=None):
+    """Helper para registrar actividad de forma segura sin interrumpir el flujo principal."""
+    try:
+        from apps.core.models import RegistroActividad
+        RegistroActividad.objects.create(
+            usuario=usuario,
+            accion=accion,
+            descripcion=descripcion,
+            tarea_id=tarea_id,
+            proyecto_id=proyecto_id,
+            metadata=metadata or {},
+        )
+    except Exception as exc:
+        logger.error("Error al registrar actividad de auditoría [%s]: %s", accion, exc)
+
+
+@receiver(post_save, sender=Task)
+def audit_task_save(sender, instance, created, **kwargs):
+    """Registra creación y edición de tareas en el log de auditoría."""
+    actor = get_current_audit_user() or instance.created_by
+    if actor is None:
+        return
+
+    if created:
+        accion = 'TAREA_CREADA'
+        descripcion = (
+            f"{actor.username} creó la tarea '{instance.title}' "
+            f"en el proyecto '{instance.project.name}'."
+        )
+    else:
+        accion = 'TAREA_ACTUALIZADA'
+        descripcion = (
+            f"{actor.username} editó la tarea '{instance.title}' "
+            f"en el proyecto '{instance.project.name}'."
+        )
+
+    _log_actividad(
+        accion=accion,
+        descripcion=descripcion,
+        usuario=actor,
+        tarea_id=instance.pk,
+        proyecto_id=instance.project_id,
+        metadata={'tarea_titulo': instance.title, 'proyecto_id': instance.project_id},
+    )
+
+
+@receiver(pre_delete, sender=Task)
+def audit_task_delete(sender, instance, **kwargs):
+    """Registra la eliminación de una tarea en el log de auditoría."""
+    actor = get_current_audit_user() or instance.created_by
+    if actor is None:
+        return
+
+    _log_actividad(
+        accion='TAREA_ELIMINADA',
+        descripcion=(
+            f"{actor.username} eliminó la tarea '{instance.title}' "
+            f"del proyecto '{instance.project.name}'."
+        ),
+        usuario=actor,
+        tarea_id=instance.pk,
+        proyecto_id=instance.project_id,
+        metadata={'tarea_titulo': instance.title, 'proyecto_id': instance.project_id},
+    )
 
 
 @receiver(post_save, sender=Task)

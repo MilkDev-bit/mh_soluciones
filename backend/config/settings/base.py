@@ -127,6 +127,7 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
     'apps.authentication.security_middleware.SessionSecurityMiddleware',
     'apps.authentication.security_middleware.PasswordExpiryMiddleware',
+    'apps.core.middleware.AuditUserMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

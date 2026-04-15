@@ -23,6 +23,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const ActividadPage = lazy(() => import('./pages/ActividadPage'));
 const ArchivosPage = lazy(() => import('./pages/ArchivosPage'));
 const ReportesPage = lazy(() => import('./pages/ReportesPage'));
+const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
 
 const AppRoutes = () => {
   console.log("AppRoutes -> Renderizando el mapa de rutas.");
@@ -65,6 +66,12 @@ const AppRoutes = () => {
           <Route path="/admin/accesos" element={
             <ProtectedRoute roles={['SUPERADMIN', 'ADMIN']}>
               <AccesosPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/audit-log" element={
+            <ProtectedRoute roles={['SUPERADMIN']}>
+              <AuditLogPage />
             </ProtectedRoute>
           } />
 

@@ -31,7 +31,8 @@ import {
   FiFile,
   FiBarChart2,
   FiBell,
-  FiShield
+  FiShield,
+  FiClipboard
 } from 'react-icons/fi';
 import './Sidebar.scss';
 import matrixMhLogo from '/icons/MatrixMh.png';
@@ -345,6 +346,17 @@ const Sidebar = () => {
                     <FiShield />
                     {!isSidebarCollapsed && <span>Accesos</span>}
                   </NavLink>
+
+                  {user.role === 'SUPERADMIN' && (
+                    <NavLink
+                      to="/admin/audit-log"
+                      className="menu-item"
+                      onClick={closeMobileMenu}
+                    >
+                      <FiClipboard />
+                      {!isSidebarCollapsed && <span>Auditoría</span>}
+                    </NavLink>
+                  )}
                 </div>
               </div>
             )}

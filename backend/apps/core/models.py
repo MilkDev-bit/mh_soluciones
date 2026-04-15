@@ -43,17 +43,33 @@ class UUIDModel(models.Model):
         abstract = True
 
 
+class RegistroActividadQuerySet(models.QuerySet):
+    """QuerySet que impide la eliminación de registros de auditoría."""
+
+    def delete(self):
+        raise PermissionError(
+            "Los registros de auditoría no pueden eliminarse."
+        )
+
+
+class RegistroActividadManager(models.Manager):
+    def get_queryset(self):
+        return RegistroActividadQuerySet(self.model, using=self._db)
+
+
 class RegistroActividad(TimeStampedModel):
     """
-    Registro de todas las actividades en el sistema para el feed de actividad
+    Registro inmutable de todas las actividades del sistema (auditoría).
     """
     class TipoAccion(models.TextChoices):
         TAREA_CREADA = 'TAREA_CREADA', _('Tarea Creada')
         TAREA_ASIGNADA = 'TAREA_ASIGNADA', _('Tarea Asignada')
         TAREA_COMPLETADA = 'TAREA_COMPLETADA', _('Tarea Completada')
         TAREA_ACTUALIZADA = 'TAREA_ACTUALIZADA', _('Tarea Actualizada')
+        TAREA_ELIMINADA = 'TAREA_ELIMINADA', _('Tarea Eliminada')
         PROYECTO_CREADO = 'PROYECTO_CREADO', _('Proyecto Creado')
         PROYECTO_ACTUALIZADO = 'PROYECTO_ACTUALIZADO', _('Proyecto Actualizado')
+        PROYECTO_ELIMINADO = 'PROYECTO_ELIMINADO', _('Proyecto Eliminado')
         ARCHIVO_SUBIDO = 'ARCHIVO_SUBIDO', _('Archivo Subido')
         EVENTO_CREADO = 'EVENTO_CREADO', _('Evento de Calendario Creado')
         COMENTARIO_AGREGADO = 'COMENTARIO_AGREGADO', _('Comentario Agregado')
@@ -63,11 +79,20 @@ class RegistroActividad(TimeStampedModel):
         ENTREGA_REALIZADA = 'ENTREGA_REALIZADA', _('Entrega de Tarea Realizada')
         CANAL_CREADO = 'CANAL_CREADO', _('Canal Creado')
 
+    objects = RegistroActividadManager()
+
     usuario = models.ForeignKey(
         'authentication.CustomUser',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='actividades',
         verbose_name=_("Usuario")
+    )
+    actor_username = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name=_("Username del Actor"),
+        help_text=_("Guardado para preservar el registro aunque se elimine el usuario")
     )
     accion = models.CharField(
         max_length=50,
@@ -123,8 +148,20 @@ class RegistroActividad(TimeStampedModel):
             models.Index(fields=['accion', '-created_at']),
         ]
 
+    def save(self, *args, **kwargs):
+        # Guardar actor_username automáticamente al crear
+        if not self.pk and self.usuario and not self.actor_username:
+            self.actor_username = self.usuario.username
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionError(
+            "Los registros de auditoría no pueden eliminarse."
+        )
+
     def __str__(self):
-        return f"{self.usuario.username} - {self.get_accion_display()} - {self.created_at}"
+        actor = self.actor_username or (self.usuario.username if self.usuario else 'Usuario eliminado')
+        return f"{actor} - {self.get_accion_display()} - {self.created_at}"
 
 
 class RegistroEmail(TimeStampedModel):
