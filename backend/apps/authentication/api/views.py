@@ -1016,8 +1016,15 @@ class LoginActivityListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role in ['SUPERADMIN', 'ADMIN']:
-            return LoginActivity.objects.all().order_by('-timestamp')
-        return LoginActivity.objects.filter(user=user).order_by('-timestamp')
+            qs = LoginActivity.objects.all()
+        else:
+            qs = LoginActivity.objects.filter(user=user)
+
+        username = self.request.query_params.get('username', '').strip()
+        if username:
+            qs = qs.filter(user__username__icontains=username)
+
+        return qs.order_by('-timestamp')
     
 class BlockedIPViewSet(viewsets.ModelViewSet):
     queryset = BlockedIP.objects.all().order_by('-created_at')

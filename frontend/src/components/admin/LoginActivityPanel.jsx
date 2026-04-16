@@ -17,8 +17,8 @@ const LoginActivityPanel = () => {
         data: activityData, 
         isLoading: isLoadingHistory 
     } = useQuery({
-        queryKey: ['loginActivity', currentPage],
-        queryFn: () => getLoginActivity(currentPage),
+        queryKey: ['loginActivity', currentPage, activeTab === 'history' ? searchTerm : ''],
+        queryFn: () => getLoginActivity(currentPage, activeTab === 'history' ? searchTerm : ''),
         enabled: activeTab === 'history',
         keepPreviousData: true,
     });
@@ -110,11 +110,12 @@ const LoginActivityPanel = () => {
                     <FiSearch style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} />
                     <input 
                         type="text"
-                        placeholder="Buscar IP o motivo..."
+                        placeholder={activeTab === 'history' ? 'Buscar por usuario...' : 'Buscar IP o motivo...'}
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
                             setCurrentBlockedPage(1);
+                            setCurrentPage(1);
                         }}
                         style={{
                             width: '100%',
@@ -142,6 +143,7 @@ const LoginActivityPanel = () => {
                                             <th>Usuario</th>
                                             <th>IP</th>
                                             <th>Dispositivo</th>
+                                            <th>Conexiones (mes)</th>
                                             <th>Estado</th>
                                         </tr>
                                     </thead>
@@ -152,6 +154,9 @@ const LoginActivityPanel = () => {
                                                 <td><strong>{activity.username}</strong></td>
                                                 <td>{activity.ip_address}</td>
                                                 <td>{activity.user_agent?.split(' ')[0] || 'Web'}</td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <span style={{ fontWeight: '600', color: '#f05423' }}>{activity.login_count_this_month ?? '—'}</span>
+                                                </td>
                                                 <td>
                                                     <span className={`status-badge ${activity.successful ? 'status-active' : 'status-inactive'}`}>
                                                         {activity.successful ? 'Exitoso' : 'Fallido'}

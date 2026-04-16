@@ -200,13 +200,29 @@ class ForgotPasswordSerializer(serializers.Serializer):
 class LoginActivitySerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
+    login_count_this_month = serializers.SerializerMethodField()
 
     class Meta:
         model = LoginActivity
         fields = (
-            'id', 'user', 'username', 'first_name', 
-            'timestamp', 'ip_address', 'successful', 'user_agent'
+            'id', 'user', 'username', 'first_name',
+            'timestamp', 'ip_address', 'successful', 'user_agent',
+            'login_count_this_month'
         )
+
+    def get_login_count_this_month(self, obj):
+        from django.utils import timezone
+        cache = self.context.setdefault('_monthly_counts', {})
+        user_id = obj.user_id
+        if user_id not in cache:
+            now = timezone.now()
+            cache[user_id] = LoginActivity.objects.filter(
+                user_id=user_id,
+                successful=True,
+                timestamp__year=now.year,
+                timestamp__month=now.month,
+            ).count()
+        return cache[user_id]
 
 class BlockedIPSerializer(serializers.ModelSerializer):
     time_since_blocked = serializers.SerializerMethodField()
