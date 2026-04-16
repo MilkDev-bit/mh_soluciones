@@ -66,7 +66,9 @@ class Document(TimeStampedModel):
     file = models.FileField(
         upload_to=get_document_upload_path,
         validators=[validate_file_extension],
-        verbose_name=_("Archivo")
+        verbose_name=_("Archivo"),
+        null=True,
+        blank=True,
     )
     name = models.CharField(
         max_length=255,
@@ -116,6 +118,17 @@ class Document(TimeStampedModel):
         blank=True,
         null=True,
         verbose_name=_("Notas del documento")
+    )
+    link = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name=_("Enlace externo"),
+        help_text=_("URL de entrega cuando el documento es un enlace externo")
+    )
+    is_link = models.BooleanField(
+        default=False,
+        verbose_name=_("Es un enlace"),
+        help_text=_("True si este documento representa un enlace externo en lugar de un archivo")
     )
 
     class Meta:

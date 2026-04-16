@@ -132,13 +132,17 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
             <div className="files-list">
               {hasDocs && submission.documents.map((doc) => (
                 <div key={doc.id} className="file-item-preview">
-                  <FiFile className="file-icon" />
+                  {doc.is_link ? <FiLink className="file-icon" /> : <FiFile className="file-icon" />}
                   <div className="file-info">
                     <span className="file-name" title={doc.name}>{doc.name}</span>
-                    {doc.file_size && <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>}
+                    {!doc.is_link && doc.file_size && <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>}
                   </div>
                   <div className="file-actions">
-                    {doc.drive_file_url ? (
+                    {doc.is_link ? (
+                      <a href={doc.link} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
+                        <FiExternalLink /> Abrir enlace
+                      </a>
+                    ) : doc.drive_file_url ? (
                       <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="btn-file-action btn-drive">
                         <FiExternalLink /> Drive
                       </a>

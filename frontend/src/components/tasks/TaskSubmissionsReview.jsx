@@ -220,15 +220,19 @@ const TaskSubmissionsReview = ({ task, onClose }) => {
                                 {/* Source 1: Document objects */}
                                 {hasDocs && submission.documents.map((doc) => (
                                   <div key={doc.id} className="file-item">
-                                    <FiFile />
+                                    {doc.is_link ? <FiLink /> : <FiFile />}
                                     <div className="file-info">
                                       <span className="file-name">{doc.name}</span>
-                                      {doc.file_size && (
+                                      {!doc.is_link && doc.file_size && (
                                         <span className="file-size">{(doc.file_size / 1024).toFixed(1)} KB</span>
                                       )}
                                     </div>
                                     <div className="file-actions">
-                                      {doc.drive_file_url ? (
+                                      {doc.is_link ? (
+                                        <a href={doc.link} target="_blank" rel="noopener noreferrer" className="file-download" title="Abrir enlace">
+                                          <FiLink /> Abrir enlace
+                                        </a>
+                                      ) : doc.drive_file_url ? (
                                         <a href={doc.drive_file_url} target="_blank" rel="noopener noreferrer" className="file-download" title="Ver en Google Drive">
                                           <FiLink /> Drive
                                         </a>

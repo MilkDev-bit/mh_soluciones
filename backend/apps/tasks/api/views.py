@@ -509,6 +509,27 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         if uploaded_documents:
             task_submission.files_metadata = uploaded_documents
             task_submission.save(update_fields=['files_metadata'])
+
+        # If submission includes a link, save a Document record for it
+        if link:
+            try:
+                from apps.documents.models import Document
+                import urllib.parse as _urlparse
+                link_name = _urlparse.urlparse(link).netloc or link[:80]
+                link_doc = Document.objects.create(
+                    task=task,
+                    task_submission=task_submission,
+                    project=task.project,
+                    uploaded_by=request.user,
+                    folder_type='TASK_SUBMISSION',
+                    is_link=True,
+                    link=link,
+                    name=f"Enlace: {link_name}",
+                    upload_status=Document.UploadStatus.COMPLETE,
+                )
+                logger.info(f"🔗 Document link record created: {link_doc.id} -> {link}")
+            except Exception as link_doc_error:
+                logger.warning(f"⚠️ Could not create Document record for link: {link_doc_error}")
         
         # Prepare response
         response_data = serializer.data

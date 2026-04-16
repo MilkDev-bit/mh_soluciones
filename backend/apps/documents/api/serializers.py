@@ -32,12 +32,15 @@ class DocumentSerializer(serializers.ModelSerializer):
             'drive_parent_folder_id',
             'drive_parent_folder_name',
             'notes',
-            'target_folder_id'
+            'target_folder_id',
+            'is_link',
+            'link',
         ]
         read_only_fields = [
             'id', 'file_size', 'file_type', 'uploaded_by', 'created_at', 
             'upload_status', 'drive_file_url', 'file_url', 
-            'drive_parent_folder_id', 'drive_parent_folder_name', 'project_info'
+            'drive_parent_folder_id', 'drive_parent_folder_name', 'project_info',
+            'is_link', 'link',
         ]
 
     def get_file_url(self, obj):
