@@ -1,10 +1,13 @@
 import api from './api';
 
-export const getProjects = async (page = null, search = '') => {
+export const getProjects = async (page = null, search = '', statusFilter = '') => {
   try {
     let url = page ? `projects/?page=${page}` : 'projects/?all=true';
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
+    }
+    if (statusFilter) {
+      url += `&status=${encodeURIComponent(statusFilter)}`;
     }
     const { data } = await api.get(url);
     

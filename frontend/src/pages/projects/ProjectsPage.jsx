@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { getProjects } from '../../services/projectService';
@@ -15,15 +16,51 @@ import GradesWidget from '../../components/common/GradesWidget';
 import { FiPlus, FiRefreshCw, FiBriefcase, FiChevronLeft, FiChevronRight, FiSearch, FiX } from 'react-icons/fi';
 import './ProjectsPage.scss';
 
+const STATUS_FILTERS = [
+  { value: '', label: 'Todos' },
+  { value: 'PLANNING', label: 'Planificación' },
+  { value: 'IN_PROGRESS', label: 'En Progreso' },
+  { value: 'COMPLETED', label: 'Completado' },
+  { value: 'ON_HOLD', label: 'En Espera' },
+  { value: 'CANCELLED', label: 'Cancelado' },
+];
+
 const ProjectsPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { projectsUpdated, consumeProjectsUpdate } = useProjectContext();
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
+
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const searchTerm = searchParams.get('search') || '';
+  const statusFilter = searchParams.get('status') || '';
+
+  // Sync search input with URL param on mount
+  useEffect(() => {
+    setSearchInput(searchParams.get('search') || '');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setPage = useCallback((newPage) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (newPage === 1) next.delete('page');
+      else next.set('page', String(newPage));
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setStatusFilter = useCallback((value) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value) next.delete('status');
+      else next.set('status', value);
+      next.delete('page');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const { 
     data: projectsResponse,
@@ -32,8 +69,8 @@ const ProjectsPage = () => {
     refetch,
     isError 
   } = useQuery({
-    queryKey: ['projects', user?.id, user?.role, page, searchTerm],
-    queryFn: () => getProjects(page, searchTerm),
+    queryKey: ['projects', user?.id, user?.role, page, searchTerm, statusFilter],
+    queryFn: () => getProjects(page, searchTerm, statusFilter),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     enabled: !!user,
@@ -73,14 +110,23 @@ const ProjectsPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setSearchTerm(searchInput);
-    setPage(1);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (searchInput) next.set('search', searchInput);
+      else next.delete('search');
+      next.delete('page');
+      return next;
+    }, { replace: true });
   };
 
   const handleClearSearch = () => {
     setSearchInput('');
-    setSearchTerm('');
-    setPage(1);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('search');
+      next.delete('page');
+      return next;
+    }, { replace: true });
   };
 
   if (isLoading || !user) {
@@ -178,6 +224,18 @@ const ProjectsPage = () => {
             <GradesWidget isCollapsed={false} />
           </div>
         )}
+
+        <div className="status-filter-bar">
+          {STATUS_FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              className={`status-filter-btn${statusFilter === value ? ' active' : ''}${value ? ` status-${value.toLowerCase()}` : ''}`}
+              onClick={() => setStatusFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         
         {projects.length > 0 ? (
           <>
@@ -196,7 +254,7 @@ const ProjectsPage = () => {
                 <button 
                   className="btn btn-ghost" 
                   onClick={() => {
-                    setPage(p => Math.max(1, p - 1));
+                    setPage(Math.max(1, page - 1));
                     window.scrollTo(0, 0);
                   }}
                   disabled={page === 1}
@@ -209,7 +267,7 @@ const ProjectsPage = () => {
                 <button 
                   className="btn btn-ghost" 
                   onClick={() => {
-                    setPage(p => p + 1);
+                    setPage(page + 1);
                     window.scrollTo(0, 0);
                   }}
                   disabled={!projectsResponse?.next}

@@ -59,18 +59,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
         ).prefetch_related('members')
 
         if user.role in ADMIN_ROLES:
-            return base_qs.all()
-
-        if user.role == 'STUDENT':
+            qs = base_qs.all()
+        elif user.role == 'STUDENT':
             project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-            return base_qs.filter(id__in=project_ids)
+            qs = base_qs.filter(id__in=project_ids)
+        else:
+            project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+            qs = base_qs.filter(
+                Q(id__in=project_ids) |
+                Q(created_by=user) |
+                Q(client=user)
+            ).distinct()
 
-        project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-        return base_qs.filter(
-            Q(id__in=project_ids) |
-            Q(created_by=user) |
-            Q(client=user)
-        ).distinct()
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        return qs
 
     def paginate_queryset(self, queryset):
         """Disable pagination if '?all=true' is in the request (useful for select dropdowns)"""
