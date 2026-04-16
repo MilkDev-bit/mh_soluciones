@@ -225,17 +225,19 @@ const ProjectsPage = () => {
           </div>
         )}
 
-        <div className="status-filter-bar">
-          {STATUS_FILTERS.map(({ value, label }) => (
-            <button
-              key={value}
-              className={`status-filter-btn${statusFilter === value ? ' active' : ''}${value ? ` status-${value.toLowerCase()}` : ''}`}
-              onClick={() => setStatusFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {user && isAdmin(user.role) && (
+          <div className="status-filter-bar">
+            {STATUS_FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                className={`status-filter-btn${statusFilter === value ? ' active' : ''}${value ? ` status-${value.toLowerCase()}` : ''}`}
+                onClick={() => setStatusFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         
         {projects.length > 0 ? (
           <>
