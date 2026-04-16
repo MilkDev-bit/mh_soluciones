@@ -90,7 +90,7 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
       />
       <div className="comment-content">
         <div className="comment-header">
-          <strong>{(user.first_name || 'Usuario') + ' ' + (user.last_name || '')}</strong>// ...
+          <strong>{(user.first_name || 'Usuario') + ' ' + (user.last_name || '')}</strong>
           <span>
             {comment?.created_at ? format(parseISO(comment.created_at), 'dd MMM yyyy, HH:mm', { locale: es }) : ''}
           </span>
