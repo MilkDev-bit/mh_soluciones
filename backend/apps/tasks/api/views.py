@@ -510,12 +510,19 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             task_submission.files_metadata = uploaded_documents
             task_submission.save(update_fields=['files_metadata'])
 
-        # If submission includes a link, save a Document record for it
+        # If submission includes a link, save a Document record and back it up to Drive
         if link:
             try:
                 from apps.documents.models import Document
+                from apps.documents.services import GoogleDriveService
                 import urllib.parse as _urlparse
+                from django.utils.text import slugify
+
                 link_name = _urlparse.urlparse(link).netloc or link[:80]
+                clean_task = slugify(task.title)[:30]
+                clean_user = slugify(request.user.get_full_name() or request.user.username)[:20]
+                date_str = task_submission.created_at.strftime('%d-%m-%y')
+
                 link_doc = Document.objects.create(
                     task=task,
                     task_submission=task_submission,
@@ -525,9 +532,89 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                     is_link=True,
                     link=link,
                     name=f"Enlace: {link_name}",
-                    upload_status=Document.UploadStatus.COMPLETE,
+                    upload_status=Document.UploadStatus.PENDING,
                 )
                 logger.info(f"🔗 Document link record created: {link_doc.id} -> {link}")
+
+                admin_user_id = settings.GOOGLE_DRIVE_ADMIN_USER_ID
+                if not admin_user_id:
+                    logger.warning("⚠️ GOOGLE_DRIVE_ADMIN_USER_ID not set, skipping Drive backup for link")
+                    link_doc.upload_status = Document.UploadStatus.FAILED
+                    link_doc.save(update_fields=['upload_status'])
+                else:
+                    try:
+                        drive_service = GoogleDriveService(use_institutional=True)
+                        folder_id = self._get_destination_folder(
+                            drive_service, task, request.user, task_submission
+                        )
+
+                        # ── Strategy 1: try to copy the Google file as a frozen snapshot ──
+                        file_id = GoogleDriveService.extract_file_id_from_url(link)
+                        drive_result = None
+
+                        if file_id:
+                            copy_name = f"snapshot_{clean_task}_{clean_user}_{date_str}_v{task_submission.version}"
+                            drive_result = drive_service.copy_file(
+                                source_file_id=file_id,
+                                new_name=copy_name,
+                                folder_id=folder_id,
+                            )
+                            if drive_result:
+                                logger.info(
+                                    f"✅ [Drive] Frozen snapshot created via copy: "
+                                    f"{drive_result.get('webViewLink')}"
+                                )
+                            else:
+                                logger.warning(
+                                    "⚠️ [Drive] copy_file failed (document may be private). "
+                                    "Falling back to .txt reference."
+                                )
+
+                        # ── Strategy 2 (fallback): upload a .txt with the URL ──
+                        if not drive_result:
+                            txt_filename = f"enlace_{clean_task}_{clean_user}_{date_str}_v{task_submission.version}.txt"
+                            txt_content = (
+                                f"Enlace de entrega\n"
+                                f"==================\n"
+                                f"Tarea:      {task.title}\n"
+                                f"Proyecto:   {task.project.name if task.project else 'N/A'}\n"
+                                f"Estudiante: {request.user.get_full_name() or request.user.username}\n"
+                                f"Fecha:      {task_submission.created_at.strftime('%d/%m/%Y %H:%M')}\n"
+                                f"Versión:    v{task_submission.version}\n"
+                                f"\nNOTA: No fue posible crear una copia del documento.\n"
+                                f"El documento puede ser privado o no es un archivo de Google Drive.\n"
+                                f"\nURL original:\n{link}\n"
+                            ).encode('utf-8')
+                            drive_result = drive_service.upload_file(
+                                file_name=txt_filename,
+                                file_content=txt_content,
+                                folder_id=folder_id,
+                                mime_type='text/plain',
+                            )
+                            if drive_result:
+                                logger.info(
+                                    f"✅ [Drive] .txt reference uploaded as fallback: "
+                                    f"{drive_result.get('webViewLink')}"
+                                )
+
+                        # ── Save Drive result to the Document record ──
+                        if drive_result:
+                            link_doc.drive_file_id = drive_result.get('id')
+                            link_doc.drive_file_url = drive_result.get('webViewLink')
+                            link_doc.upload_status = Document.UploadStatus.COMPLETE
+                            # Use the Drive filename as the document name so it's descriptive in UI
+                            link_doc.name = drive_result.get('name', link_doc.name)
+                            link_doc.save(update_fields=['drive_file_id', 'drive_file_url', 'upload_status', 'name'])
+                        else:
+                            link_doc.upload_status = Document.UploadStatus.FAILED
+                            link_doc.save(update_fields=['upload_status'])
+                            logger.warning("⚠️ [Drive] Both copy and .txt fallback failed for link backup")
+
+                    except Exception as drive_link_error:
+                        logger.warning(f"⚠️ Could not backup link to Drive: {drive_link_error}")
+                        link_doc.upload_status = Document.UploadStatus.FAILED
+                        link_doc.save(update_fields=['upload_status'])
+
             except Exception as link_doc_error:
                 logger.warning(f"⚠️ Could not create Document record for link: {link_doc_error}")
         

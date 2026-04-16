@@ -354,6 +354,75 @@ class GoogleDriveService:
             logger.exception(f"Error al subir el archivo a Google Drive: {e}")
             return None
 
+    def copy_file(self, source_file_id, new_name, folder_id):
+        """
+        Crea una copia congelada de un archivo/Google Doc en la carpeta especificada.
+
+        La cuenta institucional debe tener al menos permiso de lectura sobre el archivo
+        origen (el documento debe ser público o compartido con ella).
+
+        Args:
+            source_file_id (str): ID del archivo origen en Google Drive.
+            new_name (str): Nombre que tendrá la copia.
+            folder_id (str): ID de la carpeta destino donde se guardará la copia.
+
+        Returns:
+            dict | None: Metadata del archivo copiado (id, name, webViewLink) o None si falla.
+        """
+        if not self.service:
+            raise ConnectionError("Servicio de Google Drive no inicializado.")
+
+        try:
+            body = {
+                'name': new_name,
+                'parents': [folder_id],
+            }
+            copied = self.service.files().copy(
+                fileId=source_file_id,
+                body=body,
+                fields='id, name, webViewLink, mimeType',
+            ).execute()
+            logger.info(
+                f"✅ [Drive Copy] Copia creada: {copied.get('name')} "
+                f"(ID: {copied.get('id')}) -> {copied.get('webViewLink')}"
+            )
+            return copied
+        except HttpError as e:
+            logger.error(
+                f"❌ [Drive Copy] HttpError al copiar archivo {source_file_id}: "
+                f"status={e.resp.status} - {e}"
+            )
+            return None
+        except Exception as e:
+            logger.exception(f"❌ [Drive Copy] Error inesperado al copiar archivo {source_file_id}: {e}")
+            return None
+
+    @staticmethod
+    def extract_file_id_from_url(url):
+        """
+        Extrae el ID de archivo de un URL de Google Drive o Google Docs/Sheets/Slides.
+
+        Soporta formatos:
+          - https://drive.google.com/file/d/<ID>/view
+          - https://docs.google.com/document/d/<ID>/edit
+          - https://docs.google.com/spreadsheets/d/<ID>/edit
+          - https://docs.google.com/presentation/d/<ID>/edit
+          - https://drive.google.com/open?id=<ID>
+
+        Returns:
+            str | None: El ID del archivo, o None si no se pudo extraer.
+        """
+        import re
+        patterns = [
+            r'/d/([a-zA-Z0-9_-]{25,})',
+            r'[?&]id=([a-zA-Z0-9_-]{25,})',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+        return None
+
     def test_connection(self):
         """Prueba la conexión con Google Drive"""
         if not self.service:
