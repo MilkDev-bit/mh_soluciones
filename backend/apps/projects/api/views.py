@@ -255,14 +255,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             user = request.user
             self._validate_client_access(user, project)
             
-            student_ids = project.tasks.filter(
-                assigned_students__role='STUDENT'
-            ).values_list('assigned_students__id', flat=True).distinct()
-            
-            individual_student_ids = project.tasks.filter(
-                assigned_to__role='STUDENT'
-            ).values_list('assigned_to__id', flat=True).distinct()
-
             try:
                 project_member_student_ids = project.members.filter(
                     role='STUDENT'
@@ -271,7 +263,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
                 project_member_student_ids = []
             
-            all_student_ids = set(student_ids) | set(individual_student_ids) | set(project_member_student_ids)
+            all_student_ids = set(project_member_student_ids)
             
             if not all_student_ids:
                 return Response({
