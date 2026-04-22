@@ -1,3 +1,5 @@
+import JSZip from 'jszip';
+
 // Obtener la URL base de la API desde la configuración
 const getAPIBaseURL = () => {
   // En desarrollo, usar la variable de entorno o localhost
@@ -121,6 +123,60 @@ export const forceDownloadFile = async (doc) => {
   }
   
   await downloadFile(fileUrl);
+};
+
+export const downloadFilesAsZip = async (archivos, zipName = 'Archivos.zip') => {
+  const zip = new JSZip();
+  let hasValidFiles = false;
+
+  for (const doc of archivos) {
+    let fileUrl = doc.file_url || doc.file;
+    if (!fileUrl) {
+      if (doc.drive_file_url) {
+        console.warn(`Saltando archivo de Drive sin URL local: ${doc.name}`);
+      }
+      continue;
+    }
+
+    if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+      const baseURL = getAPIBaseURL();
+      fileUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+      fileUrl = `${baseURL}${fileUrl}`;
+    }
+
+    if (!import.meta.env.DEV && fileUrl.startsWith('http://')) {
+      fileUrl = fileUrl.replace(/^http:/, 'https:');
+    }
+
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error(`Network error: ${response.status}`);
+      const blob = await response.blob();
+      const fileName = doc.name || getFileNameFromUrl(fileUrl);
+      zip.file(fileName, blob);
+      hasValidFiles = true;
+    } catch (err) {
+      console.error(`Error agregando archivo al zip: ${doc.name}`, err);
+    }
+  }
+
+  if (hasValidFiles) {
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const blobUrl = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = zipName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+  } else {
+    throw new Error('No se pudieron descargar los archivos para crear el ZIP.');
+  }
 };
 
 export const handleViewFile = async (doc) => {

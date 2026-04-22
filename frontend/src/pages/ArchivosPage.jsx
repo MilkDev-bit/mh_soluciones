@@ -15,7 +15,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
 import { getProjects } from '../services/projectService';
-import { handleViewFile, forceDownloadFile } from '../utils/fileUtils';
+import { handleViewFile, forceDownloadFile, downloadFilesAsZip } from '../utils/fileUtils';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
 import PdfThumbnail from '../components/common/PdfThumbnail';
@@ -618,16 +618,19 @@ const ArchivosPage = () => {
         <div style={{ padding: '0 2rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
           <button 
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', background: 'var(--primary-color, #3b82f6)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-            onClick={() => {
-              toast.success(`Iniciando descarga de ${archivosFiltrados.length} archivos...`);
-              archivosFiltrados.forEach((archivo, idx) => {
-                setTimeout(() => {
-                  forceDownloadFile(archivo).catch(err => console.error('Error al descargar:', err));
-                }, idx * 800); // 800ms between downloads
-              });
+            onClick={async () => {
+              const zipName = `${filtroCarpeta.replace('STATIC_', '')}.zip`;
+              const idDescarga = toast.loading(`Preparando ZIP con ${archivosFiltrados.length} archivos...`);
+              
+              try {
+                await downloadFilesAsZip(archivosFiltrados, zipName);
+                toast.success('ZIP descargado correctamente', { id: idDescarga });
+              } catch (error) {
+                toast.error('Error al generar el ZIP: ' + error.message, { id: idDescarga });
+              }
             }}
           >
-            <FiDownload /> Descargar Todos los Archivos ({archivosFiltrados.length})
+            <FiDownload /> Descargar como ZIP ({archivosFiltrados.length})
           </button>
         </div>
       )}
