@@ -477,3 +477,133 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .select-trigger {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #ddd;
+
+    &:hover {
+      border-color: #666;
+    }
+  }
+
+  .dropdown-menu {
+    background: #1e1e1e;
+    border-color: #444;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  }
+
+  .search-container {
+    background: #252525;
+    border-bottom-color: #333;
+  }
+
+  .search-input {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #ddd;
+
+    &::placeholder {
+      color: #666;
+    }
+  }
+
+  .dropdown-option {
+    border-bottom-color: #2a2a2a;
+    color: #ddd;
+
+    &:hover {
+      background: #2a2a2a;
+    }
+
+    &.disabled {
+      color: #555;
+      background: #1e1e1e;
+
+      &:hover {
+        background: #1e1e1e;
+      }
+    }
+  }
+
+  .form-label {
+    color: #ccc;
+  }
+
+  .form-input,
+  .form-select {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #ddd;
+
+    &::placeholder {
+      color: #666;
+    }
+  }
+
+  .form-actions {
+    border-top-color: #333;
+  }
+
+  .task-form {
+    .form-section {
+      border-bottom-color: #2a2a2a;
+    }
+
+    .form-section-title {
+      color: #ddd;
+      border-bottom-color: #333;
+    }
+
+    .form-info {
+      background: #252525;
+      border-color: #333;
+
+      .project-description {
+        color: #aaa;
+      }
+    }
+
+    .criterion-item {
+      background: #252525;
+      border-color: #333;
+    }
+
+    .criterion-header {
+      border-bottom-color: #333;
+    }
+
+    .criterion-number {
+      color: #ddd;
+    }
+
+    .criteria-summary {
+      background: linear-gradient(135deg, #2a1f10 0%, #2e1f0a 100%);
+      border-color: #6b4020;
+      color: #fdba74;
+
+      strong {
+        color: #fb923c;
+      }
+    }
+
+    .empty-criteria {
+      background: #252525;
+      border-color: #444;
+      color: #888;
+    }
+
+    .points-input {
+      background: #2a2a2a;
+      border-color: #444;
+      color: #ddd;
+
+      &::placeholder {
+        color: #666;
+      }
+    }
+  }
+}

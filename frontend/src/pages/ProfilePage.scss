@@ -886,29 +886,11 @@
               color: rgba(255, 255, 255, 0.7);
             }
           }
-        }
 
-        .security-tips {
-          background: rgba(30, 30, 30, 0.6);
-
-          h4 {
-            color: rgba(255, 255, 255, 0.95);
-          }
-
-          ul {
-            color: rgba(255, 255, 255, 0.7);
-          }
-        }
-      }
-
-      .integrations-content {
-        .google-connect-widget {
-          background: rgba(30, 30, 30, 0.6);
-          border-color: rgba(255, 255, 255, 0.1);
-
-          &:hover {
-            border-color: rgba(255, 124, 21, 0.3);
-          }
+            .status-badge {
+              background: rgba(16, 185, 129, 0.2);
+              color: #6ee7b7;
+            }
 
           .security-info {
             h4 {

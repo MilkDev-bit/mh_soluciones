@@ -965,6 +965,248 @@
   }
 }
 
+// Dark mode
+[data-theme="dark"] {
+  .task-details-view {
+    background: $neutral-800;
+  }
+
+  .task-header {
+    background: $neutral-900;
+    border-bottom-color: $neutral-700;
+
+    .header-content h2 {
+      color: $neutral-100;
+    }
+
+    .edit-title-input {
+      background: $neutral-800;
+      border-color: $neutral-600;
+      color: $neutral-100;
+    }
+
+    .header-actions {
+      .btn-icon {
+        &:hover {
+          background: $neutral-700;
+        }
+
+        &.btn-secondary {
+          background: $neutral-700;
+          color: $neutral-300;
+          border-color: $neutral-600;
+
+          &:hover {
+            background: $neutral-600;
+            color: $neutral-200;
+          }
+        }
+      }
+    }
+  }
+
+  .task-description,
+  .task-meta,
+  .upload-section,
+  .documents-section,
+  .submissions-section,
+  .details-section {
+    background: $neutral-900;
+    border-color: $neutral-700;
+
+    h3, h4 {
+      color: $neutral-100;
+    }
+  }
+
+  .task-description p {
+    color: $neutral-300;
+  }
+
+  .task-meta .meta-item {
+    span {
+      color: $neutral-300;
+
+      strong {
+        color: $neutral-100;
+      }
+    }
+  }
+
+  .task-actions {
+    border-top-color: $neutral-700;
+  }
+
+  .edit-form {
+    background: $neutral-900;
+
+    .form-group {
+      label {
+        color: $neutral-300;
+      }
+
+      input, textarea, select {
+        background: $neutral-800;
+        border-color: $neutral-600;
+        color: $neutral-100;
+
+        &::placeholder {
+          color: $neutral-500;
+        }
+      }
+    }
+  }
+
+  .upload-section {
+    .upload-area {
+      border-color: $neutral-600;
+
+      &:hover {
+        border-color: $primary-500;
+        background: rgba($primary-500, 0.05);
+      }
+    }
+
+    .file-upload-label {
+      background: $neutral-700;
+      border-color: $neutral-600;
+
+      span {
+        color: $neutral-300;
+      }
+
+      &:hover {
+        background: $neutral-600;
+      }
+    }
+
+    .submission-notes {
+      label {
+        color: $neutral-300;
+      }
+
+      textarea {
+        background: $neutral-800;
+        border-color: $neutral-600;
+        color: $neutral-100;
+      }
+    }
+  }
+
+  .document-item {
+    background: $neutral-700;
+
+    .document-info {
+      .document-name {
+        color: $neutral-100;
+      }
+
+      .document-date,
+      .document-notes {
+        color: $neutral-400;
+      }
+    }
+
+    .document-actions .btn-icon:hover {
+      background: $neutral-600;
+    }
+  }
+
+  .file-info-card {
+    background: $neutral-700;
+    border-color: $neutral-600;
+
+    &:hover {
+      background: $neutral-600;
+    }
+
+    .file-icon-wrapper {
+      background: $neutral-800;
+    }
+
+    .file-details {
+      .file-name {
+        color: $neutral-100;
+      }
+
+      .file-size {
+        color: $neutral-400;
+      }
+    }
+  }
+
+  .submission-item {
+    background: $neutral-800;
+    border-color: $neutral-700;
+  }
+
+  .submission-header {
+    .user-info .user-name {
+      color: $neutral-100;
+    }
+
+    .submission-date {
+      color: $neutral-400;
+    }
+  }
+
+  .submission-notes p {
+    color: $neutral-300;
+  }
+
+  .drive-status {
+    background: $neutral-700;
+  }
+
+  .comment-item .comment-content {
+    background: $neutral-700;
+
+    .comment-header {
+      strong {
+        color: $neutral-100;
+      }
+
+      span {
+        color: $neutral-400;
+      }
+    }
+
+    p {
+      color: $neutral-300;
+    }
+  }
+
+  .details-form {
+    border-top-color: $neutral-700;
+
+    h4 {
+      color: $neutral-100;
+    }
+
+    textarea,
+    input[type="url"],
+    input[type="file"] {
+      background: $neutral-800;
+      border-color: $neutral-600;
+      color: $neutral-100;
+
+      &::placeholder {
+        color: $neutral-500;
+      }
+    }
+  }
+
+  .empty-state {
+    .empty-icon {
+      color: $neutral-600;
+    }
+
+    .empty-text {
+      color: $neutral-400;
+    }
+  }
+}
+
 .comment-list {
   display: flex;
   flex-direction: column;
