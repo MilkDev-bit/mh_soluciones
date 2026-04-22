@@ -177,6 +177,20 @@ class ProjectComment(TimeStampedModel):
         verbose_name=_("Usuario")
     )
     comment = models.TextField(verbose_name=_("Comentario"))
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='replies',
+        verbose_name=_("Comentario padre")
+    )
+    mentioned_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='comment_mentions',
+        blank=True,
+        verbose_name=_("Usuarios mencionados")
+    )
 
     class Meta:
         verbose_name = _("Comentario de Proyecto")

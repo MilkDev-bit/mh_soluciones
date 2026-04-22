@@ -74,11 +74,29 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectCommentSerializer(serializers.ModelSerializer):
     """ Serializador para los comentarios de proyectos. """
     user = UserSerializer(read_only=True)
+    mentioned_users = UserSerializer(many=True, read_only=True)
+    mentioned_user_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        default=list
+    )
+    parent_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectComment
-        fields = ['id', 'user', 'comment', 'created_at']
+        fields = ['id', 'user', 'comment', 'created_at', 'mentioned_users', 'mentioned_user_ids', 'parent_id', 'replies']
         read_only_fields = ('id', 'created_at')
+
+    def get_replies(self, obj):
+        # Only top-level comments expose replies (prevents infinite nesting)
+        if obj.parent_id is not None:
+            return []
+        return ProjectCommentSerializer(
+            obj.replies.all().select_related('user').prefetch_related('mentioned_users'),
+            many=True
+        ).data
 
 class ProjectSubmissionSerializer(serializers.ModelSerializer):
     """ Serializador para las entregas de proyectos. """
@@ -106,7 +124,7 @@ class ProjectDetailSerializer(ProjectSerializer):
     client = UserSerializer(read_only=True)
     created_by = UserSerializer(read_only=True)
     members = serializers.SerializerMethodField()
-    comments = ProjectCommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     submissions = ProjectSubmissionSerializer(many=True, read_only=True)
 
 
@@ -131,6 +149,18 @@ class ProjectDetailSerializer(ProjectSerializer):
             many=True,
             context=self.context
         ).data
+
+    def get_comments(self, obj):
+        """
+        Returns only top-level comments (parent=None). Replies are nested inside each comment.
+        """
+        top_level = obj.comments.filter(parent=None).select_related('user').prefetch_related(
+            'mentioned_users',
+            'replies',
+            'replies__user',
+            'replies__mentioned_users',
+        )
+        return ProjectCommentSerializer(top_level, many=True).data
 
 
 class ProjectCreateUpdateSerializer(serializers.ModelSerializer):

@@ -1,0 +1,155 @@
+@import '../../assets/styles/variables';
+
+.mention-input-wrapper {
+  position: relative;
+  width: 100%;
+
+  .mention-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid $neutral-200;
+    border-radius: 10px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: $white;
+    color: $neutral-900;
+    line-height: 1.6;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-400;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+    }
+
+    &::placeholder {
+      color: $neutral-400;
+    }
+  }
+
+  .mention-dropdown {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: $white;
+    border: 1.5px solid $neutral-200;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    max-height: 240px;
+    overflow-y: auto;
+    animation: mentionFadeIn 0.12s ease;
+  }
+
+  @keyframes mentionFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .mention-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid $neutral-100;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover,
+    &.focused {
+      background: $primary-50;
+    }
+  }
+
+  .mention-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, $primary-500, $primary-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: $white;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .mention-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .mention-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: $neutral-900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mention-username {
+    font-size: 0.75rem;
+    color: $neutral-500;
+  }
+}
+
+// Dark mode
+[data-theme="dark"] {
+  .mention-input-wrapper {
+    .mention-textarea {
+      background: $neutral-800;
+      border-color: $neutral-600;
+      color: $neutral-100;
+
+      &:focus {
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+      }
+
+      &::placeholder {
+        color: $neutral-500;
+      }
+    }
+
+    .mention-dropdown {
+      background: $neutral-800;
+      border-color: $neutral-700;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .mention-item {
+      border-bottom-color: $neutral-700;
+
+      &:hover,
+      &.focused {
+        background: rgba(249, 115, 22, 0.1);
+      }
+    }
+
+    .mention-name {
+      color: $neutral-100;
+    }
+
+    .mention-username {
+      color: $neutral-400;
+    }
+  }
+}

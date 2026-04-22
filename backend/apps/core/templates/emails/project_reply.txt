@@ -1,0 +1,19 @@
+Respondieron a tu comentario en {{ project.name }}
+
+Hola {{ notified_user.first_name }},
+
+{{ author.first_name }} {{ author.last_name }} respondió a tu comentario en el proyecto "{{ project.name }}":
+
+Tu comentario:
+> {{ parent_comment.comment }}
+
+Respuesta de {{ author.first_name }}:
+{{ reply.comment }}
+
+---
+Para ver la conversación completa, visita:
+{{ frontend_url }}/projects/{{ project.id }}
+
+---
+MH Soluciones - Sistema de Gestión de Proyectos
+{{ frontend_url }}

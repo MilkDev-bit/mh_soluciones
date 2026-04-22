@@ -449,13 +449,64 @@ class ProjectCommentViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
     
     def get_queryset(self):
-        return ProjectComment.objects.filter(project_id=self.kwargs['project_pk'])
+        qs = ProjectComment.objects.filter(project_id=self.kwargs['project_pk'])
+        # For listing, only return top-level comments (replies are nested in the serializer)
+        if self.action == 'list':
+            qs = qs.filter(parent=None)
+        return qs
 
     def perform_create(self, serializer):
-        serializer.save(
-            user=self.request.user, 
-            project_id=self.kwargs['project_pk']
+        from apps.authentication.models import CustomUser
+        from utils.email_notifications import send_mention_notification, send_reply_notification
+        from ..models import ProjectMember
+
+        mentioned_user_ids = serializer.validated_data.pop('mentioned_user_ids', [])
+        parent_id = serializer.validated_data.pop('parent_id', None)
+
+        # Validate parent belongs to this project and is a top-level comment
+        parent = None
+        if parent_id:
+            try:
+                parent = ProjectComment.objects.get(
+                    id=parent_id,
+                    project_id=self.kwargs['project_pk'],
+                    parent=None  # Only allow replying to top-level comments
+                )
+            except ProjectComment.DoesNotExist:
+                pass
+
+        comment = serializer.save(
+            user=self.request.user,
+            project_id=self.kwargs['project_pk'],
+            parent=parent
         )
+
+        # Validate mentioned users are project members
+        project_member_user_ids = set(
+            ProjectMember.objects.filter(project=comment.project).values_list('user_id', flat=True)
+        )
+        valid_mention_ids = [uid for uid in mentioned_user_ids if uid in project_member_user_ids]
+
+        if valid_mention_ids:
+            valid_users = CustomUser.objects.filter(id__in=valid_mention_ids)
+            comment.mentioned_users.set(valid_users)
+
+            for user in valid_users:
+                if user.id != self.request.user.id and user.email:
+                    try:
+                        send_mention_notification(comment, user)
+                    except Exception:
+                        pass
+
+        # Send reply notification to parent comment author
+        if parent and parent.user_id != self.request.user.id and parent.user.email:
+            # Avoid double-email if author was also mentioned
+            already_notified_ids = set(valid_mention_ids)
+            if parent.user_id not in already_notified_ids:
+                try:
+                    send_reply_notification(comment, parent.user)
+                except Exception:
+                    pass
 
 class ProjectSubmissionViewSet(viewsets.ModelViewSet):
     """ ViewSet para gestionar las entregas de los proyectos. """

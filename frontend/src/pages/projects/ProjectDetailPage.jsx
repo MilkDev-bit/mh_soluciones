@@ -23,6 +23,7 @@ import { getDocumentsByProject } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
+import MentionInput from '../../components/common/MentionInput';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
 import AddMemberModal from '../../components/projects/AddMemberModal';
@@ -51,9 +52,26 @@ import ProjectForm from '../../components/projects/ProjectForm';
 import { translateStatus } from '../../utils/projectUtils';
 import { handleViewFile } from '../../utils/fileUtils';
 
-const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
+// Highlights @username mentions in comment text
+const renderCommentText = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) =>
+    /^@\w+$/.test(part) ? (
+      <span key={i} className="comment-mention">{part}</span>
+    ) : (
+      part
+    )
+  );
+};
+
+const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete, onReply, members = [] }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(comment?.comment || '');
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replyMentionIds, setReplyMentionIds] = useState([]);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const canEditOrDelete =
     currentUser?.id === comment?.user?.id ||
@@ -73,6 +91,19 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
   const handleDelete = () => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este comentario?')) {
       onDelete(comment.id);
+    }
+  };
+
+  const handleSubmitReply = async () => {
+    if (!replyText.trim()) return;
+    setIsSubmittingReply(true);
+    try {
+      await onReply(comment.id, { comment: replyText, mentioned_user_ids: replyMentionIds });
+      setReplyText('');
+      setReplyMentionIds([]);
+      setShowReplyForm(false);
+    } finally {
+      setIsSubmittingReply(false);
     }
   };
 
@@ -109,17 +140,94 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete }) => {
             </div>
           </div>
         ) : (
-          <p className="comment-text">{comment?.comment}</p>
+          <p className="comment-text">{renderCommentText(comment?.comment)}</p>
         )}
 
-        {canEditOrDelete && !isEditing && (
-          <div className="comment-actions">
-            <button onClick={() => setIsEditing(true)} title="Editar">
-              <FiEdit2 size={14} />
+        {!isEditing && (
+          <div className="comment-footer-row">
+            <button className="btn-reply-toggle" onClick={() => setShowReplyForm(v => !v)}>
+              <FiMessageSquare size={12} />
+              {showReplyForm ? 'Cancelar' : 'Responder'}
             </button>
-            <button onClick={handleDelete} title="Eliminar">
-              <FiTrash2 size={14} />
-            </button>
+            {canEditOrDelete && (
+              <div className="comment-actions">
+                <button onClick={() => setIsEditing(true)} title="Editar">
+                  <FiEdit2 size={14} />
+                </button>
+                <button onClick={handleDelete} title="Eliminar">
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {showReplyForm && (
+          <div className="reply-form">
+            <MentionInput
+              value={replyText}
+              onChange={setReplyText}
+              onMentionedUsersChange={setReplyMentionIds}
+              members={members}
+              rows={2}
+              placeholder="Escribe una respuesta... Usa @ para mencionar a alguien"
+            />
+            <div className="reply-form-actions">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => { setShowReplyForm(false); setReplyText(''); setReplyMentionIds([]); }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSubmitReply}
+                disabled={!replyText.trim() || isSubmittingReply}
+              >
+                <FiSend size={12} /> Enviar respuesta
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(comment.replies || []).length > 0 && (
+          <div className="replies-list">
+            {(comment.replies || []).map(reply => {
+              const ru = reply?.user || {};
+              const canDeleteReply =
+                currentUser?.id === reply?.user?.id ||
+                (currentUser?.role && isAdmin(currentUser.role));
+              return (
+                <div key={reply.id} className="reply-item">
+                  <img
+                    src={
+                      ru.profile_picture ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent((ru.first_name || 'U') + ' ' + (ru.last_name || ''))}`
+                    }
+                    alt="avatar"
+                    className="reply-avatar"
+                  />
+                  <div className="reply-content">
+                    <div className="reply-header">
+                      <strong>{(ru.first_name || 'Usuario') + ' ' + (ru.last_name || '')}</strong>
+                      <span>
+                        {reply.created_at ? format(parseISO(reply.created_at), 'dd MMM yyyy, HH:mm', { locale: es }) : ''}
+                      </span>
+                    </div>
+                    <p className="reply-text">{renderCommentText(reply.comment)}</p>
+                    {canDeleteReply && (
+                      <button
+                        className="btn-delete-reply"
+                        onClick={() => window.confirm('¿Eliminar esta respuesta?') && onDelete(reply.id)}
+                        title="Eliminar respuesta"
+                      >
+                        <FiTrash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -367,7 +475,9 @@ const ProjectDetailPage = () => {
   const [taskFilter, setTaskFilter] = useState('ACTIVE');
 
   const { notifyProjectChange, notifyTaskChange, tasksUpdated, consumeTasksUpdate } = useProjectContext();
-  const { register: commentRegister, handleSubmit: commentHandleSubmit, reset: commentReset } = useForm();
+  const [commentText, setCommentText] = useState('');
+  const [commentMentionIds, setCommentMentionIds] = useState([]);
+  const [visibleComments, setVisibleComments] = useState(10);
   const { register: submissionRegister, handleSubmit: submissionHandleSubmit, reset: submissionReset } = useForm();
 
   // Fetch current user
@@ -605,16 +715,34 @@ const ProjectDetailPage = () => {
     setIsAddMemberModalOpen(false);
   };
 
-  const onProjectCommentSubmit = async (data) => {
-    if (!data?.comment || !data.comment.trim()) return;
+  const onProjectCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
     try {
-      await addProjectComment(projectId, { comment: data.comment });
+      await addProjectComment(projectId, {
+        comment: commentText,
+        mentioned_user_ids: commentMentionIds,
+      });
       queryClient.invalidateQueries(['project', projectId]);
-      commentReset();
+      setCommentText('');
+      setCommentMentionIds([]);
+      setVisibleComments(10);
       toast.success('Comentario añadido');
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('No se pudo añadir el comentario.');
+    }
+  };
+
+  const handleReplyComment = async (parentId, replyData) => {
+    try {
+      await addProjectComment(projectId, { ...replyData, parent_id: parentId });
+      queryClient.invalidateQueries(['project', projectId]);
+      toast.success('Respuesta enviada');
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      toast.error('No se pudo enviar la respuesta.');
+      throw error;
     }
   };
 
@@ -656,6 +784,12 @@ const ProjectDetailPage = () => {
   }
 
   const membersList = Array.isArray(project?.members) ? project.members.filter(Boolean) : [];
+
+  // Members formatted for MentionInput: extract user from ProjectMember objects
+  const mentionableMembers = membersList
+    .map((m) => m?.user || m)
+    .filter(Boolean)
+    .filter((u) => u.id && u.username);
 
   const currentDate = new Date();
   const displayedTasks = tasks.filter(task => {
@@ -956,15 +1090,39 @@ const ProjectDetailPage = () => {
                   </h2>
                 </div>
                 <div className="comment-list">
-                  {(project?.comments || []).map((comment) => (
-                    <ProjectCommentItem key={comment.id} comment={comment} currentUser={currentUser} onUpdate={handleUpdateComment} onDelete={handleDeleteComment} />
-                  ))}
-                  {(project?.comments || []).length === 0 && <p>No hay comentarios todavía.</p>}
+                  {(() => {
+                    const allComments = project?.comments || [];
+                    const total = allComments.length;
+                    const displayed = allComments.slice(Math.max(0, total - visibleComments));
+                    const hasMore = visibleComments < total;
+                    return (
+                      <>
+                        {hasMore && (
+                          <button
+                            className="btn btn-ghost btn-load-more-comments"
+                            onClick={() => setVisibleComments(v => v + 10)}
+                          >
+                            Ver 10 comentarios anteriores ({total - visibleComments} restantes)
+                          </button>
+                        )}
+                        {displayed.map((comment) => (
+                          <ProjectCommentItem key={comment.id} comment={comment} currentUser={currentUser} onUpdate={handleUpdateComment} onDelete={handleDeleteComment} onReply={handleReplyComment} members={mentionableMembers} />
+                        ))}
+                        {total === 0 && <p>No hay comentarios todavía.</p>}
+                      </>
+                    );
+                  })()}
                 </div>
 
-                <form onSubmit={commentHandleSubmit(onProjectCommentSubmit)} className="comment-form">
-                  <textarea {...commentRegister('comment', { required: true })} placeholder="Escribe un comentario sobre el proyecto..." rows="2" />
-                  <button type="submit" className="btn btn-primary">
+                <form onSubmit={onProjectCommentSubmit} className="comment-form">
+                  <MentionInput
+                    value={commentText}
+                    onChange={setCommentText}
+                    onMentionedUsersChange={setCommentMentionIds}
+                    members={mentionableMembers}
+                    rows={2}
+                  />
+                  <button type="submit" className="btn btn-primary" disabled={!commentText.trim()}>
                     <FiSend /> Enviar
                   </button>
                 </form>

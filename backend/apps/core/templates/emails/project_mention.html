@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Te mencionaron en un comentario</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      .header p {
+        margin: 8px 0 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+      }
+      .content {
+        background: #ffffff;
+        padding: 28px;
+        border: 1px solid #e5e5e5;
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+      }
+      .mention-badge {
+        display: inline-block;
+        background: #fff7ed;
+        color: #ea580c;
+        border: 1px solid #fed7aa;
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+      .author-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .author-name {
+        font-weight: 700;
+        color: #111827;
+      }
+      .comment-box {
+        background: #fafafa;
+        border-left: 4px solid #f97316;
+        border-radius: 6px;
+        padding: 16px 18px;
+        margin: 16px 0;
+        color: #374151;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+      .project-info {
+        background: #f0f9ff;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 16px 0;
+        font-size: 0.9rem;
+        color: #0369a1;
+      }
+      .project-info strong {
+        color: #0c4a6e;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 28px;
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        margin-top: 20px;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 24px;
+        color: #9ca3af;
+        font-size: 0.8rem;
+      }
+      .footer a {
+        color: #f97316;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📣 Te mencionaron en un comentario</h1>
+        <p>Alguien quiere llamar tu atención</p>
+      </div>
+      <div class="content">
+        <span class="mention-badge">@{{ mentioned_user.username }}</span>
+
+        <div class="author-row">
+          <strong class="author-name"
+            >{{ author.first_name }} {{ author.last_name }}</strong
+          >
+          <span style="color: #6b7280"
+            >escribió en <strong>{{ project.name }}</strong>:</span
+          >
+        </div>
+
+        <div class="comment-box">{{ comment.comment }}</div>
+
+        <div class="project-info">
+          <strong>Proyecto:</strong> {{ project.name }}
+        </div>
+
+        <a href="{{ frontend_url }}/projects/{{ project.id }}" class="button">
+          Ver comentario en el proyecto
+        </a>
+      </div>
+      <div class="footer">
+        <p>MH Soluciones &mdash; Sistema de Gestión de Proyectos</p>
+        <p><a href="{{ frontend_url }}">{{ frontend_url }}</a></p>
+      </div>
+    </div>
+  </body>
+</html>

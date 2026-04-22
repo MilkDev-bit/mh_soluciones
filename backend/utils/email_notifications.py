@@ -46,6 +46,65 @@ def send_email_notification(subject, recipient_list, template_name, context, htm
         return False
 
 
+def send_mention_notification(comment, mentioned_user):
+    """
+    Send email notification when a user is @mentioned in a project comment.
+
+    Args:
+        comment: ProjectComment instance
+        mentioned_user: CustomUser instance of the user who was mentioned
+    """
+    if not mentioned_user.email:
+        return False
+
+    subject = f"Te mencionaron en {comment.project.name}"
+    context = {
+        'comment': comment,
+        'project': comment.project,
+        'mentioned_user': mentioned_user,
+        'author': comment.user,
+        'frontend_url': settings.FRONTEND_URL,
+    }
+
+    return send_email_notification(
+        subject=subject,
+        recipient_list=[mentioned_user.email],
+        template_name='emails/project_mention.txt',
+        context=context,
+        html_template_name='emails/project_mention.html',
+    )
+
+
+def send_reply_notification(reply_comment, notified_user):
+    """
+    Send email notification when someone replies to a comment.
+
+    Args:
+        reply_comment: ProjectComment instance (the reply, has a parent)
+        notified_user: CustomUser instance of the parent comment author
+    """
+    if not notified_user.email:
+        return False
+
+    subject = f"Respondieron a tu comentario en {reply_comment.project.name}"
+    context = {
+        'reply': reply_comment,
+        'parent_comment': reply_comment.parent,
+        'project': reply_comment.project,
+        'notified_user': notified_user,
+        'author': reply_comment.user,
+        'frontend_url': settings.FRONTEND_URL,
+    }
+
+    return send_email_notification(
+        subject=subject,
+        recipient_list=[notified_user.email],
+        template_name='emails/project_reply.txt',
+        context=context,
+        html_template_name='emails/project_reply.html',
+    )
+
+
 def send_calendar_event_notification(event, action='created'):
     """
     Send notification when a calendar event is created, updated, or deleted
