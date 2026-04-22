@@ -510,3 +510,257 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .task-submissions-review {
+    .review-header {
+      border-bottom-color: $neutral-700;
+
+      h2 {
+        color: $neutral-100;
+      }
+
+      .task-name {
+        color: $neutral-300;
+      }
+
+      .submissions-count {
+        background: rgba(249, 115, 22, 0.2);
+        color: $primary-300;
+      }
+    }
+
+    .empty-state {
+      color: $neutral-400;
+
+      svg {
+        color: $neutral-600;
+      }
+    }
+
+    .student-card {
+      background: $neutral-800;
+      border-color: $neutral-700;
+
+      &:hover {
+        border-color: $neutral-600;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      }
+
+      &.expanded {
+        border-color: $primary-600;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15), 0 10px 20px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    .student-header {
+      &:hover {
+        background: $neutral-700;
+      }
+    }
+
+    .student-name {
+      color: $neutral-100;
+    }
+
+    .student-email {
+      color: $neutral-400;
+    }
+
+    .submission-status {
+      &.status-submitted {
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+      }
+
+      &.status-graded {
+        background: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+      }
+
+      &.status-late {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+      }
+
+      &.status-pending {
+        background: $neutral-700;
+        color: $neutral-400;
+      }
+    }
+
+    .submission-score {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: rgba(249, 115, 22, 0.3);
+      color: $primary-300;
+
+      svg {
+        color: $primary-400;
+      }
+    }
+
+    .submission-version {
+      background: $neutral-700;
+      color: $neutral-300;
+
+      &.clickable:hover {
+        background: $neutral-600;
+        color: $neutral-100;
+      }
+    }
+
+    .student-submissions {
+      background: $neutral-900;
+      border-top-color: $neutral-700;
+
+      h4 {
+        color: $neutral-200;
+        border-bottom-color: $neutral-700;
+      }
+    }
+
+    .submission-item {
+      background: $neutral-800;
+      border-color: $neutral-700;
+
+      &:hover {
+        border-color: $neutral-600;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    .submission-version-badge {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+
+      &.clickable:hover {
+        background: rgba(59, 130, 246, 0.25);
+        border-color: rgba(59, 130, 246, 0.5);
+      }
+    }
+
+    .submission-date {
+      color: $neutral-400;
+
+      svg {
+        color: $neutral-500;
+      }
+    }
+
+    .submission-notes {
+      background: $neutral-700;
+
+      svg {
+        color: $neutral-400;
+      }
+
+      p {
+        color: $neutral-300;
+      }
+    }
+
+    .submission-link {
+      background: rgba(59, 130, 246, 0.1);
+      border-left-color: #3b82f6;
+
+      svg {
+        color: #93c5fd;
+      }
+
+      a {
+        color: #93c5fd;
+      }
+    }
+
+    .submission-files {
+      h5 {
+        color: $neutral-300;
+      }
+
+      .file-item {
+        background: $neutral-700;
+        border-color: $neutral-600;
+
+        &:hover {
+          border-color: $primary-500;
+          background: rgba(249, 115, 22, 0.1);
+        }
+
+        svg:first-child {
+          color: $primary-400;
+        }
+
+        .file-name {
+          color: $neutral-200;
+        }
+
+        .file-size {
+          color: $neutral-400;
+        }
+
+        .file-download {
+          color: $primary-400;
+
+          &:hover {
+            background: rgba(249, 115, 22, 0.15);
+            color: $primary-300;
+          }
+        }
+
+        .file-pending {
+          color: $neutral-400;
+        }
+      }
+    }
+
+    .grading-info {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+      border-color: rgba(16, 185, 129, 0.4);
+
+      .grade-header {
+        border-bottom-color: rgba(16, 185, 129, 0.25);
+
+        .grade-icon {
+          color: #6ee7b7;
+        }
+
+        h5 {
+          color: #6ee7b7;
+        }
+      }
+
+      .grade-score {
+        strong {
+          color: $neutral-300;
+        }
+
+        .score-value {
+          color: #6ee7b7;
+        }
+      }
+
+      .grade-feedback {
+        background: $neutral-700;
+        border-color: rgba(16, 185, 129, 0.25);
+
+        strong {
+          color: $neutral-300;
+        }
+
+        p {
+          color: $neutral-300;
+        }
+      }
+
+      .grade-date {
+        color: $neutral-400;
+
+        svg {
+          color: $neutral-500;
+        }
+      }
+    }
+  }
+}

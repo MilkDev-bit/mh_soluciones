@@ -483,6 +483,97 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
           font-style: italic;
         }
         .submission-notes-preview p { margin: 0; }
+
+        /* Dark mode */
+        [data-theme="dark"] .grading-form .grading-header {
+          border-bottom-color: #404040;
+        }
+        [data-theme="dark"] .grading-form .grading-header h3 {
+          color: #f5f5f5;
+        }
+        [data-theme="dark"] .grading-form .student-info {
+          background: #262626;
+          border: 1px solid #404040;
+        }
+        [data-theme="dark"] .grading-form .student-info p {
+          color: #d4d4d4;
+        }
+        [data-theme="dark"] .grading-form .criteria-section h4 {
+          color: #e5e5e5;
+        }
+        [data-theme="dark"] .grading-form .total-score {
+          background: rgba(249, 115, 22, 0.15);
+          border-color: rgba(249, 115, 22, 0.35);
+          color: #fdba74;
+        }
+        [data-theme="dark"] .grading-form .form-label {
+          color: #d4d4d4;
+        }
+        [data-theme="dark"] .grading-form .form-input {
+          background: #262626;
+          border-color: #404040;
+          color: #e5e5e5;
+          color-scheme: dark;
+        }
+        [data-theme="dark"] .grading-form .form-input::placeholder {
+          color: #737373;
+        }
+        [data-theme="dark"] .grading-form .form-input:focus {
+          background: #262626;
+          border-color: #f97316;
+          box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+        }
+        [data-theme="dark"] .grading-form small {
+          color: #a3a3a3;
+        }
+        [data-theme="dark"] .grading-form .form-actions {
+          border-top-color: #404040;
+        }
+        [data-theme="dark"] .grading-form .submission-files-preview {
+          background: rgba(16, 185, 129, 0.1);
+          border-color: rgba(16, 185, 129, 0.25);
+        }
+        [data-theme="dark"] .grading-form .submission-files-preview h4 {
+          color: #6ee7b7;
+        }
+        [data-theme="dark"] .grading-form .file-item-preview {
+          background: #262626;
+          border-color: rgba(16, 185, 129, 0.2);
+        }
+        [data-theme="dark"] .grading-form .file-name {
+          color: #e5e5e5;
+        }
+        [data-theme="dark"] .grading-form .file-size {
+          color: #a3a3a3;
+        }
+        [data-theme="dark"] .grading-form .btn-drive {
+          background: rgba(59, 130, 246, 0.15);
+          color: #93c5fd;
+          border-color: rgba(59, 130, 246, 0.3);
+        }
+        [data-theme="dark"] .grading-form .btn-drive:hover {
+          background: rgba(59, 130, 246, 0.25);
+        }
+        [data-theme="dark"] .grading-form .btn-download {
+          background: #333;
+          color: #d4d4d4;
+          border-color: #404040;
+        }
+        [data-theme="dark"] .grading-form .btn-download:hover {
+          background: #404040;
+        }
+        [data-theme="dark"] .grading-form .submission-link-preview {
+          background: rgba(59, 130, 246, 0.1);
+          border-color: rgba(59, 130, 246, 0.25);
+        }
+        [data-theme="dark"] .grading-form .submission-link-preview a {
+          color: #93c5fd;
+        }
+        [data-theme="dark"] .grading-form .submission-notes-preview {
+          background: #262626;
+          border-left-color: #525252;
+          color: #a3a3a3;
+        }
       `}</style>
     </form>
   );
