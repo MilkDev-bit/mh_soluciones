@@ -168,7 +168,8 @@ const ArchivosPage = () => {
       }
 
       // Filter by selected Drive folder (send folder ID to backend)
-      if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
+      // Only send if it's a real Drive folder ID, not a static filter
+      if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_') && carpetasDrive.length > 0) {
         params.drive_folder_id = filtroCarpeta;
       }
 
@@ -232,8 +233,8 @@ const ArchivosPage = () => {
           formData.append('project', proyectoSeleccionado);
 
           // Add target folder ID if a specific folder is selected
-          // Only send if it's not 'ALL' and we have actual folder data
-          if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
+          // Only send if it's not 'ALL' and not a STATIC folder, and we have actual folder data
+          if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_') && carpetasDrive.length > 0) {
             formData.append('target_folder_id', filtroCarpeta);
           }
 
@@ -404,11 +405,20 @@ const ArchivosPage = () => {
 
     // Filter by selected Drive folder (client-side fallback using folder ID)
     let coincideCarpeta = true;
-    if (filtroCarpeta && filtroCarpeta !== 'ALL' && carpetasDrive.length > 0) {
-      // Since we already filter by drive_folder_id in the backend fetch,
-      // this client-side check uses drive_parent_folder_id as a secondary guard.
-      // Files whose parent folder ID matches the selected folder are shown.
-      coincideCarpeta = archivo.drive_parent_folder_id === filtroCarpeta;
+    if (filtroCarpeta && filtroCarpeta !== 'ALL') {
+      if (filtroCarpeta.startsWith('STATIC_')) {
+        const targetName = filtroCarpeta.replace('STATIC_', '').toLowerCase();
+        const driveParent = (archivo.drive_parent_folder_name || '').toLowerCase();
+        const folderType = (archivo.folder_type || '').toLowerCase();
+        const name = (archivo.name || '').toLowerCase();
+        
+        coincideCarpeta = driveParent.includes(targetName) || folderType.includes(targetName) || name.includes(targetName);
+      } else if (carpetasDrive.length > 0) {
+        // Since we already filter by drive_folder_id in the backend fetch,
+        // this client-side check uses drive_parent_folder_id as a secondary guard.
+        // Files whose parent folder ID matches the selected folder are shown.
+        coincideCarpeta = archivo.drive_parent_folder_id === filtroCarpeta;
+      }
     }
 
     // Filter by date
@@ -463,7 +473,7 @@ const ArchivosPage = () => {
               onChange={(e) => setProyectoSeleccionado(e.target.value || null)}
               className="proyecto-select"
             >
-              <option value="">Seleccionar proyecto...</option>
+              <option value="">Todos los proyectos</option>
               {proyectos.map(proyecto => (
                 <option key={proyecto.id} value={proyecto.id}>
                   {proyecto.name}
@@ -495,21 +505,28 @@ const ArchivosPage = () => {
             className="filtro-carpeta"
             value={filtroCarpeta}
             onChange={(e) => setFiltroCarpeta(e.target.value)}
-            disabled={cargandoCarpetas || !proyectoSeleccionado}
+            disabled={cargandoCarpetas && !!proyectoSeleccionado}
           >
-            {carpetasDrive.length > 1 && (
-              <option value="ALL">Todas las carpetas</option>
+            <option value="ALL">Todas las carpetas</option>
+            
+            {!proyectoSeleccionado && [
+              'Matriz de cumplimiento SH',
+              'QR WEEKLY',
+              'PIRAMIDE SH',
+              'Campañas',
+              'KPI',
+              'Platicas de seguridad'
+            ].map(nombre => (
+              <option key={`STATIC_${nombre}`} value={`STATIC_${nombre}`}>{nombre}</option>
+            ))}
+
+            {proyectoSeleccionado && carpetasDrive.length === 0 && !cargandoCarpetas && (
+              <option value="ALL" disabled>Carpeta del proyecto</option>
             )}
-            {carpetasDrive.length === 0 && !proyectoSeleccionado && (
-              <option value="ALL">Selecciona un proyecto primero</option>
+            {proyectoSeleccionado && cargandoCarpetas && (
+              <option value="ALL" disabled>Cargando carpetas...</option>
             )}
-            {carpetasDrive.length === 0 && proyectoSeleccionado && !cargandoCarpetas && (
-              <option value="ALL">Carpeta del proyecto</option>
-            )}
-            {cargandoCarpetas && (
-              <option value="ALL">Cargando carpetas...</option>
-            )}
-            {carpetasDrive.map(carpeta => (
+            {proyectoSeleccionado && carpetasDrive.map(carpeta => (
               <option key={carpeta.id} value={carpeta.id}>
                 {carpeta.isProjectRoot ? `📁 ${carpeta.name} (Raíz)` : carpeta.name}
               </option>
@@ -596,6 +613,24 @@ const ArchivosPage = () => {
           )}
         </div>
       </div>
+
+      {filtroCarpeta.startsWith('STATIC_') && archivosFiltrados.length > 0 && !cargando && !error && (
+        <div style={{ padding: '0 2rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', background: 'var(--primary-color, #3b82f6)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+            onClick={() => {
+              toast.success(`Iniciando descarga de ${archivosFiltrados.length} archivos...`);
+              archivosFiltrados.forEach((archivo, idx) => {
+                setTimeout(() => {
+                  handleDownloadArchivo(archivo);
+                }, idx * 800); // 800ms between downloads
+              });
+            }}
+          >
+            <FiDownload /> Descargar Todos los Archivos ({archivosFiltrados.length})
+          </button>
+        </div>
+      )}
 
       {cargando ? (
         <div className="cargando">

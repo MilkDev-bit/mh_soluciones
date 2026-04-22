@@ -420,6 +420,128 @@
   }
 }
 
+// Dark mode via data-theme attribute (ThemeContext)
+[data-theme="dark"] {
+  .modal-overlay {
+    background: rgba($neutral-950, 0.6);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+  }
+
+  .modal-content {
+    background: $neutral-900;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 0 100px rgba(79, 70, 229, 0.2);
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, rgba($primary-900, 0.3) 0%, rgba($secondary-900, 0.2) 100%);
+    border-bottom-color: rgba($neutral-700, 0.8);
+
+    &::after {
+      background: linear-gradient(90deg, transparent, rgba($primary-400, 0.2), transparent);
+    }
+
+    .modal-title {
+      color: $neutral-100;
+    }
+
+    .modal-close-btn {
+      color: $neutral-400;
+
+      &:hover {
+        background: rgba($error, 0.15);
+        color: $error-100;
+      }
+    }
+  }
+
+  .modal-body {
+    color: $neutral-200;
+
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, $primary-600, $primary-700);
+
+      &:hover {
+        background: linear-gradient(180deg, $primary-500, $primary-600);
+      }
+    }
+  }
+
+  .modal-footer {
+    background: rgba($neutral-800, 0.5);
+    border-top-color: rgba($neutral-700, 0.8);
+  }
+
+  .modal-with-image {
+    .modal-header {
+      .modal-title {
+        background: linear-gradient(transparent, rgba($neutral-900, 0.9));
+      }
+
+      .modal-close-btn {
+        background: rgba($neutral-800, 0.7);
+
+        &:hover {
+          background: rgba($neutral-800, 0.9);
+        }
+      }
+    }
+  }
+
+  .modal-with-sidebar {
+    .modal-sidebar {
+      background: $neutral-800;
+      border-right-color: $neutral-700;
+
+      .sidebar-title {
+        color: $neutral-400;
+      }
+
+      .menu-link {
+        color: $neutral-300;
+
+        &:hover,
+        &.active {
+          color: $primary-400;
+        }
+      }
+    }
+
+    @media (max-width: $breakpoint-md) {
+      .modal-sidebar {
+        border-bottom-color: $neutral-700;
+      }
+    }
+  }
+
+  .modal-alert {
+    .alert-title {
+      color: $neutral-100;
+    }
+
+    .alert-message {
+      color: $neutral-400;
+    }
+  }
+
+  .modal-confirm {
+    .confirm-content {
+      .confirm-title {
+        color: $neutral-100;
+      }
+
+      .confirm-message {
+        color: $neutral-400;
+      }
+    }
+  }
+}
+
+// Dark mode via OS preference (fallback)
 @media (prefers-color-scheme: dark) {
   .modal-overlay {
     background: rgba($neutral-950, 0.6);
@@ -459,6 +581,8 @@
   }
   
   .modal-body {
+    color: $neutral-200;
+
     &::-webkit-scrollbar-thumb {
       background: linear-gradient(180deg, $primary-600, $primary-700);
       

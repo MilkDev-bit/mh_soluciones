@@ -901,3 +901,177 @@
     }
   }
 }
+
+// ==========================================
+// DARK MODE
+// ==========================================
+[data-theme="dark"] {
+  .page-header {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.9) 100%);
+    border-color: rgba($neutral-700, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+    .project-title-detail {
+      background: linear-gradient(135deg, $neutral-100 0%, $neutral-300 50%, $primary-400 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .project-description-detail {
+      color: $neutral-400;
+    }
+  }
+
+  .glass-card {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.9) 100%);
+    border-color: rgba($neutral-700, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+    &:hover {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  .section-header {
+    border-bottom-color: rgba($neutral-700, 0.6);
+
+    h2, h3 {
+      color: $neutral-100;
+    }
+  }
+
+  .task-item {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.8) 0%, rgba($neutral-900, 0.6) 100%);
+    border-color: rgba($neutral-700, 0.5);
+    color: $neutral-100;
+
+    .task-info {
+      .task-title { color: $neutral-100; }
+      .task-due-date { color: $neutral-400; }
+    }
+
+    .task-documents-badge {
+      background: rgba($neutral-700, 0.8);
+      color: $neutral-300;
+    }
+
+    &:hover {
+      background: linear-gradient(135deg, rgba($primary-900, 0.3) 0%, rgba($neutral-800, 0.9) 100%);
+      border-color: $primary-700;
+    }
+  }
+
+  .member-item {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.5) 0%, rgba($neutral-900, 0.8) 100%);
+
+    &:hover {
+      background: linear-gradient(135deg, rgba($primary-900, 0.3) 0%, rgba($neutral-800, 0.9) 100%);
+    }
+
+    .member-info {
+      .member-name { color: $neutral-100; }
+      .member-role { color: $neutral-400; }
+    }
+  }
+
+  .comment-item,
+  .submission-item {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.9) 0%, rgba($neutral-900, 0.6) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+    .comment-content {
+      .comment-header {
+        strong { color: $neutral-100; }
+        span { color: $neutral-500; }
+      }
+      .comment-text { color: $neutral-300; }
+    }
+
+    .comment-actions,
+    .submission-actions {
+      button {
+        background: rgba($neutral-700, 0.9);
+        border-color: rgba($neutral-600, 0.5);
+        color: $neutral-300;
+
+        &:hover {
+          background: $neutral-700;
+          color: $neutral-100;
+        }
+      }
+    }
+  }
+
+  .submission-item {
+    .submission-header {
+      .submission-user-info {
+        strong { color: $neutral-100; }
+        span { color: $neutral-500; }
+      }
+    }
+
+    .submission-body {
+      .notes {
+        color: $neutral-300;
+        background: rgba($neutral-800, 0.5);
+      }
+    }
+
+    .edit-submission-form,
+    .edit-comment-form {
+      label { color: $neutral-300; }
+
+      textarea, input {
+        background: rgba($neutral-800, 0.5);
+        border-color: rgba($neutral-600, 0.5);
+        color: $neutral-100;
+
+        &:focus {
+          background: $neutral-800;
+          border-color: $primary-500;
+        }
+      }
+    }
+  }
+
+  .event-item {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.9) 0%, rgba($neutral-900, 0.6) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+    .event-content {
+      .event-title { color: $neutral-100; }
+      .event-date { color: $neutral-400; }
+      .event-description { color: $neutral-300; }
+    }
+  }
+
+  .comment-form,
+  .submission-form {
+    border-top-color: rgba($neutral-700, 0.6);
+
+    h4 { color: $neutral-100; }
+
+    textarea,
+    input[type="url"],
+    input[type="file"] {
+      background: rgba($neutral-800, 0.5);
+      border-color: rgba($neutral-600, 0.5);
+      color: $neutral-100;
+
+      &:focus {
+        background: $neutral-800;
+        border-color: $primary-500;
+      }
+    }
+  }
+
+  .no-events-message {
+    color: $neutral-500;
+  }
+
+  .empty-list-message {
+    color: $neutral-500;
+    h2 { color: $neutral-400; }
+  }
+}

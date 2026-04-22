@@ -307,3 +307,42 @@
     }
   }
 }
+
+// Restore glassmorphism look in dark mode
+[data-theme="dark"] {
+  .student-performance {
+    .student-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+      border-color: rgba(255, 255, 255, 0.1);
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .student-stats .stat-card {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.05);
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.3);
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+
+      .progress-bar-container .progress-bar {
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+
+  .student-performance-loading,
+  .student-performance-error,
+  .student-performance-empty {
+    .loading-spinner {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
