@@ -237,6 +237,8 @@
   }
 
   .modal-body {
+    background: $neutral-800;
+
     &::-webkit-scrollbar-track {
       background: $neutral-700;
     }
@@ -501,6 +503,7 @@
   }
 
   .modal-body {
+    background: $neutral-900;
     color: $neutral-200;
 
     &::-webkit-scrollbar-thumb {
@@ -622,6 +625,7 @@
   }
   
   .modal-body {
+    background: $neutral-900;
     color: $neutral-200;
 
     &::-webkit-scrollbar-thumb {
