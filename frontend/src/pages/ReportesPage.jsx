@@ -28,9 +28,8 @@ import {
   Filler
 } from 'chart.js';
 import { Pie, Bar, Line } from 'react-chartjs-2';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics } from '../services/reportService';
 import { getProjects } from '../services/projectService';
@@ -162,7 +161,7 @@ const ReportesPage = () => {
       const proyectos = estadisticas?.tareasPorProyecto || [];
       const tableData = proyectos.map((p, i) => [i + 1, p.project_name, p.task_count, 'Activo']);
       
-      pdf.autoTable({
+      autoTable(pdf, {
         startY: 70,
         head: [['#', 'Proyecto', 'Tareas', 'Estado']],
         body: tableData,

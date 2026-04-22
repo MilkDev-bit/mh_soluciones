@@ -58,6 +58,7 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
+        color-scheme: light dark;
 
         &:focus {
           border-color: $primary-500;
