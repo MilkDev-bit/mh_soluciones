@@ -4,12 +4,12 @@ export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage first
+    // Si el usuario guardó una preferencia manual, usarla
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
+    if (savedTheme !== null) {
       return savedTheme === 'dark';
     }
-    // Check system preference
+    // Sin preferencia manual: seguir el tema del navegador/SO
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
@@ -23,17 +23,15 @@ export const ThemeProvider = ({ children }) => {
       document.body.classList.add('light-mode');
       document.body.classList.remove('dark-mode');
     }
-    // Save preference
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    // NO guardamos en localStorage aquí; solo se guarda al hacer toggle manual
   }, [isDarkMode]);
 
-  // Listen for system theme changes
+  // Seguir cambios del tema del sistema si el usuario no ha elegido manualmente
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e) => {
-      const savedTheme = localStorage.getItem('theme');
-      // Only auto-switch if user hasn't manually set a preference
-      if (!savedTheme) {
+      // Solo seguir el sistema si no hay preferencia manual guardada
+      if (localStorage.getItem('theme') === null) {
         setIsDarkMode(e.matches);
       }
     };
@@ -43,7 +41,12 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
+    setIsDarkMode(prev => {
+      const next = !prev;
+      // Guardar en localStorage solo cuando el usuario cambia manualmente
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+      return next;
+    });
   };
 
   return (
