@@ -181,7 +181,7 @@
 }
 
 // Dark mode support
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .project-progress-charts {
     background: $neutral-900;
     border-color: $neutral-700;
