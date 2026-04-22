@@ -603,3 +603,86 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .page-header {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.9) 0%, rgba($neutral-900, 0.8) 100%);
+    border-color: rgba($neutral-700, 0.5);
+
+    h1 {
+      background: linear-gradient(135deg, $neutral-100 0%, $neutral-300 50%, $primary-400 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions .search-box {
+      background: rgba($neutral-700, 0.6);
+      border-color: rgba($primary-500, 0.3);
+
+      &:focus-within {
+        background: $neutral-800;
+        border-color: $primary-500;
+      }
+
+      input {
+        color: $neutral-100;
+
+        &::placeholder {
+          color: $neutral-500;
+        }
+      }
+    }
+  }
+
+  .status-filter-bar {
+    background: rgba($neutral-800, 0.8);
+    border-color: rgba($neutral-700, 0.5);
+  }
+
+  .status-filter-btn {
+    border-color: rgba($neutral-600, 0.7);
+    color: $neutral-400;
+
+    &:hover {
+      border-color: $primary-400;
+      color: $primary-400;
+      background: rgba($primary-500, 0.1);
+    }
+  }
+
+  .empty-state {
+    background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.8) 100%);
+    border-color: rgba($neutral-600, 0.4);
+
+    h2 {
+      background: linear-gradient(135deg, $neutral-200 0%, $neutral-400 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    p {
+      color: $neutral-400;
+    }
+  }
+
+  .pagination-controls {
+    background: rgba($neutral-800, 0.7);
+    border-color: rgba($neutral-700, 0.5);
+
+    .page-number {
+      color: $neutral-300;
+    }
+
+    .btn-ghost {
+      color: $neutral-400;
+
+      &:hover:not(:disabled) {
+        color: $primary-400;
+        background: rgba($primary-500, 0.1);
+      }
+    }
+  }
+}

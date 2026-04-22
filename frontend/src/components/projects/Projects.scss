@@ -286,7 +286,7 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .projects-page {
     background: $background-dark;
   }
@@ -343,6 +343,18 @@
       color: $neutral-400;
     }
   }
+
+  .project-dates {
+    background: rgba($neutral-700, 0.3);
+
+    .date-text {
+      color: $neutral-400;
+    }
+  }
+
+  .progress-bar-container {
+    background: $neutral-700;
+  }
 }
 
 .project-card-link:focus-visible {
@@ -394,14 +406,6 @@
     color: $neutral-600;
     font-weight: 500;
   }
-  
-  @media (prefers-color-scheme: dark) {
-    background: rgba($neutral-700, 0.3);
-    
-    .date-text {
-      color: $neutral-400;
-    }
-  }
 }
 
 .progress-bar-container {
@@ -427,10 +431,6 @@
       background: linear-gradient(90deg, transparent, rgba($neutral-50, 0.3), transparent);
       animation: progressShine 2s infinite;
     }
-  }
-  
-  @media (prefers-color-scheme: dark) {
-    background: $neutral-700;
   }
 }
 

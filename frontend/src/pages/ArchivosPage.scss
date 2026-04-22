@@ -831,3 +831,152 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .archivos-page {
+    .page-header {
+      h1 {
+        color: #f0f0f0;
+      }
+
+      .page-subtitle {
+        color: #aaa;
+      }
+    }
+
+    .archivos-toolbar {
+      .toolbar-izquierda {
+        .proyecto-filter-container {
+          label {
+            color: #aaa;
+          }
+
+          .proyecto-select {
+            background: #2a2a2a;
+            border-color: #444;
+            color: #ddd;
+          }
+        }
+
+        .busqueda-container {
+          background: #2a2a2a;
+          border-color: #444;
+
+          input {
+            background: transparent;
+            color: #ddd;
+
+            &::placeholder {
+              color: #666;
+            }
+          }
+        }
+
+        .filtro-tipo,
+        .filtro-carpeta,
+        .fecha-rango-select {
+          background: #2a2a2a;
+          border-color: #444;
+          color: #ddd;
+        }
+
+        .fecha-personalizada input[type="date"] {
+          background: #2a2a2a;
+          border-color: #444;
+          color: #ddd;
+
+          &:disabled {
+            background: #1e1e1e;
+          }
+        }
+      }
+
+      .toolbar-derecha {
+        .vista-toggle {
+          background: #2a2a2a;
+          border-color: #444;
+
+          button {
+            background: #2a2a2a;
+            color: #aaa;
+
+            &:not(:last-child) {
+              border-right-color: #444;
+            }
+
+            &:hover:not(.activo) {
+              background: #333;
+            }
+
+            &.activo {
+              background: #ff7c15;
+              color: white;
+            }
+          }
+        }
+      }
+    }
+
+    .zona-subida .zona-contenido {
+      background: #1e1e1e;
+      border-color: #444;
+
+      &.zona-deshabilitada {
+        background: #252525;
+      }
+
+      p {
+        color: #aaa;
+
+        &.zona-ayuda {
+          color: #666;
+        }
+      }
+    }
+
+    .archivos-contenedor {
+      &.grid .archivo-item,
+      &.list .archivo-item {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+        .archivo-thumbnail {
+          background: #2a2a2a;
+        }
+
+        .archivo-info {
+          .archivo-nombre {
+            color: #f0f0f0;
+          }
+
+          .archivo-meta {
+            color: #777;
+          }
+        }
+
+        .archivo-acciones .btn-icono {
+          border-color: #444;
+          color: #aaa;
+
+          &:hover:not(:disabled) {
+            background: #2a2a2a;
+          }
+        }
+      }
+    }
+
+    .cargando,
+    .error-container,
+    .sin-archivos {
+      p {
+        color: #aaa;
+      }
+
+      .spinner {
+        border-color: #333;
+        border-top-color: #ff7c15;
+      }
+    }
+  }
+}

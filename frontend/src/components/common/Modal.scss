@@ -207,6 +207,47 @@
   }
 }
 
+// Dark mode
+[data-theme="dark"] {
+  .modal-content {
+    background: $neutral-800;
+    border-color: rgba($neutral-600, 0.3);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 0 100px rgba(79, 70, 229, 0.15);
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, rgba($neutral-700, 0.6) 0%, rgba($neutral-800, 0.5) 100%);
+    border-bottom-color: rgba($neutral-600, 0.5);
+
+    .modal-title {
+      color: $neutral-100;
+    }
+
+    .modal-close-btn {
+      color: $neutral-400;
+
+      &:hover {
+        background: rgba($error, 0.15);
+        color: $error;
+      }
+    }
+  }
+
+  .modal-body {
+    &::-webkit-scrollbar-track {
+      background: $neutral-700;
+    }
+  }
+
+  .modal-footer {
+    background: $neutral-900;
+    border-top-color: rgba($neutral-600, 0.5);
+  }
+}
+
 .modal-with-image {
   .modal-header {
     position: relative;
@@ -541,8 +582,8 @@
   }
 }
 
-// Dark mode via OS preference (fallback)
-@media (prefers-color-scheme: dark) {
+// Dark mode via app theme toggle
+[data-theme="dark"] {
   .modal-overlay {
     background: rgba($neutral-950, 0.6);
     backdrop-filter: blur(16px) saturate(180%);

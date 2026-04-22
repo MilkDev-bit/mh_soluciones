@@ -334,3 +334,86 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .actividad-page {
+    .page-header {
+      h1 {
+        color: #f0f0f0;
+      }
+
+      .page-subtitle {
+        color: #aaa;
+      }
+    }
+
+    .actividad-filtros {
+      .filtro-btn {
+        background: #2a2a2a;
+        border-color: #444;
+        color: #ccc;
+
+        &:hover:not(:disabled) {
+          border-color: #ff7c15;
+          color: #ff7c15;
+        }
+
+        &.activo {
+          background: #ff7c15;
+          border-color: #ff7c15;
+          color: white;
+        }
+      }
+    }
+
+    .actividad-lista {
+      background: #1e1e1e;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+      .actividad-item {
+        border-bottom-color: #2e2e2e;
+
+        &:hover {
+          background-color: #252525;
+        }
+
+        &.no-leida {
+          background-color: #2a1f13;
+
+          &:hover {
+            background-color: #2e2214;
+          }
+        }
+
+        .actividad-contenido {
+          .actividad-header .actividad-titulo {
+            color: #f0f0f0;
+          }
+
+          .actividad-descripcion {
+            color: #aaa;
+          }
+
+          .actividad-meta,
+          .actividad-fecha {
+            color: #777;
+          }
+        }
+      }
+    }
+
+    .cargando,
+    .error-container,
+    .sin-actividades {
+      p {
+        color: #aaa;
+      }
+
+      .spinner {
+        border-color: #333;
+        border-top-color: #ff7c15;
+      }
+    }
+  }
+}

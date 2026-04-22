@@ -213,7 +213,7 @@
 }
 
 // Dark mode support
-@media (prefers-color-scheme: dark) {
+[data-theme="dark"] {
   .notifications-list {
     .skeleton-item {
       background: #2a2a2a;

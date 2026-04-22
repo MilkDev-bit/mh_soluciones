@@ -703,3 +703,164 @@
     }
   }
 }
+
+// Dark mode
+[data-theme="dark"] {
+  .calendar-page {
+    background: transparent;
+
+    .page-header {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.85) 100%);
+      border-color: rgba($neutral-700, 0.5);
+
+      h1 {
+        background: linear-gradient(135deg, $neutral-100 0%, $neutral-300 50%, $primary-400 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .page-header-actions .custom-select-wrapper .project-select {
+        background: $neutral-800;
+        border-color: rgba($neutral-600, 0.5);
+        color: $neutral-200;
+
+        &:disabled {
+          background: $neutral-900;
+          color: $neutral-500;
+        }
+      }
+    }
+
+    .calendar-container {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.9) 100%);
+      border-color: rgba($neutral-700, 0.5);
+
+      .fc {
+        --fc-border-color: rgba(75, 75, 75, 0.6);
+        --fc-page-bg-color: transparent;
+        --fc-neutral-bg-color: rgba(40, 40, 40, 0.5);
+
+        .fc-toolbar-title {
+          background: linear-gradient(135deg, $neutral-100 0%, $neutral-300 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .fc-button {
+          background: $neutral-800;
+          border-color: rgba($neutral-600, 0.6);
+          color: $neutral-300;
+
+          &:hover:not(:disabled) {
+            background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+            border-color: $primary-500;
+            color: $white;
+          }
+
+          &.fc-button-active {
+            background: linear-gradient(135deg, $primary-600 0%, $primary-700 100%);
+            border-color: $primary-600;
+            color: $white;
+          }
+        }
+
+        .fc-col-header-cell {
+          background: linear-gradient(135deg, rgba($neutral-700, 0.5) 0%, rgba($neutral-800, 0.3) 100%);
+          border-color: rgba($neutral-600, 0.5);
+
+          .fc-col-header-cell-cushion {
+            color: $neutral-300;
+          }
+        }
+
+        .fc-daygrid-day {
+          background: rgba($neutral-800, 0.5);
+          border-color: rgba($neutral-700, 0.4);
+
+          &:hover {
+            background: rgba($neutral-700, 0.4);
+          }
+        }
+
+        .fc-daygrid-day-number {
+          color: $neutral-400;
+        }
+
+        .fc-day-today {
+          background: linear-gradient(135deg, rgba($primary-900, 0.4) 0%, rgba($primary-800, 0.3) 100%) !important;
+        }
+
+        .fc-more-link {
+          color: $primary-400;
+          background: rgba($primary-900, 0.5);
+
+          &:hover {
+            background: rgba($primary-800, 0.7);
+          }
+        }
+      }
+    }
+
+    .filters-bar {
+      border-bottom-color: rgba($neutral-600, 0.6);
+
+      .filter-group {
+        color: $neutral-300;
+
+        label {
+          color: $neutral-300;
+        }
+      }
+    }
+
+    .event-item {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.9) 0%, rgba($neutral-900, 0.6) 100%);
+
+      &:hover {
+        background: linear-gradient(135deg, rgba($neutral-700, 0.5) 0%, rgba($neutral-800, 0.95) 100%);
+      }
+
+      .event-date {
+        background: linear-gradient(135deg, rgba($neutral-700, 0.6) 0%, rgba($neutral-800, 0.8) 100%);
+        border-color: rgba($primary-700, 0.5);
+
+        .day {
+          color: $neutral-100;
+        }
+      }
+
+      .event-details {
+        .event-title {
+          color: $neutral-100;
+        }
+
+        .event-time {
+          color: $neutral-400;
+        }
+
+        .event-description {
+          color: $neutral-400;
+        }
+      }
+    }
+
+    .empty-state {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.9) 100%);
+      border-color: rgba($neutral-700, 0.5);
+
+      h2 {
+        color: $neutral-200;
+      }
+
+      p {
+        color: $neutral-400;
+      }
+    }
+
+    .header-subtitle {
+      color: $neutral-400;
+    }
+  }
+}

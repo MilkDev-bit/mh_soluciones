@@ -377,6 +377,90 @@
   }
 }
 
+// Dark mode
+[data-theme="dark"] {
+  .tasks-page {
+    .page-header {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.85) 100%);
+      border-color: rgba($neutral-700, 0.5);
+
+      .header-content h1 {
+        color: $neutral-100;
+      }
+    }
+
+    .glass-card {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.95) 0%, rgba($neutral-900, 0.9) 100%);
+      border-color: rgba($neutral-700, 0.5);
+    }
+
+    .filters-bar {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.8) 0%, rgba($neutral-900, 0.6) 100%);
+      border-color: rgba($neutral-600, 0.3);
+
+      .filter-group {
+        label {
+          color: $neutral-300;
+        }
+
+        .form-select {
+          background: $neutral-800;
+          border-color: rgba($neutral-600, 0.5);
+          color: $neutral-200;
+
+          &:focus {
+            border-color: $primary-500;
+          }
+        }
+      }
+    }
+
+    .task-column {
+      background: linear-gradient(135deg, rgba($neutral-800, 0.6) 0%, rgba($neutral-900, 0.4) 100%);
+      border-color: rgba($neutral-700, 0.5);
+
+      .task-column-header {
+        background: $neutral-800;
+
+        h2 {
+          color: $neutral-100;
+        }
+      }
+    }
+
+    .task-card,
+    .task-list-item {
+      background: $neutral-800;
+      border-color: rgba($neutral-700, 0.6);
+
+      &:hover {
+        box-shadow: 0 8px 24px rgba($primary-500, 0.2);
+        border-color: $primary-500;
+      }
+
+      .task-card-header .task-title,
+      .task-list-header .task-title {
+        color: $neutral-100;
+      }
+
+      .task-description {
+        color: $neutral-400;
+      }
+
+      .task-deadline,
+      .task-assignee,
+      .task-documents,
+      .task-meta-item {
+        color: $neutral-400;
+      }
+    }
+
+    .empty-state {
+      color: $neutral-500;
+    }
+  }
+}
+
 // List view for non-student roles (task creators/reviewers)
 .tasks-list {
   .tasks-list-container {
