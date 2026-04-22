@@ -621,3 +621,33 @@
     }
   }
 }
+
+// Dark mode for list view (non-student)
+[data-theme="dark"] {
+  .tasks-list .task-list-item {
+    background: $neutral-800;
+    border-color: rgba($neutral-700, 0.6);
+    box-shadow: none;
+
+    &:hover {
+      box-shadow: 0 8px 24px rgba($primary-500, 0.2);
+      border-color: $primary-500;
+    }
+
+    .task-list-header {
+      .task-title {
+        color: $neutral-100;
+      }
+    }
+
+    .task-description {
+      color: $neutral-400;
+    }
+
+    .task-list-meta {
+      .task-meta-item {
+        color: $neutral-400;
+      }
+    }
+  }
+}
