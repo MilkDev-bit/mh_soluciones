@@ -98,6 +98,31 @@ const downloadFile = async (fileUrl) => {
   }
 };
 
+export const forceDownloadFile = async (doc) => {
+  let fileUrl = doc.file_url || doc.file;
+  
+  if (!fileUrl) {
+    if (doc.drive_file_url) {
+      window.open(doc.drive_file_url, '_blank');
+      return;
+    }
+    console.error("El documento no tiene una URL válida.", doc);
+    return;
+  }
+  
+  if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+    const baseURL = getAPIBaseURL();
+    fileUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+    fileUrl = `${baseURL}${fileUrl}`;
+  }
+  
+  if (!import.meta.env.DEV && fileUrl.startsWith('http://')) {
+    fileUrl = fileUrl.replace(/^http:/, 'https:');
+  }
+  
+  await downloadFile(fileUrl);
+};
+
 export const handleViewFile = async (doc) => {
   // Prioridad: file_url (URL absoluta) > file (URL relativa)
   let fileUrl = doc.file_url || doc.file;

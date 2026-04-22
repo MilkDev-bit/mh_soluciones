@@ -15,7 +15,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
 import { getProjects } from '../services/projectService';
-import { handleViewFile } from '../utils/fileUtils';
+import { handleViewFile, forceDownloadFile } from '../utils/fileUtils';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
 import PdfThumbnail from '../components/common/PdfThumbnail';
@@ -622,7 +622,7 @@ const ArchivosPage = () => {
               toast.success(`Iniciando descarga de ${archivosFiltrados.length} archivos...`);
               archivosFiltrados.forEach((archivo, idx) => {
                 setTimeout(() => {
-                  handleDownloadArchivo(archivo);
+                  forceDownloadFile(archivo).catch(err => console.error('Error al descargar:', err));
                 }, idx * 800); // 800ms between downloads
               });
             }}
