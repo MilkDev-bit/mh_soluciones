@@ -538,6 +538,11 @@
     background: #2a2a2a;
     border-color: #444;
     color: #ddd;
+    color-scheme: dark;
+
+    &:focus {
+      background: #2a2a2a;
+    }
 
     &::placeholder {
       color: #666;

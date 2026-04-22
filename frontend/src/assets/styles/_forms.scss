@@ -315,3 +315,15 @@
 .form-input.error {
   animation: form-shake 0.3s ease-in-out;
 }
+
+// Dark mode - force native browser widgets (date picker, scrollbar) to dark
+[data-theme="dark"] {
+  .form-input,
+  .form-select,
+  .form-textarea {
+    color-scheme: dark;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+  }
+}
