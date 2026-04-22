@@ -915,6 +915,19 @@
             }
           }
         }
+
+        .security-tips {
+          background: rgba(30, 30, 30, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          h4 {
+            color: rgba(255, 255, 255, 0.95);
+          }
+
+          ul {
+            color: rgba(255, 255, 255, 0.7);
+          }
+        }
       }
     }
 

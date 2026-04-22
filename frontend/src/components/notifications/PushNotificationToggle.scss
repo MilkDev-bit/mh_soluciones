@@ -199,6 +199,52 @@
   }
 }
 
+// Dark mode
+[data-theme="dark"] {
+  .push-notification-toggle {
+    background: rgba(30, 30, 30, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+
+    &.unsupported,
+    &.denied {
+      background: rgba(60, 20, 20, 0.6);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .toggle-info {
+      i.fa-bell {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .toggle-text {
+        h4 {
+          color: rgba(255, 255, 255, 0.95);
+        }
+
+        .toggle-description {
+          color: rgba(255, 255, 255, 0.6);
+        }
+      }
+    }
+
+    .test-notification-section {
+      border-top-color: rgba(255, 255, 255, 0.1);
+
+      .btn-test-notification {
+        background: rgba(40, 40, 40, 0.8);
+        color: rgba(255, 255, 255, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+
+        &:hover:not(:disabled) {
+          background: rgba(50, 50, 50, 0.9);
+          border-color: #ff7c15;
+          color: #ff9f4a;
+        }
+      }
+    }
+  }
+}
+
 // Animations
 @keyframes bellRing {
   0%, 100% {
