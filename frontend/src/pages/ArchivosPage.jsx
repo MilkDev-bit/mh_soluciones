@@ -157,7 +157,7 @@ const ArchivosPage = () => {
       setError(null);
 
       // Build query params based on folder_type mapping
-      const params = {};
+      const params = { page_size: 1000 };
 
       // Apply type filter if selected (IMAGENES, DOCUMENTOS, etc.)
       if (filtroTipo !== FILTER_TYPES.ALL) {
