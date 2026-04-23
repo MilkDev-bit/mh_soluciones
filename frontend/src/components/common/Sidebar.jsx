@@ -338,14 +338,16 @@ const Sidebar = () => {
                     {!isSidebarCollapsed && <span>Usuarios</span>}
                   </NavLink>
 
-                  <NavLink
-                    to="/admin/accesos"
-                    className="menu-item"
-                    onClick={closeMobileMenu}
-                  >
-                    <FiShield />
-                    {!isSidebarCollapsed && <span>Accesos</span>}
-                  </NavLink>
+                  {user.role === 'SUPERADMIN' && (
+                    <NavLink
+                      to="/admin/accesos"
+                      className="menu-item"
+                      onClick={closeMobileMenu}
+                    >
+                      <FiShield />
+                      {!isSidebarCollapsed && <span>Accesos</span>}
+                    </NavLink>
+                  )}
 
                   {user.role === 'SUPERADMIN' && (
                     <NavLink

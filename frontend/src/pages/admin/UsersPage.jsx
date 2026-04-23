@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../contexts/AuthContext';
 import { getUsers, deleteUser, activateUser } from '../../services/userService';
 import UserModal from '../../components/admin/UserModal';
 import ChangePasswordModal from '../../components/admin/ChangePasswordModal';
@@ -14,6 +15,8 @@ import '../../assets/styles/_buttons.scss';
 
 const UsersPage = () => {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'SUPERADMIN';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -152,9 +155,11 @@ const UsersPage = () => {
         <div className="users-header">
           <div className="users-header-top">
             <h1>Gestión de Usuarios</h1>
-            <button className="btn-add-user" onClick={() => handleOpenModal()}>
-              <FiPlus /> Agregar Usuario
-            </button>
+            {isSuperAdmin && (
+              <button className="btn-add-user" onClick={() => handleOpenModal()}>
+                <FiPlus /> Agregar Usuario
+              </button>
+            )}
           </div>
           
           <div className="users-stats">

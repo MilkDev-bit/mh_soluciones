@@ -64,7 +64,7 @@ const AppRoutes = () => {
           } />
 
           <Route path="/admin/accesos" element={
-            <ProtectedRoute roles={['SUPERADMIN', 'ADMIN']}>
+            <ProtectedRoute roles={['SUPERADMIN']}>
               <AccesosPage />
             </ProtectedRoute>
           } />
