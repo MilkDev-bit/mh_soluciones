@@ -97,6 +97,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         drive_folder_id = self.request.query_params.get('drive_folder_id')
         if drive_folder_id:
             queryset = queryset.filter(drive_parent_folder_id=drive_folder_id)
+
+        # Filter by folder name (case-insensitive, matches drive_parent_folder_name OR task title)
+        folder_name = self.request.query_params.get('folder_name')
+        if folder_name:
+            queryset = queryset.filter(
+                Q(drive_parent_folder_name__icontains=folder_name) |
+                Q(task__title__icontains=folder_name)
+            )
         
         task_id = self.request.query_params.get('task')
         if task_id:

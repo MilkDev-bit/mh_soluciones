@@ -10,6 +10,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     uploaded_by = UserSerializer(read_only=True)
     file_url = serializers.SerializerMethodField()
     project_info = serializers.SerializerMethodField()
+    task_name = serializers.SerializerMethodField()
     target_folder_id = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     class Meta:
@@ -25,6 +26,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'project',
             'project_info',
             'task',
+            'task_name',
             'uploaded_by',
             'created_at',
             'upload_status',
@@ -40,7 +42,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'id', 'file_size', 'file_type', 'uploaded_by', 'created_at', 
             'upload_status', 'drive_file_url', 'file_url', 
             'drive_parent_folder_id', 'drive_parent_folder_name', 'project_info',
-            'is_link', 'link',
+            'task_name', 'is_link', 'link',
         ]
 
     def get_file_url(self, obj):
@@ -55,6 +57,12 @@ class DocumentSerializer(serializers.ModelSerializer):
                 'id': obj.project.id,
                 'name': obj.project.name
             }
+        return None
+
+    def get_task_name(self, obj):
+        """Return the task title for folder-name matching"""
+        if obj.task:
+            return obj.task.title
         return None
 
     def create(self, validated_data):

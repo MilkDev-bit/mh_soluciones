@@ -175,6 +175,12 @@ const ArchivosPage = () => {
         params.drive_folder_id = filtroCarpeta;
       }
 
+      // For static folder filters, send folder_name so backend can filter by
+      // drive_parent_folder_name OR task title (icontains), covering all upload paths
+      if (filtroCarpeta && filtroCarpeta.startsWith('STATIC_')) {
+        params.folder_name = filtroCarpeta.replace('STATIC_', '');
+      }
+
       const documentos = await getAllDocuments(params);
       setArchivos(documentos);
     } catch (error) {
@@ -414,8 +420,9 @@ const ArchivosPage = () => {
         const driveParent = normalizeStr(archivo.drive_parent_folder_name);
         const folderType = normalizeStr(archivo.folder_type);
         const name = normalizeStr(archivo.name);
+        const taskName = normalizeStr(archivo.task_name);
         
-        coincideCarpeta = driveParent.includes(targetName) || folderType.includes(targetName) || name.includes(targetName);
+        coincideCarpeta = driveParent.includes(targetName) || folderType.includes(targetName) || name.includes(targetName) || taskName.includes(targetName);
       } else if (carpetasDrive.length > 0) {
         // Since we already filter by drive_folder_id in the backend fetch,
         // this client-side check uses drive_parent_folder_id as a secondary guard.
