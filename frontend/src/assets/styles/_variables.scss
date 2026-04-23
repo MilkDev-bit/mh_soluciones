@@ -200,6 +200,8 @@ $widget-background-color: $white;
 
 // Dark mode
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --bg-primary: #{$neutral-900};
   --bg-secondary: #{$neutral-800};
   --bg-tertiary: #{$neutral-700};
