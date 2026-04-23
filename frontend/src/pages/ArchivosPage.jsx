@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import {
   FiFile,
   FiUpload,
@@ -22,6 +23,7 @@ import PdfThumbnail from '../components/common/PdfThumbnail';
 import './ArchivosPage.scss';
 
 const ArchivosPage = () => {
+  const { user: currentUser } = useAuth();
   const [archivos, setArchivos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
@@ -585,13 +587,14 @@ const ArchivosPage = () => {
         </div>
       </div>
 
-      {!proyectoSeleccionado && (
+      {currentUser?.role === 'SUPERADMIN' && !proyectoSeleccionado && (
         <div className="warning-banner">
           <FiAlertCircle />
           <span>Selecciona un proyecto para poder subir archivos</span>
         </div>
       )}
 
+      {currentUser?.role === 'SUPERADMIN' && (
       <div className="zona-subida" {...getRootProps()}>
         <input {...getInputProps()} />
         <div className={`zona-contenido ${isDragActive ? 'arrastrando' : ''} ${!proyectoSeleccionado ? 'zona-deshabilitada' : ''}`}>
@@ -613,6 +616,7 @@ const ArchivosPage = () => {
           )}
         </div>
       </div>
+      )}
 
       {filtroCarpeta.startsWith('STATIC_') && archivosFiltrados.length > 0 && !cargando && !error && (
         <div style={{ padding: '0 2rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
@@ -693,13 +697,15 @@ const ArchivosPage = () => {
                   >
                     <FiDownload />
                   </button>
-                  <button
-                    className="btn-icono btn-peligro"
-                    title="Eliminar"
-                    onClick={() => handleDeleteArchivo(archivo.id)}
-                  >
-                    <FiTrash2 />
-                  </button>
+                  {currentUser?.role === 'SUPERADMIN' && (
+                    <button
+                      className="btn-icono btn-peligro"
+                      title="Eliminar"
+                      onClick={() => handleDeleteArchivo(archivo.id)}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  )}
                 </div>
               </div>
             ))

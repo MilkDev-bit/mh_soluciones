@@ -207,7 +207,7 @@ const ProjectsPage = () => {
             >
               <FiRefreshCw className={isFetching ? 'spinning' : ''} />
             </button>
-            {user && isAdmin(user.role) && (
+            {user && user.role === 'SUPERADMIN' && (
               <button 
                 className="btn btn-primary" 
                 onClick={handleOpenModal}

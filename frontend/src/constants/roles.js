@@ -32,10 +32,10 @@ export const ROLE_GROUPS = {
   USER_MANAGERS: ['SUPERADMIN', 'ADMIN', 'RH'],
   
   // Roles that can create tasks
-  TASK_CREATORS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
+  TASK_CREATORS: ['SUPERADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
   
   // Roles that can grade tasks
-  TASK_GRADERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
+  TASK_GRADERS: ['SUPERADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],
 };
 
 // Helper functions to check role membership

@@ -444,7 +444,7 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
               <span className="member-role">{member?.role ? member.role.replace('_', ' ') : 'Miembro'}</span>
             </div>
             {currentUser &&
-              isAdmin(currentUser.role) &&
+              currentUser.role === 'SUPERADMIN' &&
               user.id !== project?.created_by && (
                 <button
                   className="btn btn-danger btn-sm"
@@ -842,7 +842,7 @@ const ProjectDetailPage = () => {
 
       {selectedTask && (
         <Modal
-          title={currentUser && isAdmin(currentUser.role) ? 'Editar Tarea' : 'Detalles de la Tarea'}
+          title={currentUser && currentUser.role === 'SUPERADMIN' ? 'Editar Tarea' : 'Detalles de la Tarea'}
           onClose={() => setSelectedTask(null)}
           size="large"
         >
@@ -879,7 +879,7 @@ const ProjectDetailPage = () => {
             <p className="project-description-detail">{project?.description || 'Sin descripción'}</p>
           </div>
           <div className="page-header-actions">
-            {currentUser && isAdmin(currentUser.role) && (
+            {currentUser && currentUser.role === 'SUPERADMIN' && (
               <>
                 <button className="btn btn-secondary" onClick={handleEditProject}>
                   <FiEdit2 /> Editar
@@ -938,7 +938,7 @@ const ProjectDetailPage = () => {
                     <div className="glass-card">
                       <div className="section-header">
                         <h3>Miembros ({membersList.length})</h3>
-                        {currentUser && isAdmin(currentUser.role) && (
+                        {currentUser && currentUser.role === 'SUPERADMIN' && (
                           <button className="btn btn-secondary btn-sm" onClick={handleAddMember}>
                             <FiPlus />
                           </button>
@@ -1026,7 +1026,7 @@ const ProjectDetailPage = () => {
                     >
                       <FiClock /> {taskFilter === 'OVERDUE' ? 'Ocultar' : 'Mostrar'} Vencidas
                     </button>
-                    {currentUser && isAdmin(currentUser.role) && (
+                    {currentUser && currentUser.role === 'SUPERADMIN' && (
                       <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
                         <FiPlus /> Nueva Tarea
                       </button>

@@ -93,6 +93,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const userRole = user?.role || '';
   
   const isAdmin = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'CEO' || userRole === 'RH';
+  const canEditOrDeleteTask = userRole === 'SUPERADMIN';
   const canCompleteTask = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'PROFESSOR' || userRole === 'DIRECTOR';
   const isStudent = userRole === 'STUDENT';
   
@@ -612,7 +613,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
               </div>
             )}
 
-            {isAdmin && (
+            {canEditOrDeleteTask && (
               <div className="action-group">
                 {isEditing ? (
                   <>
