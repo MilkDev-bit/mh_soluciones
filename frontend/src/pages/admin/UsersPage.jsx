@@ -246,6 +246,7 @@ const UsersPage = () => {
                 onDelete={handleDeleteUser}
                 onActivate={handleActivateUser}
                 onChangePassword={handleOpenPasswordModal}
+                isSuperAdmin={isSuperAdmin}
               />
             ))}
           </div>
@@ -310,21 +311,27 @@ const UsersPage = () => {
                     </td>
                     <td data-label="Acciones">
                       <div className="action-buttons">
-                        <button className="action-btn edit" title="Editar" onClick={() => handleOpenModal(user)}>
-                          <FiEdit />
-                        </button>
-                        <button className="action-btn" title="Cambiar Contraseña" onClick={() => handleOpenPasswordModal(user)}>
-                          <FiKey />
-                        </button>
-                        <button
-                          className="action-btn delete"
-                          title={user.is_active ? "Desactivar" : "Usuario Inactivo"}
-                          onClick={() => handleDeleteUser(user.id)}
-                          disabled={!user.is_active}
-                        >
-                          <FiTrash2 />
-                        </button>
-                        {!user.is_active && (
+                        {isSuperAdmin && (
+                          <button className="action-btn edit" title="Editar" onClick={() => handleOpenModal(user)}>
+                            <FiEdit />
+                          </button>
+                        )}
+                        {isSuperAdmin && (
+                          <button className="action-btn" title="Cambiar Contraseña" onClick={() => handleOpenPasswordModal(user)}>
+                            <FiKey />
+                          </button>
+                        )}
+                        {isSuperAdmin && (
+                          <button
+                            className="action-btn delete"
+                            title={user.is_active ? "Desactivar" : "Usuario Inactivo"}
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={!user.is_active}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        )}
+                        {isSuperAdmin && !user.is_active && (
                           <button
                             className="action-btn activate"
                             title="Activar"

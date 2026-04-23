@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { FiEdit, FiTrash2, FiKey, FiCheckCircle } from 'react-icons/fi';
 import { FaCrown, FaWrench, FaUserGraduate, FaChalkboardTeacher, FaUser } from 'react-icons/fa';
 
-const UserCard = memo(({ user, onEdit, onDelete, onActivate, onChangePassword }) => {
+const UserCard = memo(({ user, onEdit, onDelete, onActivate, onChangePassword, isSuperAdmin }) => {
   // Map roles to icons
   const roleIcons = {
     SUPERADMIN: <FaCrown />,
@@ -60,42 +60,48 @@ const UserCard = memo(({ user, onEdit, onDelete, onActivate, onChangePassword })
       </div>
       
       <div className="user-card-actions">
-        <button 
-          className="card-action-btn edit" 
-          title="Editar usuario"
-          onClick={() => onEdit(user)}
-        >
-          <FiEdit />
-          <span>Editar</span>
-        </button>
-        
-        <button 
-          className="card-action-btn password" 
-          title="Cambiar contraseña"
-          onClick={() => onChangePassword(user)}
-        >
-          <FiKey />
-          <span>Contraseña</span>
-        </button>
-        
-        {user.is_active ? (
+        {isSuperAdmin && (
           <button 
-            className="card-action-btn delete" 
-            title="Desactivar usuario"
-            onClick={() => onDelete(user.id)}
+            className="card-action-btn edit" 
+            title="Editar usuario"
+            onClick={() => onEdit(user)}
           >
-            <FiTrash2 />
-            <span>Desactivar</span>
+            <FiEdit />
+            <span>Editar</span>
           </button>
-        ) : (
+        )}
+        
+        {isSuperAdmin && (
           <button 
-            className="card-action-btn activate" 
-            title="Activar usuario"
-            onClick={() => onActivate(user.id)}
+            className="card-action-btn password" 
+            title="Cambiar contraseña"
+            onClick={() => onChangePassword(user)}
           >
-            <FiCheckCircle />
-            <span>Activar</span>
+            <FiKey />
+            <span>Contraseña</span>
           </button>
+        )}
+        
+        {isSuperAdmin && (
+          user.is_active ? (
+            <button 
+              className="card-action-btn delete" 
+              title="Desactivar usuario"
+              onClick={() => onDelete(user.id)}
+            >
+              <FiTrash2 />
+              <span>Desactivar</span>
+            </button>
+          ) : (
+            <button 
+              className="card-action-btn activate" 
+              title="Activar usuario"
+              onClick={() => onActivate(user.id)}
+            >
+              <FiCheckCircle />
+              <span>Activar</span>
+            </button>
+          )
         )}
       </div>
     </div>
