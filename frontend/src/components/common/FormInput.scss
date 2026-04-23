@@ -123,6 +123,19 @@
   &:-webkit-autofill:focus {
     -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset;
     -webkit-text-fill-color: var(--text-primary);
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  [data-theme="dark"] & {
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus,
+    &:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 1000px #262626 inset !important;
+      -webkit-text-fill-color: #f5f5f5 !important;
+      caret-color: #f5f5f5;
+      transition: background-color 5000s ease-in-out 0s;
+    }
   }
 }
 
