@@ -409,10 +409,11 @@ const ArchivosPage = () => {
     let coincideCarpeta = true;
     if (filtroCarpeta && filtroCarpeta !== 'ALL') {
       if (filtroCarpeta.startsWith('STATIC_')) {
-        const targetName = filtroCarpeta.replace('STATIC_', '').toLowerCase();
-        const driveParent = (archivo.drive_parent_folder_name || '').toLowerCase();
-        const folderType = (archivo.folder_type || '').toLowerCase();
-        const name = (archivo.name || '').toLowerCase();
+        const normalizeStr = (str) => (str || '').normalize('NFC').toLowerCase();
+        const targetName = normalizeStr(filtroCarpeta.replace('STATIC_', ''));
+        const driveParent = normalizeStr(archivo.drive_parent_folder_name);
+        const folderType = normalizeStr(archivo.folder_type);
+        const name = normalizeStr(archivo.name);
         
         coincideCarpeta = driveParent.includes(targetName) || folderType.includes(targetName) || name.includes(targetName);
       } else if (carpetasDrive.length > 0) {
