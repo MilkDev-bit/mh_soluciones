@@ -27,8 +27,17 @@ const MentionInput = ({
   const textareaRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  const pseudoTodosMember = {
+    id: 'todos',
+    username: 'todos',
+    first_name: 'Todos',
+    last_name: '(Todo el proyecto)',
+    profile_picture: null,
+    is_todos: true
+  };
+
   // Filter members by query
-  const filtered = members.filter((m) => {
+  let filtered = members.filter((m) => {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
@@ -36,7 +45,16 @@ const MentionInput = ({
       m.first_name?.toLowerCase().includes(q) ||
       m.last_name?.toLowerCase().includes(q)
     );
-  }).slice(0, 8);
+  });
+
+  const q = query.toLowerCase();
+  const showTodos = !query || 'todos'.includes(q) || 'proyecto'.includes(q);
+
+  if (showTodos) {
+    filtered.unshift(pseudoTodosMember);
+  }
+
+  filtered = filtered.slice(0, 8);
 
   const handleKeyDown = useCallback((e) => {
     if (!showDropdown) return;
@@ -99,7 +117,13 @@ const MentionInput = ({
 
     // Track mentioned user
     const newIds = new Set(mentionedIds);
-    newIds.add(member.id);
+    if (member.id === 'todos') {
+      members.forEach(m => {
+        if (m.id) newIds.add(m.id);
+      });
+    } else {
+      newIds.add(member.id);
+    }
     setMentionedIds(newIds);
     onMentionedUsersChange?.([...newIds]);
 
