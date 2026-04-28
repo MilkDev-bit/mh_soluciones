@@ -802,7 +802,7 @@ const ProjectDetailPage = () => {
     } else {
       // ACTIVE view
       if (task.status === 'COMPLETED') return false;
-      if (currentUser?.role === 'STUDENT' && isOverdueTask) return false;
+      if (isOverdueTask) return false;
       return true;
     }
   });
