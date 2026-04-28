@@ -566,7 +566,7 @@ const TasksPage = () => {
                             {task.status === 'COMPLETED' ? 'Completada' : 
                              task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                           </div>
-                          {task.status === 'COMPLETED' && user?.role === 'SUPERADMIN' && (
+                          {(task.status === 'COMPLETED' || (task.due_date && task.status !== 'COMPLETED' && isPast(parseISO(task.due_date)))) && user?.role === 'SUPERADMIN' && (
                             <button
                               className="btn btn-sm btn-secondary"
                               title="Duplicar tarea"

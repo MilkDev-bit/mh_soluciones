@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import {
@@ -626,7 +626,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                     <button className="btn btn-icon btn-danger" onClick={handleDeleteTask} disabled={deleteLoading}><FiTrash2 size={18} />{deleteLoading ? 'Eliminando...' : 'Eliminar'}</button>
                   </>
                 )}
-                {task?.status === 'COMPLETED' && userRole === 'SUPERADMIN' && !isEditing && (
+                {(task?.status === 'COMPLETED' || (task?.due_date && task?.status !== 'COMPLETED' && isPast(parseISO(task?.due_date)))) && userRole === 'SUPERADMIN' && !isEditing && (
                   <button
                     className="btn btn-icon btn-secondary"
                     onClick={handleDuplicateTask}
