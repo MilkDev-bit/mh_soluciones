@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProjectContext } from '../../contexts/ProjectContext';
@@ -97,6 +97,7 @@ const ProjectsPage = () => {
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const projects = projectsResponse?.results || [];
