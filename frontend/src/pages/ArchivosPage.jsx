@@ -41,8 +41,14 @@ const ArchivosPage = () => {
   const [fechaHasta, setFechaHasta] = useState('');
   const [errorFecha, setErrorFecha] = useState('');
   const [imageErrors, setImageErrors] = useState({});
+  const [visibleCount, setVisibleCount] = useState(50);
   const debounceTimer = useRef(null);
   const isFirstLoad = useRef(true);
+
+  // Resetea el conteo de elementos visibles cuando cambian los filtros
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [busqueda, filtroTipo, filtroCarpeta, filtroFecha, fechaDesde, fechaHasta, proyectoSeleccionado]);
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
@@ -491,6 +497,8 @@ const ArchivosPage = () => {
     });
   }, [archivos, busqueda, filtroTipo, filtroCarpeta, carpetasDrive, filtroFecha, fechaDesde, fechaHasta, errorFecha, fechaLimiteCalculada]);
 
+  const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
+
   return (
     <div className="archivos-page">
       <div className="page-header">
@@ -697,7 +705,7 @@ const ArchivosPage = () => {
               <p>No se encontraron archivos</p>
             </div>
           ) : (
-            archivosFiltrados.map(archivo => (
+            archivosMostrados.map(archivo => (
               <div key={archivo.id} className="archivo-item">
                 <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
                   {obtenerThumbnail(archivo)}
@@ -747,6 +755,17 @@ const ArchivosPage = () => {
               </div>
             ))
           )}
+        </div>
+      )}
+      
+      {!cargando && !error && archivosFiltrados.length > visibleCount && (
+        <div style={{ textAlign: 'center', padding: '2rem 0', width: '100%' }}>
+          <button 
+            style={{ padding: '0.75rem 2rem', background: '#f97316', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+            onClick={() => setVisibleCount(prev => prev + 50)}
+          >
+            Cargar más archivos ({archivosFiltrados.length - visibleCount} restantes)
+          </button>
         </div>
       )}
     </div>

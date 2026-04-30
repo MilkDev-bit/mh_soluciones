@@ -9,12 +9,32 @@ pdfjsLib.verbosity = pdfjsLib.VerbosityLevel ? pdfjsLib.VerbosityLevel.ERRORS : 
 const THUMBNAIL_WIDTH = 280;
 
 const PdfThumbnail = ({ url, fileName, fallbackIcon }) => {
+  const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (!url || error) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || !url || error) return;
 
     let cancelled = false;
 
@@ -63,18 +83,18 @@ const PdfThumbnail = ({ url, fileName, fallbackIcon }) => {
   }
 
   return (
-    <>
-      {loading && <span className="icono-tipo-grande">{fallbackIcon}</span>}
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {(!isVisible || loading) && <span className="icono-tipo-grande">{fallbackIcon}</span>}
       <canvas
         ref={canvasRef}
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          display: loading ? 'none' : 'block',
+          display: isVisible && !loading ? 'block' : 'none',
         }}
       />
-    </>
+    </div>
   );
 };
 
