@@ -64,6 +64,7 @@ const ProjectsPage = () => {
   }, [page, searchTerm, statusFilter]);
 
   const setPage = useCallback((newPage) => {
+    sessionStorage.setItem('projects_page', String(newPage));
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (newPage === 1) next.delete('page');
@@ -73,6 +74,8 @@ const ProjectsPage = () => {
   }, [setSearchParams]);
 
   const setStatusFilter = useCallback((value) => {
+    sessionStorage.setItem('projects_status', value || '');
+    sessionStorage.setItem('projects_page', '1');
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (!value) next.delete('status');
@@ -130,6 +133,8 @@ const ProjectsPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    sessionStorage.setItem('projects_search', searchInput);
+    sessionStorage.setItem('projects_page', '1');
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (searchInput) next.set('search', searchInput);
@@ -141,6 +146,8 @@ const ProjectsPage = () => {
 
   const handleClearSearch = () => {
     setSearchInput('');
+    sessionStorage.setItem('projects_search', '');
+    sessionStorage.setItem('projects_page', '1');
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.delete('search');
