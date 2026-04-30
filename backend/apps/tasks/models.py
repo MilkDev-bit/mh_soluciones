@@ -129,6 +129,12 @@ class Task(TimeStampedModel):
         verbose_name = _("Tarea")
         verbose_name_plural = _("Tareas")
         ordering = ['due_date', 'priority']
+        indexes = [
+            # Cubre filtros por estado (muy frecuente en dashboards y listas)
+            models.Index(fields=['status'], name='task_status_idx'),
+            # Índice compuesto: cubre "tareas de un proyecto por estado" (query más común)
+            models.Index(fields=['project', 'status'], name='task_project_status_idx'),
+        ]
 
     def __str__(self):
         return self.title

@@ -212,6 +212,12 @@ class LoginActivity(models.Model):
         verbose_name = _('Registro de Inicio de Sesión')
         verbose_name_plural = _('Registros de Inicio de Sesión')
         ordering = ['-timestamp']
+        indexes = [
+            # Índice compuesto: cubre consultas de logs por usuario ordenadas por fecha
+            models.Index(fields=['user', 'timestamp'], name='loginact_user_ts_idx'),
+            # Índice en successful: útil para filtrar intentos fallidos en auditoría
+            models.Index(fields=['successful', 'timestamp'], name='loginact_success_ts_idx'),
+        ]
 
     def __str__(self):
         status = "Exitoso" if self.successful else "Fallido"

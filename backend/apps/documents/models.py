@@ -135,6 +135,16 @@ class Document(TimeStampedModel):
         verbose_name = _("Documento")
         verbose_name_plural = _("Documentos")
         ordering = ['-created_at']
+        indexes = [
+            # Cubre filtro por folder_type (usado en get_queryset)
+            models.Index(fields=['folder_type'], name='doc_folder_type_idx'),
+            # Cubre filtro por drive_parent_folder_id (usado en get_queryset)
+            models.Index(fields=['drive_parent_folder_id'], name='doc_drive_parent_folder_idx'),
+            # Cubre filtro por upload_status (usado en admin, signals y tareas Celery)
+            models.Index(fields=['upload_status'], name='doc_upload_status_idx'),
+            # Índice compuesto: cubre el filtro más común (project + folder_type)
+            models.Index(fields=['project', 'folder_type'], name='doc_project_folder_type_idx'),
+        ]
 
     def __str__(self):
         return self.name or self.file.name or "Documento sin nombre"
