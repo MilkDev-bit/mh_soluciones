@@ -24,12 +24,17 @@ const api = axios.create({
 let isRefreshing = false;
 let refreshSubscribers = [];
 
-const subscribeTokenRefresh = (cb) => {
-  refreshSubscribers.push(cb);
+const subscribeTokenRefresh = (resolve, reject) => {
+  refreshSubscribers.push({ resolve, reject });
 };
 
 const onRefreshed = () => {
-  refreshSubscribers.forEach((cb) => cb());
+  refreshSubscribers.forEach(({ resolve }) => resolve());
+  refreshSubscribers = [];
+};
+
+const onRefreshFailed = (error) => {
+  refreshSubscribers.forEach(({ reject }) => reject(error));
   refreshSubscribers = [];
 };
 
@@ -64,10 +69,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh(() => {
-            resolve(api(originalRequest));
-          });
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh(
+            () => resolve(api(originalRequest)),
+            (err) => reject(err)
+          );
         });
       }
 
@@ -86,7 +92,7 @@ api.interceptors.response.use(
 
       } catch (refreshError) {
         isRefreshing = false;
-        refreshSubscribers = [];
+        onRefreshFailed(refreshError);
 
         console.error('Token refresh failed:', refreshError);
 

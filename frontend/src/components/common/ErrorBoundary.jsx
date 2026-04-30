@@ -17,13 +17,33 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Detect WebSocket/network errors that should not break the UI
+    const isChunkLoadError = 
+      error.name === 'ChunkLoadError' || 
+      (error.message && (
+        error.message.includes('ChunkLoadError') ||
+        error.message.includes('Failed to fetch dynamically imported module') ||
+        error.message.includes('Importing a module script failed')
+      ));
+
+    if (isChunkLoadError) {
+      console.warn('Vite chunk loading failed. Forcing page reload to get latest version...');
+      // Usar sessionStorage para evitar recargas infinitas si el error persiste
+      if (!sessionStorage.getItem('chunk_load_reloaded')) {
+        sessionStorage.setItem('chunk_load_reloaded', 'true');
+        window.location.reload();
+      } else {
+        sessionStorage.removeItem('chunk_load_reloaded');
+        this.setState({ hasError: true, error, errorInfo });
+      }
+      return;
+    }
+
+    // Detect other WebSocket/network errors that should not break the UI
     const isNetworkError = 
       error.message?.includes('WebSocket') ||
       error.message?.includes('Network') ||
       error.message?.includes('fetch') ||
       error.message?.includes('Failed to fetch') ||
-      error.message?.includes('ChunkLoadError') || // Vite chunk loading errors
       error.name === 'TypeError';
 
     if (isNetworkError) {
