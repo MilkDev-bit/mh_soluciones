@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   FiFile,
@@ -41,6 +41,8 @@ const ArchivosPage = () => {
   const [fechaHasta, setFechaHasta] = useState('');
   const [errorFecha, setErrorFecha] = useState('');
   const [imageErrors, setImageErrors] = useState({});
+  const debounceTimer = useRef(null);
+  const isFirstLoad = useRef(true);
 
   // Helper para calcular fechas de rangos predefinidos
   const calcularFechaDesde = (rangoTipo) => {
@@ -125,15 +127,12 @@ const ArchivosPage = () => {
     try {
       setCargandoCarpetas(true);
       const folders = await getFoldersForProject(projectId);
+      // Actualizar carpetas SIN cambiar filtroCarpeta aquí para evitar re-fetch en cadena
       setCarpetasDrive(folders);
-      // Reset folder filter to "ALL" when project changes
-      setFiltroCarpeta('ALL');
     } catch (error) {
       console.error('Error cargando carpetas:', error);
 
-      // Handle specific error types
       if (error.statusCode === 403) {
-        // Permission error - user doesn't have access to this project
         toast.error('No tiene permisos para ver las carpetas de este proyecto');
         setCarpetasDrive([]);
       } else if (error.type === 'refresh_error') {
@@ -143,7 +142,6 @@ const ArchivosPage = () => {
         toast.error('Sin permisos para acceder a Google Drive. Contacte al administrador.');
         setCarpetasDrive([]);
       } else {
-        // For other errors, silently fail - show static folders if Drive folders can't be loaded
         setCarpetasDrive([]);
       }
     } finally {
@@ -196,18 +194,32 @@ const ArchivosPage = () => {
     cargarProyectos();
   }, []);
 
-  useEffect(() => {
-    cargarCarpetasDrive(proyectoSeleccionado);
-  }, [proyectoSeleccionado, cargarCarpetasDrive]);
+  // Cuando cambia el proyecto: cargar carpetas y luego recargar archivos
+  // Se usa un handler explícito en el select para evitar el doble-fetch en cadena
+  const handleProyectoChange = useCallback(async (projectId) => {
+    setProyectoSeleccionado(projectId || null);
+    setFiltroCarpeta('ALL');
+    if (projectId) {
+      await cargarCarpetasDrive(projectId);
+    } else {
+      setCarpetasDrive([]);
+    }
+  }, [cargarCarpetasDrive]);
 
+  // Debounce: espera 300ms después del último cambio de filtro antes de llamar a la API
   useEffect(() => {
-    cargarArchivos();
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      cargarArchivos();
+      return;
+    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      cargarArchivos();
+    }, 300);
+    return () => clearTimeout(debounceTimer.current);
   }, [cargarArchivos]);
 
-  // Validar fechas personalizadas cuando cambian
-  useEffect(() => {
-    validarFechasPersonalizadas();
-  }, [validarFechasPersonalizadas]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (archivosAceptados) => {
@@ -480,7 +492,7 @@ const ArchivosPage = () => {
             <select
               id="proyecto-filter"
               value={proyectoSeleccionado || ''}
-              onChange={(e) => setProyectoSeleccionado(e.target.value || null)}
+              onChange={(e) => handleProyectoChange(e.target.value)}
               className="proyecto-select"
             >
               <option value="">Todos los proyectos</option>
