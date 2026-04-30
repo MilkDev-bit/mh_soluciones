@@ -1,19 +1,14 @@
 import logging
 from django.db.models import Q
 from rest_framework import viewsets, permissions
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+from apps.core.pagination import AuditLogPagination
 
 from apps.core.models import RegistroActividad
 from apps.core.permissions import IsSuperAdmin
 from .serializers import AuditLogSerializer
 
 logger = logging.getLogger(__name__)
-
-
-class AuditLogPagination(LimitOffsetPagination):
-    default_limit = 30
-    max_limit = 100
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
