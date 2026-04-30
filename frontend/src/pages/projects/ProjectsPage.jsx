@@ -277,7 +277,6 @@ const ProjectsPage = () => {
                   className="btn btn-ghost" 
                   onClick={() => {
                     setPage(Math.max(1, page - 1));
-                    window.scrollTo(0, 0);
                   }}
                   disabled={page === 1}
                 >
@@ -290,7 +289,6 @@ const ProjectsPage = () => {
                   className="btn btn-ghost" 
                   onClick={() => {
                     setPage(page + 1);
-                    window.scrollTo(0, 0);
                   }}
                   disabled={!projectsResponse?.next}
                 >
