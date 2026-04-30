@@ -34,14 +34,34 @@ const ProjectsPage = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [searchInput, setSearchInput] = useState('');
 
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const searchTerm = searchParams.get('search') || '';
-  const statusFilter = searchParams.get('status') || '';
+  const page = parseInt(searchParams.get('page') || sessionStorage.getItem('projects_page') || '1', 10);
+  const searchTerm = searchParams.get('search') || sessionStorage.getItem('projects_search') || '';
+  const statusFilter = searchParams.get('status') || sessionStorage.getItem('projects_status') || '';
 
-  // Sync search input with URL param on mount
+  // Initialize URL from sessionStorage if navigating back from a detail page without params
   useEffect(() => {
-    setSearchInput(searchParams.get('search') || '');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!searchParams.has('page') && !searchParams.has('search') && !searchParams.has('status')) {
+      const savedPage = sessionStorage.getItem('projects_page');
+      const savedSearch = sessionStorage.getItem('projects_search');
+      const savedStatus = sessionStorage.getItem('projects_status');
+      
+      if (savedPage || savedSearch || savedStatus) {
+        const next = new URLSearchParams();
+        if (savedPage && savedPage !== '1') next.set('page', savedPage);
+        if (savedSearch) next.set('search', savedSearch);
+        if (savedStatus) next.set('status', savedStatus);
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Sync state to sessionStorage whenever it changes
+  useEffect(() => {
+    setSearchInput(searchTerm);
+    sessionStorage.setItem('projects_page', page.toString());
+    sessionStorage.setItem('projects_search', searchTerm);
+    sessionStorage.setItem('projects_status', statusFilter);
+  }, [page, searchTerm, statusFilter]);
 
   const setPage = useCallback((newPage) => {
     setSearchParams(prev => {

@@ -41,7 +41,10 @@ class ProjectSerializer(serializers.ModelSerializer):
         ]
 
     def get_member_count(self, obj):
-        return obj.members.count()
+        # Usar len(obj.members.all()) en lugar de obj.members.count() 
+        # para aprovechar el prefetch_related('members') de la vista 
+        # y evitar el problema de N+1 queries.
+        return len(obj.members.all())
 
     def get_status_display(self, obj):
         return obj.get_status_display()

@@ -61,10 +61,10 @@ const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
             {task.project_name}
           </div>
 
-          {task.due_date && (
+          {task._formattedDate && (
             <div className="task-deadline">
               <FiCalendar />
-              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+              <span>{task._formattedDate}</span>
             </div>
           )}
 
@@ -298,25 +298,6 @@ const TasksPage = () => {
   }, [queryClient, notifyTaskChange]);
 
   const UPCOMING_DAYS_THRESHOLD = 7;
-  
-  const categorizeTasks = (tasksList) => {
-    const now = new Date();
-    const soon = addDays(now, UPCOMING_DAYS_THRESHOLD);
-
-    return {
-      upcoming: tasksList.filter(task => {
-        if (!task.due_date || task.status === 'COMPLETED') return false;
-        const dueDate = parseISO(task.due_date);
-        return isFuture(dueDate) && isWithinInterval(dueDate, { start: now, end: soon });
-      }),
-      overdue: tasksList.filter(task => {
-        if (!task.due_date || task.status === 'COMPLETED') return false;
-        const dueDate = parseISO(task.due_date);
-        return isPast(dueDate);
-      }),
-      completed: tasksList.filter(task => task.status === 'COMPLETED')
-    };
-  };
 
   // NUEVO: Lógica combinada para filtrar por proyecto Y por filtro de Superadmin
   const filteredTasks = useMemo(() => {
@@ -356,7 +337,42 @@ const TasksPage = () => {
     return result;
   }, [tasks, selectedProject, adminTaskFilter, user?.role]);
 
-  const categorizedTasks = categorizeTasks(filteredTasks);
+  // Procesar fechas una sola vez para evitar llamar parseISO en cada render
+  const processedTasks = useMemo(() => {
+    return filteredTasks.map(task => {
+      let isOverdue = false;
+      let dueDateObj = null;
+      if (task.due_date) {
+        dueDateObj = parseISO(task.due_date);
+        if (task.status !== 'COMPLETED') {
+          isOverdue = isPast(dueDateObj);
+        }
+      }
+      return {
+        ...task,
+        _dueDateObj: dueDateObj,
+        _isOverdue: isOverdue,
+        _formattedDate: dueDateObj ? format(dueDateObj, 'dd MMM yyyy', { locale: es }) : null
+      };
+    });
+  }, [filteredTasks]);
+
+  const categorizedTasks = useMemo(() => {
+    const now = new Date();
+    const soon = addDays(now, UPCOMING_DAYS_THRESHOLD);
+
+    return {
+      upcoming: processedTasks.filter(task => {
+        if (!task._dueDateObj || task.status === 'COMPLETED') return false;
+        return isFuture(task._dueDateObj) && isWithinInterval(task._dueDateObj, { start: now, end: soon });
+      }),
+      overdue: processedTasks.filter(task => {
+        if (!task._dueDateObj || task.status === 'COMPLETED') return false;
+        return task._isOverdue;
+      }),
+      completed: processedTasks.filter(task => task.status === 'COMPLETED')
+    };
+  }, [processedTasks]);
 
   if (loading || !user) {
     return <Loading fullscreen text="Cargando tareas..." />;
@@ -540,9 +556,9 @@ const TasksPage = () => {
           ) : (
             // Non-student view (Task creators/reviewers) - List view
             <div className="tasks-list">
-              {filteredTasks.length > 0 ? (
+              {processedTasks.length > 0 ? (
                 <div className="tasks-list-container">
-                  {filteredTasks.map(task => (
+                  {processedTasks.map(task => (
                     <div
                       key={task.id}
                       className="task-list-item"
@@ -566,7 +582,7 @@ const TasksPage = () => {
                             {task.status === 'COMPLETED' ? 'Completada' : 
                              task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
                           </div>
-                          {(task.status === 'COMPLETED' || (task.due_date && task.status !== 'COMPLETED' && isPast(parseISO(task.due_date)))) && user?.role === 'SUPERADMIN' && (
+                          {(task.status === 'COMPLETED' || task._isOverdue) && user?.role === 'SUPERADMIN' && (
                             <button
                               className="btn btn-sm btn-secondary"
                               title="Duplicar tarea"
@@ -589,10 +605,10 @@ const TasksPage = () => {
                             {task.project_name}
                           </div>
                           
-                          {task.due_date && (
+                          {task._formattedDate && (
                             <div className="task-meta-item">
                               <FiCalendar />
-                              <span>{format(parseISO(task.due_date), 'dd MMM yyyy', { locale: es })}</span>
+                              <span>{task._formattedDate}</span>
                             </div>
                           )}
                           
