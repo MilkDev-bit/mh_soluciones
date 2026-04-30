@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiFilter, FiX } from 'react-icons/fi';
 import './CalendarFilters.scss';
 
 const CalendarFilters = ({ filters, onFilterChange, onClearFilters, users = [], availableColors = [] }) => {
+  const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
+
+  // Keep local state in sync if filters are cleared externally
+  useEffect(() => {
+    setLocalSearch(filters.searchQuery || '');
+  }, [filters.searchQuery]);
+
+  // Debounce the actual filter change to prevent FullCalendar from re-rendering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== filters.searchQuery) {
+        onFilterChange('searchQuery', localSearch);
+      }
+    }, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [localSearch, onFilterChange, filters.searchQuery]);
+
   const hasActiveFilters = filters.category || filters.user || filters.searchQuery;
 
   return (
@@ -34,8 +51,8 @@ const CalendarFilters = ({ filters, onFilterChange, onClearFilters, users = [], 
             type="text"
             className="form-input"
             placeholder="Buscar por título..."
-            value={filters.searchQuery || ''}
-            onChange={(e) => onFilterChange('searchQuery', e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
           />
         </div>
 
