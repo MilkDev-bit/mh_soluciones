@@ -380,6 +380,7 @@ const EventItem = ({ event }) => {
 
 const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => {
   const [pendingRemoveId, setPendingRemoveId] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(5);
   const list = (members || []).filter(Boolean);
 
   const handleRemoveMember = async (memberId) => {
@@ -427,9 +428,11 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
     return <p>No hay miembros para mostrar.</p>;
   }
 
+  const visibleMembers = list.slice(0, visibleCount);
+
   return (
     <>
-      {list.map((member, i) => {
+      {visibleMembers.map((member, i) => {
         const user = member?.user || {};
         const avatar =
           user.profile_picture ||
@@ -459,6 +462,15 @@ const MembersRenderer = ({ members, project, onMemberRemoved, currentUser }) => 
           </div>
         );
       })}
+      {visibleCount < list.length && (
+        <button 
+          className="btn btn-ghost btn-sm" 
+          onClick={() => setVisibleCount(prev => prev + 5)}
+          style={{ width: '100%', marginTop: '10px', padding: '8px' }}
+        >
+          Ver más miembros ({list.length - visibleCount} restantes)
+        </button>
+      )}
     </>
   );
 };
