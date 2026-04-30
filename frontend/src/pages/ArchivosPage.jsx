@@ -409,70 +409,87 @@ const ArchivosPage = () => {
     return calcularFechaDesde(filtroFecha);
   }, [filtroFecha]);
 
-  const archivosFiltrados = archivos.filter(archivo => {
-    const nombreArchivo = archivo.name || '';
-    const proyectoNombre = archivo.project_info?.name || '';
-
-    const coincideBusqueda = nombreArchivo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      proyectoNombre.toLowerCase().includes(busqueda.toLowerCase());
-
-    // Filter by folder_type which matches backend model
-    let coincideTipo = true;
-    if (filtroTipo !== FILTER_TYPES.ALL) {
-      // Match folder_type from backend
-      coincideTipo = archivo.folder_type === filtroTipo;
+  const archivosFiltrados = useMemo(() => {
+    // Preparar variables de filtrado fuera del loop para mejor rendimiento
+    const busquedaLower = busqueda.toLowerCase();
+    
+    let isStaticFolder = false;
+    let targetNameStatic = '';
+    
+    if (filtroCarpeta && filtroCarpeta.startsWith('STATIC_')) {
+      isStaticFolder = true;
+      targetNameStatic = (filtroCarpeta.replace('STATIC_', '') || '').normalize('NFC').toLowerCase();
     }
+    
+    const normalizeStr = (str) => (str || '').normalize('NFC').toLowerCase();
 
-    // Filter by selected Drive folder (client-side fallback using folder ID)
-    let coincideCarpeta = true;
-    if (filtroCarpeta && filtroCarpeta !== 'ALL') {
-      if (filtroCarpeta.startsWith('STATIC_')) {
-        const normalizeStr = (str) => (str || '').normalize('NFC').toLowerCase();
-        const targetName = normalizeStr(filtroCarpeta.replace('STATIC_', ''));
-        const driveParent = normalizeStr(archivo.drive_parent_folder_name);
-        const folderType = normalizeStr(archivo.folder_type);
-        const name = normalizeStr(archivo.name);
-        const taskName = normalizeStr(archivo.task_name);
+    return archivos.filter(archivo => {
+      // Búsqueda general
+      if (busquedaLower) {
+        const nombreArchivo = (archivo.name || '').toLowerCase();
+        const proyectoNombre = (archivo.project_info?.name || '').toLowerCase();
         
-        coincideCarpeta = driveParent.includes(targetName) || folderType.includes(targetName) || name.includes(targetName) || taskName.includes(targetName);
-      } else if (carpetasDrive.length > 0) {
-        // Since we already filter by drive_folder_id in the backend fetch,
-        // this client-side check uses drive_parent_folder_id as a secondary guard.
-        // Files whose parent folder ID matches the selected folder are shown.
-        coincideCarpeta = archivo.drive_parent_folder_id === filtroCarpeta;
+        if (!nombreArchivo.includes(busquedaLower) && !proyectoNombre.includes(busquedaLower)) {
+          return false;
+        }
       }
-    }
 
-    // Filter by date
-    let coincideFecha = true;
-    if (filtroFecha !== 'all' && archivo.created_at) {
-      const fechaArchivo = new Date(archivo.created_at);
+      // Filtro por tipo de carpeta
+      if (filtroTipo !== FILTER_TYPES.ALL) {
+        if (archivo.folder_type !== filtroTipo) {
+          return false;
+        }
+      }
 
-      if (filtroFecha === 'custom') {
-        // Don't apply filter if there's a validation error
-        if (errorFecha) {
-          coincideFecha = true; // Show all files if dates are invalid
+      // Filtro por carpeta de Drive seleccionada
+      if (filtroCarpeta && filtroCarpeta !== 'ALL') {
+        if (isStaticFolder) {
+          const driveParent = normalizeStr(archivo.drive_parent_folder_name);
+          const folderType = normalizeStr(archivo.folder_type);
+          const name = normalizeStr(archivo.name);
+          const taskName = normalizeStr(archivo.task_name);
+          
+          if (!driveParent.includes(targetNameStatic) && 
+              !folderType.includes(targetNameStatic) && 
+              !name.includes(targetNameStatic) && 
+              !taskName.includes(targetNameStatic)) {
+            return false;
+          }
+        } else if (carpetasDrive.length > 0) {
+          if (archivo.drive_parent_folder_id !== filtroCarpeta) {
+            return false;
+          }
+        }
+      }
+
+      // Filtro por fecha
+      if (filtroFecha !== 'all' && archivo.created_at) {
+        const fechaArchivo = new Date(archivo.created_at);
+
+        if (filtroFecha === 'custom') {
+          // No aplicar si hay error de validación
+          if (!errorFecha) {
+            if (fechaDesde) {
+              const fechaDesdeInicio = new Date(fechaDesde);
+              fechaDesdeInicio.setHours(0, 0, 0, 0);
+              if (fechaArchivo < fechaDesdeInicio) return false;
+            }
+            if (fechaHasta) {
+              const fechaHastaFin = new Date(fechaHasta);
+              fechaHastaFin.setHours(23, 59, 59, 999);
+              if (fechaArchivo > fechaHastaFin) return false;
+            }
+          }
         } else {
-          if (fechaDesde) {
-            const fechaDesdeInicio = new Date(fechaDesde);
-            fechaDesdeInicio.setHours(0, 0, 0, 0);
-            coincideFecha = coincideFecha && fechaArchivo >= fechaDesdeInicio;
+          if (fechaLimiteCalculada && fechaArchivo < fechaLimiteCalculada) {
+            return false;
           }
-          if (fechaHasta) {
-            const fechaHastaFin = new Date(fechaHasta);
-            fechaHastaFin.setHours(23, 59, 59, 999);
-            coincideFecha = coincideFecha && fechaArchivo <= fechaHastaFin;
-          }
-        }
-      } else {
-        if (fechaLimiteCalculada) {
-          coincideFecha = fechaArchivo >= fechaLimiteCalculada;
         }
       }
-    }
 
-    return coincideBusqueda && coincideTipo && coincideCarpeta && coincideFecha;
-  });
+      return true;
+    });
+  }, [archivos, busqueda, filtroTipo, filtroCarpeta, carpetasDrive, filtroFecha, fechaDesde, fechaHasta, errorFecha, fechaLimiteCalculada]);
 
   return (
     <div className="archivos-page">
