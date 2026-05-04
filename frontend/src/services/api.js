@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getCsrfToken } from '../utils/security';
+import { SESSION_EXPIRED_KEY } from '../utils/token';
 
 const isProd = !import.meta.env.DEV;
 const host = window.location.host;
@@ -97,6 +98,7 @@ api.interceptors.response.use(
         console.error('Token refresh failed:', refreshError);
 
         if (window.location.pathname !== '/login') {
+          sessionStorage.setItem(SESSION_EXPIRED_KEY, 'true');
           window.location.href = '/login';
         }
 

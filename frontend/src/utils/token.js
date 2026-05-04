@@ -1,5 +1,7 @@
 const AUTH_TOKEN_KEY = 'authToken';
 
+export const SESSION_EXPIRED_KEY = 'session_expired';
+
 export const getToken = () => {
   // Tokens are now in HttpOnly cookies and managed by the browser
   return null; 
