@@ -7,6 +7,7 @@ import logo from '/icons/MatrixMh.png';
 import { FiLogIn, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
 import Modal from '../../components/common/Modal';
 import api from '../../services/api';
+import { SESSION_EXPIRED_KEY } from '../../utils/token';
 import './AuthPages.scss';
 
 const LoginPage = () => {
@@ -16,6 +17,13 @@ const LoginPage = () => {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = React.useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = React.useState('');
   const [sendingRequest, setSendingRequest] = React.useState(false);
+
+  React.useEffect(() => {
+    if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
+      toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+      sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+    }
+  }, []);
 
   const onSubmit = async (credentials) => {
     try {
