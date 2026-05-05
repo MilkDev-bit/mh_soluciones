@@ -8,7 +8,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
-from apps.core.permissions import ADMIN_ROLES, CanManageProjects
+from apps.core.permissions import ADMIN_ROLES, ROLE_ADMIN, ROLE_STUDENT, CanManageProjects
 from apps.core.utils import (
     success_response, error_response, created_response,
     updated_response, validation_error_response
@@ -58,9 +58,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
             tasks_count=Count('tasks', distinct=True)
         ).prefetch_related('members')
 
-        if user.role in ADMIN_ROLES:
+        if user.role in ADMIN_ROLES and user.role != ROLE_ADMIN:
             qs = base_qs.all()
-        elif user.role == 'STUDENT':
+        elif user.role == ROLE_ADMIN:
+            project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+            qs = base_qs.filter(
+                Q(id__in=project_ids) |
+                Q(created_by=user)
+            ).distinct()
+        elif user.role == ROLE_STUDENT:
             project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
             qs = base_qs.filter(id__in=project_ids)
         else:
