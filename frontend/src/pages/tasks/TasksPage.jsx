@@ -20,10 +20,10 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiCalendar,
-  FiUser,
   FiPaperclip,
   FiCopy
 } from 'react-icons/fi';
+import AvatarGroup from '../../components/common/AvatarGroup';
 import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './TasksPage.scss';
@@ -68,10 +68,18 @@ const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
             </div>
           )}
 
-          {task.assigned_to && (
+          {(task.assigned_students_data?.length > 0 || task.assigned_to) && (
             <div className="task-assignee">
-              <FiUser />
-              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+              <AvatarGroup
+                students={
+                  task.assigned_students_data?.length > 0
+                    ? task.assigned_students_data
+                    : task.assigned_to
+                    ? [task.assigned_to]
+                    : []
+                }
+                size={26}
+              />
             </div>
           )}
 
@@ -612,10 +620,18 @@ const TasksPage = () => {
                             </div>
                           )}
                           
-                          {task.assigned_to && (
+                          {(task.assigned_students_data?.length > 0 || task.assigned_to) && (
                             <div className="task-meta-item">
-                              <FiUser />
-                              <span>{task.assigned_to.first_name} {task.assigned_to.last_name}</span>
+                              <AvatarGroup
+                                students={
+                                  task.assigned_students_data?.length > 0
+                                    ? task.assigned_students_data
+                                    : task.assigned_to
+                                    ? [task.assigned_to]
+                                    : []
+                                }
+                                size={26}
+                              />
                             </div>
                           )}
                           
