@@ -150,7 +150,9 @@ class DashboardDataAPIView(APIView):
 
     def _get_student_dashboard_data(self, user):
         """Genera datos para el rol de Alumno/Empleado."""
-        my_tasks = Task.objects.filter(assigned_to=user)
+        my_tasks = Task.objects.filter(
+            Q(assigned_to=user) | Q(assigned_students=user)
+        ).distinct()
         
         return {
             'kpis': {
