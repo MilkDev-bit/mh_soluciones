@@ -10,14 +10,13 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [gradingCriteria, setGradingCriteria] = useState([]);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const isEditMode = Boolean(task);
 
-  const assignedToValue = watch('assigned_to');
   const maxScore = watch('max_score') || 100;
 
   useEffect(() => {
@@ -34,8 +33,11 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       setValue('accept_after_close', task.accept_after_close || false);
       setValue('days_after_close', task.days_after_close || 0);
       
-      if (task.assigned_to) {
-        setSelectedMember(task.assigned_to);
+      // Load assigned students: prefer assigned_students_data (array), fall back to assigned_to
+      if (Array.isArray(task.assigned_students_data) && task.assigned_students_data.length > 0) {
+        setSelectedMembers(task.assigned_students_data);
+      } else if (task.assigned_to) {
+        setSelectedMembers([task.assigned_to]);
       }
       
       // Load grading criteria if available
@@ -44,15 +46,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       }
     }
   }, [task, isEditMode, setValue]);
-
-  useEffect(() => {
-    if (assignedToValue) {
-      const member = projectMembers.find(m => m.id.toString() === assignedToValue.toString());
-      setSelectedMember(member || null);
-    } else {
-      setSelectedMember(null);
-    }
-  }, [assignedToValue, projectMembers]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -82,16 +75,18 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   };
 
   const handleSelectMember = (member) => {
-    setValue('assigned_to', member.id.toString());
-    setSelectedMember(member);
+    setSelectedMembers(prev => {
+      const alreadySelected = prev.some(m => m.id === member.id);
+      if (alreadySelected) {
+        return prev.filter(m => m.id !== member.id);
+      }
+      return [...prev, member];
+    });
     setSearchTerm('');
-    setIsDropdownOpen(false);
   };
 
-  const handleRemoveSelection = () => {
-    setValue('assigned_to', '');
-    setSelectedMember(null);
-    setSearchTerm('');
+  const handleRemoveMember = (memberId) => {
+    setSelectedMembers(prev => prev.filter(m => m.id !== memberId));
   };
 
   const handleDropdownToggle = () => {
@@ -146,26 +141,6 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         }
       }
 
-      // Helper function to build assigned students list including assigned_to user
-      /**
-       * Builds a list of assigned students, ensuring the assigned_to user is included.
-       * @param {number[]|undefined} assignedStudents - Array of student IDs already assigned to the task
-       * @param {number|null} assignedUserId - ID of the user assigned via assigned_to field
-       * @returns {number[]} Combined array of student IDs including the assigned_to user if specified
-       */
-      const buildAssignedStudentsList = (assignedStudents, assignedUserId) => {
-        const studentsList = assignedStudents && Array.isArray(assignedStudents) 
-          ? [...assignedStudents] 
-          : [];
-        
-        // Add assigned_to to assigned_students if not already included
-        if (assignedUserId && !studentsList.includes(assignedUserId)) {
-          studentsList.push(assignedUserId);
-        }
-        
-        return studentsList;
-      };
-
       // Handle file upload with FormData if there's an attachment
       let taskData;
       
@@ -177,8 +152,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                      fileInput.files.length > 0 && 
                      fileInput.files[0] instanceof File;
       
-      const assignedUserId = data.assigned_to ? parseInt(data.assigned_to) : null;
-      const assignedStudentsList = buildAssignedStudentsList(data.assigned_students, assignedUserId);
+      // assigned_to is kept for backend compatibility; the full list is sent via assigned_students
+      const assignedUserId = selectedMembers.length > 0 ? selectedMembers[0].id : null;
+      const assignedStudentsList = selectedMembers.map(m => m.id);
       
       if (hasFile) {
         const formData = new FormData();
@@ -334,25 +310,27 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                 className="select-trigger"
                 onClick={handleDropdownToggle}
               >
-                {selectedMember ? (
-                  <div className="selected-member">
-                    <span>
-                      {selectedMember.first_name} {selectedMember.last_name}
-                      {selectedMember.email ? ` (${selectedMember.email})` : ''}
-                    </span>
-                    <button 
-                      type="button"
-                      className="clear-selection"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveSelection();
-                      }}
-                    >
-                      ×
-                    </button>
+                {selectedMembers.length > 0 ? (
+                  <div className="selected-members-list">
+                    {selectedMembers.map(member => (
+                      <span key={member.id} className="selected-member-tag">
+                        {member.first_name} {member.last_name}
+                        <button
+                          type="button"
+                          className="tag-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveMember(member.id);
+                          }}
+                          aria-label={`Quitar ${member.first_name} ${member.last_name}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
                   </div>
                 ) : (
-                  <span className="placeholder">Seleccionar miembro...</span>
+                  <span className="placeholder">Seleccionar estudiantes...</span>
                 )}
                 <span className="dropdown-arrow">▼</span>
               </div>
@@ -376,10 +354,13 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                         <div
                           key={member.id}
                           className={`dropdown-option ${
-                            selectedMember?.id === member.id ? 'selected' : ''
+                            selectedMembers.some(m => m.id === member.id) ? 'selected' : ''
                           }`}
                           onClick={() => handleSelectMember(member)}
                         >
+                          <span className="option-check">
+                            {selectedMembers.some(m => m.id === member.id) ? '✓ ' : ''}
+                          </span>
                           {member.first_name} {member.last_name}
                           {member.email ? ` (${member.email})` : ''}
                         </div>
