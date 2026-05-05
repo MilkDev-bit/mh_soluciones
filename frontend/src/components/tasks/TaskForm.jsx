@@ -152,6 +152,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                      fileInput.files.length > 0 && 
                      fileInput.files[0] instanceof File;
       
+      // assigned_to is kept for backend compatibility; the full list is sent via assigned_students
       const assignedUserId = selectedMembers.length > 0 ? selectedMembers[0].id : null;
       const assignedStudentsList = selectedMembers.map(m => m.id);
       
