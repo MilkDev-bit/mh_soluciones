@@ -675,7 +675,17 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
             {task?.description && (<div className="task-description"><h4>Descripción</h4><p>{task.description}</p></div>)}
             <div className="task-meta">
               <div className="meta-item"><FiClock className="meta-icon" /><span><strong>Fecha límite:</strong> {task?.due_date ? format(parseISO(task.due_date), 'dd MMMM yyyy', { locale: es }) : 'Sin fecha'}</span></div>
-              {task?.assigned_to && (<div className="meta-item"><FiUser className="meta-icon" /><span><strong>Asignada a:</strong> {task.assigned_to.first_name} {task.assigned_to.last_name}</span></div>)}
+              {(task?.assigned_students_data?.length > 0 || task?.assigned_to) && (
+                <div className="meta-item">
+                  <FiUser className="meta-icon" />
+                  <span>
+                    <strong>Asignada a:</strong>{' '}
+                    {task.assigned_students_data?.length > 0
+                      ? task.assigned_students_data.map(s => `${s.first_name || ''} ${s.last_name || ''}`.trim()).join(', ')
+                      : `${task.assigned_to.first_name || ''} ${task.assigned_to.last_name || ''}`.trim()}
+                  </span>
+                </div>
+              )}
               {task?.created_by && (<div className="meta-item"><FiUser className="meta-icon" /><span><strong>Creada por:</strong> {task.created_by.first_name} {task.created_by.last_name}</span></div>)}
               <div className="meta-item"><FiCalendar className="meta-icon" /><span><strong>Creada:</strong> {formatCreatedAt()}</span></div>
             </div>
