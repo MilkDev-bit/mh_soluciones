@@ -54,8 +54,7 @@ class Task(TimeStampedModel):
         settings.AUTH_USER_MODEL,
         blank=True,
         related_name='assigned_student_tasks',
-        limit_choices_to={'role': 'STUDENT'},
-        verbose_name=_("Estudiantes Asignados")
+        verbose_name=_("Usuarios Asignados")
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
