@@ -20,6 +20,14 @@ FULL_ACCESS_ROLES = ('SUPERADMIN', 'CEO', 'RH')
 SEARCH_ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'RH')
 
 
+def get_admin_accessible_projects(user):
+    """Returns a queryset of projects accessible to an ADMIN user (member or creator)."""
+    project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+    return Project.objects.filter(
+        Q(id__in=project_ids) | Q(created_by=user)
+    ).distinct()
+
+
 class DashboardDataAPIView(APIView):
     """
     Vista de API que devuelve datos agregados y robustos para el dashboard principal.
@@ -83,16 +91,9 @@ class DashboardDataAPIView(APIView):
             }
         }
 
-    def _get_admin_accessible_projects(self, user):
-        """Returns a queryset of projects accessible to an ADMIN user (member or creator)."""
-        project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-        return Project.objects.filter(
-            Q(id__in=project_ids) | Q(created_by=user)
-        ).distinct()
-
     def _get_admin_scoped_dashboard_data(self, user):
         """Genera datos para el rol ADMIN, limitados a los proyectos a los que pertenece o creó."""
-        user_projects = self._get_admin_accessible_projects(user)
+        user_projects = get_admin_accessible_projects(user)
 
         total_projects = user_projects.count()
         completed_tasks_month = Task.objects.filter(
@@ -212,10 +213,7 @@ class StatisticsAPIView(APIView):
         projects_qs = Project.objects.all()
         
         if user.role == 'ADMIN':
-            project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-            projects_qs = projects_qs.filter(
-                Q(id__in=project_ids) | Q(created_by=user)
-            ).distinct()
+            projects_qs = get_admin_accessible_projects(user)
             tasks_qs = tasks_qs.filter(project__in=projects_qs)
         elif user.role not in FULL_ACCESS_ROLES:
             if user.role == 'CLIENT':
@@ -327,10 +325,7 @@ class GlobalSearchAPIView(APIView):
 
         allowed_projects_qs = Project.objects.none()
         if user.role == 'ADMIN':
-            project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-            allowed_projects_qs = Project.objects.filter(
-                Q(id__in=project_ids) | Q(created_by=user)
-            ).distinct()
+            allowed_projects_qs = get_admin_accessible_projects(user)
         elif user.role in FULL_ACCESS_ROLES:
             allowed_projects_qs = Project.objects.all()
         elif user.role == 'CLIENT':
