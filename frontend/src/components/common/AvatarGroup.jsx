@@ -41,7 +41,11 @@ const AvatarGroup = ({ students = [], size = 28 }) => {
       style={{ '--avatar-size': `${size}px` }}
       onMouseEnter={() => setTooltipVisible(true)}
       onMouseLeave={() => setTooltipVisible(false)}
-      title={allNames}
+      onFocus={() => setTooltipVisible(true)}
+      onBlur={() => setTooltipVisible(false)}
+      tabIndex={0}
+      role="img"
+      aria-label={allNames}
     >
       {visible.map((student, index) => (
         <div
