@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.models import CustomUser
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectMember
 from apps.tasks.models import Task
 from .serializers import (
     SearchResultSerializer, 
@@ -16,7 +16,16 @@ from .serializers import (
 )
 
 ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+FULL_ACCESS_ROLES = ('SUPERADMIN', 'CEO', 'RH')
 SEARCH_ADMIN_ROLES = ('SUPERADMIN', 'ADMIN', 'RH')
+
+
+def get_admin_accessible_projects(user):
+    """Returns a queryset of projects accessible to an ADMIN user (member or creator)."""
+    project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+    return Project.objects.filter(
+        Q(id__in=project_ids) | Q(created_by=user)
+    ).distinct()
 
 
 class DashboardDataAPIView(APIView):
@@ -32,7 +41,7 @@ class DashboardDataAPIView(APIView):
 
         role_map = {
             'SUPERADMIN': self._get_admin_dashboard_data,
-            'ADMIN': self._get_admin_dashboard_data,
+            'ADMIN': self._get_admin_scoped_dashboard_data,
             'CEO': self._get_admin_dashboard_data,
             'RH': self._get_admin_dashboard_data,
             'DIRECTOR': self._get_manager_dashboard_data,
@@ -65,6 +74,43 @@ class DashboardDataAPIView(APIView):
         recent_tasks = Task.objects.order_by('-created_at')[:5]
         
         recent_projects = Project.objects.order_by('-created_at')[:5]
+
+        return {
+            'kpis': {
+                'total_projects': total_projects,
+                'active_users': active_users,
+                'completed_tasks_this_month': completed_tasks_month,
+                'projects_in_progress': projects_in_progress,
+            },
+            'charts': {
+                'project_status_distribution': list(project_status_distribution),
+            },
+            'recent_activity': {
+                'tasks': TaskSummarySerializer(recent_tasks, many=True).data,
+                'projects': ProjectStatusSerializer(recent_projects, many=True).data,
+            }
+        }
+
+    def _get_admin_scoped_dashboard_data(self, user):
+        """Genera datos para el rol ADMIN, limitados a los proyectos a los que pertenece o creó."""
+        user_projects = get_admin_accessible_projects(user)
+
+        total_projects = user_projects.count()
+        completed_tasks_month = Task.objects.filter(
+            project__in=user_projects,
+            status=Task.TaskStatus.COMPLETED,
+            updated_at__month=timezone.now().month
+        ).count()
+        projects_in_progress = user_projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
+        # active_users reflects all system users (global context, not scoped to projects)
+        active_users = CustomUser.objects.filter(is_active=True).exclude(role='CLIENT').count()
+
+        project_status_distribution = user_projects.values('status').annotate(
+            count=Count('id')
+        ).order_by('status')
+
+        recent_tasks = Task.objects.filter(project__in=user_projects).order_by('-created_at')[:5]
+        recent_projects = user_projects.order_by('-created_at')[:5]
 
         return {
             'kpis': {
@@ -166,7 +212,10 @@ class StatisticsAPIView(APIView):
         tasks_qs = Task.objects.all()
         projects_qs = Project.objects.all()
         
-        if user.role not in ADMIN_ROLES:
+        if user.role == 'ADMIN':
+            projects_qs = get_admin_accessible_projects(user)
+            tasks_qs = tasks_qs.filter(project__in=projects_qs)
+        elif user.role not in FULL_ACCESS_ROLES:
             if user.role == 'CLIENT':
                 projects_qs = projects_qs.filter(client=user)
                 tasks_qs = tasks_qs.filter(project__in=projects_qs)
@@ -275,7 +324,9 @@ class GlobalSearchAPIView(APIView):
             return Response({"error": "La búsqueda requiere al menos 3 caracteres."}, status=400)
 
         allowed_projects_qs = Project.objects.none()
-        if user.role in ADMIN_ROLES:
+        if user.role == 'ADMIN':
+            allowed_projects_qs = get_admin_accessible_projects(user)
+        elif user.role in FULL_ACCESS_ROLES:
             allowed_projects_qs = Project.objects.all()
         elif user.role == 'CLIENT':
             allowed_projects_qs = Project.objects.filter(client=user)
