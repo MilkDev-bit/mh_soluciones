@@ -26,6 +26,7 @@ import Modal from '../../components/common/Modal';
 import MentionInput from '../../components/common/MentionInput';
 import TaskForm from '../../components/tasks/TaskForm';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
+import AvatarGroup from '../../components/common/AvatarGroup';
 import AddMemberModal from '../../components/projects/AddMemberModal';
 import ProjectProgressCharts from '../../components/projects/ProjectProgressCharts';
 import StudentPerformance from '../../components/projects/StudentPerformance';
@@ -1048,10 +1049,6 @@ const ProjectDetailPage = () => {
                 <div className="task-list">
                   {displayedTasks.length > 0 ? (
                     displayedTasks.map((task) => {
-                      const assignee = task?.assigned_to || {};
-                      const avatar =
-                        assignee?.profile_picture ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent((assignee.first_name || 'Usuario') + ' ' + (assignee.last_name || ''))}&background=f97316&color=fff`;
                       const documents = taskDocuments[task.id] || [];
 
                       let uploadDateDisplay = null;
@@ -1081,8 +1078,15 @@ const ProjectDetailPage = () => {
                             )}
                           </div>
                           <div className="task-right-section">
-                            {task?.assigned_to && (
-                              <img src={avatar} alt={assignee.first_name || 'Usuario'} className="task-assignee-avatar" title={`Asignada a ${assignee.first_name || ''}`} />
+                            {(task?.assigned_students_data?.length > 0 || task?.assigned_to) && (
+                              <AvatarGroup
+                                students={
+                                  task.assigned_students_data?.length > 0
+                                    ? task.assigned_students_data
+                                    : [task.assigned_to]
+                                }
+                                size={26}
+                              />
                             )}
                           </div>
                         </div>
