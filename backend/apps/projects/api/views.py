@@ -68,7 +68,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ).distinct()
         elif user.role == ROLE_STUDENT:
             project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
-            qs = base_qs.filter(id__in=project_ids)
+            qs = base_qs.filter(id__in=project_ids).exclude(status='COMPLETED')
         else:
             project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
             qs = base_qs.filter(
