@@ -97,10 +97,13 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const canCompleteTask = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'PROFESSOR' || userRole === 'DIRECTOR';
   const isStudent = userRole === 'STUDENT';
   
-  const canSubmit = (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) || isAdmin;
+  const isInAssignedStudents = Array.isArray(task?.assigned_students_data) &&
+                               task.assigned_students_data.some(s => s.id === user?.id);
+  const canSubmit = (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) || isInAssignedStudents || isAdmin;
   const canInteract = isAdmin || 
                       (user?.id && task?.created_by?.id && user.id === task.created_by.id) || 
-                      (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id);
+                      (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) ||
+                      isInAssignedStudents;
 
   useEffect(() => {
     if (task && task.id) {
