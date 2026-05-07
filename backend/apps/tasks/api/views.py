@@ -3,6 +3,7 @@ import mimetypes
 import os
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q, F, Avg
 from django.utils import timezone
 from django.utils.text import slugify
@@ -103,17 +104,61 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
-        
+
         # Get validated data to check for assigned users
         validated_data = serializer.validated_data
         has_assigned_to = validated_data.get('assigned_to') is not None
-        has_assigned_students = 'assigned_students' in validated_data and validated_data.get('assigned_students')
-        
+        has_assigned_students = bool(validated_data.get('assigned_students'))
+
+        # serializer.save() creates the Task AND sets assigned_students M2M
+        # before returning, so by this point all DB data is committed.
         task = serializer.save(created_by=self.request.user)
-        
-        # Send email notification if task is assigned
+
+        # Use transaction.on_commit() to guarantee the WebSocket notification
+        # is sent only AFTER the full DB transaction commits (task + M2M).
+        # This prevents students from receiving a notification and immediately
+        # hitting the API before assigned_students is visible in the DB,
+        # which was causing intermittent 403 errors.
         if has_assigned_to or has_assigned_students:
-            send_task_assignment_notification(task)
+            task_id = task.id
+
+            def notify():
+                try:
+                    from ..models import Task as TaskModel
+                    from apps.notifications.models import Notification
+                    from apps.notifications.api.serializers import NotificationSerializer
+                    from channels.layers import get_channel_layer
+                    from asgiref.sync import async_to_sync
+
+                    refreshed = TaskModel.objects.prefetch_related('assigned_students').select_related('project').get(pk=task_id)
+
+                    recipients = set()
+                    if refreshed.assigned_to:
+                        recipients.add(refreshed.assigned_to)
+                    recipients.update(refreshed.assigned_students.all())
+                    # Don't notify the creator
+                    recipients.discard(refreshed.created_by)
+
+                    channel_layer = get_channel_layer()
+                    for recipient in recipients:
+                        notification = Notification.objects.create(
+                            user=recipient,
+                            title="Nueva Tarea Asignada",
+                            message=f"Se te ha asignado una nueva tarea: '{refreshed.title}' en el proyecto '{refreshed.project.name}'.",
+                            notification_type=Notification.NotificationType.TASK_ASSIGNED,
+                            content_object=refreshed,
+                        )
+                        serialized = NotificationSerializer(notification).data
+                        async_to_sync(channel_layer.group_send)(
+                            f'user_{recipient.id}_notifications',
+                            {'type': 'send_notification', 'message': serialized},
+                        )
+
+                    send_task_assignment_notification(refreshed)
+                except Exception as exc:
+                    logger.error("Error enviando notificaciones de tarea %s: %s", task_id, exc)
+
+            transaction.on_commit(notify)
 
     def perform_update(self, serializer):
         if self.request.user.role not in TEACHER_ROLES:

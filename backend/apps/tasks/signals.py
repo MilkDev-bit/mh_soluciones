@@ -7,7 +7,6 @@ from apps.notifications.models import Notification
 from apps.notifications.api.serializers import NotificationSerializer
 from apps.core.middleware import get_current_audit_user
 from .models import Task, TaskSubmission
-from utils.email_notifications import send_task_assignment_notification
 import logging
 
 User = get_user_model()
@@ -117,48 +116,15 @@ def audit_task_delete(sender, instance, **kwargs):
 @receiver(post_save, sender=Task)
 def create_task_assignment_notification(sender, instance, created, **kwargs):
     """
-    Señal que se activa después de guardar una Tarea.
-    Crea y envía una notificación si se asigna (o reasigna) una tarea a un usuario.
+    Señal de auditoría: solo registra la actividad.
+    Las notificaciones WebSocket se envían desde perform_create via
+    transaction.on_commit() para evitar race conditions con el campo
+    M2M assigned_students (que se guarda DESPUÉS del post_save).
     """
-    if instance.assigned_to and instance.assigned_to != instance.created_by:
-        if created:
-            title = "Nueva Tarea Asignada"
-            message = f"Se te ha asignado una nueva tarea: '{instance.title}' en el proyecto '{instance.project.name}'."
-        else:
-            # title = "Tarea Actualizada"
-            # message = f"La tarea '{instance.title}' en la que participas ha sido actualizada."
-            return
-
-        notification = Notification.objects.create(
-            user=instance.assigned_to,
-            title=title,
-            message=message,
-            notification_type=Notification.NotificationType.TASK_ASSIGNED,
-            content_object=instance
-        )
-
-        channel_layer = get_channel_layer()
-        group_name = f'user_{instance.assigned_to.id}_notifications'
-        
-        serialized_notification = NotificationSerializer(notification).data
-
-        print(f"Enviando notificación al grupo: {group_name}")
-
-        async_to_sync(channel_layer.group_send)(
-            group_name,
-            {
-                'type': 'send_notification',
-                'message': serialized_notification
-            }
-        )
-
-        # Send email notification for task assignment
-        if created:
-            try:
-                send_task_assignment_notification(instance)
-                logger.info(f"Email notification sent for task assignment: {instance.title}")
-            except Exception as e:
-                logger.error(f"Error sending email notification for task {instance.id}: {str(e)}")
+    # Las notificaciones al usuario se manejan en perform_create (views.py)
+    # para garantizar que assigned_students ya esté guardado cuando el
+    # estudiante recibe la notificación y hace su primera petición.
+    pass
 
 
 @receiver(post_save, sender=TaskSubmission)
