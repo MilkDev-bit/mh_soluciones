@@ -25,22 +25,33 @@ class CanInteractWithTask(permissions.BasePermission):
     """
     def _get_task(self, view):
         """Método auxiliar para obtener la tarea desde la URL."""
+        task_pk = view.kwargs.get('task_pk')
+        if not task_pk:
+            logger.warning(
+                f"CanInteractWithTask: task_pk ausente en kwargs. "
+                f"view={view.__class__.__name__}, kwargs={view.kwargs}, action={getattr(view, 'action', '?')}"
+            )
+            return None
+
         try:
-            task_pk = view.kwargs.get('task_pk')
-            if not task_pk:
-                return None
-            
-            # Agregamos prefetch_related para buscar en assigned_students y project members
             return Task.objects.prefetch_related(
-                'assigned_students', 
+                'assigned_students',
                 'project__projectmember_set'
             ).select_related(
-                'created_by', 
+                'created_by',
                 'assigned_to',
                 'project'
             ).get(pk=task_pk)
-        except (Task.DoesNotExist, KeyError) as e:
-            logger.warning(f"Task interaction error: Task {view.kwargs.get('task_pk')} not found. {e}")
+        except Task.DoesNotExist:
+            logger.warning(
+                f"CanInteractWithTask: Task {task_pk} no encontrada en BD "
+                f"(Task.DoesNotExist). Puede ser race condition en creación o tarea eliminada."
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                f"CanInteractWithTask: Error inesperado al obtener Task {task_pk}: {type(e).__name__}: {e}"
+            )
             return None
 
     def has_permission(self, request, view):
@@ -49,9 +60,14 @@ class CanInteractWithTask(permissions.BasePermission):
         """
         if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR']:
             return True
-        
+
         task = self._get_task(view)
         if not task:
+            logger.warning(
+                f"CanInteractWithTask: denegado a {request.user.username} (ID: {request.user.id}) "
+                f"porque _get_task retornó None para task_pk={view.kwargs.get('task_pk')}. "
+                f"action={getattr(view, 'action', '?')}"
+            )
             return False
 
         # Verificamos tanto el creador, como el responsable directo (assigned_to)
