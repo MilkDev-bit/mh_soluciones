@@ -62,7 +62,7 @@ class DashboardDataAPIView(APIView):
         total_projects = Project.objects.count()
         active_users = CustomUser.objects.filter(is_active=True).exclude(role='CLIENT').count()
         completed_tasks_month = Task.objects.filter(
-            status=Task.TaskStatus.COMPLETED,
+            status__in=[Task.TaskStatus.COMPLETED, Task.TaskStatus.CLOSED],
             updated_at__month=timezone.now().month
         ).count()
         projects_in_progress = Project.objects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
@@ -98,7 +98,7 @@ class DashboardDataAPIView(APIView):
         total_projects = user_projects.count()
         completed_tasks_month = Task.objects.filter(
             project__in=user_projects,
-            status=Task.TaskStatus.COMPLETED,
+            status__in=[Task.TaskStatus.COMPLETED, Task.TaskStatus.CLOSED],
             updated_at__month=timezone.now().month
         ).count()
         projects_in_progress = user_projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count()
@@ -138,8 +138,14 @@ class DashboardDataAPIView(APIView):
             'kpis': {
                 'my_projects_count': user_projects.count(),
                 'team_members_count': len(team_members_ids),
-                'team_pending_tasks': tasks.filter(status=Task.TaskStatus.PENDING).count(),
-                'team_completed_tasks': tasks.filter(status=Task.TaskStatus.COMPLETED).count(),
+                'team_pending_tasks': tasks.filter(status__in=[
+                    Task.TaskStatus.OPEN, Task.TaskStatus.REOPENED,
+                    Task.TaskStatus.IN_REVIEW, Task.TaskStatus.FOR_REVIEW,
+                    Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS,
+                ]).count(),
+                'team_completed_tasks': tasks.filter(status__in=[
+                    Task.TaskStatus.COMPLETED, Task.TaskStatus.CLOSED,
+                ]).count(),
             },
             'projects_summary': ProjectStatusSerializer(user_projects[:10], many=True).data,
             'upcoming_deadlines': TaskSummarySerializer(
@@ -153,19 +159,34 @@ class DashboardDataAPIView(APIView):
         my_tasks = Task.objects.filter(
             Q(assigned_to=user) | Q(assigned_students=user)
         ).distinct()
-        
+
+        # Estatutos activos (tarea no finalizada): nuevos + legacy
+        ACTIVE_STATUSES = [
+            Task.TaskStatus.OPEN,
+            Task.TaskStatus.REOPENED,
+            Task.TaskStatus.IN_REVIEW,
+            Task.TaskStatus.PENDING,
+            Task.TaskStatus.IN_PROGRESS,
+            Task.TaskStatus.FOR_REVIEW,
+        ]
+        # Estatutos finalizados: nuevos + legacy
+        DONE_STATUSES = [
+            Task.TaskStatus.COMPLETED,
+            Task.TaskStatus.CLOSED,
+        ]
+
         return {
             'kpis': {
                 'assigned_tasks': my_tasks.count(),
-                'pending_tasks': my_tasks.filter(status=Task.TaskStatus.PENDING).count(),
-                'completed_tasks': my_tasks.filter(status=Task.TaskStatus.COMPLETED).count(),
+                'pending_tasks': my_tasks.filter(status__in=ACTIVE_STATUSES).count(),
+                'completed_tasks': my_tasks.filter(status__in=DONE_STATUSES).count(),
                 'overdue_tasks': my_tasks.filter(
                     due_date__lt=timezone.now().date(),
-                    status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]
+                    status__in=ACTIVE_STATUSES
                 ).count(),
             },
             'my_pending_tasks': TaskSummarySerializer(
-                my_tasks.filter(status__in=[Task.TaskStatus.PENDING, Task.TaskStatus.IN_PROGRESS]).order_by('due_date')[:10],
+                my_tasks.filter(status__in=ACTIVE_STATUSES).order_by('due_date')[:10],
                 many=True
             ).data,
         }
