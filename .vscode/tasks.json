@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "git push permissions fix",
+			"type": "shell",
+			"command": "cd c:\\Proyectos\\mh_soluciones && git add backend/apps/tasks/api/permissions.py && git commit -m \"fix: mejorar logging en CanInteractWithTask para diagnosticar 403 intermitentes\" && git push",
+			"isBackground": false
+		},
+		{
+			"label": "git push permissions fix",
+			"type": "shell",
+			"command": "cd c:\\Proyectos\\mh_soluciones && git add backend/apps/tasks/api/permissions.py && git commit -m \"fix: mejorar logging en CanInteractWithTask para diagnosticar 403 intermitentes\" && git push",
+			"isBackground": false
+		}
+	]
+}

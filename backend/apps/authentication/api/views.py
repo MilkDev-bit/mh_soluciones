@@ -197,7 +197,9 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'error': 'La contraseña debe tener al menos 8 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
         
         user.set_password(new_password)
-        user.save()
+        user.password_changed_at = timezone.now()
+        user.force_password_change = False
+        user.save(update_fields=['password', 'password_changed_at', 'force_password_change'])
         
         return Response({'message': 'Contraseña actualizada correctamente.'}, status=status.HTTP_200_OK)
 
@@ -469,6 +471,59 @@ class PasswordChangeAPIView(APIView):
         user.force_password_change = False
         user.save(update_fields=['password', 'password_changed_at', 'force_password_change'])
         return Response({"message": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
+
+
+class ForcePasswordChangeAPIView(APIView):
+    """Endpoint sin autenticación para cambiar contraseña cuando requires_password_change=True.
+    Recibe user_pk + current_password + new_password, valida credenciales y emite tokens.
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        user_pk = request.data.get('user_pk')
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not user_pk or not current_password or not new_password:
+            return Response(
+                {'error': 'user_pk, current_password y new_password son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'La nueva contraseña debe tener al menos 8 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(pk=user_pk)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(current_password):
+            return Response({'error': 'La contraseña actual es incorrecta.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Solo permitir si realmente requiere cambio de contraseña
+        if not user.force_password_change and not user.is_password_expired():
+            return Response(
+                {'error': 'Este endpoint solo está disponible cuando se requiere cambio de contraseña.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        user.set_password(new_password)
+        user.password_changed_at = timezone.now()
+        user.force_password_change = False
+        user.save(update_fields=['password', 'password_changed_at', 'force_password_change'])
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'message': 'Contraseña actualizada correctamente.',
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
 
 
 class TwoFactorSetupView(APIView):
