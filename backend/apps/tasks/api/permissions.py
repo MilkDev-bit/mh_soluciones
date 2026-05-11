@@ -73,17 +73,20 @@ class CanInteractWithTask(permissions.BasePermission):
         # Verificamos tanto el creador, como el responsable directo (assigned_to)
         # o si el estudiante está en la lista de asignados (assigned_students)
         # O si es miembro del proyecto (siendo estudiante)
+        # O si es el cliente asignado al proyecto (solo lectura)
         is_creator = request.user == task.created_by
         is_assigned_to = request.user == task.assigned_to
         is_in_students = task.assigned_students.filter(id=request.user.id).exists()
         is_project_member = task.project.projectmember_set.filter(user=request.user).exists()
+        is_project_client = task.project.client_id == request.user.id
 
-        if is_creator or is_assigned_to or is_in_students or is_project_member:
+        if is_creator or is_assigned_to or is_in_students or is_project_member or is_project_client:
             return True
         
         logger.warning(
             f"Access denied for user {request.user.username} to task {task.id}. "
-            f"Creator: {is_creator}, Assigned: {is_assigned_to}, In Students: {is_in_students}, Project Member: {is_project_member}"
+            f"Creator: {is_creator}, Assigned: {is_assigned_to}, In Students: {is_in_students}, "
+            f"Project Member: {is_project_member}, Project Client: {is_project_client}"
         )
         return False
     
@@ -100,12 +103,14 @@ class CanInteractWithTask(permissions.BasePermission):
         is_assigned_to = request.user == task.assigned_to
         is_in_students = task.assigned_students.filter(id=request.user.id).exists()
         is_project_member = task.project.projectmember_set.filter(user=request.user).exists()
+        is_project_client = task.project.client_id == request.user.id
 
-        if is_creator or is_assigned_to or is_in_students or is_project_member:
+        if is_creator or is_assigned_to or is_in_students or is_project_member or is_project_client:
             return True
             
         logger.warning(
             f"Object access denied for user {request.user.username} to task {task.id}. "
-            f"Creator: {is_creator}, Assigned: {is_assigned_to}, In Students: {is_in_students}, Project Member: {is_project_member}"
+            f"Creator: {is_creator}, Assigned: {is_assigned_to}, In Students: {is_in_students}, "
+            f"Project Member: {is_project_member}, Project Client: {is_project_client}"
         )
         return False

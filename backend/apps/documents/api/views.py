@@ -73,12 +73,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
         ).all()
 
         if not user.is_anonymous and user.role not in ADMIN_ROLES:
-            user_projects = user.projects.all()
-            queryset = queryset.filter(
-                Q(project__in=user_projects) | 
-                Q(task__project__in=user_projects) |
-                Q(uploaded_by=user)
-            ).distinct()
+            if user.role == 'CLIENT':
+                # Clients see all documents from projects where they are assigned as client
+                queryset = queryset.filter(
+                    Q(project__client=user) |
+                    Q(task__project__client=user)
+                ).distinct()
+            else:
+                user_projects = user.projects.all()
+                queryset = queryset.filter(
+                    Q(project__in=user_projects) | 
+                    Q(task__project__in=user_projects) |
+                    Q(uploaded_by=user)
+                ).distinct()
         
         # Filter by specific project
         project_id = self.request.query_params.get('project')
@@ -125,6 +132,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
         project_id = self.request.data.get('project')
         target_folder_id = self.request.data.get('target_folder_id')
         
+        # Clients cannot upload documents
+        if user.role == 'CLIENT':
+            raise ValidationError({
+                'detail': 'Los clientes no tienen permisos para subir archivos.'
+            })
+
         # Validate project membership if project is specified
         if project_id:
             is_admin = user.role in ADMIN_ROLES

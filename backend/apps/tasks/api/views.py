@@ -66,6 +66,12 @@ class TaskViewSet(viewsets.ModelViewSet):
         else:
             if user.role in TEACHER_ROLES:
                 base_queryset = Task.objects.all().select_related('project', 'assigned_to').prefetch_related('assigned_students')
+            elif user.role == 'CLIENT':
+                # Clients see all tasks from projects where they are assigned as client
+                base_queryset = Task.objects.filter(
+                    Q(project__client=user)
+                ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
+                logger.info(f"Client {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
             else:
                 # Students see only tasks assigned to them or their project tasks
                 # Using multiple conditions to ensure tasks are visible:
@@ -102,6 +108,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
     def perform_create(self, serializer):
+        if self.request.user.role == 'CLIENT':
+            raise PermissionDenied("Los clientes no pueden crear tareas.")
         if self.request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para crear tareas.")
 

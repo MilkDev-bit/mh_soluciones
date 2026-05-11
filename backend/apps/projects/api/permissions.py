@@ -6,18 +6,26 @@ class CanInteractInProject(BasePermission):
     """
     Permite la interacción (ej. comentar) si el usuario
     es un administrador o un miembro registrado del proyecto.
+    Los clientes asignados al proyecto solo pueden leer (SAFE_METHODS).
     Esta clase está diseñada para vistas anidadas que reciben un 'project_pk' en la URL.
     """
     def has_permission(self, request, view):
         if request.user.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH']:
             return True
-        
+
         project_id = view.kwargs.get('project_pk')
         if not project_id:
             return False
 
+        # Clients can only read (list/retrieve), not create/edit/delete
+        if request.user.role == 'CLIENT':
+            if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+                return False
+            from apps.projects.models import Project
+            return Project.objects.filter(id=project_id, client=request.user).exists()
+
         return ProjectMember.objects.filter(
-            project_id=project_id, 
+            project_id=project_id,
             user=request.user
         ).exists()
 
