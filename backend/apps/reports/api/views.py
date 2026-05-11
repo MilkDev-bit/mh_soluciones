@@ -193,7 +193,11 @@ class DashboardDataAPIView(APIView):
     
     def _get_client_dashboard_data(self, user):
         """Genera datos para el rol de Cliente."""
-        client_projects = Project.objects.filter(client=user)
+        # Incluir proyectos donde el usuario es el cliente FK o es miembro del proyecto
+        client_project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+        client_projects = Project.objects.filter(
+            Q(client=user) | Q(id__in=client_project_ids)
+        ).distinct()
         
         return {
             'kpis': {
@@ -240,7 +244,10 @@ class StatisticsAPIView(APIView):
             tasks_qs = tasks_qs.filter(project__in=projects_qs)
         elif user.role not in FULL_ACCESS_ROLES:
             if user.role == 'CLIENT':
-                projects_qs = projects_qs.filter(client=user)
+                client_project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+                projects_qs = projects_qs.filter(
+                    Q(client=user) | Q(id__in=client_project_ids)
+                ).distinct()
                 tasks_qs = tasks_qs.filter(project__in=projects_qs)
             else:
                 projects_qs = user.projects.all()

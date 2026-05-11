@@ -49,7 +49,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Raises PermissionDenied if user is CLIENT but not assigned to this project.
         """
         if user.role == 'CLIENT' and user.is_authenticated:
-            if not project.client or project.client.id != user.id:
+            is_client_fk = project.client and project.client.id == user.id
+            is_member = ProjectMember.objects.filter(project=project, user=user).exists()
+            if not is_client_fk and not is_member:
                 raise PermissionDenied("No tienes acceso a este proyecto.")
 
     def get_queryset(self):

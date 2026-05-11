@@ -108,6 +108,13 @@ const ProjectsPage = () => {
     }
   }, [isError]);
 
+  // Si la página actual no tiene resultados y hay páginas anteriores, volver a página 1
+  useEffect(() => {
+    if (!isLoading && !isFetching && page > 1 && projectsResponse && projectsResponse.count > 0 && projects.length === 0) {
+      setPage(1);
+    }
+  }, [isLoading, isFetching, page, projectsResponse, projects.length, setPage]);
+
   useEffect(() => {
     if (projectsUpdated) {
       refetch();

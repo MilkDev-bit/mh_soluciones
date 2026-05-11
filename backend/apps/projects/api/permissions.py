@@ -22,7 +22,10 @@ class CanInteractInProject(BasePermission):
             if request.method not in ('GET', 'HEAD', 'OPTIONS'):
                 return False
             from apps.projects.models import Project
-            return Project.objects.filter(id=project_id, client=request.user).exists()
+            return (
+                Project.objects.filter(id=project_id, client=request.user).exists() or
+                ProjectMember.objects.filter(project_id=project_id, user=request.user).exists()
+            )
 
         return ProjectMember.objects.filter(
             project_id=project_id,
