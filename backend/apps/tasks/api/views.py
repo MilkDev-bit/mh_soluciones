@@ -67,9 +67,11 @@ class TaskViewSet(viewsets.ModelViewSet):
             if user.role in TEACHER_ROLES:
                 base_queryset = Task.objects.all().select_related('project', 'assigned_to').prefetch_related('assigned_students')
             elif user.role == 'CLIENT':
-                # Clients see all tasks from projects where they are assigned as client
+                # Clients see all tasks from projects where they are the client FK or a member
+                from apps.projects.models import ProjectMember
+                member_project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
                 base_queryset = Task.objects.filter(
-                    Q(project__client=user)
+                    Q(project__client=user) | Q(project_id__in=member_project_ids)
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
                 logger.info(f"Client {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
             else:

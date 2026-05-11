@@ -108,12 +108,18 @@ const ProjectsPage = () => {
     }
   }, [isError]);
 
-  // Si la página actual no tiene resultados y hay páginas anteriores, volver a página 1
+  // Si la página actual no tiene resultados, volver a página 1 y limpiar filtros de estado
   useEffect(() => {
-    if (!isLoading && !isFetching && page > 1 && projectsResponse && projectsResponse.count > 0 && projects.length === 0) {
-      setPage(1);
+    if (!isLoading && !isFetching && !isError && projectsResponse) {
+      const isEmpty = projects.length === 0;
+      if (isEmpty && page > 1) {
+        setPage(1);
+      } else if (isEmpty && statusFilter) {
+        // Si hay filtro de estado activo y no hay resultados, limpiar el filtro
+        setStatusFilter('');
+      }
     }
-  }, [isLoading, isFetching, page, projectsResponse, projects.length, setPage]);
+  }, [isLoading, isFetching, isError, projectsResponse, projects.length, page, statusFilter, setPage, setStatusFilter]);
 
   useEffect(() => {
     if (projectsUpdated) {
