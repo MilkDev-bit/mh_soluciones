@@ -146,10 +146,12 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete, onReply,
 
         {!isEditing && (
           <div className="comment-footer-row">
-            <button className="btn-reply-toggle" onClick={() => setShowReplyForm(v => !v)}>
-              <FiMessageSquare size={12} />
-              {showReplyForm ? 'Cancelar' : 'Responder'}
-            </button>
+            {currentUser?.role !== 'CLIENT' && (
+              <button className="btn-reply-toggle" onClick={() => setShowReplyForm(v => !v)}>
+                <FiMessageSquare size={12} />
+                {showReplyForm ? 'Cancelar' : 'Responder'}
+              </button>
+            )}
             {canEditOrDelete && (
               <div className="comment-actions">
                 <button onClick={() => setIsEditing(true)} title="Editar">
@@ -921,7 +923,7 @@ const ProjectDetailPage = () => {
 
           {/* Right column - Stats, Events, Members, and overflow student cards */}
           <div className="sidebar-column">
-            {currentUser && currentUser.role !== 'CLIENT' && (
+            {currentUser && (
               <>
                 {/* Project Progress Charts - Only for analytics viewers (not STUDENT) */}
                 {canViewAnalytics(currentUser.role) && (
@@ -984,7 +986,7 @@ const ProjectDetailPage = () => {
             </div>
           )}
 
-          {currentUser && currentUser.role !== 'CLIENT' && (
+          {currentUser && (
             <>
               {/* For STUDENT: Show Submissions first */}
               {currentUser.role === 'STUDENT' && (
@@ -1130,18 +1132,20 @@ const ProjectDetailPage = () => {
                   })()}
                 </div>
 
-                <form onSubmit={onProjectCommentSubmit} className="comment-form">
-                  <MentionInput
-                    value={commentText}
-                    onChange={setCommentText}
-                    onMentionedUsersChange={setCommentMentionIds}
-                    members={mentionableMembers}
-                    rows={2}
-                  />
-                  <button type="submit" className="btn btn-primary" disabled={!commentText.trim()}>
-                    <FiSend /> Enviar
-                  </button>
-                </form>
+                {currentUser?.role !== 'CLIENT' && (
+                  <form onSubmit={onProjectCommentSubmit} className="comment-form">
+                    <MentionInput
+                      value={commentText}
+                      onChange={setCommentText}
+                      onMentionedUsersChange={setCommentMentionIds}
+                      members={mentionableMembers}
+                      rows={2}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={!commentText.trim()}>
+                      <FiSend /> Enviar
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* For STUDENT: Show Events and Members at the bottom */}

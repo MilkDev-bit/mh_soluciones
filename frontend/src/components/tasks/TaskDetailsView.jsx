@@ -93,6 +93,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const userRole = user?.role || '';
   
   const isAdmin = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'CEO' || userRole === 'RH';
+  const isClient = userRole === 'CLIENT';
   const canEditOrDeleteTask = userRole === 'SUPERADMIN';
   const canCompleteTask = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'PROFESSOR' || userRole === 'DIRECTOR';
   const isStudent = userRole === 'STUDENT';
@@ -100,7 +101,8 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const isInAssignedStudents = Array.isArray(task?.assigned_students_data) &&
                                task.assigned_students_data.some(s => s.id === user?.id);
   const canSubmit = (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) || isInAssignedStudents || isAdmin;
-  const canInteract = isAdmin || 
+  const canInteract = isAdmin ||
+                      isClient ||
                       (user?.id && task?.created_by?.id && user.id === task.created_by.id) || 
                       (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) ||
                       isInAssignedStudents;
@@ -876,10 +878,12 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                     </div>
                   ))}
                 </div>
-                <form onSubmit={commentHandleSubmit(onCommentSubmit)} className="details-form comment-form">
-                  <textarea {...commentRegister('comment', { required: true })} placeholder="Escribe un comentario..." rows="2"></textarea>
-                  <button type="submit" className="btn btn-primary"><FiSend /> Enviar</button>
-                </form>
+                {!isClient && (
+                  <form onSubmit={commentHandleSubmit(onCommentSubmit)} className="details-form comment-form">
+                    <textarea {...commentRegister('comment', { required: true })} placeholder="Escribe un comentario..." rows="2"></textarea>
+                    <button type="submit" className="btn btn-primary"><FiSend /> Enviar</button>
+                  </form>
+                )}
               </div>
             )}
             

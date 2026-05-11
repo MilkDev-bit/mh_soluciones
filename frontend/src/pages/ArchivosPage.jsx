@@ -725,33 +725,35 @@ const ArchivosPage = () => {
                   </div>
                   {obtenerEstadoDrive(archivo.upload_status)}
                 </div>
-                <div className="archivo-acciones">
-                  {archivo.drive_file_url && (
+                {currentUser?.role !== 'CLIENT' && (
+                  <div className="archivo-acciones">
+                    {archivo.drive_file_url && (
+                      <button
+                        className="btn-icono"
+                        title="Ver en Drive"
+                        onClick={() => window.open(archivo.drive_file_url, '_blank')}
+                      >
+                        <FiExternalLink />
+                      </button>
+                    )}
                     <button
                       className="btn-icono"
-                      title="Ver en Drive"
-                      onClick={() => window.open(archivo.drive_file_url, '_blank')}
+                      title="Descargar"
+                      onClick={() => handleDownloadArchivo(archivo)}
                     >
-                      <FiExternalLink />
+                      <FiDownload />
                     </button>
-                  )}
-                  <button
-                    className="btn-icono"
-                    title=""
-                    onClick={() => handleDownloadArchivo(archivo)}
-                  >
-                    <FiDownload />
-                  </button>
-                  {currentUser?.role === 'SUPERADMIN' && (
-                    <button
-                      className="btn-icono btn-peligro"
-                      title="Eliminar"
-                      onClick={() => handleDeleteArchivo(archivo.id)}
-                    >
-                      <FiTrash2 />
-                    </button>
-                  )}
-                </div>
+                    {currentUser?.role === 'SUPERADMIN' && (
+                      <button
+                        className="btn-icono btn-peligro"
+                        title="Eliminar"
+                        onClick={() => handleDeleteArchivo(archivo.id)}
+                      >
+                        <FiTrash2 />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}
