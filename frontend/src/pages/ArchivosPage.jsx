@@ -663,7 +663,7 @@ const ArchivosPage = () => {
       </div>
       )}
 
-      {filtroCarpeta.startsWith('STATIC_') && archivosFiltrados.length > 0 && !cargando && !error && (
+      {currentUser?.role !== 'CLIENT' && filtroCarpeta.startsWith('STATIC_') && archivosFiltrados.length > 0 && !cargando && !error && (
         <div style={{ padding: '0 2rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
           <button 
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', background: 'var(--primary-color, #3b82f6)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}

@@ -74,10 +74,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
         if not user.is_anonymous and user.role not in ADMIN_ROLES:
             if user.role == 'CLIENT':
-                # Clients see all documents from projects where they are assigned as client
+                # Clients see documents from projects where they are the client FK or a member
+                from apps.projects.models import ProjectMember
+                member_project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
                 queryset = queryset.filter(
                     Q(project__client=user) |
-                    Q(task__project__client=user)
+                    Q(task__project__client=user) |
+                    Q(project_id__in=member_project_ids) |
+                    Q(task__project_id__in=member_project_ids)
                 ).distinct()
             else:
                 user_projects = user.projects.all()
