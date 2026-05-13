@@ -502,15 +502,24 @@ const ArchivosPage = () => {
 
   const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
 
-  // Subcarpetas directas de la carpeta actualmente seleccionada
+  // Subcarpetas directas de la carpeta actualmente seleccionada.
+  // Compatible con respuesta antigua (sin depth/parentId) y nueva (con depth/parentId).
   const carpetasHijas = useMemo(() => {
     if (!proyectoSeleccionado || carpetasDrive.length === 0) return [];
+    const tieneJerarquia = carpetasDrive.some(c => c.depth !== undefined);
     if (filtroCarpeta === 'ALL') {
-      // Carpetas raíz del proyecto (depth 0, sin incluir la raíz del propio proyecto)
-      return carpetasDrive.filter(c => !c.isProjectRoot && c.depth === 0);
+      if (tieneJerarquia) {
+        // Carpetas de nivel 0 (hijos directos del proyecto), excluyendo la raíz
+        return carpetasDrive.filter(c => !c.isProjectRoot && (c.depth ?? 0) === 0);
+      }
+      // Sin jerarquía: mostrar todas las que no son raíz
+      return carpetasDrive.filter(c => !c.isProjectRoot);
     }
-    // Hijos directos de la carpeta seleccionada
-    return carpetasDrive.filter(c => c.parentId === filtroCarpeta);
+    if (tieneJerarquia) {
+      // Hijos directos de la carpeta seleccionada
+      return carpetasDrive.filter(c => c.parentId === filtroCarpeta);
+    }
+    return [];
   }, [carpetasDrive, filtroCarpeta, proyectoSeleccionado]);
 
   // Ruta de navegación (breadcrumb) hasta la carpeta actual
@@ -579,7 +588,6 @@ const ArchivosPage = () => {
             className="filtro-carpeta"
             value={filtroCarpeta}
             onChange={(e) => setFiltroCarpeta(e.target.value)}
-            disabled={cargandoCarpetas && !!proyectoSeleccionado}
           >
             <option value="ALL">Todas las carpetas</option>
             
