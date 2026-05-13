@@ -177,7 +177,7 @@ const ArchivosPage = () => {
 
       // Filter by selected Drive folder (send folder ID to backend)
       // Only send if it's a real Drive folder ID, not a static filter
-      if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_') && carpetasDrive.length > 0) {
+      if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_')) {
         params.drive_folder_id = filtroCarpeta;
       }
 
@@ -196,7 +196,7 @@ const ArchivosPage = () => {
     } finally {
       setCargando(false);
     }
-  }, [filtroTipo, proyectoSeleccionado, filtroCarpeta, carpetasDrive]);
+  }, [filtroTipo, proyectoSeleccionado, filtroCarpeta]);
 
   useEffect(() => {
     cargarProyectos();
@@ -265,8 +265,9 @@ const ArchivosPage = () => {
       setSubiendo(true);
       try {
         // Get the selected folder name for display
-        const carpetaSeleccionada = carpetasDrive.find(c => c.id === filtroCarpeta);
-        const nombreCarpetaDestino = carpetaSeleccionada?.name || null;
+        // carpetaStack tiene la ruta de navegación actual; la última entrada es la carpeta activa
+        const carpetaActual = carpetaStack.length > 0 ? carpetaStack[carpetaStack.length - 1] : null;
+        const nombreCarpetaDestino = carpetaActual?.name || null;
 
         // Upload each file
         const promises = archivosAceptados.map(async (file) => {
@@ -284,8 +285,8 @@ const ArchivosPage = () => {
           formData.append('project', proyectoSeleccionado);
 
           // Add target folder ID if a specific folder is selected
-          // Only send if it's not 'ALL' and not a STATIC folder, and we have actual folder data
-          if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_') && carpetasDrive.length > 0) {
+          // Only send if it's not 'ALL' y no es un filtro estático
+          if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_')) {
             formData.append('target_folder_id', filtroCarpeta);
           }
 
