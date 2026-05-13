@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.db.models import Q
 from rest_framework import viewsets
@@ -41,16 +42,27 @@ def _is_celery_worker_available():
 
 def _run_upload_sync(document, target_folder_id=None):
     """
-    Ejecuta la subida a Google Drive de forma síncrona (sin Celery).
+    Ejecuta la subida a Google Drive en un hilo de fondo para no bloquear
+    el worker de gunicorn (evita timeouts de Railway en uploads síncronos).
     """
-    from apps.documents.tasks import upload_document_to_drive as _upload_task
-    try:
-        _upload_task(document.id, target_folder_id=target_folder_id)
-        logger.info(f"✅ Subida síncrona exitosa para documento ID={document.id}")
-    except Exception as e:
-        logger.error(f"❌ Error en subida síncrona para doc {document.id}: {e}")
-        document.upload_status = Document.UploadStatus.FAILED
-        document.save(update_fields=['upload_status'])
+    doc_id = document.id
+
+    def _do_upload():
+        from apps.documents.tasks import upload_document_to_drive as _upload_task
+        try:
+            _upload_task(doc_id, target_folder_id=target_folder_id)
+            logger.info(f"✅ Subida síncrona (hilo) exitosa para documento ID={doc_id}")
+        except Exception as e:
+            logger.error(f"❌ Error en subida síncrona (hilo) para doc {doc_id}: {e}")
+            try:
+                from apps.documents.models import Document as Doc
+                Doc.objects.filter(pk=doc_id).update(upload_status=Doc.UploadStatus.FAILED)
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_do_upload, daemon=True)
+    t.start()
+    logger.info(f"🧵 Hilo de subida iniciado para documento ID={doc_id}")
 
 
 class DocumentViewSet(viewsets.ModelViewSet):

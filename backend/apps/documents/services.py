@@ -176,23 +176,21 @@ class GoogleDriveService:
                     f"Subiendo archivo a carpeta específica: {document_instance.file.name} "
                     f"a folder_id={target_folder_id}"
                 )
-                
-                # Get folder name for logging and metadata
+                parent_folder_id = target_folder_id
+                parent_folder_name = target_folder_id  # ID como fallback; se actualiza abajo si es posible
+                file_upload_parent_id = target_folder_id
+
+                # Intentar obtener el nombre real de la carpeta (no crítico)
                 try:
                     folder_metadata = self.service.files().get(
                         fileId=target_folder_id,
                         fields='id, name'
                     ).execute()
-                    folder_name = folder_metadata.get('name', 'Carpeta Desconocida')
-                except HttpError as e:
-                    logger.error(f"Error al obtener metadata de carpeta {target_folder_id}: {e}")
-                    folder_name = 'Carpeta Desconocida'
-                
-                parent_folder_id = target_folder_id
-                parent_folder_name = folder_name
-                file_upload_parent_id = target_folder_id  # Upload directly to selected folder
+                    parent_folder_name = folder_metadata.get('name', target_folder_id)
+                except Exception:
+                    pass  # No crítico — se usa el ID como nombre de fallback
+
                 filename = document_instance.file.name
-                
                 logger.info(
                     f"[UPLOAD] Archivo: {filename} -> Carpeta destino: '{parent_folder_name}' (ID: {parent_folder_id})"
                 )
