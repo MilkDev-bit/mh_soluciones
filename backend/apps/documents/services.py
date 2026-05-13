@@ -445,16 +445,84 @@ class GoogleDriveService:
                 'error': str(e)
             }
 
+    def _list_folders_recursive(self, parent_id, parent_name, depth=0, max_depth=6):
+        """
+        Lista recursivamente todas las carpetas dentro de un folder de Drive.
+
+        Args:
+            parent_id: ID del folder de Google Drive a explorar
+            parent_name: Nombre del folder padre (para logging)
+            depth: Nivel de profundidad actual (0 = hijos directos)
+            max_depth: Profundidad máxima para evitar recursión infinita
+
+        Returns:
+            list: Lista plana de carpetas con campos 'depth' y 'parentId'
+        """
+        if depth > max_depth:
+            logger.warning(f"[DRIVE DEBUG] Límite de profundidad ({max_depth}) alcanzado en carpeta '{parent_name}' (ID={parent_id})")
+            return []
+
+        query = (
+            f"mimeType='application/vnd.google-apps.folder' "
+            f"and '{parent_id}' in parents and trashed=false"
+        )
+        all_folders = []
+        page_token = None
+
+        while True:
+            kwargs = {
+                'q': query,
+                'spaces': 'drive',
+                'fields': 'nextPageToken, files(id, name, createdTime, modifiedTime)',
+                'orderBy': 'name',
+                'pageSize': 100,
+            }
+            if page_token:
+                kwargs['pageToken'] = page_token
+
+            response = self.service.files().list(**kwargs).execute()
+            folders = response.get('files', [])
+
+            for folder in folders:
+                folder_entry = {
+                    'id': folder.get('id'),
+                    'name': folder.get('name'),
+                    'createdTime': folder.get('createdTime'),
+                    'modifiedTime': folder.get('modifiedTime'),
+                    'depth': depth,
+                    'parentId': parent_id,
+                    'isProjectRoot': False,
+                }
+                all_folders.append(folder_entry)
+                logger.info(
+                    f"[DRIVE DEBUG] Carpeta nivel {depth}: '{folder.get('name')}' "
+                    f"(ID={folder.get('id')}, padre='{parent_name}')"
+                )
+
+                # Recursivamente obtener subcarpetas de esta carpeta
+                sub_folders = self._list_folders_recursive(
+                    folder['id'], folder.get('name', ''), depth + 1, max_depth
+                )
+                all_folders.extend(sub_folders)
+
+            page_token = response.get('nextPageToken')
+            if not page_token:
+                break
+
+        return all_folders
+
     def list_folders_for_project(self, project_id, year=None):
         """
-        Lista las carpetas reales existentes en Google Drive para un proyecto específico.
+        Lista las carpetas reales existentes en Google Drive para un proyecto específico,
+        incluyendo todas las subcarpetas de forma recursiva.
         
         Args:
             project_id: ID del proyecto
             year: Año (opcional, si no se proporciona usa el año actual)
         
         Returns:
-            list: Lista de diccionarios con información de las carpetas
+            list: Lista plana de diccionarios con información de las carpetas,
+                  incluyendo campos 'depth' y 'parentId' para representar la jerarquía
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
@@ -489,23 +557,10 @@ class GoogleDriveService:
             project_folder_id = self._get_or_create_folder(project_name, parent_id=year_id)
             logger.info(f"[DRIVE DEBUG] Carpeta de proyecto obtenida: folder_id={project_folder_id} para project_id={project_id}")
             
-            # List all folders (not files) within the project folder
-            query = f"mimeType='application/vnd.google-apps.folder' and '{project_folder_id}' in parents and trashed=false"
+            # Obtener todas las carpetas de forma recursiva
+            folders = self._list_folders_recursive(project_folder_id, project_name, depth=0)
             
-            logger.info(f"[DRIVE DEBUG] Ejecutando consulta a Google Drive API con query: {query}")
-            response = self.service.files().list(
-                q=query,
-                spaces='drive',
-                fields='files(id, name, createdTime, modifiedTime)',
-                orderBy='name'
-            ).execute()
-            
-            # Log raw response for debugging
-            logger.info(f"[DRIVE DEBUG] Respuesta cruda de Google Drive API: {response}")
-            
-            folders = response.get('files', [])
-            
-            logger.info(f"[DRIVE DEBUG] Encontradas {len(folders)} subcarpetas para el proyecto '{project_name}' (ID={project_id})")
+            logger.info(f"[DRIVE DEBUG] Total de carpetas (todos los niveles) para proyecto '{project_name}': {len(folders)}")
             
             # If no subfolders found, include the project folder itself as an option
             if len(folders) == 0:
@@ -513,19 +568,16 @@ class GoogleDriveService:
                     f"[DRIVE DEBUG] No se encontraron subcarpetas en project_id={project_id}, folder_id={project_folder_id}. "
                     f"Se retornará la carpeta del proyecto como opción de subida."
                 )
-                # Return the project folder itself so users can upload there
                 folders = [{
                     'id': project_folder_id,
                     'name': project_name,
                     'createdTime': None,
                     'modifiedTime': None,
-                    'isProjectRoot': True  # Flag to identify this is the project root
+                    'depth': 0,
+                    'parentId': None,
+                    'isProjectRoot': True,
                 }]
                 logger.info(f"[DRIVE DEBUG] Retornando carpeta raíz del proyecto: {folders}")
-            else:
-                # Log each subfolder found
-                for folder in folders:
-                    logger.info(f"[DRIVE DEBUG] Subcarpeta encontrada: {folder.get('name')} (ID: {folder.get('id')})")
             
             return folders
             

@@ -11,7 +11,10 @@ import {
   FiCheckCircle,
   FiClock,
   FiAlertCircle,
-  FiExternalLink
+  FiExternalLink,
+  FiFolder,
+  FiChevronRight,
+  FiArrowLeft
 } from 'react-icons/fi';
 import { useDropzone } from 'react-dropzone';
 import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
@@ -499,6 +502,30 @@ const ArchivosPage = () => {
 
   const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
 
+  // Subcarpetas directas de la carpeta actualmente seleccionada
+  const carpetasHijas = useMemo(() => {
+    if (!proyectoSeleccionado || carpetasDrive.length === 0) return [];
+    if (filtroCarpeta === 'ALL') {
+      // Carpetas raíz del proyecto (depth 0, sin incluir la raíz del propio proyecto)
+      return carpetasDrive.filter(c => !c.isProjectRoot && c.depth === 0);
+    }
+    // Hijos directos de la carpeta seleccionada
+    return carpetasDrive.filter(c => c.parentId === filtroCarpeta);
+  }, [carpetasDrive, filtroCarpeta, proyectoSeleccionado]);
+
+  // Ruta de navegación (breadcrumb) hasta la carpeta actual
+  const breadcrumb = useMemo(() => {
+    if (filtroCarpeta === 'ALL' || !carpetasDrive.length) return [];
+    const trail = [];
+    let current = carpetasDrive.find(c => c.id === filtroCarpeta);
+    while (current) {
+      trail.unshift(current);
+      const parent = carpetasDrive.find(c => c.id === current.parentId);
+      current = parent || null;
+    }
+    return trail;
+  }, [carpetasDrive, filtroCarpeta]);
+
   return (
     <div className="archivos-page">
       <div className="page-header">
@@ -573,11 +600,18 @@ const ArchivosPage = () => {
             {proyectoSeleccionado && cargandoCarpetas && (
               <option value="ALL" disabled>Cargando carpetas...</option>
             )}
-            {proyectoSeleccionado && carpetasDrive.map(carpeta => (
-              <option key={carpeta.id} value={carpeta.id}>
-                {carpeta.isProjectRoot ? `📁 ${carpeta.name} (Raíz)` : carpeta.name}
-              </option>
-            ))}
+            {proyectoSeleccionado && carpetasDrive.map(carpeta => {
+              const depth = carpeta.depth || 0;
+              const prefix = depth === 0 ? '📁 ' : `${'  '.repeat(depth)}└─ `;
+              const label = carpeta.isProjectRoot
+                ? `📁 ${carpeta.name} (Raíz)`
+                : `${prefix}${carpeta.name}`;
+              return (
+                <option key={carpeta.id} value={carpeta.id}>
+                  {label}
+                </option>
+              );
+            })}
           </select>
           <div className="fecha-filter-container">
             <select
@@ -698,66 +732,125 @@ const ArchivosPage = () => {
           </button>
         </div>
       ) : (
-        <div className={`archivos-contenedor ${vistaTipo}`}>
-          {archivosFiltrados.length === 0 ? (
-            <div className="sin-archivos">
-              <FiFile size={48} />
-              <p>No se encontraron archivos</p>
+        <>
+          {/* Breadcrumb de navegación de carpetas */}
+          {proyectoSeleccionado && breadcrumb.length > 0 && (
+            <div className="carpeta-breadcrumb">
+              <button
+                className="breadcrumb-back"
+                onClick={() => {
+                  const parentId = breadcrumb.length > 1
+                    ? breadcrumb[breadcrumb.length - 2].id
+                    : 'ALL';
+                  setFiltroCarpeta(parentId);
+                }}
+                title="Volver atrás"
+              >
+                <FiArrowLeft />
+              </button>
+              <button className="breadcrumb-item" onClick={() => setFiltroCarpeta('ALL')}>
+                Inicio
+              </button>
+              {breadcrumb.map((item, idx) => (
+                <span key={item.id} className="breadcrumb-trail">
+                  <FiChevronRight />
+                  {idx < breadcrumb.length - 1 ? (
+                    <button className="breadcrumb-item" onClick={() => setFiltroCarpeta(item.id)}>
+                      {item.name}
+                    </button>
+                  ) : (
+                    <span className="breadcrumb-current">{item.name}</span>
+                  )}
+                </span>
+              ))}
             </div>
-          ) : (
-            archivosMostrados.map(archivo => (
-              <div key={archivo.id} className="archivo-item">
-                <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
-                  {obtenerThumbnail(archivo)}
-                </div>
-                <div className="archivo-info">
-                  <h4 className="archivo-nombre">{archivo.name}</h4>
-                  <div className="archivo-meta">
-                    <span>{formatearTamano(archivo.file_size)}</span>
-                    <span>•</span>
-                    <span>{archivo.uploaded_by?.username || 'Usuario'}</span>
-                    {archivo.project_info?.name && (
-                      <>
-                        <span>•</span>
-                        <span>{archivo.project_info.name}</span>
-                      </>
-                    )}
+          )}
+
+          {/* Subcarpetas de la carpeta actual */}
+          {carpetasHijas.length > 0 && (
+            <div className="carpetas-seccion">
+              <div className="carpetas-grid">
+                {carpetasHijas.map(carpeta => (
+                  <div
+                    key={carpeta.id}
+                    className="carpeta-card"
+                    onClick={() => setFiltroCarpeta(carpeta.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setFiltroCarpeta(carpeta.id)}
+                  >
+                    <div className="carpeta-card-icono">
+                      <FiFolder />
+                    </div>
+                    <span className="carpeta-card-nombre">{carpeta.name}</span>
                   </div>
-                  {obtenerEstadoDrive(archivo.upload_status)}
-                </div>
-                {currentUser?.role !== 'CLIENT' && (
-                  <div className="archivo-acciones">
-                    {archivo.drive_file_url && (
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Listado de archivos */}
+          <div className={`archivos-contenedor ${vistaTipo}`}>
+            {archivosFiltrados.length === 0 && carpetasHijas.length === 0 ? (
+              <div className="sin-archivos">
+                <FiFile size={48} />
+                <p>No se encontraron archivos</p>
+              </div>
+            ) : archivosFiltrados.length > 0 ? (
+              archivosMostrados.map(archivo => (
+                <div key={archivo.id} className="archivo-item">
+                  <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
+                    {obtenerThumbnail(archivo)}
+                  </div>
+                  <div className="archivo-info">
+                    <h4 className="archivo-nombre">{archivo.name}</h4>
+                    <div className="archivo-meta">
+                      <span>{formatearTamano(archivo.file_size)}</span>
+                      <span>•</span>
+                      <span>{archivo.uploaded_by?.username || 'Usuario'}</span>
+                      {archivo.project_info?.name && (
+                        <>
+                          <span>•</span>
+                          <span>{archivo.project_info.name}</span>
+                        </>
+                      )}
+                    </div>
+                    {obtenerEstadoDrive(archivo.upload_status)}
+                  </div>
+                  {currentUser?.role !== 'CLIENT' && (
+                    <div className="archivo-acciones">
+                      {archivo.drive_file_url && (
+                        <button
+                          className="btn-icono"
+                          title="Ver en Drive"
+                          onClick={() => window.open(archivo.drive_file_url, '_blank')}
+                        >
+                          <FiExternalLink />
+                        </button>
+                      )}
                       <button
                         className="btn-icono"
-                        title="Ver en Drive"
-                        onClick={() => window.open(archivo.drive_file_url, '_blank')}
+                        title="Descargar"
+                        onClick={() => handleDownloadArchivo(archivo)}
                       >
-                        <FiExternalLink />
+                        <FiDownload />
                       </button>
-                    )}
-                    <button
-                      className="btn-icono"
-                      title="Descargar"
-                      onClick={() => handleDownloadArchivo(archivo)}
-                    >
-                      <FiDownload />
-                    </button>
-                    {currentUser?.role === 'SUPERADMIN' && (
-                      <button
-                        className="btn-icono btn-peligro"
-                        title="Eliminar"
-                        onClick={() => handleDeleteArchivo(archivo.id)}
-                      >
-                        <FiTrash2 />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+                      {currentUser?.role === 'SUPERADMIN' && (
+                        <button
+                          className="btn-icono btn-peligro"
+                          title="Eliminar"
+                          onClick={() => handleDeleteArchivo(archivo.id)}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : null}
+          </div>
+        </>
       )}
       
       {!cargando && !error && archivosFiltrados.length > visibleCount && (

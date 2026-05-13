@@ -260,14 +260,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
             logger.info(f"[ACCESS] Usuario {user.username} consultando carpetas de Drive para proyecto ID={project_id}")
             folders = drive_service.list_folders_for_project(project_id)
             
-            # Format response
+            # Format response (incluye depth y parentId para mostrar jerarquía en el frontend)
             folder_list = [
                 {
                     'id': folder.get('id'),
                     'name': folder.get('name'),
                     'createdTime': folder.get('createdTime'),
                     'modifiedTime': folder.get('modifiedTime'),
-                    'isProjectRoot': folder.get('isProjectRoot', False)
+                    'isProjectRoot': folder.get('isProjectRoot', False),
+                    'depth': folder.get('depth', 0),
+                    'parentId': folder.get('parentId'),
                 }
                 for folder in folders
             ]
