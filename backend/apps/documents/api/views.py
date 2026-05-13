@@ -194,16 +194,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='folders')
     def list_folders(self, request):
         """
-        Lista las carpetas reales de Google Drive para un proyecto específico.
-        Requiere parámetro 'project' en query params.
-        
-        Control de acceso por rol:
-        - SUPERADMIN, CEO, ADMIN: pueden ver carpetas de cualquier proyecto
-        - Otros roles: solo pueden ver carpetas de proyectos donde son miembros
+        Lista las carpetas de Google Drive para un proyecto específico (1 nivel).
+        Parámetros:
+          - project (requerido): ID del proyecto
+          - parent_folder_id (opcional): ID de carpeta de Drive; si se provee,
+            lista los hijos directos de esa carpeta en vez de la raíz del proyecto.
         """
         project_id = request.query_params.get('project')
+        parent_folder_id = request.query_params.get('parent_folder_id')
         user = request.user
-        
+
         if not project_id:
             return Response(
                 {'error': 'El parámetro "project" es requerido'},
@@ -255,12 +255,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
             # Initialize Drive service with institutional credentials
             drive_service = GoogleDriveService(use_institutional=True)
+
+            # Si se provee parent_folder_id, listar hijos de esa carpeta directamente
+            if parent_folder_id:
+                logger.info(f"[ACCESS] Usuario {user.username} consultando hijos de carpeta Drive ID={parent_folder_id}")
+                folders = drive_service.list_direct_subfolders(parent_folder_id)
+            else:
+                logger.info(f"[ACCESS] Usuario {user.username} consultando carpetas de Drive para proyecto ID={project_id}")
+                folders = drive_service.list_folders_for_project(project_id)
             
-            # Get folders for the project
-            logger.info(f"[ACCESS] Usuario {user.username} consultando carpetas de Drive para proyecto ID={project_id}")
-            folders = drive_service.list_folders_for_project(project_id)
-            
-            # Format response (incluye depth y parentId para mostrar jerarquía en el frontend)
+            # Format response (incluye parentId para navegar la jerarquía en el frontend)
             folder_list = [
                 {
                     'id': folder.get('id'),
@@ -268,7 +272,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     'createdTime': folder.get('createdTime'),
                     'modifiedTime': folder.get('modifiedTime'),
                     'isProjectRoot': folder.get('isProjectRoot', False),
-                    'depth': folder.get('depth', 0),
                     'parentId': folder.get('parentId'),
                 }
                 for folder in folders

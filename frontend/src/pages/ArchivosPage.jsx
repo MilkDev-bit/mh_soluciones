@@ -37,7 +37,8 @@ const ArchivosPage = () => {
   const [error, setError] = useState(null);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [proyectos, setProyectos] = useState([]);
-  const [carpetasDrive, setCarpetasDrive] = useState([]); // Dynamic folders from Drive
+  const [carpetasDrive, setCarpetasDrive] = useState([]); // Carpetas del nivel actual
+  const [carpetaStack, setCarpetaStack] = useState([]); // Pila de navegación [{id, name}]
   const [cargandoCarpetas, setCargandoCarpetas] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState('all'); // 'all', 'week', 'month', '3months', '6months', 'year', 'custom'
   const [fechaDesde, setFechaDesde] = useState('');
@@ -126,33 +127,31 @@ const ArchivosPage = () => {
     }
   };
 
-  const cargarCarpetasDrive = useCallback(async (projectId) => {
+  const cargarCarpetasDrive = useCallback(async (projectId, parentFolderId = null) => {
     if (!projectId) {
       setCarpetasDrive([]);
+      setCarpetaStack([]);
       setFiltroCarpeta('ALL');
       return;
     }
 
     try {
       setCargandoCarpetas(true);
-      const folders = await getFoldersForProject(projectId);
-      // Actualizar carpetas SIN cambiar filtroCarpeta aquí para evitar re-fetch en cadena
+      const folders = await getFoldersForProject(projectId, parentFolderId);
       setCarpetasDrive(folders);
     } catch (error) {
       console.error('Error cargando carpetas:', error);
 
       if (error.statusCode === 403) {
         toast.error('No tiene permisos para ver las carpetas de este proyecto');
-        setCarpetasDrive([]);
       } else if (error.type === 'refresh_error') {
         toast.error('Error de autenticación con Google Drive. Contacte al administrador.');
-        setCarpetasDrive([]);
       } else if (error.type === 'permission_error') {
         toast.error('Sin permisos para acceder a Google Drive. Contacte al administrador.');
-        setCarpetasDrive([]);
       } else {
-        setCarpetasDrive([]);
+        toast.error('Error al cargar carpetas del proyecto');
       }
+      setCarpetasDrive([]);
     } finally {
       setCargandoCarpetas(false);
     }
@@ -208,12 +207,35 @@ const ArchivosPage = () => {
   const handleProyectoChange = useCallback(async (projectId) => {
     setProyectoSeleccionado(projectId || null);
     setFiltroCarpeta('ALL');
+    setCarpetaStack([]);
     if (projectId) {
       await cargarCarpetasDrive(projectId);
     } else {
       setCarpetasDrive([]);
     }
   }, [cargarCarpetasDrive]);
+
+  // Entrar a una subcarpeta: carga sus hijos y empuja al stack
+  const handleEntrarCarpeta = useCallback(async (carpeta) => {
+    setCarpetaStack(prev => [...prev, carpeta]);
+    setFiltroCarpeta(carpeta.id);
+    await cargarCarpetasDrive(proyectoSeleccionado, carpeta.id);
+  }, [cargarCarpetasDrive, proyectoSeleccionado]);
+
+  // Volver al nivel anterior del stack
+  const handleVolverCarpeta = useCallback(async (targetIndex) => {
+    // targetIndex === -1 => volver a raíz
+    const newStack = targetIndex >= 0 ? carpetaStack.slice(0, targetIndex + 1) : [];
+    setCarpetaStack(newStack);
+    if (newStack.length === 0) {
+      setFiltroCarpeta('ALL');
+      await cargarCarpetasDrive(proyectoSeleccionado);
+    } else {
+      const parent = newStack[newStack.length - 1];
+      setFiltroCarpeta(parent.id);
+      await cargarCarpetasDrive(proyectoSeleccionado, parent.id);
+    }
+  }, [carpetaStack, cargarCarpetasDrive, proyectoSeleccionado]);
 
   // Debounce: espera 300ms después del último cambio de filtro antes de llamar a la API
   useEffect(() => {
@@ -502,38 +524,15 @@ const ArchivosPage = () => {
 
   const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
 
-  // Subcarpetas directas de la carpeta actualmente seleccionada.
-  // Compatible con respuesta antigua (sin depth/parentId) y nueva (con depth/parentId).
+  // Carpetas del nivel actual (carpetasDrive ya viene filtrada del backend)
   const carpetasHijas = useMemo(() => {
-    if (!proyectoSeleccionado || carpetasDrive.length === 0) return [];
-    const tieneJerarquia = carpetasDrive.some(c => c.depth !== undefined);
-    if (filtroCarpeta === 'ALL') {
-      if (tieneJerarquia) {
-        // Carpetas de nivel 0 (hijos directos del proyecto), excluyendo la raíz
-        return carpetasDrive.filter(c => !c.isProjectRoot && (c.depth ?? 0) === 0);
-      }
-      // Sin jerarquía: mostrar todas las que no son raíz
-      return carpetasDrive.filter(c => !c.isProjectRoot);
-    }
-    if (tieneJerarquia) {
-      // Hijos directos de la carpeta seleccionada
-      return carpetasDrive.filter(c => c.parentId === filtroCarpeta);
-    }
-    return [];
-  }, [carpetasDrive, filtroCarpeta, proyectoSeleccionado]);
+    if (!proyectoSeleccionado) return [];
+    // Excluir la carpeta raíz del proyecto (isProjectRoot) - no es navegable como subfolder
+    return carpetasDrive.filter(c => !c.isProjectRoot);
+  }, [carpetasDrive, proyectoSeleccionado]);
 
-  // Ruta de navegación (breadcrumb) hasta la carpeta actual
-  const breadcrumb = useMemo(() => {
-    if (filtroCarpeta === 'ALL' || !carpetasDrive.length) return [];
-    const trail = [];
-    let current = carpetasDrive.find(c => c.id === filtroCarpeta);
-    while (current) {
-      trail.unshift(current);
-      const parent = carpetasDrive.find(c => c.id === current.parentId);
-      current = parent || null;
-    }
-    return trail;
-  }, [carpetasDrive, filtroCarpeta]);
+  // Breadcrumb usa carpetaStack directamente
+  const breadcrumb = carpetaStack;
 
   return (
     <div className="archivos-page">
@@ -587,10 +586,19 @@ const ArchivosPage = () => {
           <select
             className="filtro-carpeta"
             value={filtroCarpeta}
-            onChange={(e) => setFiltroCarpeta(e.target.value)}
+            onChange={async (e) => {
+              const val = e.target.value;
+              if (val === 'ALL') {
+                await handleVolverCarpeta(-1);
+              } else {
+                // Buscar la carpeta en el nivel actual y entrar
+                const carpeta = carpetasDrive.find(c => c.id === val);
+                if (carpeta) await handleEntrarCarpeta(carpeta);
+              }
+            }}
           >
             <option value="ALL">Todas las carpetas</option>
-            
+
             {!proyectoSeleccionado && [
               'Matriz de cumplimiento SH',
               'QR WEEKLY',
@@ -603,23 +611,16 @@ const ArchivosPage = () => {
             ))}
 
             {proyectoSeleccionado && carpetasDrive.length === 0 && !cargandoCarpetas && (
-              <option value="ALL" disabled>Carpeta del proyecto</option>
+              <option value="ALL" disabled>Sin subcarpetas</option>
             )}
             {proyectoSeleccionado && cargandoCarpetas && (
               <option value="ALL" disabled>Cargando carpetas...</option>
             )}
-            {proyectoSeleccionado && carpetasDrive.map(carpeta => {
-              const depth = carpeta.depth || 0;
-              const prefix = depth === 0 ? '📁 ' : `${'  '.repeat(depth)}└─ `;
-              const label = carpeta.isProjectRoot
-                ? `📁 ${carpeta.name} (Raíz)`
-                : `${prefix}${carpeta.name}`;
-              return (
-                <option key={carpeta.id} value={carpeta.id}>
-                  {label}
-                </option>
-              );
-            })}
+            {proyectoSeleccionado && carpetasDrive.filter(c => !c.isProjectRoot).map(carpeta => (
+              <option key={carpeta.id} value={carpeta.id}>
+                📁 {carpeta.name}
+              </option>
+            ))}
           </select>
           <div className="fecha-filter-container">
             <select
@@ -746,24 +747,19 @@ const ArchivosPage = () => {
             <div className="carpeta-breadcrumb">
               <button
                 className="breadcrumb-back"
-                onClick={() => {
-                  const parentId = breadcrumb.length > 1
-                    ? breadcrumb[breadcrumb.length - 2].id
-                    : 'ALL';
-                  setFiltroCarpeta(parentId);
-                }}
+                onClick={() => handleVolverCarpeta(breadcrumb.length - 2)}
                 title="Volver atrás"
               >
                 <FiArrowLeft />
               </button>
-              <button className="breadcrumb-item" onClick={() => setFiltroCarpeta('ALL')}>
+              <button className="breadcrumb-item" onClick={() => handleVolverCarpeta(-1)}>
                 Inicio
               </button>
               {breadcrumb.map((item, idx) => (
                 <span key={item.id} className="breadcrumb-trail">
                   <FiChevronRight />
                   {idx < breadcrumb.length - 1 ? (
-                    <button className="breadcrumb-item" onClick={() => setFiltroCarpeta(item.id)}>
+                    <button className="breadcrumb-item" onClick={() => handleVolverCarpeta(idx)}>
                       {item.name}
                     </button>
                   ) : (
@@ -782,10 +778,10 @@ const ArchivosPage = () => {
                   <div
                     key={carpeta.id}
                     className="carpeta-card"
-                    onClick={() => setFiltroCarpeta(carpeta.id)}
+                    onClick={() => handleEntrarCarpeta(carpeta)}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && setFiltroCarpeta(carpeta.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleEntrarCarpeta(carpeta)}
                   >
                     <div className="carpeta-card-icono">
                       <FiFolder />

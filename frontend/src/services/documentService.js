@@ -174,16 +174,19 @@ export const downloadDocument = async (documentId) => {
 };
 
 /**
- * Get folders from Google Drive for a specific project
+ * Get folders from Google Drive for a specific project (1 level only).
  * @param {number} projectId - The ID of the project
+ * @param {string|null} parentFolderId - If provided, list children of this Drive folder
  * @returns {Promise<Array>} Array of folder objects from Google Drive
  * @throws {Error} If fetch fails
  */
-export const getFoldersForProject = async (projectId) => {
+export const getFoldersForProject = async (projectId, parentFolderId = null) => {
   try {
-    const response = await api.get('/documents/folders/', {
-      params: { project: projectId }
-    });
+    const params = { project: projectId };
+    if (parentFolderId) {
+      params.parent_folder_id = parentFolderId;
+    }
+    const response = await api.get('/documents/folders/', { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching folders for project:', error);
