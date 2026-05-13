@@ -486,7 +486,8 @@ const ArchivosPage = () => {
               !taskName.includes(targetNameStatic)) {
             return false;
           }
-        } else if (carpetasDrive.length > 0) {
+        } else {
+          // filtroCarpeta es un ID de carpeta de Drive — filtrar por carpeta padre directa
           if (archivo.drive_parent_folder_id !== filtroCarpeta) {
             return false;
           }
@@ -520,7 +521,7 @@ const ArchivosPage = () => {
 
       return true;
     });
-  }, [archivos, busqueda, filtroTipo, filtroCarpeta, carpetasDrive, filtroFecha, fechaDesde, fechaHasta, errorFecha, fechaLimiteCalculada]);
+  }, [archivos, busqueda, filtroTipo, filtroCarpeta, filtroFecha, fechaDesde, fechaHasta, errorFecha, fechaLimiteCalculada]);
 
   const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
 

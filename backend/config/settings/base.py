@@ -445,6 +445,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'limpiar_notificaciones_antiguas',
         'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Ejecutar los domingos a las 2:00 AM
     },
+    'sync-deleted-drive-files': {
+        'task': 'sync_deleted_drive_files_task',
+        'schedule': crontab(hour='*/6', minute=0),  # Cada 6 horas
+    },
 }
 
 CELERY_WORKER_CONCURRENCY = config('CELERY_WORKER_CONCURRENCY', default=2, cast=int)

@@ -445,6 +445,48 @@ class GoogleDriveService:
                 'error': str(e)
             }
 
+    def check_files_exist(self, drive_file_ids):
+        """
+        Verifica cuáles IDs de archivos de Drive siguen existiendo (no fueron eliminados).
+
+        Hace consultas en lotes de hasta 100 IDs usando una query 'in' de Drive API.
+
+        Args:
+            drive_file_ids (list[str]): Lista de IDs de Drive a verificar.
+
+        Returns:
+            set[str]: Conjunto de IDs que SÍ existen en Drive (no eliminados, no en papelera).
+        """
+        if not self.service or not drive_file_ids:
+            return set()
+
+        existing_ids = set()
+        batch_size = 100
+
+        for i in range(0, len(drive_file_ids), batch_size):
+            batch = drive_file_ids[i:i + batch_size]
+            # Construir query: 'id = "x" or id = "y" ...'
+            id_clauses = ' or '.join(f"'{fid}' in parents or id='{fid}'" for fid in batch)
+            # Más eficiente: filtrar por ID directamente
+            id_filter = ' or '.join(f"id='{fid}'" for fid in batch)
+            query = f"({id_filter}) and trashed=false"
+
+            try:
+                response = self.service.files().list(
+                    q=query,
+                    spaces='drive',
+                    fields='files(id)',
+                    pageSize=len(batch),
+                ).execute()
+                for f in response.get('files', []):
+                    existing_ids.add(f['id'])
+            except Exception as e:
+                logger.error(f"[DRIVE SYNC] Error verificando batch de IDs: {e}")
+                # En caso de error de red, asumimos que existen (no borrar por error)
+                existing_ids.update(batch)
+
+        return existing_ids
+
     def list_direct_subfolders(self, parent_folder_id):
         """
         Lista los hijos directos (1 nivel) de una carpeta de Drive.

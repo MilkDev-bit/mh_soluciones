@@ -69,3 +69,51 @@ def upload_document_to_drive(self, document_id, target_folder_id=None):
             raise self.retry(exc=exc)
 
         return f"Error al subir archivo {document_id}: {exc}"
+
+
+@shared_task(name="sync_deleted_drive_files_task")
+def sync_deleted_drive_files():
+    """
+    Tarea periódica: detecta documentos cuyo archivo fue eliminado en Google Drive
+    y los borra de la base de datos.
+
+    Solo procesa documentos con upload_status=COMPLETE y drive_file_id no nulo.
+    Se ejecuta en lotes para no sobrecargar la API de Drive.
+    """
+    docs = list(
+        Document.objects.filter(
+            upload_status=Document.UploadStatus.COMPLETE,
+            drive_file_id__isnull=False,
+        ).exclude(drive_file_id='').values_list('id', 'drive_file_id')
+    )
+
+    if not docs:
+        logger.info("[DRIVE SYNC] No hay documentos con drive_file_id para verificar.")
+        return "Sin documentos a verificar."
+
+    doc_ids = [d[0] for d in docs]
+    drive_ids = [d[1] for d in docs]
+    id_to_doc = {d[1]: d[0] for d in docs}
+
+    logger.info(f"[DRIVE SYNC] Verificando {len(drive_ids)} archivos en Drive...")
+
+    try:
+        drive_service = GoogleDriveService(use_institutional=True)
+    except Exception as e:
+        logger.error(f"[DRIVE SYNC] No se pudo conectar a Drive: {e}")
+        return f"Error de conexión a Drive: {e}"
+
+    existing_ids = drive_service.check_files_exist(drive_ids)
+    deleted_drive_ids = [fid for fid in drive_ids if fid not in existing_ids]
+
+    if not deleted_drive_ids:
+        logger.info("[DRIVE SYNC] Todos los archivos siguen existiendo en Drive.")
+        return f"Verificados {len(drive_ids)} archivos. Ninguno eliminado."
+
+    deleted_doc_ids = [id_to_doc[fid] for fid in deleted_drive_ids]
+    count, _ = Document.objects.filter(id__in=deleted_doc_ids).delete()
+    logger.info(
+        f"[DRIVE SYNC] Eliminados {count} documentos de la BD "
+        f"(drive_file_ids: {deleted_drive_ids})"
+    )
+    return f"Eliminados {count} documentos huérfanos (sin archivo en Drive)."
