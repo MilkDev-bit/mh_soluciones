@@ -401,7 +401,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
 
   const handleDuplicateTask = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Duplicar esta tarea? Se creará una nueva tarea con el mismo nombre y los estudiantes asignados. La fecha de apertura será hoy y la de cierre el próximo sábado.')) {
+    if (!window.confirm('¿Duplicar esta tarea? Se creará una nueva tarea con el mismo nombre y los estudiantes asignados. La fecha de apertura será hoy y la de cierre el próximo domingo a las 2:00 PM.')) {
       return;
     }
     setIsDuplicating(true);

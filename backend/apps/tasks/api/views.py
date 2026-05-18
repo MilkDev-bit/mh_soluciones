@@ -257,7 +257,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     def duplicate(self, request, pk=None):
         """
         Duplicar una tarea completada para una nueva semana.
-        Establece open_date a hoy y close_date al próximo sábado.
+        Establece open_date a hoy y close_date al próximo domingo a las 14:00.
         Solo SUPERADMIN puede duplicar tareas.
         """
         if request.user.role != 'SUPERADMIN':
@@ -270,15 +270,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         import datetime
         
         now = timezone.now()
-        # Días hasta el próximo sábado (5 es sábado en weekday() donde 0 es lunes)
-        days_to_saturday = (5 - now.weekday()) % 7
+        # Días hasta el próximo domingo (6 es domingo en weekday() donde 0 es lunes)
+        days_to_sunday = (6 - now.weekday()) % 7
         
-        # Si hoy es sábado (5-5=0), se queda hoy.
-        # Si hoy es domingo (5-6=-1 % 7 = 6), el próximo sábado es en 6 días.
+        # Si hoy es domingo (6-6=0), se queda hoy.
         
-        close_date = now + datetime.timedelta(days=days_to_saturday)
-        # Establecer a fin de día
-        close_date = close_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        close_date = now + datetime.timedelta(days=days_to_sunday)
+        # Establecer a las 14:00
+        close_date = close_date.replace(hour=14, minute=0, second=0, microsecond=0)
         
         # Crear duplicado — solo título, proyecto, fechas y estudiantes
         new_task = Task.objects.create(
