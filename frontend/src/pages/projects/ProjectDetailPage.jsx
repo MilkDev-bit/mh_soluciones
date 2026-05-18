@@ -18,7 +18,7 @@ import {
 import { getCurrentUserFromSession } from '../../services/userService';
 import { getTasks } from '../../services/taskService';
 import { useProjectContext } from '../../contexts/ProjectContext';
-import { isAdmin, canViewAnalytics, canAccessDrive, canSubmit } from '../../constants/roles';
+import { isAdmin, canViewAnalytics, canAccessDrive, canSubmit, canCreateTasks } from '../../constants/roles';
 import { getDocumentsByProject } from '../../services/documentService';
 import { getEventsByProject } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
@@ -1028,7 +1028,7 @@ const ProjectDetailPage = () => {
                     >
                       <FiClock /> {taskFilter === 'OVERDUE' ? 'Ocultar' : 'Mostrar'} Vencidas
                     </button>
-                    {currentUser && currentUser.role === 'SUPERADMIN' && (
+                    {currentUser && canCreateTasks(currentUser.role) && (
                       <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
                         <FiPlus /> Nueva Tarea
                       </button>
