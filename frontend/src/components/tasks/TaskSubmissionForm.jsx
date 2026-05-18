@@ -94,13 +94,23 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
       
       let errorMessage = 'No se pudo realizar la entrega';
       
-      if (error.response?.data) {
-        if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (error.response.data.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
+      // El servicio lanza error.response?.data directamente (no el objeto axios)
+      // por lo que 'error' puede ser el objeto data {error:"..."} o un Error nativo
+      if (error && typeof error === 'object') {
+        if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error.error && typeof error.error === 'string') {
+          errorMessage = error.error;
+        } else if (error.detail && typeof error.detail === 'string') {
+          errorMessage = error.detail;
+        } else if (error.message && typeof error.message === 'string' && !error.stack) {
+          errorMessage = error.message;
+        } else if (error.response?.data) {
+          const d = error.response.data;
+          if (typeof d === 'string') errorMessage = d;
+          else if (d.error) errorMessage = d.error;
+          else if (d.detail) errorMessage = d.detail;
+          else if (d.message) errorMessage = d.message;
         }
       }
       
@@ -203,7 +213,7 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
         <button 
           type="submit" 
           className="btn btn-primary" 
-          disabled={isSubmitting || (selectedFiles.length === 0 && !watch('notes'))}
+          disabled={isSubmitting || (selectedFiles.length === 0 && !watch('notes') && !watch('link'))}
         >
           {isSubmitting ? 'Subiendo...' : 'Entregar Tarea'}
         </button>
