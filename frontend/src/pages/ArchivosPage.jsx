@@ -330,7 +330,7 @@ const ArchivosPage = () => {
       }
     },
     disabled: !proyectoSeleccionado,
-    maxSize: 40 * 1024 * 1024, // 40MB
+    maxSize: 900 * 1024 * 1024, // 900MB
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],

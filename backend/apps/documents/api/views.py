@@ -161,11 +161,20 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 project_id=project_id,
                 user=user
             ).exists()
-            
+
+            # También permitir si el usuario está asignado directamente a alguna
+            # tarea del proyecto (assigned_to o assigned_students)
             if not is_admin and not is_member:
-                raise ValidationError({
-                    'project': 'No tienes permisos para subir archivos a este proyecto'
-                })
+                from apps.tasks.models import Task as TaskModel
+                is_task_assignee = TaskModel.objects.filter(
+                    project_id=project_id
+                ).filter(
+                    Q(assigned_to=user) | Q(assigned_students=user)
+                ).exists()
+                if not is_task_assignee:
+                    raise ValidationError({
+                        'project': 'No tienes permisos para subir archivos a este proyecto'
+                    })
         
         # Validate folder access if target_folder_id is provided
         if target_folder_id and project_id:

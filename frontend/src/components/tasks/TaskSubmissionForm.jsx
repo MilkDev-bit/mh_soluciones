@@ -14,7 +14,7 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
     const files = Array.from(e.target.files || []);
     
     // Validate file sizes (max 100MB per file)
-    const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+    const maxSize = 900 * 1024 * 1024; // 900MB in bytes
     const validFiles = files.filter(file => {
       if (file.size > maxSize) {
         toast.error(`${file.name} excede el tamaño máximo de 100MB`);

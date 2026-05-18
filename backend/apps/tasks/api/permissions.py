@@ -1,5 +1,6 @@
 import logging
 from rest_framework import permissions
+from rest_framework.exceptions import NotFound
 from ..models import Task
 
 logger = logging.getLogger(__name__)
@@ -45,9 +46,9 @@ class CanInteractWithTask(permissions.BasePermission):
         except Task.DoesNotExist:
             logger.warning(
                 f"CanInteractWithTask: Task {task_pk} no encontrada en BD "
-                f"(Task.DoesNotExist). Puede ser race condition en creación o tarea eliminada."
+                f"(Task.DoesNotExist). Puede ser tarea eliminada o ID incorrecto."
             )
-            return None
+            raise NotFound(detail=f"Tarea {task_pk} no encontrada.")
         except Exception as e:
             logger.error(
                 f"CanInteractWithTask: Error inesperado al obtener Task {task_pk}: {type(e).__name__}: {e}"

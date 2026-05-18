@@ -11,7 +11,7 @@ const TaskModal = ({ project, onClose, onTaskCreated }) => {
     resolver: zodResolver(taskSchema),
     defaultValues: {
       project: project.id,
-      status: 'DRAFT',
+      status: 'OPEN',
       priority: 'MEDIUM',
     },
   });

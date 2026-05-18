@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// Maximum file size: 50MB
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+// Maximum file size: 900MB
+const MAX_FILE_SIZE = 900 * 1024 * 1024;
 
 // Allowed file types
 const ALLOWED_FILE_TYPES = [
@@ -29,7 +29,7 @@ export const fileUploadSchema = z.object({
     .instanceof(File, { message: 'Debe seleccionar un archivo' })
     .refine(
       (file) => file.size <= MAX_FILE_SIZE,
-      'El archivo no puede exceder 50MB'
+      'El archivo no puede exceder 900MB'
     )
     .refine(
       (file) => ALLOWED_FILE_TYPES.includes(file.type),

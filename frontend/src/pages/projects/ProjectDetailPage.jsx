@@ -537,19 +537,6 @@ const ProjectDetailPage = () => {
         
       let safeTasks = (rawTasks || []).filter(Boolean);
       
-      if (currentUser?.role === 'STUDENT') {
-        safeTasks = safeTasks.filter((task) => {
-          const isAssignedTo = task?.assigned_to?.id === currentUser?.id;
-          
-          const isInAssignedStudents = Array.isArray(task?.assigned_students_data) && 
-            task.assigned_students_data.some(student => student.id === currentUser?.id);
-            
-          const isCreator = task?.created_by?.id === currentUser?.id || task?.created_by === currentUser?.id;
-
-          return isAssignedTo || isInAssignedStudents || isCreator;
-        });
-      }
-      
       return safeTasks;
     },
     staleTime: 5 * 60 * 1000,
