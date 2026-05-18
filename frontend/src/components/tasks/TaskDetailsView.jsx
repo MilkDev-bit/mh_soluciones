@@ -707,7 +707,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                 </button>
               )}
               
-              {isStudent && (
+              {(task?.assigned_to?.id === user?.id || isInAssignedStudents) && (
                 <button
                   className="btn primary-action-btn submit-task-btn"
                   onClick={() => setShowSubmissionForm(true)}
