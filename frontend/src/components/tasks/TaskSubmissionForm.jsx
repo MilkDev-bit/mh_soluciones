@@ -13,11 +13,11 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     
-    // Validate file sizes (max 100MB per file)
+    // Validate file sizes (max 900MB per file)
     const maxSize = 900 * 1024 * 1024; // 900MB in bytes
     const validFiles = files.filter(file => {
       if (file.size > maxSize) {
-        toast.error(`${file.name} excede el tamaño máximo de 100MB`);
+        toast.error(`${file.name} excede el tamaño máximo de 900MB`);
         return false;
       }
       return true;
@@ -137,7 +137,7 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
           <label htmlFor="file-upload" className="upload-label">
             <FiUpload size={32} />
             <p>Arrastra archivos aquí o haz clic para seleccionar</p>
-            <small>PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR, video (máx. 100MB por archivo)</small>
+            <small>PDF, DOCX, PPTX, XLSX, imágenes, ZIP, RAR, video (máx. 900MB por archivo)</small>
           </label>
         </div>
 

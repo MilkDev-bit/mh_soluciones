@@ -17,6 +17,33 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   const fileInputRef = useRef(null);
   const isEditMode = Boolean(task);
 
+  // Convierte una ISO UTC string del backend al formato que acepta datetime-local ("YYYY-MM-DDTHH:MM")
+  // mostrando la hora en la zona local del navegador.
+  const utcToDatetimeLocal = (isoString) => {
+    if (!isoString) return '';
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return '';
+    }
+  };
+
+  // Convierte un valor de datetime-local ("YYYY-MM-DDTHH:MM") a ISO con offset local
+  // para que el backend sepa exactamente la hora y zona horaria.
+  const datetimeLocalToISO = (value) => {
+    if (!value) return null;
+    try {
+      const d = new Date(value); // interpreta como hora local del navegador
+      if (isNaN(d.getTime())) return null;
+      return d.toISOString(); // UTC ISO — DRF lo interpreta correctamente cuando incluye Z
+    } catch {
+      return null;
+    }
+  };
+
   const maxScore = watch('max_score') || 100;
 
   useEffect(() => {
@@ -26,8 +53,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       setValue('due_date', task.due_date);
       setValue('assigned_to', task.assigned_to?.id || '');
       setValue('status', task.status);
-      setValue('open_date', task.open_date);
-      setValue('close_date', task.close_date);
+      setValue('open_date', utcToDatetimeLocal(task.open_date));
+      setValue('close_date', utcToDatetimeLocal(task.close_date));
       setValue('max_score', task.max_score || 100);
       setValue('allow_late_submissions', task.allow_late_submissions || false);
       setValue('accept_after_close', task.accept_after_close || false);
@@ -163,8 +190,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('project', project.id);
         formData.append('assigned_to', assignedUserId || '');
         formData.append('due_date', data.due_date || '');
-        formData.append('open_date', data.open_date || '');
-        formData.append('close_date', data.close_date || '');
+        formData.append('open_date', datetimeLocalToISO(data.open_date) || '');
+        formData.append('close_date', datetimeLocalToISO(data.close_date) || '');
         formData.append('max_score', data.max_score || 100);
         formData.append('allow_late_submissions', data.allow_late_submissions || false);
         formData.append('accept_after_close', data.accept_after_close || false);
@@ -185,8 +212,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           project: project.id,
           assigned_to: assignedUserId,
           due_date: data.due_date || null,
-          open_date: data.open_date || null,
-          close_date: data.close_date || null,
+          open_date: datetimeLocalToISO(data.open_date),
+          close_date: datetimeLocalToISO(data.close_date),
           max_score: data.max_score || 100,
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
