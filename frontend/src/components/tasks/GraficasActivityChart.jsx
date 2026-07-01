@@ -27,6 +27,7 @@ ChartJS.register(
 const GraficasActivityChart = ({ projectId, tasks, project }) => {
   const [chartRows, setChartRows] = useState([]);
   const [hasGraficasTask, setHasGraficasTask] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState('ALL');
 
   useEffect(() => {
     // Check if there is a GRAFICAS task or local storage data for this project
@@ -81,16 +82,20 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
 
   const projectName = project?.name || 'MB VILLA JUAREZ DET. 2594';
 
-  const labels = chartRows.map(r => r.semana || '');
+  const availableWeeks = chartRows.map(r => r.semana || '').filter(Boolean);
+  const activeRows = selectedWeek === 'ALL' ? chartRows : chartRows.filter(r => r.semana === selectedWeek);
+  const rowsToUse = activeRows.length > 0 ? activeRows : chartRows;
 
-  const resultadoData = chartRows.map(r => {
+  const labels = rowsToUse.map(r => r.semana || '');
+
+  const resultadoData = rowsToUse.map(r => {
     const calc = calculateRowValues(r);
     return calc._resultadoNum || 0;
   });
 
-  const metaData = chartRows.map(r => parseFloat(r.meta) || 0.8);
-  const bajoData = chartRows.map(r => parseFloat(r.bajo) || 0.7);
-  const altoData = chartRows.map(r => parseFloat(r.alto) || 1.4);
+  const metaData = rowsToUse.map(r => parseFloat(r.meta) || 0.8);
+  const bajoData = rowsToUse.map(r => parseFloat(r.bajo) || 0.7);
+  const altoData = rowsToUse.map(r => parseFloat(r.alto) || 1.4);
 
   const data = {
     labels,
@@ -215,16 +220,97 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
     }
   };
 
+  const selectedRow = chartRows.find(r => r.semana === selectedWeek);
+
   return (
     <div className="glass-card graficas-activity-chart-wrapper" style={{ marginBottom: '24px' }}>
-      <div className="chart-header">
-        <h3 className="chart-title">
-          <FiTrendingUp className="title-icon" />
-          {projectName}
-        </h3>
-        <span className="chart-subtitle">Rendimiento de Seguridad por Semana</span>
+      <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h3 className="chart-title">
+            <FiTrendingUp className="title-icon" />
+            {projectName}
+          </h3>
+          <span className="chart-subtitle">Rendimiento de Seguridad por Semana</span>
+        </div>
+        
+        <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label htmlFor="week-select" style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>Filtrar Semana:</label>
+          <select
+            id="week-select"
+            value={selectedWeek}
+            onChange={(e) => setSelectedWeek(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: '600',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="ALL">Todas las semanas ({chartRows.length})</option>
+            {availableWeeks.map((w, idx) => (
+              <option key={idx} value={w}>{w}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      
+
+      {selectedWeek !== 'ALL' && selectedRow && (() => {
+        const calc = calculateRowValues(selectedRow);
+        const resVal = calc._resultadoNum || 0;
+        let statusColor = '#10b981'; // Green
+        let statusText = 'Óptimo (Debajo de Meta)';
+        if (resVal > parseFloat(selectedRow.alto || 1.4)) {
+          statusColor = '#ef4444'; // Red
+          statusText = 'Crítico (Supera Alto)';
+        } else if (resVal > parseFloat(selectedRow.meta || 0.8)) {
+          statusColor = '#f59e0b'; // Amber
+          statusText = 'Alerta (Supera Meta)';
+        }
+
+        return (
+          <div className="week-status-kpi-panel" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '12px',
+            margin: '0 0 20px 0',
+            padding: '16px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Estado</span>
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: statusColor, marginTop: '4px' }}>{statusText}</div>
+            </div>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Resultado</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{resVal.toFixed(4)}</div>
+            </div>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.actos || 0}</div>
+            </div>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.condiciones || 0}</div>
+            </div>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total HH</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.totalHH || 0}</div>
+            </div>
+            <div className="kpi-item">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>HH Corregidas</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{calc.hh_corregidas || '0.00'}</div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="chart-container-box">
         <Line data={data} options={options} />
       </div>
