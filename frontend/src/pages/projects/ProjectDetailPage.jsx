@@ -31,6 +31,7 @@ import AddMemberModal from '../../components/projects/AddMemberModal';
 import ProjectProgressCharts from '../../components/projects/ProjectProgressCharts';
 import StudentPerformance from '../../components/projects/StudentPerformance';
 import GoogleDriveFolder from '../../components/projects/GoogleDriveFolder';
+import GraficasActivityChart from '../../components/tasks/GraficasActivityChart';
 import {
   FiEdit2,
   FiPlus,
@@ -803,6 +804,7 @@ const ProjectDetailPage = () => {
       return isOverdueTask;
     } else {
       // ACTIVE view
+      if (task.title && task.title.toUpperCase().includes('GRAFICAS')) return true;
       if (task.status === 'COMPLETED') return false;
       if (isOverdueTask) return false;
       return true;
@@ -966,6 +968,9 @@ const ProjectDetailPage = () => {
 
         {/* Full-width content sections */}
         <div className="full-width-content">
+          {/* Gráfico de Actividad GRAFICAS - fuera del modal, debajo del desempeño de estudiantes */}
+          <GraficasActivityChart projectId={projectId} tasks={tasks} project={project} />
+
           {/* Google Drive Folder - visible to admins and CLIENT */}
           {currentUser && canAccessDrive(currentUser.role) && (
             <div className="glass-card">

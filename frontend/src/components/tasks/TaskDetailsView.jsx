@@ -22,6 +22,7 @@ import {
 import TaskSubmissionsReview from './TaskSubmissionsReview';
 import TaskSubmissionForm from './TaskSubmissionForm';
 import TaskForm from './TaskForm';
+import GraficasActivityTable from './GraficasActivityTable';
 import Modal from '../common/Modal';
 import './TaskDetailsView.scss';
 
@@ -677,7 +678,19 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
           </div>
         ) : (
           <>
-            {task?.description && (<div className="task-description"><h4>Descripción</h4><p>{task.description}</p></div>)}
+            {task?.title && task.title.toUpperCase().includes('GRAFICAS') && (
+              <div className="graficas-activity-section" style={{ margin: '15px 0' }}>
+                <GraficasActivityTable task={task} project={task.project} onDataSaved={(updatedTask) => {
+                  if (typeof onTaskUpdated === 'function') onTaskUpdated(updatedTask);
+                }} />
+              </div>
+            )}
+            {(() => {
+              if (!task?.description) return null;
+              const cleanDesc = task.description.replace(/<!--\s*GRAFICAS_DATA:.*?-->/s, '').trim();
+              if (!cleanDesc) return null;
+              return (<div className="task-description"><h4>Descripción</h4><p>{cleanDesc}</p></div>);
+            })()}
             <div className="task-meta">
               <div className="meta-item"><FiClock className="meta-icon" /><span><strong>Fecha límite:</strong> {task?.due_date ? format(parseISO(task.due_date), 'dd MMMM yyyy', { locale: es }) : 'Sin fecha'}</span></div>
               {(task?.assigned_students_data?.length > 0 || task?.assigned_to) && (

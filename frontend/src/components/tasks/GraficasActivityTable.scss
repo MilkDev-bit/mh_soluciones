@@ -1,0 +1,273 @@
+.graficas-activity-table-wrapper {
+  margin: 20px 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  color: #1f2937;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  border: 1px solid #e5e7eb;
+
+  .table-header-banner {
+    background: linear-gradient(135deg, #6d9eeb 0%, #4a86e8 100%);
+    color: #ffffff;
+    padding: 12px 18px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid #3b78e7;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    max-height: 450px;
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 900px;
+
+      th, td {
+        border: 1px solid #cbd5e1;
+        padding: 8px 6px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+
+        th {
+          font-weight: 700;
+          color: #111827;
+          text-transform: uppercase;
+          font-size: 0.75rem;
+          line-height: 1.25;
+          letter-spacing: 0.3px;
+
+          &.col-semana { background-color: #f6b26b; color: #1f2937; width: 10%; }
+          &.col-actos { background-color: #fcd56a; color: #1f2937; width: 10%; }
+          &.col-condiciones { background-color: #ffff00; color: #1f2937; width: 10%; }
+          &.col-ft { background-color: #93c47d; color: #1f2937; width: 8%; }
+          &.col-total { background-color: #93c47d; color: #1f2937; width: 12%; }
+          &.col-corregidas { background-color: #f6b26b; color: #1f2937; width: 10%; }
+          &.col-resultado { background-color: #f6b26b; color: #1f2937; width: 10%; }
+          &.col-meta { background-color: #f6b26b; color: #1f2937; width: 8%; }
+          &.col-bajo { background-color: #f6b26b; color: #1f2937; width: 8%; }
+          &.col-alto { background-color: #f6b26b; color: #1f2937; width: 8%; }
+          &.col-actions { background-color: #e2e8f0; width: 40px; }
+        }
+      }
+
+      tbody {
+        tr {
+          background-color: #ffffff;
+          transition: background-color 0.15s;
+          
+          &:nth-child(even) {
+            background-color: #f8fafc;
+          }
+          &:hover {
+            background-color: #f1f5f9;
+          }
+        }
+
+        td {
+          input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 5px 4px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: inherit;
+            color: #0f172a;
+            border-radius: 4px;
+            transition: all 0.15s;
+
+            &:hover {
+              background-color: rgba(0, 0, 0, 0.03);
+              border-color: #cbd5e1;
+            }
+
+            &:focus {
+              outline: none;
+              border-color: #3b82f6;
+              background-color: #eff6ff;
+              box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+              font-weight: 600;
+            }
+
+            // Remove spin buttons from number inputs for clean spreadsheet look
+            &::-webkit-outer-spin-button,
+            &::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+            &[type=number] {
+              -moz-appearance: textfield;
+            }
+          }
+
+          &.cell-readonly {
+            font-weight: 600;
+            background-color: rgba(246, 178, 107, 0.18);
+            color: #1e293b;
+            font-size: 0.88rem;
+          }
+
+          &.cell-error {
+            color: #dc2626;
+            font-weight: 700;
+            background-color: rgba(239, 68, 68, 0.1);
+          }
+
+          .btn-delete-row {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            &:hover {
+              color: #ef4444;
+              background-color: #fee2e2;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .table-footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background-color: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .btn-add-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+
+      &:hover {
+        background-color: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(59, 130, 246, 0.4);
+      }
+    }
+
+    .btn-reset-table {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px;
+      background-color: #e2e8f0;
+      color: #475569;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background-color: #cbd5e1;
+        color: #1e293b;
+      }
+    }
+
+    .btn-save-db {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      background-color: #10b981;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+
+      &:hover:not(:disabled) {
+        background-color: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(16, 185, 129, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .save-status {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      &.saving {
+        color: #d97706;
+      }
+      &.saved {
+        color: #10b981;
+      }
+      &.error {
+        color: #ef4444;
+      }
+
+      .spinning {
+        animation: spin 1s linear infinite;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

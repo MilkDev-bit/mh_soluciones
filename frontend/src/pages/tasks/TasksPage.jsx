@@ -328,7 +328,7 @@ const TasksPage = () => {
 
       result = result.filter(task => {
         if (adminTaskFilter === 'PENDING') {
-          return task.status === 'PENDING' || task.status === 'IN_PROGRESS' || task.status === 'OPEN';
+          return task.status === 'PENDING' || task.status === 'IN_PROGRESS' || task.status === 'OPEN' || (task.title && task.title.toUpperCase().includes('GRAFICAS'));
         }
         if (adminTaskFilter === 'COMPLETED') {
           return task.status === 'COMPLETED' || task.status === 'CLOSED';
@@ -371,6 +371,7 @@ const TasksPage = () => {
 
     return {
       upcoming: processedTasks.filter(task => {
+        if (task.title && task.title.toUpperCase().includes('GRAFICAS')) return true;
         if (!task._dueDateObj || task.status === 'COMPLETED') return false;
         return isFuture(task._dueDateObj) && isWithinInterval(task._dueDateObj, { start: now, end: soon });
       }),
