@@ -25,7 +25,7 @@ export const calculateRowValues = (row) => {
     resultadoText = '#DIV/0!';
     resultadoVal = 0;
   } else {
-    resultadoVal = condiciones / hhCorregidas;
+    resultadoVal = (actos + condiciones) / hhCorregidas;
     resultadoText = Number.isInteger(resultadoVal) ? resultadoVal.toString() : resultadoVal.toFixed(9).replace(/\.?0+$/, '');
   }
 
