@@ -308,15 +308,28 @@ class StatisticsAPIView(APIView):
             proyectos_data = tasks_qs.values('project__name').annotate(task_count=Count('id')).filter(task_count__gt=0).order_by('-task_count')
             project_task_counts = [{'project_name': p['project__name'], 'task_count': p['task_count']} for p in proyectos_data]
             
-            proyectos_annotated = projects_qs.annotate(
-                t_total=Count('tasks', distinct=True),
-                t_completadas=Count('tasks', filter=Q(tasks__status='COMPLETED'), distinct=True),
-                t_vencidas=Count('tasks', filter=Q(tasks__due_date__lt=today, tasks__status__in=['PENDING', 'IN_PROGRESS', 'OPEN', 'IN_REVIEW', 'FOR_REVIEW']), distinct=True)
-            )
-            for p in projects_annotated:
-                t_total = p.t_total or 0
-                t_completadas = p.t_completadas or 0
-                t_vencidas = p.t_vencidas or 0
+            tasks_by_project = {}
+            for t in tasks_qs.values('project_id', 'status', 'due_date'):
+                pid = t['project_id']
+                if not pid:
+                    continue
+                if pid not in tasks_by_project:
+                    tasks_by_project[pid] = {'total': 0, 'completed': 0, 'overdue': 0}
+                
+                tasks_by_project[pid]['total'] += 1
+                status = t['status']
+                due_date = t['due_date']
+                
+                if status == 'COMPLETED':
+                    tasks_by_project[pid]['completed'] += 1
+                elif status in ['PENDING', 'IN_PROGRESS', 'OPEN', 'IN_REVIEW', 'FOR_REVIEW'] and due_date and due_date < today:
+                    tasks_by_project[pid]['overdue'] += 1
+
+            for p in projects_qs:
+                stats = tasks_by_project.get(p.id, {'total': 0, 'completed': 0, 'overdue': 0})
+                t_total = stats['total']
+                t_completadas = stats['completed']
+                t_vencidas = stats['overdue']
                 
                 duracion_dias = 0
                 if p.start_date and p.end_date:
