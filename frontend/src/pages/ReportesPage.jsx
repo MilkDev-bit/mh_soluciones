@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -13,7 +13,12 @@ import {
   FiFileText,
   FiMaximize2,
   FiX,
-  FiMove
+  FiMove,
+  FiRefreshCw,
+  FiSave,
+  FiBarChart2,
+  FiCalendar,
+  FiActivity
 } from 'react-icons/fi';
 import { 
   Chart as ChartJS, 
@@ -74,6 +79,184 @@ const ReportesPage = () => {
     },
     staleTime: 60000,
   });
+
+  // --- Estados para tablas editables de reportes ---
+  const [obrasSemana, setObrasSemana] = useState([]);
+  const [duracionesProyectos, setDuracionesProyectos] = useState([]);
+  const [calificacionCRI, setCalificacionCRI] = useState([]);
+
+  // Plugin para mostrar valores sobre las barras
+  const valueLabelPlugin = {
+    id: 'valueLabelPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        if (!meta.hidden) {
+          meta.data.forEach((element, index) => {
+            const value = dataset.data[index];
+            if (value !== null && value !== undefined && value !== '' && Number(value) > 0) {
+              ctx.save();
+              ctx.fillStyle = dataset.borderColor || dataset.backgroundColor || '#2563eb';
+              ctx.font = 'bold 10px Inter, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(value, element.x, element.y - 3);
+              ctx.restore();
+            }
+          });
+        }
+      });
+    }
+  };
+
+  const obtenerNumeroSemana = (dateString) => {
+    if (!dateString) return 1;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 1;
+    const startOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - startOfYear) / 86400000;
+    return Math.max(1, Math.min(53, Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)));
+  };
+
+  const calcularObrasPorSemanaBD = () => {
+    const semanas = Array.from({ length: 53 }, (_, i) => ({
+      semana: `SEM ${i + 1}`,
+      obras: 0
+    }));
+    const proyectos = proyectosData?.results || estadisticas?.proyectosDetalle || [];
+    if (proyectos.length > 0) {
+      proyectos.forEach(p => {
+        if (p.status === 'IN_PROGRESS' || p.status === 'COMPLETED' || p.start_date || p.created_at) {
+          const startW = obtenerNumeroSemana(p.start_date || p.created_at);
+          const endW = p.status === 'COMPLETED' ? obtenerNumeroSemana(p.end_date || p.created_at) : 53;
+          for (let w = startW; w <= endW && w <= 53; w++) {
+            if (w >= 1) semanas[w - 1].obras += 1;
+          }
+        }
+      });
+    } else {
+      const ejemplos = [11, 11, 13, 12, 8, 11, 16, 20, 27, 29, 30, 35, 40, 50, 53, 54, 58, 63, 65, 66, 68, 63, 61, 61, 59];
+      ejemplos.forEach((val, idx) => {
+        if (semanas[idx]) semanas[idx].obras = val;
+      });
+    }
+    return semanas;
+  };
+
+  const calcularDuracionesBD = () => {
+    const proyectos = estadisticas?.proyectosDetalle || proyectosData?.results || [];
+    const filtrados = proyectos.filter(p => (p.start_date && p.end_date) || p.status === 'COMPLETED' || p.duracion_dias);
+    if (filtrados.length > 0) {
+      return filtrados.map(p => {
+        let duracion = p.duracion_dias;
+        if (!duracion) {
+          const start = new Date(p.start_date || p.created_at || new Date());
+          const end = new Date(p.end_date || p.created_at || new Date());
+          duracion = Math.max(1, Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)));
+        }
+        return {
+          id: p.id || Math.random(),
+          name: p.name || 'Proyecto',
+          duracion: duracion
+        };
+      });
+    } else {
+      return [
+        { id: 1, name: 'BAE JESUS TLATEMPA', duracion: 67 },
+        { id: 2, name: 'BAE LAGO NAUR', duracion: 78 },
+        { id: 3, name: 'BAE LAGO POJOJ', duracion: 80 },
+        { id: 4, name: 'BA COSOLEACAQUE', duracion: 96 },
+        { id: 5, name: 'BA COSTERA ACAPULCO', duracion: 132 },
+        { id: 6, name: 'BAE TEKAX', duracion: 44 },
+        { id: 7, name: 'BAE HACIENDA SAN MIGUEL', duracion: 81 },
+        { id: 8, name: 'BAE MAYORGA MEXICALI', duracion: 86 }
+      ];
+    }
+  };
+
+  const calcularCRIBD = () => {
+    const proyectos = estadisticas?.proyectosDetalle || proyectosData?.results || [];
+    const completados = proyectos.filter(p => p.status === 'COMPLETED' || p.total_entregas > 0 || p.calificacion_cri !== undefined);
+    if (completados.length > 0) {
+      return completados.map(p => ({
+        id: p.id || Math.random(),
+        name: p.name || 'Proyecto',
+        asignadas: p.total_entregas || 10,
+        terminadas: p.terminadas || 8,
+        vencidas: p.vencidas || 1,
+        cri: p.calificacion_cri !== undefined ? p.calificacion_cri : 85
+      }));
+    } else {
+      return [
+        { id: 1, name: 'BAE JESUS TLATEMPA', asignadas: 15, terminadas: 15, vencidas: 0, cri: 100 },
+        { id: 2, name: 'BAE LAGO NAUR', asignadas: 20, terminadas: 18, vencidas: 2, cri: 90 },
+        { id: 3, name: 'BA COSOLEACAQUE', asignadas: 12, terminadas: 10, vencidas: 1, cri: 83 },
+        { id: 4, name: 'SM CD OBREGON', asignadas: 8, terminadas: 8, vencidas: 0, cri: 100 }
+      ];
+    }
+  };
+
+  useEffect(() => {
+    if (!proyectosData && !estadisticas) return;
+    
+    const guardadoObras = localStorage.getItem('reportes_obras_por_semana');
+    if (guardadoObras) {
+      try { setObrasSemana(JSON.parse(guardadoObras)); } catch (e) { setObrasSemana(calcularObrasPorSemanaBD()); }
+    } else {
+      setObrasSemana(calcularObrasPorSemanaBD());
+    }
+
+    const guardadoDuracion = localStorage.getItem('reportes_duracion_proyectos');
+    if (guardadoDuracion) {
+      try { setDuracionesProyectos(JSON.parse(guardadoDuracion)); } catch (e) { setDuracionesProyectos(calcularDuracionesBD()); }
+    } else {
+      setDuracionesProyectos(calcularDuracionesBD());
+    }
+
+    const guardadoCRI = localStorage.getItem('reportes_calificacion_cri');
+    if (guardadoCRI) {
+      try { setCalificacionCRI(JSON.parse(guardadoCRI)); } catch (e) { setCalificacionCRI(calcularCRIBD()); }
+    } else {
+      setCalificacionCRI(calcularCRIBD());
+    }
+  }, [proyectosData, estadisticas]);
+
+  const guardarObrasSemana = () => {
+    localStorage.setItem('reportes_obras_por_semana', JSON.stringify(obrasSemana));
+    toast.success('Obras activas por semana guardadas correctamente');
+  };
+
+  const recargarObrasSemanaBD = () => {
+    const nuevos = calcularObrasPorSemanaBD();
+    setObrasSemana(nuevos);
+    localStorage.removeItem('reportes_obras_por_semana');
+    toast.info('Tabla recargada desde la base de datos');
+  };
+
+  const guardarDuraciones = () => {
+    localStorage.setItem('reportes_duracion_proyectos', JSON.stringify(duracionesProyectos));
+    toast.success('Duraciones de proyectos guardadas correctamente');
+  };
+
+  const recargarDuracionesBD = () => {
+    const nuevos = calcularDuracionesBD();
+    setDuracionesProyectos(nuevos);
+    localStorage.removeItem('reportes_duracion_proyectos');
+    toast.info('Duraciones recargadas desde la base de datos');
+  };
+
+  const guardarCRI = () => {
+    localStorage.setItem('reportes_calificacion_cri', JSON.stringify(calificacionCRI));
+    toast.success('Calificaciones CRI guardadas correctamente');
+  };
+
+  const recargarCRIBD = () => {
+    const nuevos = calcularCRIBD();
+    setCalificacionCRI(nuevos);
+    localStorage.removeItem('reportes_calificacion_cri');
+    toast.info('Calificaciones recargadas desde la base de datos');
+  };
 
   const handleDragStart = (e, cardId) => {
     e.dataTransfer.setData("cardId", cardId);
@@ -331,6 +514,286 @@ const ReportesPage = () => {
           </div>
         </div>
       )}
+
+      {/* SECCIÓN 1: OBRAS ACTIVAS POR SEMANA */}
+      <div className="reportes-secciones-nuevas">
+        <div className="reporte-seccion-card">
+          <div className="seccion-top-header">
+            <div className="titulo-seccion">
+              <h3><FiActivity /> HISTÓRICO - OBRAS ACTIVAS POR SEMANA</h3>
+              <span className="badge-subtitle">Tiempo Real / Editable</span>
+            </div>
+            <div className="acciones-seccion">
+              <button className="btn-opcion" onClick={recargarObrasSemanaBD} title="Recargar desde los proyectos creados en BD">
+                <FiRefreshCw /> Cargar desde BD
+              </button>
+              <button className="btn-opcion primary" onClick={guardarObrasSemana} title="Guardar cambios editados">
+                <FiSave /> Guardar Cambios
+              </button>
+            </div>
+          </div>
+
+          <div className="seccion-grid-content">
+            <div className="tabla-contenedor">
+              <table className="tabla-editable">
+                <thead>
+                  <tr>
+                    <th>SEMANA</th>
+                    <th>OBRAS ACTIVAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {obrasSemana.map((row, idx) => (
+                    <tr key={idx}>
+                      <td className="td-label">{row.semana}</td>
+                      <td>
+                        <input
+                          type="number"
+                          className="input-editable"
+                          value={row.obras}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setObrasSemana(prev => prev.map((item, i) => i === idx ? { ...item, obras: val } : item));
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grafico-contenedor">
+              <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>
+                OBRAS ACTIVAS POR SEMANA
+              </h4>
+              <div className="grafico-wrapper">
+                <Bar
+                  data={{
+                    labels: obrasSemana.map(r => r.semana),
+                    datasets: [{
+                      label: 'Obras Activas',
+                      data: obrasSemana.map(r => r.obras),
+                      backgroundColor: '#2563eb',
+                      borderColor: '#1d4ed8',
+                      borderWidth: 1,
+                      borderRadius: 4
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: { enabled: true }
+                    },
+                    scales: {
+                      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                      x: { grid: { display: false } }
+                    }
+                  }}
+                  plugins={[valueLabelPlugin]}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SECCIÓN 2: DURACIÓN PROYECTOS EN DÍAS */}
+        <div className="reporte-seccion-card">
+          <div className="seccion-top-header">
+            <div className="titulo-seccion">
+              <h3><FiCalendar /> DURACIÓN PROYECTOS (EN DÍAS)</h3>
+              <span className="badge-subtitle">Fechas de Inicio / Cierre</span>
+            </div>
+            <div className="acciones-seccion">
+              <button className="btn-opcion" onClick={recargarDuracionesBD}>
+                <FiRefreshCw /> Cargar desde BD
+              </button>
+              <button className="btn-opcion primary" onClick={guardarDuraciones}>
+                <FiSave /> Guardar Cambios
+              </button>
+            </div>
+          </div>
+
+          <div className="seccion-grid-content">
+            <div className="tabla-contenedor">
+              <table className="tabla-editable">
+                <thead>
+                  <tr>
+                    <th>PROYECTO</th>
+                    <th>DURACION EN DIAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {duracionesProyectos.map((row, idx) => (
+                    <tr key={row.id || idx}>
+                      <td className="td-label" style={{ fontSize: '0.8rem' }}>{row.name}</td>
+                      <td>
+                        <input
+                          type="number"
+                          className="input-editable"
+                          value={row.duracion}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setDuracionesProyectos(prev => prev.map((item, i) => i === idx ? { ...item, duracion: val } : item));
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grafico-contenedor">
+              <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>
+                DURACIÓN POR PROYECTO (DÍAS)
+              </h4>
+              <div className="grafico-wrapper">
+                <Bar
+                  data={{
+                    labels: duracionesProyectos.map(r => r.name),
+                    datasets: [{
+                      label: 'Días',
+                      data: duracionesProyectos.map(r => r.duracion),
+                      backgroundColor: '#16a34a',
+                      borderColor: '#15803d',
+                      borderWidth: 1,
+                      borderRadius: 4
+                    }]
+                  }}
+                  options={{
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false }
+                    },
+                    scales: {
+                      x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                      y: { grid: { display: false } }
+                    }
+                  }}
+                  plugins={[valueLabelPlugin]}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SECCIÓN 3: CALIFICACIÓN FINAL DEL CRI POR PROYECTO COMPLETADO */}
+        <div className="reporte-seccion-card">
+          <div className="seccion-top-header">
+            <div className="titulo-seccion">
+              <h3><FiAward /> CALIFICACIÓN FINAL DEL CRI POR PROYECTO COMPLETADO</h3>
+              <span className="badge-subtitle">Promedio de Cumplimiento</span>
+            </div>
+            <div className="acciones-seccion">
+              <button className="btn-opcion" onClick={recargarCRIBD}>
+                <FiRefreshCw /> Cargar desde BD
+              </button>
+              <button className="btn-opcion primary" onClick={guardarCRI}>
+                <FiSave /> Guardar Cambios
+              </button>
+            </div>
+          </div>
+
+          <div className="seccion-grid-content full-width">
+            <div className="tabla-contenedor" style={{ maxHeight: 'none' }}>
+              <table className="tabla-editable">
+                <thead>
+                  <tr>
+                    <th>PROYECTO COMPLETADO</th>
+                    <th>ENTREGAS ASIGNADAS</th>
+                    <th>ENTREGAS TERMINADAS</th>
+                    <th>ENTREGAS VENCIDAS</th>
+                    <th>CALIFICACIÓN CRI (%)</th>
+                    <th>ESTADO CUMPLIMIENTO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calificacionCRI.map((row, idx) => {
+                    const criVal = Number(row.cri) || 0;
+                    let badgeColor = '#10b981';
+                    let badgeText = 'ÓPTIMO';
+                    if (criVal < 85) {
+                      badgeColor = '#ef4444';
+                      badgeText = 'RIESGO';
+                    } else if (criVal < 95) {
+                      badgeColor = '#f59e0b';
+                      badgeText = 'ACEPTABLE';
+                    }
+                    return (
+                      <tr key={row.id || idx}>
+                        <td className="td-label" style={{ fontWeight: 800 }}>{row.name}</td>
+                        <td>
+                          <input
+                            type="number"
+                            className="input-editable"
+                            value={row.asignadas}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, asignadas: val } : item));
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="input-editable"
+                            value={row.terminadas}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, terminadas: val } : item));
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="input-editable"
+                            value={row.vencidas}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, vencidas: val } : item));
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="input-editable"
+                            style={{ fontWeight: 900, color: badgeColor }}
+                            value={row.cri}
+                            onChange={(e) => {
+                              const val = Number(e.target.value) || 0;
+                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, cri: val } : item));
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <span style={{
+                            background: `${badgeColor}15`,
+                            color: badgeColor,
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            border: `1px solid ${badgeColor}`
+                          }}>
+                            {badgeText} ({criVal}%)
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

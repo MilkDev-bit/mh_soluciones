@@ -303,9 +303,55 @@ class StatisticsAPIView(APIView):
                 })
 
         project_task_counts = []
+        proyectos_detalle = []
         if not proyecto_id:
             proyectos_data = tasks_qs.values('project__name').annotate(task_count=Count('id')).filter(task_count__gt=0).order_by('-task_count')
             project_task_counts = [{'project_name': p['project__name'], 'task_count': p['task_count']} for p in proyectos_data]
+            
+            proyectos_annotated = projects_qs.annotate(
+                t_total=Count('tasks', distinct=True),
+                t_completadas=Count('tasks', filter=Q(tasks__status='COMPLETED'), distinct=True),
+                t_vencidas=Count('tasks', filter=Q(tasks__due_date__lt=today, tasks__status__in=['PENDING', 'IN_PROGRESS', 'OPEN', 'IN_REVIEW', 'FOR_REVIEW']), distinct=True)
+            )
+            for p in projects_annotated:
+                t_total = p.t_total or 0
+                t_completadas = p.t_completadas or 0
+                t_vencidas = p.t_vencidas or 0
+                
+                duracion_dias = 0
+                if p.start_date and p.end_date:
+                    duracion_dias = max(1, (p.end_date - p.start_date).days)
+                elif p.status == 'COMPLETED' and p.start_date:
+                    duracion_dias = max(1, (today - p.start_date).days)
+                elif p.status == 'COMPLETED' and p.created_at:
+                    duracion_dias = max(1, (today - p.created_at.date()).days)
+                elif p.start_date:
+                    duracion_dias = max(1, (today - p.start_date).days)
+                elif p.created_at:
+                    duracion_dias = max(1, (today - p.created_at.date()).days)
+                    
+                promedio_cri = 100
+                if t_total > 0:
+                    score = ((t_completadas - (t_vencidas * 0.25)) / t_total) * 100
+                    promedio_cri = max(0, min(100, int(round(score))))
+                elif p.status == 'COMPLETED':
+                    promedio_cri = 100
+                else:
+                    promedio_cri = 0
+                    
+                proyectos_detalle.append({
+                    'id': p.id,
+                    'name': p.name,
+                    'status': p.status,
+                    'start_date': p.start_date.isoformat() if p.start_date else (p.created_at.date().isoformat() if p.created_at else None),
+                    'end_date': p.end_date.isoformat() if p.end_date else None,
+                    'created_at': p.created_at.isoformat() if p.created_at else None,
+                    'total_entregas': t_total,
+                    'terminadas': t_completadas,
+                    'vencidas': t_vencidas,
+                    'duracion_dias': duracion_dias,
+                    'calificacion_cri': promedio_cri
+                })
 
         weekly_data = []
         week_delta = timedelta(days=7)
@@ -335,6 +381,7 @@ class StatisticsAPIView(APIView):
             'topPerformers': top_performers,
             'tendenciaSemanal': weekly_data,
             'tareasPorProyecto': project_task_counts,
+            'proyectosDetalle': proyectos_detalle,
         })
 
 
