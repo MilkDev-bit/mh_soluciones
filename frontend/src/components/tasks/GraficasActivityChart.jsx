@@ -40,7 +40,8 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
     if (graficasTask || storedStr) {
       setHasGraficasTask(true);
       const data = getGraficasData(graficasTask, project || { id: projectId });
-      setChartRows(data);
+      const rowsToSet = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
+      setChartRows(rowsToSet);
     } else {
       setHasGraficasTask(false);
     }
@@ -50,9 +51,10 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
   useEffect(() => {
     const handleDataUpdated = (e) => {
       const { projectId: evtPid, rows } = e.detail || {};
-      if (String(evtPid) === String(projectId) && Array.isArray(rows)) {
+      if (String(evtPid) === String(projectId) && rows) {
         setHasGraficasTask(true);
-        setChartRows(rows);
+        const rowsToSet = Array.isArray(rows) ? rows : (Array.isArray(rows?.table1) ? rows.table1 : []);
+        setChartRows(rowsToSet);
       }
     };
 
@@ -60,9 +62,10 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
       if (e.key === `graficas_data_project_${projectId}` && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) {
+          if (parsed) {
             setHasGraficasTask(true);
-            setChartRows(parsed);
+            const rowsToSet = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.table1) ? parsed.table1 : []);
+            setChartRows(rowsToSet);
           }
         } catch (err) {}
       }
@@ -76,7 +79,7 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
     };
   }, [projectId]);
 
-  if (!hasGraficasTask || !chartRows || chartRows.length === 0) {
+  if (!hasGraficasTask || !Array.isArray(chartRows) || chartRows.length === 0) {
     return null;
   }
 

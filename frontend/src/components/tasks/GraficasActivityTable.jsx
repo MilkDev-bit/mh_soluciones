@@ -50,13 +50,14 @@ export const calculateRowValues = (row) => {
 export const getGraficasData = (task, project) => {
   const pid = project?.id || (typeof task?.project === 'object' ? task?.project?.id : task?.project);
   
+  let rawData = null;
+
   // 1. Try task description marker
   if (task && task.description) {
     const match = task.description.match(/<!--\s*GRAFICAS_DATA:(.*?)\s*-->/s);
     if (match && match[1]) {
       try {
-        const parsed = JSON.parse(match[1]);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        rawData = JSON.parse(match[1]);
       } catch (e) {
         console.error('Error parsing graficas data from description:', e);
       }
@@ -64,66 +65,80 @@ export const getGraficasData = (task, project) => {
   }
 
   // 2. Try localStorage project key
-  if (pid) {
+  if (!rawData && pid) {
     try {
       const stored = localStorage.getItem(`graficas_data_project_${pid}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (stored) rawData = JSON.parse(stored);
     } catch (e) {}
   }
 
   // 3. Try localStorage task key
-  if (task && task.id) {
+  if (!rawData && task && task.id) {
     try {
       const stored = localStorage.getItem(`graficas_data_task_${task.id}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (stored) rawData = JSON.parse(stored);
     } catch (e) {}
   }
 
-  // 4. Return default initial rows
-  return defaultRows;
+  // If stored as Array (old format), both tables get a copy of that array
+  if (Array.isArray(rawData) && rawData.length > 0) {
+    return { table1: rawData, table2: JSON.parse(JSON.stringify(rawData)) };
+  }
+
+  // If stored as object { table1, table2 }
+  if (rawData && (Array.isArray(rawData.table1) || Array.isArray(rawData.table2))) {
+    return {
+      table1: Array.isArray(rawData.table1) && rawData.table1.length > 0 ? rawData.table1 : defaultRows,
+      table2: Array.isArray(rawData.table2) && rawData.table2.length > 0 ? rawData.table2 : defaultRows
+    };
+  }
+
+  // 4. Return default initial rows for both
+  return {
+    table1: defaultRows,
+    table2: defaultRows
+  };
 };
 
 const GraficasActivityTable = ({ task, project, onDataSaved }) => {
-  const [rows, setRows] = useState(() => getGraficasData(task, project));
+  const initialData = getGraficasData(task, project);
+  const [table1Rows, setTable1Rows] = useState(() => initialData.table1);
+  const [table2Rows, setTable2Rows] = useState(() => initialData.table2);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
 
   const pid = project?.id || (typeof task?.project === 'object' ? task?.project?.id : task?.project);
   const projectName = project?.name || task?.project_name || 'MB VILLA JUAREZ DET. 2594';
 
-  const persistLocally = useCallback((newRows) => {
+  const persistLocally = useCallback((newTable1, newTable2) => {
+    const dataToSave = { table1: newTable1, table2: newTable2 };
     try {
-      if (pid) localStorage.setItem(`graficas_data_project_${pid}`, JSON.stringify(newRows));
-      if (task?.id) localStorage.setItem(`graficas_data_task_${task.id}`, JSON.stringify(newRows));
+      if (pid) localStorage.setItem(`graficas_data_project_${pid}`, JSON.stringify(dataToSave));
+      if (task?.id) localStorage.setItem(`graficas_data_task_${task.id}`, JSON.stringify(dataToSave));
     } catch (e) {}
     
     // Notify external chart component
     window.dispatchEvent(new CustomEvent('graficasDataUpdated', { 
-      detail: { projectId: pid, taskId: task?.id, rows: newRows } 
+      detail: { projectId: pid, taskId: task?.id, rows: dataToSave } 
     }));
   }, [pid, task?.id]);
 
-  const saveToDatabase = useCallback(async (rowsToSave, showToast = false) => {
+  const saveToDatabase = useCallback(async (t1Rows, t2Rows, showToast = false) => {
     if (!task?.id) return;
     setSaving(true);
     setSaveStatus('saving');
     try {
       let desc = task.description || '';
       desc = desc.replace(/<!--\s*GRAFICAS_DATA:.*?-->/s, '').trim();
-      const jsonStr = JSON.stringify(rowsToSave);
+      const dataToSave = { table1: t1Rows, table2: t2Rows };
+      const jsonStr = JSON.stringify(dataToSave);
       const newDesc = desc ? `${desc}\n\n<!-- GRAFICAS_DATA:${jsonStr} -->` : `<!-- GRAFICAS_DATA:${jsonStr} -->`;
       
       await updateTask(task.id, { description: newDesc });
       task.description = newDesc;
       setSaveStatus('saved');
       if (showToast) {
-        toast.success('📊 Tabla de gráficas guardada en la base de datos');
+        toast.success('📊 Tablas de gráficas guardadas en la base de datos');
       }
       if (typeof onDataSaved === 'function') onDataSaved(task);
     } catch (error) {
@@ -141,25 +156,25 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
   useEffect(() => {
     if (saveStatus !== 'saving') return;
     const timer = setTimeout(() => {
-      saveToDatabase(rows, false);
+      saveToDatabase(table1Rows, table2Rows, false);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [rows, saveStatus, saveToDatabase]);
+  }, [table1Rows, table2Rows, saveStatus, saveToDatabase]);
 
-  const handleCellChange = (index, field, value) => {
-    const newRows = [...rows];
+  const handleCellChange1 = (index, field, value) => {
+    const newRows = [...table1Rows];
     let parsedVal = value;
     if (field !== 'semana') {
       parsedVal = value === '' ? '' : (isNaN(value) ? value : value);
     }
     newRows[index] = { ...newRows[index], [field]: parsedVal };
-    setRows(newRows);
+    setTable1Rows(newRows);
     setSaveStatus('saving');
-    persistLocally(newRows);
+    persistLocally(newRows, table2Rows);
   };
 
-  const handleAddRow = () => {
-    const nextNum = rows.length + 1;
+  const handleAddRow1 = () => {
+    const nextNum = table1Rows.length + 1;
     const newRow = {
       id: Date.now(),
       semana: `SEMANA ${nextNum}`,
@@ -171,29 +186,74 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
       bajo: 0.7,
       alto: 1.4
     };
-    const newRows = [...rows, newRow];
-    setRows(newRows);
+    const newRows = [...table1Rows, newRow];
+    setTable1Rows(newRows);
     setSaveStatus('saving');
-    persistLocally(newRows);
+    persistLocally(newRows, table2Rows);
   };
 
-  const handleDeleteRow = (index) => {
-    if (rows.length <= 1) {
+  const handleDeleteRow1 = (index) => {
+    if (table1Rows.length <= 1) {
       toast.error('Debe haber al menos una semana en la tabla');
       return;
     }
-    const newRows = rows.filter((_, i) => i !== index);
-    setRows(newRows);
+    const newRows = table1Rows.filter((_, i) => i !== index);
+    setTable1Rows(newRows);
     setSaveStatus('saving');
-    persistLocally(newRows);
+    persistLocally(newRows, table2Rows);
   };
 
-  const handleResetDefault = () => {
-    if (!window.confirm('¿Deseas restablecer la tabla a las 6 semanas iniciales?')) return;
-    setRows(defaultRows);
+  const handleResetDefault1 = () => {
+    if (!window.confirm('¿Deseas restablecer la tabla de rendimiento a las 6 semanas iniciales?')) return;
+    setTable1Rows(defaultRows);
     setSaveStatus('saving');
-    persistLocally(defaultRows);
-    saveToDatabase(defaultRows, true);
+    persistLocally(defaultRows, table2Rows);
+    saveToDatabase(defaultRows, table2Rows, true);
+  };
+
+  const handleCellChange2 = (index, field, value) => {
+    const newRows = [...table2Rows];
+    let parsedVal = value;
+    if (field !== 'semana') {
+      parsedVal = value === '' ? '' : (isNaN(value) ? value : value);
+    }
+    newRows[index] = { ...newRows[index], [field]: parsedVal };
+    setTable2Rows(newRows);
+    setSaveStatus('saving');
+    persistLocally(table1Rows, newRows);
+  };
+
+  const handleAddRow2 = () => {
+    const nextNum = table2Rows.length + 1;
+    const newRow = {
+      id: Date.now() + 1,
+      semana: `SEMANA ${nextNum}`,
+      actos: 0,
+      condiciones: 0
+    };
+    const newRows = [...table2Rows, newRow];
+    setTable2Rows(newRows);
+    setSaveStatus('saving');
+    persistLocally(table1Rows, newRows);
+  };
+
+  const handleDeleteRow2 = (index) => {
+    if (table2Rows.length <= 1) {
+      toast.error('Debe haber al menos una semana en la tabla');
+      return;
+    }
+    const newRows = table2Rows.filter((_, i) => i !== index);
+    setTable2Rows(newRows);
+    setSaveStatus('saving');
+    persistLocally(table1Rows, newRows);
+  };
+
+  const handleResetDefault2 = () => {
+    if (!window.confirm('¿Deseas restablecer la tabla de incidencias a las 6 semanas iniciales?')) return;
+    setTable2Rows(defaultRows);
+    setSaveStatus('saving');
+    persistLocally(table1Rows, defaultRows);
+    saveToDatabase(table1Rows, defaultRows, true);
   };
 
   return (
@@ -220,7 +280,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => {
+            {table1Rows.map((row, idx) => {
               const calc = calculateRowValues(row);
               return (
                 <tr key={row.id || idx}>
@@ -228,7 +288,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     <input
                       type="text"
                       value={row.semana !== undefined ? row.semana : `SEMANA ${idx + 1}`}
-                      onChange={(e) => handleCellChange(idx, 'semana', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'semana', e.target.value)}
                       placeholder={`SEMANA ${idx + 1}`}
                     />
                   </td>
@@ -237,7 +297,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.actos !== undefined ? row.actos : 0}
-                      onChange={(e) => handleCellChange(idx, 'actos', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'actos', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -245,7 +305,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.condiciones !== undefined ? row.condiciones : 0}
-                      onChange={(e) => handleCellChange(idx, 'condiciones', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'condiciones', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -253,7 +313,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.ft !== undefined ? row.ft : 0}
-                      onChange={(e) => handleCellChange(idx, 'ft', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'ft', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -261,7 +321,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.total_hh !== undefined ? row.total_hh : 0}
-                      onChange={(e) => handleCellChange(idx, 'total_hh', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'total_hh', e.target.value)}
                     />
                   </td>
                   <td className="cell-readonly">
@@ -275,7 +335,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.meta !== undefined ? row.meta : 0.8}
-                      onChange={(e) => handleCellChange(idx, 'meta', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'meta', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -283,7 +343,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.bajo !== undefined ? row.bajo : 0.7}
-                      onChange={(e) => handleCellChange(idx, 'bajo', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'bajo', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -291,14 +351,14 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.alto !== undefined ? row.alto : 1.4}
-                      onChange={(e) => handleCellChange(idx, 'alto', e.target.value)}
+                      onChange={(e) => handleCellChange1(idx, 'alto', e.target.value)}
                     />
                   </td>
                   <td className="cell-actions">
                     <button
                       type="button"
                       className="btn-delete-row"
-                      onClick={() => handleDeleteRow(idx)}
+                      onClick={() => handleDeleteRow1(idx)}
                       title="Eliminar semana"
                     >
                       <FiTrash2 />
@@ -311,7 +371,18 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
         </table>
       </div>
 
-      <div className="table-header-banner" style={{ marginTop: '28px', backgroundColor: '#3b82f6' }}>
+      <div className="table-footer-actions" style={{ borderBottom: '1px solid #cbd5e1', marginBottom: '28px', backgroundColor: '#f8fafc' }}>
+        <div className="footer-left">
+          <button type="button" className="btn-add-row" onClick={handleAddRow1}>
+            <FiPlus /> Añadir Semana (Rendimiento)
+          </button>
+          <button type="button" className="btn-reset-table" onClick={handleResetDefault1} title="Restablecer tabla por defecto">
+            <FiRefreshCw />
+          </button>
+        </div>
+      </div>
+
+      <div className="table-header-banner" style={{ marginTop: '12px', backgroundColor: '#3b82f6' }}>
         {projectName} - INCIDENCIAS
       </div>
       
@@ -325,10 +396,11 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
               <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
               <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
               <th className="col-total-inc">TOTAL</th>
+              <th className="col-actions"></th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => {
+            {table2Rows.map((row, idx) => {
               const calc = calculateRowValues(row);
               return (
                 <tr key={row.id ? `inc-${row.id}` : `inc-${idx}`}>
@@ -336,7 +408,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     <input
                       type="text"
                       value={row.semana !== undefined ? row.semana : `SEMANA ${idx + 1}`}
-                      onChange={(e) => handleCellChange(idx, 'semana', e.target.value)}
+                      onChange={(e) => handleCellChange2(idx, 'semana', e.target.value)}
                       placeholder={`SEMANA ${idx + 1}`}
                     />
                   </td>
@@ -345,7 +417,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.actos !== undefined ? row.actos : 0}
-                      onChange={(e) => handleCellChange(idx, 'actos', e.target.value)}
+                      onChange={(e) => handleCellChange2(idx, 'actos', e.target.value)}
                     />
                   </td>
                   <td className="cell-input">
@@ -353,7 +425,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.condiciones !== undefined ? row.condiciones : 0}
-                      onChange={(e) => handleCellChange(idx, 'condiciones', e.target.value)}
+                      onChange={(e) => handleCellChange2(idx, 'condiciones', e.target.value)}
                     />
                   </td>
                   <td className="cell-readonly" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', color: '#c2410c' }}>
@@ -364,11 +436,21 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       type="number"
                       step="any"
                       value={row.incidencias_campo !== undefined && row.incidencias_campo !== '' ? row.incidencias_campo : calc.incidencias_campo}
-                      onChange={(e) => handleCellChange(idx, 'incidencias_campo', e.target.value)}
+                      onChange={(e) => handleCellChange2(idx, 'incidencias_campo', e.target.value)}
                     />
                   </td>
                   <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>
                     {calc.incidencias_total}
+                  </td>
+                  <td className="cell-actions">
+                    <button
+                      type="button"
+                      className="btn-delete-row"
+                      onClick={() => handleDeleteRow2(idx)}
+                      title="Eliminar semana"
+                    >
+                      <FiTrash2 />
+                    </button>
                   </td>
                 </tr>
               );
@@ -379,10 +461,10 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
 
       <div className="table-footer-actions">
         <div className="footer-left">
-          <button type="button" className="btn-add-row" onClick={handleAddRow}>
-            <FiPlus /> Añadir Semana
+          <button type="button" className="btn-add-row" style={{ backgroundColor: '#ea580c' }} onClick={handleAddRow2}>
+            <FiPlus /> Añadir Semana (Incidencias)
           </button>
-          <button type="button" className="btn-reset-table" onClick={handleResetDefault} title="Restablecer tabla por defecto">
+          <button type="button" className="btn-reset-table" onClick={handleResetDefault2} title="Restablecer tabla por defecto">
             <FiRefreshCw />
           </button>
         </div>
@@ -397,7 +479,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
           <button
             type="button"
             className="btn-save-db"
-            onClick={() => saveToDatabase(rows, true)}
+            onClick={() => saveToDatabase(table1Rows, table2Rows, true)}
             disabled={saving}
           >
             <FiSave /> {saving ? 'Guardando...' : 'Guardar Datos'}
