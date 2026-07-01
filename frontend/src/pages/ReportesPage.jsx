@@ -41,6 +41,7 @@ import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import logo from '../assets/img/logo.png';
+import GeneralGraficasReports from '../components/reports/GeneralGraficasReports';
 import './ReportesPage.scss';
 
 ChartJS.register(
@@ -792,6 +793,19 @@ const ReportesPage = () => {
               </table>
             </div>
           </div>
+        </div>
+
+        {/* SECCIÓN 4: GRÁFICOS GENERALES DE GRAFICAS (CONSOLIDADO DE TODOS LOS PROYECTOS) */}
+        <div style={{ marginTop: '40px' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+              <FiActivity style={{ color: '#3b82f6', fontSize: '1.5rem' }} /> Gráficos Generales de Rendimiento e Incidencias (Consolidado de Proyectos)
+            </h3>
+            <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>
+              Consolidación automática en tiempo real de todas las tareas GRAFICAS en todos los proyectos
+            </span>
+          </div>
+          <GeneralGraficasReports projects={proyectosData?.results || proyectosData || []} />
         </div>
       </div>
     </div>

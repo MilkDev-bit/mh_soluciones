@@ -1,0 +1,505 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers } from 'react-icons/fi';
+import api from '../../services/api';
+import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
+import '../tasks/GraficasActivityChart.scss';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const GeneralGraficasReports = ({ projects }) => {
+  const [selectedWeek1, setSelectedWeek1] = useState('ALL');
+  const [selectedWeek2, setSelectedWeek2] = useState('ALL');
+  const [refreshIndex, setRefreshIndex] = useState(0);
+
+  const { data: allTasksData } = useQuery({
+    queryKey: ['allTasksForGeneralReports', refreshIndex],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/tasks/?page_size=1000');
+        return res.data?.results || res.data || [];
+      } catch (err) {
+        console.error('Error fetching tasks for general reports:', err);
+        return [];
+      }
+    },
+    staleTime: 60000,
+  });
+
+  const allTasks = useMemo(() => {
+    return Array.isArray(allTasksData) ? allTasksData : [];
+  }, [allTasksData]);
+
+  // Listen for storage or custom events when data is updated
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRefreshIndex(prev => prev + 1);
+    };
+
+    window.addEventListener('graficasDataUpdated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('graficasDataUpdated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const { table1Rows, table2Rows } = useMemo(() => {
+    if (!Array.isArray(projects) || projects.length === 0) {
+      return { table1Rows: [], table2Rows: [] };
+    }
+
+    const allProjectsData = projects.map(p => {
+      const task = Array.isArray(allTasks)
+        ? allTasks.find(t => (String(t.project) === String(p.id) || String(t.project?.id) === String(p.id)) && t.title && t.title.toUpperCase().includes('GRAFICAS'))
+        : null;
+      return getGraficasData(task, p);
+    });
+
+    const weekSet = new Set();
+    allProjectsData.forEach(data => {
+      const t1 = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
+      const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
+      t1.forEach(r => { if (r?.semana) weekSet.add(r.semana.trim()); });
+      t2.forEach(r => { if (r?.semana) weekSet.add(r.semana.trim()); });
+    });
+
+    const sortedWeeks = Array.from(weekSet).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+      if (numA !== numB) return numA - numB;
+      return a.localeCompare(b);
+    });
+
+    if (sortedWeeks.length === 0) {
+      for (let i = 1; i <= 6; i++) sortedWeeks.push(`SEMANA ${i}`);
+    }
+
+    const t1Rows = sortedWeeks.map((w, idx) => {
+      let sumActos = 0;
+      let sumCondiciones = 0;
+      let sumFt = 0;
+      let sumTotalHH = 0;
+
+      allProjectsData.forEach(data => {
+        const t1 = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
+        const row = t1.find(r => (r?.semana || '').trim().toUpperCase() === w.toUpperCase());
+        if (row) {
+          sumActos += parseFloat(row.actos) || 0;
+          sumCondiciones += parseFloat(row.condiciones) || 0;
+          sumFt += parseFloat(row.ft) || 0;
+          sumTotalHH += parseFloat(row.total_hh) || 0;
+        }
+      });
+
+      const baseRow = {
+        id: `gen-t1-${idx}`,
+        semana: w,
+        actos: sumActos,
+        condiciones: sumCondiciones,
+        ft: sumFt,
+        total_hh: sumTotalHH,
+        meta: 0.8,
+        bajo: 0.7,
+        alto: 1.4
+      };
+
+      return calculateRowValues(baseRow);
+    });
+
+    const t2Rows = sortedWeeks.map((w, idx) => {
+      let sumActos = 0;
+      let sumCondiciones = 0;
+      let sumCampo = 0;
+      let hasCampoCustom = false;
+
+      allProjectsData.forEach(data => {
+        const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
+        const row = t2.find(r => (r?.semana || '').trim().toUpperCase() === w.toUpperCase());
+        if (row) {
+          sumActos += parseFloat(row.actos) || 0;
+          sumCondiciones += parseFloat(row.condiciones) || 0;
+          if (row.incidencias_campo !== undefined && row.incidencias_campo !== '') {
+            sumCampo += parseFloat(row.incidencias_campo) || 0;
+            hasCampoCustom = true;
+          }
+        }
+      });
+
+      const baseRow = {
+        id: `gen-t2-${idx}`,
+        semana: w,
+        actos: sumActos,
+        condiciones: sumCondiciones,
+        incidencias_campo: hasCampoCustom ? sumCampo : ''
+      };
+
+      return calculateRowValues(baseRow);
+    });
+
+    return { table1Rows: t1Rows, table2Rows: t2Rows };
+  }, [projects, allTasks, refreshIndex]);
+
+  const availableWeeks1 = table1Rows.map(r => r.semana || '').filter(Boolean);
+  const activeRows1 = selectedWeek1 === 'ALL' ? table1Rows : table1Rows.filter(r => r.semana === selectedWeek1);
+  const rowsToUse1 = activeRows1.length > 0 ? activeRows1 : table1Rows;
+
+  const labels1 = rowsToUse1.map(r => r.semana || '');
+  const resultadoData1 = rowsToUse1.map(r => {
+    const val = r._resultadoNum !== undefined ? r._resultadoNum : parseFloat(r.resultado);
+    return isNaN(val) ? 0 : val;
+  });
+  const metaData1 = rowsToUse1.map(r => parseFloat(r.meta) || 0.8);
+  const bajoData1 = rowsToUse1.map(r => parseFloat(r.bajo) || 0.7);
+  const altoData1 = rowsToUse1.map(r => parseFloat(r.alto) || 1.4);
+
+  const data1 = {
+    labels: labels1,
+    datasets: [
+      {
+        label: 'RESULTADO GENERAL (FRECUENCIA)',
+        data: resultadoData1,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+      {
+        label: 'META (0.8)',
+        data: metaData1,
+        borderColor: '#10b981',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'BAJO (0.7)',
+        data: bajoData1,
+        borderColor: '#f59e0b',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'ALTO (1.4)',
+        data: altoData1,
+        borderColor: '#ef4444',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+    ],
+  };
+
+  const availableWeeks2 = table2Rows.map(r => r.semana || '').filter(Boolean);
+  const activeRows2 = selectedWeek2 === 'ALL' ? table2Rows : table2Rows.filter(r => r.semana === selectedWeek2);
+  const rowsToUse2 = activeRows2.length > 0 ? activeRows2 : table2Rows;
+
+  const labels2 = rowsToUse2.map(r => r.semana || '');
+  const kpiData2 = rowsToUse2.map(r => r.incidencias_kpi || 0);
+  const campoData2 = rowsToUse2.map(r => r.incidencias_campo || 0);
+  const totalData2 = rowsToUse2.map(r => r.incidencias_total || 0);
+
+  const data2 = {
+    labels: labels2,
+    datasets: [
+      {
+        label: 'INCIDENCIAS REGISTRADAS EN KPI (20%)',
+        data: kpiData2,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+      {
+        label: 'INCIDENCIAS SOLVENTADAS EN CAMPO (80%)',
+        data: campoData2,
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#ef4444',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+      {
+        label: 'TOTAL',
+        data: totalData2,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#f59e0b',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: '#e2e8f0',
+          font: {
+            family: 'Inter, system-ui, sans-serif',
+            size: 12,
+            weight: '600'
+          },
+          padding: 20,
+          usePointStyle: true,
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#ffffff',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        padding: 12,
+        boxPadding: 6,
+        usePointStyle: true,
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.parsed.y}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.08)',
+          drawBorder: false,
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: { weight: '500' }
+        }
+      },
+      y: {
+        grid: {
+          color: 'rgba(255, 255, 255, 0.08)',
+          drawBorder: false,
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: { weight: '500' },
+          stepSize: 5
+        },
+        beginAtZero: true
+      }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+  };
+
+  const selectedRow1 = table1Rows.find(r => r.semana === selectedWeek1);
+  const selectedRow2 = table2Rows.find(r => r.semana === selectedWeek2);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      {/* Gráfico 1: Rendimiento y Desempeño General (Horas Hombre y FT) */}
+      <div className="glass-card graficas-activity-chart-wrapper">
+        <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 className="chart-title">
+              <FiBarChart2 className="title-icon" style={{ color: '#3b82f6' }} />
+              Rendimiento y Desempeño de Seguridad (General)
+            </h3>
+            <span className="chart-subtitle">Consolidado General de {projects?.length || 0} Proyectos por Semana (Horas Hombre y FT)</span>
+          </div>
+          
+          <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label htmlFor="week-select-gen1" style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>Filtrar Semana:</label>
+            <select
+              id="week-select-gen1"
+              value={selectedWeek1}
+              onChange={(e) => setSelectedWeek1(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">Todas las semanas ({table1Rows.length})</option>
+              {availableWeeks1.map((w, idx) => (
+                <option key={idx} value={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedWeek1 !== 'ALL' && selectedRow1 && (() => {
+          const calc = calculateRowValues(selectedRow1);
+          return (
+            <div className="week-status-kpi-panel" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '12px',
+              margin: '0 0 20px 0',
+              padding: '16px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{selectedRow1.actos || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{selectedRow1.condiciones || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>FT Total</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#60a5fa', marginTop: '4px' }}>{selectedRow1.ft || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total Horas Hombre</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#34d399', marginTop: '4px' }}>{selectedRow1.total_hh || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>HH Corregidas</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#a855f7', marginTop: '4px' }}>{calc.hh_corregidas || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Resultado General</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{calc.resultado || 0}</div>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="chart-container-box">
+          <Line data={data1} options={options} />
+        </div>
+      </div>
+
+      {/* Gráfico 2: Registro de Incidencias en KPI vs Campo (General) */}
+      <div className="glass-card graficas-activity-chart-wrapper">
+        <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 className="chart-title">
+              <FiAlertTriangle className="title-icon" style={{ color: '#f59e0b' }} />
+              Registro de Incidencias en KPI vs Campo (General)
+            </h3>
+            <span className="chart-subtitle">Consolidado General de {projects?.length || 0} Proyectos por Semana</span>
+          </div>
+          
+          <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label htmlFor="week-select-gen2" style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>Filtrar Semana:</label>
+            <select
+              id="week-select-gen2"
+              value={selectedWeek2}
+              onChange={(e) => setSelectedWeek2(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">Todas las semanas ({table2Rows.length})</option>
+              {availableWeeks2.map((w, idx) => (
+                <option key={idx} value={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedWeek2 !== 'ALL' && selectedRow2 && (() => {
+          const calc = calculateRowValues(selectedRow2);
+          return (
+            <div className="week-status-kpi-panel" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '12px',
+              margin: '0 0 20px 0',
+              padding: '16px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{selectedRow2.actos || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{selectedRow2.condiciones || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Incidencias KPI (20%)</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{calc.incidencias_kpi || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Solventadas en Campo (80%)</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>{calc.incidencias_campo || 0}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total Incidencias</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>{calc.incidencias_total || 0}</div>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="chart-container-box">
+          <Line data={data2} options={options} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GeneralGraficasReports;
