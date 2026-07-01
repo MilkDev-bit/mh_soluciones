@@ -52,20 +52,20 @@
           line-height: 1.25;
           letter-spacing: 0.3px;
 
-          &.col-semana { background-color: #f6b26b; color: #1f2937; width: 10%; }
-          &.col-actos { background-color: #fcd56a; color: #1f2937; width: 10%; }
-          &.col-condiciones { background-color: #ffff00; color: #1f2937; width: 10%; }
-          &.col-ft { background-color: #93c47d; color: #1f2937; width: 8%; }
-          &.col-total { background-color: #93c47d; color: #1f2937; width: 12%; }
-          &.col-corregidas { background-color: #f6b26b; color: #1f2937; width: 10%; }
-          &.col-resultado { background-color: #f6b26b; color: #1f2937; width: 10%; }
-          &.col-meta { background-color: #f6b26b; color: #1f2937; width: 8%; }
-          &.col-bajo { background-color: #f6b26b; color: #1f2937; width: 8%; }
-          &.col-alto { background-color: #f6b26b; color: #1f2937; width: 8%; }
-          &.col-kpi { background-color: #f97316; color: #ffffff; width: 18%; }
-          &.col-campo { background-color: #ea580c; color: #ffffff; width: 20%; }
-          &.col-total-inc { background-color: #f59e0b; color: #111827; width: 12%; }
-          &.col-actions { background-color: #e2e8f0; width: 40px; }
+          &.col-semana { background-color: #f6b26b; color: #1f2937; width: 14%; min-width: 120px; }
+          &.col-actos { background-color: #fcd56a; color: #1f2937; width: 9%; min-width: 70px; }
+          &.col-condiciones { background-color: #ffff00; color: #1f2937; width: 9%; min-width: 70px; }
+          &.col-ft { background-color: #93c47d; color: #1f2937; width: 8%; min-width: 60px; }
+          &.col-total { background-color: #93c47d; color: #1f2937; width: 12%; min-width: 85px; }
+          &.col-corregidas { background-color: #f6b26b; color: #1f2937; width: 10%; min-width: 80px; }
+          &.col-resultado { background-color: #f6b26b; color: #1f2937; width: 10%; min-width: 80px; }
+          &.col-meta { background-color: #f6b26b; color: #1f2937; width: 7%; min-width: 60px; }
+          &.col-bajo { background-color: #f6b26b; color: #1f2937; width: 7%; min-width: 60px; }
+          &.col-alto { background-color: #f6b26b; color: #1f2937; width: 7%; min-width: 60px; }
+          &.col-kpi { background-color: #f97316; color: #ffffff; width: 18%; min-width: 130px; }
+          &.col-campo { background-color: #ea580c; color: #ffffff; width: 20%; min-width: 140px; }
+          &.col-total-inc { background-color: #f59e0b; color: #111827; width: 12%; min-width: 90px; }
+          &.col-actions { background-color: #e2e8f0; width: 45px; min-width: 45px; }
         }
       }
 
@@ -87,7 +87,7 @@
             width: 100%;
             background: transparent;
             border: 1px solid transparent;
-            padding: 5px 4px;
+            padding: 5px 2px;
             text-align: center;
             font-size: 0.85rem;
             font-weight: 500;

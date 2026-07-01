@@ -174,7 +174,15 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
   };
 
   const handleAddRow1 = () => {
-    const nextNum = table1Rows.length + 1;
+    let maxNum = 0;
+    table1Rows.forEach(r => {
+      const match = (r.semana || '').match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+    const nextNum = maxNum > 0 ? maxNum + 1 : table1Rows.length + 1;
     const newRow = {
       id: Date.now(),
       semana: `SEMANA ${nextNum}`,
@@ -224,7 +232,15 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
   };
 
   const handleAddRow2 = () => {
-    const nextNum = table2Rows.length + 1;
+    let maxNum = 0;
+    table2Rows.forEach(r => {
+      const match = (r.semana || '').match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+    const nextNum = maxNum > 0 ? maxNum + 1 : table2Rows.length + 1;
     const newRow = {
       id: Date.now() + 1,
       semana: `SEMANA ${nextNum}`,
