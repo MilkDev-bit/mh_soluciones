@@ -17,6 +17,7 @@ export const calculateRowValues = (row) => {
   const totalHH = parseFloat(row.total_hh) || 0;
   const hhCorregidas = totalHH / 1000;
   const condiciones = parseFloat(row.condiciones) || 0;
+  const actos = parseFloat(row.actos) || 0;
 
   let resultadoText = '0';
   let resultadoVal = 0;
@@ -28,11 +29,21 @@ export const calculateRowValues = (row) => {
     resultadoText = Number.isInteger(resultadoVal) ? resultadoVal.toString() : resultadoVal.toFixed(9).replace(/\.?0+$/, '');
   }
 
+  // Incidencias (Table 2) calculations
+  const incidencias_kpi = actos + condiciones;
+  const incidencias_campo = row.incidencias_campo !== undefined && row.incidencias_campo !== '' && row.incidencias_campo !== null
+    ? parseFloat(row.incidencias_campo) || 0
+    : incidencias_kpi * 4;
+  const incidencias_total = incidencias_kpi + incidencias_campo;
+
   return {
     ...row,
     hh_corregidas: hhCorregidas,
     resultado: resultadoText,
-    _resultadoNum: resultadoVal
+    _resultadoNum: resultadoVal,
+    incidencias_kpi,
+    incidencias_campo,
+    incidencias_total
   };
 };
 
@@ -292,6 +303,72 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     >
                       <FiTrash2 />
                     </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="table-header-banner" style={{ marginTop: '28px', backgroundColor: '#3b82f6' }}>
+        {projectName} - INCIDENCIAS
+      </div>
+      
+      <div className="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th className="col-semana">SEMANA</th>
+              <th className="col-actos">ACTOS INSEGUROS</th>
+              <th className="col-condiciones">CONDICIONES INSEGURAS</th>
+              <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
+              <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
+              <th className="col-total-inc">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => {
+              const calc = calculateRowValues(row);
+              return (
+                <tr key={row.id ? `inc-${row.id}` : `inc-${idx}`}>
+                  <td className="cell-input">
+                    <input
+                      type="text"
+                      value={row.semana !== undefined ? row.semana : `SEMANA ${idx + 1}`}
+                      onChange={(e) => handleCellChange(idx, 'semana', e.target.value)}
+                      placeholder={`SEMANA ${idx + 1}`}
+                    />
+                  </td>
+                  <td className="cell-input">
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.actos !== undefined ? row.actos : 0}
+                      onChange={(e) => handleCellChange(idx, 'actos', e.target.value)}
+                    />
+                  </td>
+                  <td className="cell-input">
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.condiciones !== undefined ? row.condiciones : 0}
+                      onChange={(e) => handleCellChange(idx, 'condiciones', e.target.value)}
+                    />
+                  </td>
+                  <td className="cell-readonly" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', color: '#c2410c' }}>
+                    {calc.incidencias_kpi}
+                  </td>
+                  <td className="cell-input">
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.incidencias_campo !== undefined && row.incidencias_campo !== '' ? row.incidencias_campo : calc.incidencias_campo}
+                      onChange={(e) => handleCellChange(idx, 'incidencias_campo', e.target.value)}
+                    />
+                  </td>
+                  <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>
+                    {calc.incidencias_total}
                   </td>
                 </tr>
               );

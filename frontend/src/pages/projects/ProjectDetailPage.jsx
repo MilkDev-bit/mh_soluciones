@@ -32,6 +32,7 @@ import ProjectProgressCharts from '../../components/projects/ProjectProgressChar
 import StudentPerformance from '../../components/projects/StudentPerformance';
 import GoogleDriveFolder from '../../components/projects/GoogleDriveFolder';
 import GraficasActivityChart from '../../components/tasks/GraficasActivityChart';
+import GraficasIncidenciasChart from '../../components/tasks/GraficasIncidenciasChart';
 import {
   FiEdit2,
   FiPlus,
@@ -968,8 +969,9 @@ const ProjectDetailPage = () => {
 
         {/* Full-width content sections */}
         <div className="full-width-content">
-          {/* Gráfico de Actividad GRAFICAS - fuera del modal, debajo del desempeño de estudiantes */}
+          {/* Gráficos de Actividad GRAFICAS - fuera del modal, debajo del desempeño de estudiantes */}
           <GraficasActivityChart projectId={projectId} tasks={tasks} project={project} />
+          <GraficasIncidenciasChart projectId={projectId} tasks={tasks} project={project} />
 
           {/* Google Drive Folder - visible to admins and CLIENT */}
           {currentUser && canAccessDrive(currentUser.role) && (
