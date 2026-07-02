@@ -85,6 +85,8 @@ const ReportesPage = () => {
   const [obrasSemana, setObrasSemana] = useState([]);
   const [duracionesProyectos, setDuracionesProyectos] = useState([]);
   const [calificacionCRI, setCalificacionCRI] = useState([]);
+  const [isDuracionExpanded, setIsDuracionExpanded] = useState(false);
+  const [isWorkloadExpanded, setIsWorkloadExpanded] = useState(false);
 
   // Plugin para mostrar valores sobre las barras
   const valueLabelPlugin = {
@@ -496,22 +498,59 @@ const ReportesPage = () => {
 
       {!proyectoFiltro && (
         <div className="workload-section">
-          <div className="section-header">
-            <h3><FiFolder /> Carga Operativa por Proyecto</h3>
-          </div>
-          <div className="workload-chart">
-            <Bar 
-              data={{
-                labels: estadisticas?.tareasPorProyecto?.map(p => p.project_name) || [],
-                datasets: [{
-                  label: 'Tareas',
-                  data: estadisticas?.tareasPorProyecto?.map(p => p.task_count) || [],
-                  backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                  borderRadius: 6
-                }]
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ margin: 0 }}><FiFolder /> Carga Operativa por Proyecto ({estadisticas?.tareasPorProyecto?.length || 0})</h3>
+            <button
+              type="button"
+              className="btn-opcion"
+              onClick={() => setIsWorkloadExpanded(!isWorkloadExpanded)}
+              style={{
+                padding: '4px 12px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: isWorkloadExpanded ? '#6366f1' : 'var(--bg-card)',
+                color: isWorkloadExpanded ? '#ffffff' : 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600'
               }}
-              options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false }}
-            />
+              title={isWorkloadExpanded ? "Contraer vista" : "Ver todos los proyectos sin scroll"}
+            >
+              <FiMaximize2 /> {isWorkloadExpanded ? "Vista Compacta" : "Ampliar Gráfico (Ver Todos)"}
+            </button>
+          </div>
+          <div className="workload-chart" style={{ 
+            height: isWorkloadExpanded ? 'auto' : '400px',
+            maxHeight: isWorkloadExpanded ? 'none' : '450px',
+            overflowY: isWorkloadExpanded ? 'visible' : 'auto', 
+            overflowX: 'hidden',
+            paddingRight: isWorkloadExpanded ? '0' : '10px'
+          }}>
+            <div style={{ height: `${Math.max(350, (estadisticas?.tareasPorProyecto?.length || 0) * 35)}px`, position: 'relative', width: '100%' }}>
+              <Bar 
+                data={{
+                  labels: estadisticas?.tareasPorProyecto?.map(p => p.project_name) || [],
+                  datasets: [{
+                    label: 'Tareas',
+                    data: estadisticas?.tareasPorProyecto?.map(p => p.task_count) || [],
+                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    borderRadius: 6
+                  }]
+                }}
+                options={{ 
+                  indexAxis: 'y', 
+                  responsive: true, 
+                  maintainAspectRatio: false,
+                  scales: {
+                    x: { beginAtZero: true },
+                    y: { ticks: { font: { size: 12, weight: '600' } } }
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -647,37 +686,74 @@ const ReportesPage = () => {
               </table>
             </div>
 
-            <div className="grafico-contenedor">
-              <h4 style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', textAlign: 'center' }}>
-                DURACIÓN POR PROYECTO (DÍAS)
-              </h4>
-              <div className="grafico-wrapper">
-                <Bar
-                  data={{
-                    labels: duracionesProyectos.map(r => r.name),
-                    datasets: [{
-                      label: 'Días',
-                      data: duracionesProyectos.map(r => r.duracion),
-                      backgroundColor: '#16a34a',
-                      borderColor: '#15803d',
-                      borderWidth: 1,
-                      borderRadius: 4
-                    }]
+            <div className="grafico-contenedor" style={{ 
+              height: isDuracionExpanded ? 'auto' : '520px', 
+              minHeight: '480px',
+              maxHeight: isDuracionExpanded ? 'none' : '580px',
+              display: 'flex', 
+              flexDirection: 'column',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                  DURACIÓN POR PROYECTO (DÍAS) — ({duracionesProyectos.length} PROYECTOS)
+                </h4>
+                <button
+                  type="button"
+                  className="btn-opcion"
+                  onClick={() => setIsDuracionExpanded(!isDuracionExpanded)}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '12px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: isDuracionExpanded ? '#16a34a' : 'var(--bg-card)',
+                    color: isDuracionExpanded ? '#ffffff' : 'var(--text-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
                   }}
-                  options={{
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false }
-                    },
-                    scales: {
-                      x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                      y: { grid: { display: false } }
-                    }
-                  }}
-                  plugins={[valueLabelPlugin]}
-                />
+                  title={isDuracionExpanded ? "Contraer vista" : "Ver todos los proyectos sin scroll"}
+                >
+                  <FiMaximize2 /> {isDuracionExpanded ? "Vista Compacta" : "Ampliar Gráfico (Ver Todos)"}
+                </button>
+              </div>
+              <div className="grafico-wrapper" style={{ 
+                flex: 1, 
+                overflowY: isDuracionExpanded ? 'visible' : 'auto', 
+                overflowX: 'hidden', 
+                paddingRight: isDuracionExpanded ? '0' : '10px' 
+              }}>
+                <div style={{ height: `${Math.max(400, duracionesProyectos.length * 35)}px`, position: 'relative', width: '100%' }}>
+                  <Bar
+                    data={{
+                      labels: duracionesProyectos.map(r => r.name),
+                      datasets: [{
+                        label: 'Días',
+                        data: duracionesProyectos.map(r => r.duracion),
+                        backgroundColor: '#16a34a',
+                        borderColor: '#15803d',
+                        borderWidth: 1,
+                        borderRadius: 4
+                      }]
+                    }}
+                    options={{
+                      indexAxis: 'y',
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { display: false }
+                      },
+                      scales: {
+                        x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
+                      }
+                    }}
+                    plugins={[valueLabelPlugin]}
+                  />
+                </div>
               </div>
             </div>
           </div>
