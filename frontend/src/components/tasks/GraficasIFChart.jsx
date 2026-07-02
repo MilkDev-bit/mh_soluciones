@@ -117,60 +117,22 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
     return calc.total_hh || 0;
   };
 
-  const ifKpiData = rowsToUse2.map((r, idx) => {
+  const ifAccData = rowsToUse2.map((r, idx) => {
     const calc2 = calculateRowValues(r);
     const hh = getHHForIndex(r.semana, idx);
-    return calcIF(calc2.incidencias_kpi || 0, hh);
-  });
-
-  const ifCampoData = rowsToUse2.map((r, idx) => {
-    const calc2 = calculateRowValues(r);
-    const hh = getHHForIndex(r.semana, idx);
-    return calcIF(calc2.incidencias_campo || 0, hh);
-  });
-
-  const ifTotalData = rowsToUse2.map((r, idx) => {
-    const calc2 = calculateRowValues(r);
-    const hh = getHHForIndex(r.semana, idx);
-    return calcIF(calc2.incidencias_total || 0, hh);
+    return calcIF(calc2.accidentes_incapacitantes || 0, hh);
   });
 
   const data = {
     labels,
     datasets: [
       {
-        label: 'IF - INCIDENCIAS KPI (20%)',
-        data: ifKpiData,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        borderWidth: 3,
-        pointBackgroundColor: '#3b82f6',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        tension: 0.1,
-      },
-      {
-        label: 'IF - INCIDENCIAS CAMPO (80%)',
-        data: ifCampoData,
+        label: 'IF - ACCIDENTES INCAPACITANTES',
+        data: ifAccData,
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         borderWidth: 3,
         pointBackgroundColor: '#ef4444',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        tension: 0.1,
-      },
-      {
-        label: 'IF - TOTAL INCIDENCIAS',
-        data: ifTotalData,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        borderWidth: 3,
-        pointBackgroundColor: '#10b981',
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
         pointRadius: 5,
@@ -255,7 +217,7 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
             Índice de Frecuencia (IF) - {projectName}
           </h3>
           <span className="chart-subtitle">
-            Fórmula: (Número de Accidentes / Incidencias × 1,000,000) ÷ Horas-hombre trabajadas
+            Fórmula: (Número de Accidentes Incapacitantes × 1,000,000) ÷ Horas-hombre trabajadas
           </span>
         </div>
         
@@ -283,40 +245,30 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
       </div>
 
       {selectedWeek !== 'ALL' && rowsToUse2.length > 0 && (() => {
-        const accumKpi = rowsToUse2.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_kpi || 0), 0);
-        const accumCampo = rowsToUse2.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_campo || 0), 0);
-        const accumTotal = rowsToUse2.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_total || 0), 0);
-        
+        const accumAcc = rowsToUse2.reduce((sum, r) => sum + (calculateRowValues(r).accidentes_incapacitantes || 0), 0);
         const accumHH = rowsToUse2.reduce((sum, r, idx) => sum + getHHForIndex(r.semana, idx), 0);
-
-        const ifKpiAcum = calcIF(accumKpi, accumHH);
-        const ifCampoAcum = calcIF(accumCampo, accumHH);
-        const ifTotalAcum = calcIF(accumTotal, accumHH);
+        const ifAccAcum = calcIF(accumAcc, accumHH);
 
         return (
           <div className="week-status-kpi-panel" style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '12px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
             margin: '0 0 20px 0',
             padding: '16px',
             borderRadius: '12px'
           }}>
             <div className="kpi-item">
               <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Total Horas-hombre (Acum.)</span>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669', marginTop: '4px' }}>{accumHH.toLocaleString()}</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669', marginTop: '4px' }}>{accumHH.toLocaleString()}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - KPI (20%)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#3b82f6' : '#2563eb', marginTop: '2px' }}>{ifKpiAcum}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Accidentes Incapacitantes (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#fbbf24' : '#d97706', marginTop: '4px' }}>{accumAcc}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - Campo (80%)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{ifCampoAcum}</div>
-            </div>
-            <div className="kpi-item">
-              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - TOTAL</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#10b981' : '#059669', marginTop: '2px' }}>{ifTotalAcum}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acumulado</span>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{ifAccAcum}</div>
             </div>
           </div>
         );

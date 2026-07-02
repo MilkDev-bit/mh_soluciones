@@ -5,12 +5,12 @@ import { updateTask } from '../../services/taskService';
 import './GraficasActivityTable.scss';
 
 const defaultRows = [
-  { id: 1, semana: 'SEMANA 1', actos: 0, condiciones: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 2, semana: 'SEMANA 2', actos: 0, condiciones: 1, ft: 11, total_hh: 550, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 3, semana: 'SEMANA 3', actos: 0, condiciones: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 4, semana: 'SEMANA 4', actos: 0, condiciones: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 5, semana: 'SEMANA 5', actos: 0, condiciones: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 6, semana: 'SEMANA 6', actos: 0, condiciones: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 1, semana: 'SEMANA 1', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 2, semana: 'SEMANA 2', actos: 0, condiciones: 1, accidentes_incapacitantes: 0, ft: 11, total_hh: 550, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 3, semana: 'SEMANA 3', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 4, semana: 'SEMANA 4', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 5, semana: 'SEMANA 5', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 6, semana: 'SEMANA 6', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
 ];
 
 export const calculateRowValues = (row) => {
@@ -37,6 +37,10 @@ export const calculateRowValues = (row) => {
     : incidencias_kpi * 4;
   const incidencias_total = incidencias_kpi + incidencias_campo;
 
+  const accidentes_incapacitantes = row.accidentes_incapacitantes !== undefined && row.accidentes_incapacitantes !== '' && row.accidentes_incapacitantes !== null
+    ? parseFloat(row.accidentes_incapacitantes) || 0
+    : 0;
+
   return {
     ...row,
     total_hh: totalHH,
@@ -46,7 +50,8 @@ export const calculateRowValues = (row) => {
     _resultadoNum: resultadoVal,
     incidencias_kpi,
     incidencias_campo,
-    incidencias_total
+    incidencias_total,
+    accidentes_incapacitantes
   };
 };
 
@@ -251,7 +256,8 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
       id: Date.now() + 1,
       semana: `SEMANA ${nextNum}`,
       actos: 0,
-      condiciones: 0
+      condiciones: 0,
+      accidentes_incapacitantes: 0
     };
     const newRows = [...table2Rows, newRow];
     setTable2Rows(newRows);
@@ -413,6 +419,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
               <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
               <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
               <th className="col-total-inc">TOTAL</th>
+              <th className="col-acc-inc" style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>ACCIDENTES INCAPACITANTES</th>
               <th className="col-actions"></th>
             </tr>
           </thead>
@@ -458,6 +465,15 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                   </td>
                   <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>
                     {calc.incidencias_total}
+                  </td>
+                  <td className="cell-input" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.accidentes_incapacitantes !== undefined && row.accidentes_incapacitantes !== '' ? row.accidentes_incapacitantes : 0}
+                      onChange={(e) => handleCellChange2(idx, 'accidentes_incapacitantes', e.target.value)}
+                      style={{ fontWeight: 'bold', color: '#dc2626' }}
+                    />
                   </td>
                   <td className="cell-actions">
                     <button
