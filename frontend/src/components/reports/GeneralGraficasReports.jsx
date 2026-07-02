@@ -16,6 +16,7 @@ import api from '../../services/api';
 import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import '../tasks/GraficasActivityChart.scss';
+import '../tasks/GraficasActivityTable.scss';
 
 ChartJS.register(
   CategoryScale,
@@ -396,7 +397,91 @@ const GeneralGraficasReports = ({ projects }) => {
   const selectedRow2 = table2Rows.find(r => r.semana === selectedWeek2);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* Tabla 1 General Consolidada: Rendimiento */}
+      <div className="glass-card graficas-activity-table-wrapper" style={{ padding: '0', overflow: 'hidden', border: 'none' }}>
+        <div className="table-header-banner" style={{ backgroundColor: '#10b981', margin: 0, padding: '14px 20px', fontSize: '15px', fontWeight: 'bold', color: '#ffffff' }}>
+          CONSOLIDADO GENERAL DE PROYECTOS - RENDIMIENTO Y DESEMPEÑO (TABLA 1)
+        </div>
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th className="col-semana">SEMANA</th>
+                <th className="col-actos">ACTOS INSEGUROS (20%)</th>
+                <th className="col-condiciones">CONDICIONES INSEGURAS (20%)</th>
+                <th className="col-ft">FT (SUMA)</th>
+                <th className="col-total">TOTAL DE HORAS HOMBRE</th>
+                <th className="col-corregidas">HH CORREGIDAS</th>
+                <th className="col-resultado">RESULTADO</th>
+                <th className="col-meta">META</th>
+                <th className="col-bajo">BAJO</th>
+                <th className="col-alto">ALTO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table1Rows.map((row, idx) => {
+                const calc = calculateRowValues(row);
+                return (
+                  <tr key={row.id || idx}>
+                    <td className="cell-readonly" style={{ fontWeight: 'bold' }}>{row.semana}</td>
+                    <td className="cell-readonly">{row.actos || 0}</td>
+                    <td className="cell-readonly">{row.condiciones || 0}</td>
+                    <td className="cell-readonly">{row.ft || 0}</td>
+                    <td className="cell-readonly" style={{ fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669' }}>{calc.total_hh}</td>
+                    <td className="cell-readonly">{calc.hh_corregidas}</td>
+                    <td className={`cell-readonly ${calc.resultado === '#DIV/0!' ? 'cell-error' : ''}`} style={{ fontWeight: 'bold' }}>
+                      {calc.resultado}
+                    </td>
+                    <td className="cell-readonly">{row.meta || 0.8}</td>
+                    <td className="cell-readonly">{row.bajo || 0.7}</td>
+                    <td className="cell-readonly">{row.alto || 1.4}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Tabla 2 General Consolidada: Incidencias y Accidentes */}
+      <div className="glass-card graficas-activity-table-wrapper" style={{ padding: '0', overflow: 'hidden', border: 'none' }}>
+        <div className="table-header-banner" style={{ backgroundColor: '#3b82f6', margin: 0, padding: '14px 20px', fontSize: '15px', fontWeight: 'bold', color: '#ffffff' }}>
+          CONSOLIDADO GENERAL DE PROYECTOS - REGISTRO DE INCIDENCIAS Y ACCIDENTES (TABLA 2)
+        </div>
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th className="col-semana">SEMANA</th>
+                <th className="col-actos">ACTOS INSEGUROS</th>
+                <th className="col-condiciones">CONDICIONES INSEGURAS</th>
+                <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
+                <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
+                <th className="col-total-inc">TOTAL INCIDENCIAS</th>
+                <th className="col-acc-inc" style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>ACCIDENTES INCAPACITANTES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table2Rows.map((row, idx) => {
+                const calc = calculateRowValues(row);
+                return (
+                  <tr key={row.id || idx}>
+                    <td className="cell-readonly" style={{ fontWeight: 'bold' }}>{row.semana}</td>
+                    <td className="cell-readonly">{row.actos || 0}</td>
+                    <td className="cell-readonly">{row.condiciones || 0}</td>
+                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', color: '#c2410c' }}>{calc.incidencias_kpi}</td>
+                    <td className="cell-readonly">{row.incidencias_campo !== undefined && row.incidencias_campo !== '' ? row.incidencias_campo : calc.incidencias_campo}</td>
+                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>{calc.incidencias_total}</td>
+                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>{row.accidentes_incapacitantes || 0}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Gráfico 1: Rendimiento y Desempeño General (Horas Hombre y FT) */}
       <div className="glass-card graficas-activity-chart-wrapper">
         <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
