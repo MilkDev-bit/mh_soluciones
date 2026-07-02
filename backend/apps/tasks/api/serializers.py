@@ -109,7 +109,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'id', 'title', 'status', 'status_display', 'priority', 
+            'id', 'title', 'description', 'status', 'status_display', 'priority', 
             'priority_display', 'due_date', 'assigned_to', 'project', 'project_name',
             'open_date', 'close_date', 'max_score', 'assigned_students', 
             'assigned_students_data', 'allow_late_submissions', 'accept_after_close',
@@ -140,8 +140,8 @@ class TaskDetailSerializer(TaskSerializer):
     
     class Meta(TaskSerializer.Meta):
         fields = TaskSerializer.Meta.fields + [
-            'description', 'created_by', 'submissions', 'comments', 
-            'created_at', 'updated_at', 'grading_criteria', 'attachment',
+            'created_by', 'submissions', 'comments', 
+            'grading_criteria', 'attachment',
             'days_after_close', 'edit_history', 'reopen_logs'
         ]
 
@@ -184,8 +184,8 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
                 "non_field_errors": ["La fecha de cierre debe ser posterior a la fecha de apertura."]
             })
         
-        # Ensure assigned_students exists (empty list by default)
-        if 'assigned_students' not in data:
+        # Ensure assigned_students exists (empty list by default only on create)
+        if self.instance is None and 'assigned_students' not in data:
             data['assigned_students'] = []
         
         return data

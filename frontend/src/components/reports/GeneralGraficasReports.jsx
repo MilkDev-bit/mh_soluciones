@@ -53,7 +53,8 @@ const GeneralGraficasReports = ({ projects }) => {
         return [];
       }
     },
-    staleTime: 60000,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
   });
 
   const allTasks = useMemo(() => {
