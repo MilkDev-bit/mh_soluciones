@@ -165,7 +165,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
     if (saveStatus !== 'saving') return;
     const timer = setTimeout(() => {
       saveToDatabase(table1Rows, table2Rows, false);
-    }, 1500);
+    }, 700);
     return () => clearTimeout(timer);
   }, [table1Rows, table2Rows, saveStatus, saveToDatabase]);
 

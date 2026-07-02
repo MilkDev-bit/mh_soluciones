@@ -53,7 +53,8 @@ const GeneralGraficasReports = ({ projects }) => {
         return [];
       }
     },
-    staleTime: 5000,
+    staleTime: 2000,
+    refetchInterval: 4000,
     refetchOnWindowFocus: true,
   });
 

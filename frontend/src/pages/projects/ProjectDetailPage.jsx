@@ -542,7 +542,9 @@ const ProjectDetailPage = () => {
       
       return safeTasks;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2000,
+    refetchInterval: 4000,
+    refetchOnWindowFocus: true,
     gcTime: 10 * 60 * 1000,
     enabled: !!projectId && projectId !== 'undefined' && !!currentUser,
   });
