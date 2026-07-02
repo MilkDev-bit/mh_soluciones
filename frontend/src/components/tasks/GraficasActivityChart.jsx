@@ -86,7 +86,10 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
   const projectName = project?.name || 'MB VILLA JUAREZ DET. 2594';
 
   const availableWeeks = chartRows.map(r => r.semana || '').filter(Boolean);
-  const activeRows = selectedWeek === 'ALL' ? chartRows : chartRows.filter(r => r.semana === selectedWeek);
+  const activeRows = selectedWeek === 'ALL' ? chartRows : (() => {
+    const idx = chartRows.findIndex(r => r.semana === selectedWeek);
+    return idx !== -1 ? chartRows.slice(0, idx + 1) : chartRows;
+  })();
   const rowsToUse = activeRows.length > 0 ? activeRows : chartRows;
 
   const labels = rowsToUse.map(r => r.semana || '');
@@ -262,15 +265,20 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
         </div>
       </div>
 
-      {selectedWeek !== 'ALL' && selectedRow && (() => {
-        const calc = calculateRowValues(selectedRow);
-        const resVal = calc._resultadoNum || 0;
+      {selectedWeek !== 'ALL' && rowsToUse.length > 0 && (() => {
+        const accumActos = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
+        const accumCond = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
+        const accumTotalHH = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.totalHH || r.total_hh) || 0), 0);
+        const accumHHCorregidas = accumTotalHH / 1000;
+        const resVal = accumHHCorregidas === 0 ? 0 : (accumActos + accumCond) / accumHHCorregidas;
+        const lastRow = rowsToUse[rowsToUse.length - 1] || {};
+
         let statusColor = '#10b981'; // Green
         let statusText = 'Óptimo (Debajo de Meta)';
-        if (resVal > parseFloat(selectedRow.alto || 1.4)) {
+        if (resVal > parseFloat(lastRow.alto || 1.4)) {
           statusColor = '#ef4444'; // Red
           statusText = 'Crítico (Supera Alto)';
-        } else if (resVal > parseFloat(selectedRow.meta || 0.8)) {
+        } else if (resVal > parseFloat(lastRow.meta || 0.8)) {
           statusColor = '#f59e0b'; // Amber
           statusText = 'Alerta (Supera Meta)';
         }
@@ -291,24 +299,24 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
               <div style={{ fontSize: '13px', fontWeight: 'bold', color: statusColor, marginTop: '4px' }}>{statusText}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Resultado</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Resultado (Acum.)</span>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{resVal.toFixed(4)}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros</span>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.actos || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{accumActos}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras</span>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.condiciones || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{accumCond}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total HH</span>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{selectedRow.totalHH || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total HH (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{accumTotalHH}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>HH Corregidas</span>
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{calc.hh_corregidas || '0.00'}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>HH Corregidas (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff', marginTop: '2px' }}>{accumHHCorregidas.toFixed(2)}</div>
             </div>
           </div>
         );

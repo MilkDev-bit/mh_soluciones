@@ -84,7 +84,10 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
   const projectName = project?.name || 'MB VILLA JUAREZ DET. 2594';
 
   const availableWeeks = chartRows.map(r => r.semana || '').filter(Boolean);
-  const activeRows = selectedWeek === 'ALL' ? chartRows : chartRows.filter(r => r.semana === selectedWeek);
+  const activeRows = selectedWeek === 'ALL' ? chartRows : (() => {
+    const idx = chartRows.findIndex(r => r.semana === selectedWeek);
+    return idx !== -1 ? chartRows.slice(0, idx + 1) : chartRows;
+  })();
   const rowsToUse = activeRows.length > 0 ? activeRows : chartRows;
 
   const labels = rowsToUse.map(r => r.semana || '');
@@ -255,8 +258,13 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
         </div>
       </div>
 
-      {selectedWeek !== 'ALL' && selectedRow && (() => {
-        const calc = calculateRowValues(selectedRow);
+      {selectedWeek !== 'ALL' && rowsToUse.length > 0 && (() => {
+        const accumActos = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
+        const accumCond = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
+        const accumKpi = rowsToUse.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_kpi || 0), 0);
+        const accumCampo = rowsToUse.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_campo || 0), 0);
+        const accumTotal = rowsToUse.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_total || 0), 0);
+
         return (
           <div className="week-status-kpi-panel" style={{
             display: 'grid',
@@ -269,24 +277,24 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
             border: '1px solid rgba(255, 255, 255, 0.08)'
           }}>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros</span>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{selectedRow.actos || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{accumActos}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras</span>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{selectedRow.condiciones || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{accumCond}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Incidencias KPI (20%)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{calc.incidencias_kpi || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Incidencias KPI (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{accumKpi}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Solventadas en Campo (80%)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>{calc.incidencias_campo || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Solventadas en Campo (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>{accumCampo}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total Incidencias</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>{calc.incidencias_total || 0}</div>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total Incidencias (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>{accumTotal}</div>
             </div>
           </div>
         );
