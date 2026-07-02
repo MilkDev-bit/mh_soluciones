@@ -14,7 +14,8 @@ const defaultRows = [
 ];
 
 export const calculateRowValues = (row) => {
-  const totalHH = parseFloat(row.total_hh) || 0;
+  const ftVal = parseFloat(row.ft) || 0;
+  const totalHH = ftVal * 50;
   const hhCorregidas = totalHH / 1000;
   const condiciones = parseFloat(row.condiciones) || 0;
   const actos = parseFloat(row.actos) || 0;
@@ -38,6 +39,8 @@ export const calculateRowValues = (row) => {
 
   return {
     ...row,
+    total_hh: totalHH,
+    totalHH: totalHH,
     hh_corregidas: hhCorregidas,
     resultado: resultadoText,
     _resultadoNum: resultadoVal,
@@ -167,7 +170,10 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
     if (field !== 'semana') {
       parsedVal = value === '' ? '' : (isNaN(value) ? value : value);
     }
-    newRows[index] = { ...newRows[index], [field]: parsedVal };
+    const updatedRow = { ...newRows[index], [field]: parsedVal };
+    const ftVal = parseFloat(field === 'ft' ? parsedVal : updatedRow.ft) || 0;
+    updatedRow.total_hh = ftVal * 50;
+    newRows[index] = updatedRow;
     setTable1Rows(newRows);
     setSaveStatus('saving');
     persistLocally(newRows, table2Rows);
@@ -332,13 +338,8 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       onChange={(e) => handleCellChange1(idx, 'ft', e.target.value)}
                     />
                   </td>
-                  <td className="cell-input">
-                    <input
-                      type="number"
-                      step="any"
-                      value={row.total_hh !== undefined ? row.total_hh : 0}
-                      onChange={(e) => handleCellChange1(idx, 'total_hh', e.target.value)}
-                    />
+                  <td className="cell-readonly">
+                    {calc.total_hh}
                   </td>
                   <td className="cell-readonly">
                     {calc.hh_corregidas}

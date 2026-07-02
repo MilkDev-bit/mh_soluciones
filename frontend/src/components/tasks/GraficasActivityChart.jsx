@@ -268,7 +268,7 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
       {selectedWeek !== 'ALL' && rowsToUse.length > 0 && (() => {
         const accumActos = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
         const accumCond = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
-        const accumTotalHH = rowsToUse.reduce((sum, r) => sum + (parseFloat(r.totalHH || r.total_hh) || 0), 0);
+        const accumTotalHH = rowsToUse.reduce((sum, r) => sum + ((parseFloat(r.ft) || 0) * 50), 0);
         const accumHHCorregidas = accumTotalHH / 1000;
         const resVal = accumHHCorregidas === 0 ? 0 : (accumActos + accumCond) / accumHHCorregidas;
         const lastRow = rowsToUse[rowsToUse.length - 1] || {};

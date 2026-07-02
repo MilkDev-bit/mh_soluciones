@@ -106,8 +106,9 @@ const GeneralGraficasReports = ({ projects }) => {
         if (row) {
           sumActos += parseFloat(row.actos) || 0;
           sumCondiciones += parseFloat(row.condiciones) || 0;
-          sumFt += parseFloat(row.ft) || 0;
-          sumTotalHH += parseFloat(row.total_hh) || 0;
+          const ftVal = parseFloat(row.ft) || 0;
+          sumFt += ftVal;
+          sumTotalHH += ftVal * 50;
         }
       });
 
@@ -384,7 +385,7 @@ const GeneralGraficasReports = ({ projects }) => {
           const accumActos = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
           const accumCond = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
           const accumFt = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.ft) || 0), 0);
-          const accumTotalHH = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.total_hh) || 0), 0);
+          const accumTotalHH = rowsToUse1.reduce((sum, r) => sum + ((parseFloat(r.ft) || 0) * 50), 0);
           const accumHHCorregidas = accumTotalHH / 1000;
           const accumResultadoVal = accumHHCorregidas === 0 ? 0 : (accumActos + accumCond) / accumHHCorregidas;
           const accumResultado = Number.isInteger(accumResultadoVal) ? accumResultadoVal.toString() : accumResultadoVal.toFixed(9).replace(/\.?0+$/, '');
