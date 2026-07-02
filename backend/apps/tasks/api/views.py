@@ -171,10 +171,12 @@ class TaskViewSet(viewsets.ModelViewSet):
             transaction.on_commit(notify)
 
     def perform_update(self, serializer):
-        if self.request.user.role not in TEACHER_ROLES:
-            raise PermissionDenied("No tienes permisos para editar tareas.")
-        
         instance = self.get_object()
+        if self.request.user.role not in TEACHER_ROLES:
+            is_assigned = self.request.user == instance.assigned_to or instance.assigned_students.filter(id=self.request.user.id).exists()
+            is_member = instance.project and instance.project.projectmember_set.filter(user=self.request.user).exists()
+            if not (is_assigned or is_member or self.request.user == instance.created_by):
+                raise PermissionDenied("No tienes permisos para editar tareas.")
         
         # Check if task has submissions - use count() for better performance
         submission_count = instance.submissions.count()

@@ -160,10 +160,20 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         user = self.context['request'].user
-        if user.role not in TEACHER_ROLES:
-            raise serializers.ValidationError(
-                "No tienes permisos para crear o editar tareas."
-            )
+        if self.instance is None:
+            if user.role not in TEACHER_ROLES:
+                raise serializers.ValidationError(
+                    "No tienes permisos para crear tareas."
+                )
+        else:
+            if user.role not in TEACHER_ROLES:
+                task = self.instance
+                is_assigned = user == task.assigned_to or task.assigned_students.filter(id=user.id).exists()
+                is_member = task.project and task.project.projectmember_set.filter(user=user).exists()
+                if not (is_assigned or is_member or user == task.created_by):
+                    raise serializers.ValidationError(
+                        "No tienes permisos para editar esta tarea."
+                    )
         
         # Validate dates
         open_date = data.get('open_date', getattr(self.instance, 'open_date', None))
