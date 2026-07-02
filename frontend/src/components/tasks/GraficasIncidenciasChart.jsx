@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,6 +12,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { getGraficasData, calculateRowValues } from './GraficasActivityTable';
 import { FiAlertTriangle } from 'react-icons/fi';
+import { ThemeContext } from '../../contexts/ThemeContext';
 import './GraficasActivityChart.scss';
 
 ChartJS.register(
@@ -25,6 +26,8 @@ ChartJS.register(
 );
 
 const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
+  const themeContext = useContext(ThemeContext);
+  const isDarkMode = themeContext ? themeContext.isDarkMode : true;
   const [chartRows, setChartRows] = useState([]);
   const [hasGraficasTask, setHasGraficasTask] = useState(false);
   const [selectedWeek, setSelectedWeek] = useState('ALL');
@@ -159,7 +162,7 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
       legend: {
         position: 'top',
         labels: {
-          color: '#e2e8f0',
+          color: isDarkMode ? '#e2e8f0' : '#1e293b',
           font: {
             family: 'Inter, system-ui, sans-serif',
             size: 12,
@@ -170,10 +173,10 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        titleColor: '#ffffff',
-        bodyColor: '#e2e8f0',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+        titleColor: isDarkMode ? '#ffffff' : '#0f172a',
+        bodyColor: isDarkMode ? '#e2e8f0' : '#334155',
+        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.15)',
         borderWidth: 1,
         padding: 12,
         boxPadding: 6,
@@ -188,11 +191,11 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
     scales: {
       x: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.08)',
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
           drawBorder: false,
         },
         ticks: {
-          color: '#94a3b8',
+          color: isDarkMode ? '#94a3b8' : '#475569',
           font: {
             weight: '500'
           }
@@ -200,11 +203,11 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
       },
       y: {
         grid: {
-          color: 'rgba(255, 255, 255, 0.08)',
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
           drawBorder: false,
         },
         ticks: {
-          color: '#94a3b8',
+          color: isDarkMode ? '#94a3b8' : '#475569',
           font: {
             weight: '500'
           },
@@ -233,7 +236,7 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
         </div>
         
         <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label htmlFor="week-select-inc" style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.7)' }}>Filtrar Semana:</label>
+          <label htmlFor="week-select-inc" style={{ fontSize: '13px', fontWeight: '500' }}>Filtrar Semana:</label>
           <select
             id="week-select-inc"
             value={selectedWeek}
@@ -241,9 +244,6 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
             style={{
               padding: '6px 12px',
               borderRadius: '8px',
-              background: 'rgba(15, 23, 42, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#fff',
               fontSize: '13px',
               fontWeight: '600',
               outline: 'none',
@@ -272,29 +272,27 @@ const GraficasIncidenciasChart = ({ projectId, tasks, project }) => {
             gap: '12px',
             margin: '0 0 20px 0',
             padding: '16px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.08)'
+            borderRadius: '12px'
           }}>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Actos Inseguros (Acum.)</span>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>{accumActos}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Actos Inseguros (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: isDarkMode ? '#fbbf24' : '#d97706', marginTop: '4px' }}>{accumActos}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Cond. Inseguras (Acum.)</span>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#facc15', marginTop: '4px' }}>{accumCond}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Cond. Inseguras (Acum.)</span>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: isDarkMode ? '#facc15' : '#ca8a04', marginTop: '4px' }}>{accumCond}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Incidencias KPI (Acum.)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>{accumKpi}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Incidencias KPI (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#3b82f6' : '#2563eb', marginTop: '2px' }}>{accumKpi}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Solventadas en Campo (Acum.)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', marginTop: '2px' }}>{accumCampo}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Solventadas en Campo (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{accumCampo}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' }}>Total Incidencias (Acum.)</span>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>{accumTotal}</div>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Total Incidencias (Acum.)</span>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#f59e0b' : '#d97706', marginTop: '2px' }}>{accumTotal}</div>
             </div>
           </div>
         );

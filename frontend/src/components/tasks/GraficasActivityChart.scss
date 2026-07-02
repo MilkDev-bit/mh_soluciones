@@ -50,10 +50,43 @@
     height: 360px;
     width: 100%;
   }
+
+  .chart-week-filter {
+    label {
+      color: rgba(255, 255, 255, 0.7);
+      transition: color 0.2s;
+    }
+    select {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      transition: all 0.2s;
+      &:hover, &:focus {
+        border-color: #3b82f6;
+      }
+    }
+  }
+
+  .week-status-kpi-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s;
+    
+    .kpi-item {
+      span {
+        color: rgba(255, 255, 255, 0.6);
+        transition: color 0.2s;
+      }
+      .kpi-val-default {
+        color: #ffffff;
+        transition: color 0.2s;
+      }
+    }
+  }
 }
 
 // Support for light theme or white glass cards if inherited
-[data-theme='light'], .light-theme {
+[data-theme='light'], .light-theme, .light-mode {
   .graficas-activity-chart-wrapper {
     background: #ffffff;
     border-color: #e2e8f0;
@@ -67,6 +100,36 @@
       }
       .chart-subtitle {
         color: #64748b;
+      }
+    }
+
+    .chart-week-filter {
+      label {
+        color: #334155;
+      }
+      select {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+        &:hover, &:focus {
+          border-color: #3b82f6;
+          background: #ffffff;
+        }
+      }
+    }
+
+    .week-status-kpi-panel {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      
+      .kpi-item {
+        span {
+          color: #64748b;
+        }
+        .kpi-val-default {
+          color: #0f172a;
+        }
       }
     }
   }
