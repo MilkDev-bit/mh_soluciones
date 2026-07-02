@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers } from 'react-icons/fi';
+import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers, FiActivity } from 'react-icons/fi';
 import api from '../../services/api';
 import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
 import { ThemeContext } from '../../contexts/ThemeContext';
@@ -27,11 +27,18 @@ ChartJS.register(
   Legend
 );
 
+const calcIF = (accidentes, hh) => {
+  if (!hh || hh <= 0 || isNaN(hh)) return 0;
+  const val = (accidentes * 1000000) / hh;
+  return isNaN(val) || !isFinite(val) ? 0 : Number(val.toFixed(2));
+};
+
 const GeneralGraficasReports = ({ projects }) => {
   const themeContext = useContext(ThemeContext);
   const isDarkMode = themeContext ? themeContext.isDarkMode : true;
   const [selectedWeek1, setSelectedWeek1] = useState('ALL');
   const [selectedWeek2, setSelectedWeek2] = useState('ALL');
+  const [selectedWeek3, setSelectedWeek3] = useState('ALL');
   const [refreshIndex, setRefreshIndex] = useState(0);
 
   const { data: allTasksData } = useQuery({
@@ -279,6 +286,82 @@ const GeneralGraficasReports = ({ projects }) => {
     ],
   };
 
+  const availableWeeks3 = table2Rows.map(r => r.semana || '').filter(Boolean);
+  const activeRows3 = selectedWeek3 === 'ALL' ? table2Rows : (() => {
+    const idx = table2Rows.findIndex(r => r.semana === selectedWeek3);
+    return idx !== -1 ? table2Rows.slice(0, idx + 1) : table2Rows;
+  })();
+  const rowsToUse3 = activeRows3.length > 0 ? activeRows3 : table2Rows;
+
+  const labels3 = rowsToUse3.map(r => r.semana || '');
+
+  const getHHForIndexGen = (semana, idx) => {
+    let t1Row = table1Rows.find(r => r.semana === semana);
+    if (!t1Row && table1Rows[idx]) t1Row = table1Rows[idx];
+    if (!t1Row) return 0;
+    return parseFloat(t1Row.total_hh) || 0;
+  };
+
+  const ifKpiData3 = rowsToUse3.map((r, idx) => {
+    const hh = getHHForIndexGen(r.semana, idx);
+    return calcIF(r.incidencias_kpi || 0, hh);
+  });
+
+  const ifCampoData3 = rowsToUse3.map((r, idx) => {
+    const hh = getHHForIndexGen(r.semana, idx);
+    return calcIF(r.incidencias_campo || 0, hh);
+  });
+
+  const ifTotalData3 = rowsToUse3.map((r, idx) => {
+    const hh = getHHForIndexGen(r.semana, idx);
+    return calcIF(r.incidencias_total || 0, hh);
+  });
+
+  const data3 = {
+    labels: labels3,
+    datasets: [
+      {
+        label: 'IF - INCIDENCIAS KPI (20%)',
+        data: ifKpiData3,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+      {
+        label: 'IF - INCIDENCIAS CAMPO (80%)',
+        data: ifCampoData3,
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#ef4444',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+      {
+        label: 'IF - TOTAL INCIDENCIAS',
+        data: ifTotalData3,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1,
+      },
+    ],
+  };
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -508,6 +591,87 @@ const GeneralGraficasReports = ({ projects }) => {
 
         <div className="chart-container-box">
           <Line data={data2} options={options} />
+        </div>
+      </div>
+
+      {/* Gráfico 3: Índice de Frecuencia (IF) General */}
+      <div className="glass-card graficas-activity-chart-wrapper">
+        <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 className="chart-title">
+              <FiActivity className="title-icon" style={{ color: '#10b981' }} />
+              Índice de Frecuencia de Accidentes / Incidencias (General)
+            </h3>
+            <span className="chart-subtitle">
+              Fórmula: (Número de Accidentes / Incidencias × 1,000,000) ÷ Horas-hombre trabajadas
+            </span>
+          </div>
+          
+          <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label htmlFor="week-select-gen3" style={{ fontSize: '13px', fontWeight: '500' }}>Filtrar Semana:</label>
+            <select
+              id="week-select-gen3"
+              value={selectedWeek3}
+              onChange={(e) => setSelectedWeek3(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">Todas las semanas ({table2Rows.length})</option>
+              {availableWeeks3.map((w, idx) => (
+                <option key={idx} value={w}>{w}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedWeek3 !== 'ALL' && rowsToUse3.length > 0 && (() => {
+          const accumKpi = rowsToUse3.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_kpi || 0), 0);
+          const accumCampo = rowsToUse3.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_campo || 0), 0);
+          const accumTotal = rowsToUse3.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_total || 0), 0);
+          
+          const accumHH = rowsToUse3.reduce((sum, r, idx) => sum + getHHForIndexGen(r.semana, idx), 0);
+
+          const ifKpiAcum = calcIF(accumKpi, accumHH);
+          const ifCampoAcum = calcIF(accumCampo, accumHH);
+          const ifTotalAcum = calcIF(accumTotal, accumHH);
+
+          return (
+            <div className="week-status-kpi-panel" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              margin: '0 0 20px 0',
+              padding: '16px',
+              borderRadius: '12px'
+            }}>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Total Horas-hombre (Acum.)</span>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669', marginTop: '4px' }}>{accumHH.toLocaleString()}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - KPI (20%)</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#3b82f6' : '#2563eb', marginTop: '2px' }}>{ifKpiAcum}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - Campo (80%)</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{ifCampoAcum}</div>
+              </div>
+              <div className="kpi-item">
+                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acum. - TOTAL</span>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#10b981' : '#059669', marginTop: '2px' }}>{ifTotalAcum}</div>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="chart-container-box">
+          <Line data={data3} options={options} />
         </div>
       </div>
     </div>
