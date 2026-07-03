@@ -27,7 +27,7 @@ ChartJS.register(
 
 const calcIF = (accidentes, hh) => {
   if (!hh || hh <= 0 || isNaN(hh)) return 0;
-  const val = (accidentes * 1000000) / hh;
+  const val = (accidentes * 1000) / hh;
   return isNaN(val) || !isFinite(val) ? 0 : Number(val.toFixed(2));
 };
 
