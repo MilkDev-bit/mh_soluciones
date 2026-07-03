@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers, FiActivity } from 'react-icons/fi';
+import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers, FiActivity, FiClock } from 'react-icons/fi';
 import api from '../../services/api';
 import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
 import { ThemeContext } from '../../contexts/ThemeContext';
@@ -34,13 +34,58 @@ const calcIF = (accidentes, hh) => {
   return isNaN(val) || !isFinite(val) ? 0 : Number(val.toFixed(2));
 };
 
+const getRowGroupingKey = (project, rowStr, mode) => {
+  const cleanStr = (rowStr || '').trim().toUpperCase();
+  const numMatch = cleanStr.match(/\d+/);
+  const weekNum = numMatch ? parseInt(numMatch[0], 10) : 1;
+
+  if (mode === 'lifecycle') {
+    return {
+      key: `LIFECYCLE_${weekNum}`,
+      label: `SEMANA ${weekNum}`,
+      sortNum: weekNum
+    };
+  } else {
+    let baseDate = project?.start_date ? new Date(project.start_date + 'T00:00:00') : null;
+    if (!baseDate || isNaN(baseDate.getTime())) {
+      baseDate = project?.created_at ? new Date(project.created_at) : new Date(new Date().getFullYear(), 0, 1);
+    }
+    if (isNaN(baseDate.getTime())) {
+      baseDate = new Date(new Date().getFullYear(), 0, 1);
+    }
+
+    const targetDate = new Date(baseDate.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
+    
+    const d = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const calWeekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    const calYear = d.getUTCFullYear();
+
+    return {
+      key: `CHRONO_${calYear}_${calWeekNo}`,
+      label: `SEMANA CAL. ${calWeekNo} (${calYear})`,
+      sortNum: calYear * 100 + calWeekNo,
+      calYear,
+      calWeekNo
+    };
+  }
+};
+
 const GeneralGraficasReports = ({ projects }) => {
   const themeContext = useContext(ThemeContext);
   const isDarkMode = themeContext ? themeContext.isDarkMode : true;
+  const [viewMode, setViewMode] = useState('chronological');
   const [selectedWeek1, setSelectedWeek1] = useState('ALL');
   const [selectedWeek2, setSelectedWeek2] = useState('ALL');
   const [selectedWeek3, setSelectedWeek3] = useState('ALL');
   const [refreshIndex, setRefreshIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedWeek1('ALL');
+    setSelectedWeek2('ALL');
+    setSelectedWeek3('ALL');
+  }, [viewMode]);
 
   const { data: allTasksData } = useQuery({
     queryKey: ['allTasksForGeneralReports', refreshIndex],
@@ -85,37 +130,45 @@ const GeneralGraficasReports = ({ projects }) => {
       const task = Array.isArray(allTasks)
         ? allTasks.find(t => (String(t.project) === String(p.id) || String(t.project?.id) === String(p.id)) && t.title && t.title.toUpperCase().includes('GRAFICAS'))
         : null;
-      return getGraficasData(task, p);
+      return { project: p, data: getGraficasData(task, p) };
     });
 
-    const weekSet = new Set();
-    allProjectsData.forEach(data => {
+    const groupMap = new Map();
+    allProjectsData.forEach(({ project, data }) => {
       const t1 = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
       const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
-      t1.forEach(r => { if (r?.semana) weekSet.add(r.semana.trim()); });
-      t2.forEach(r => { if (r?.semana) weekSet.add(r.semana.trim()); });
+      t1.forEach(r => {
+        if (r?.semana) {
+          const info = getRowGroupingKey(project, r.semana, viewMode);
+          if (!groupMap.has(info.key)) groupMap.set(info.key, info);
+        }
+      });
+      t2.forEach(r => {
+        if (r?.semana) {
+          const info = getRowGroupingKey(project, r.semana, viewMode);
+          if (!groupMap.has(info.key)) groupMap.set(info.key, info);
+        }
+      });
     });
 
-    const sortedWeeks = Array.from(weekSet).sort((a, b) => {
-      const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
-      const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
-      if (numA !== numB) return numA - numB;
-      return a.localeCompare(b);
-    });
+    const sortedGroups = Array.from(groupMap.values()).sort((a, b) => a.sortNum - b.sortNum);
 
-    if (sortedWeeks.length === 0) {
-      for (let i = 1; i <= 6; i++) sortedWeeks.push(`SEMANA ${i}`);
+    if (sortedGroups.length === 0) {
+      for (let i = 1; i <= 6; i++) {
+        const info = getRowGroupingKey(null, `SEMANA ${i}`, viewMode);
+        sortedGroups.push(info);
+      }
     }
 
-    const t1Rows = sortedWeeks.map((w, idx) => {
+    const t1Rows = sortedGroups.map((g, idx) => {
       let sumActos = 0;
       let sumCondiciones = 0;
       let sumFt = 0;
       let sumTotalHH = 0;
 
-      allProjectsData.forEach(data => {
+      allProjectsData.forEach(({ project, data }) => {
         const t1 = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
-        const row = t1.find(r => (r?.semana || '').trim().toUpperCase() === w.toUpperCase());
+        const row = t1.find(r => r?.semana && getRowGroupingKey(project, r.semana, viewMode).key === g.key);
         if (row) {
           sumActos += parseFloat(row.actos) || 0;
           sumCondiciones += parseFloat(row.condiciones) || 0;
@@ -127,7 +180,7 @@ const GeneralGraficasReports = ({ projects }) => {
 
       const baseRow = {
         id: `gen-t1-${idx}`,
-        semana: w,
+        semana: g.label,
         actos: sumActos,
         condiciones: sumCondiciones,
         ft: sumFt,
@@ -140,16 +193,16 @@ const GeneralGraficasReports = ({ projects }) => {
       return calculateRowValues(baseRow, 1000);
     });
 
-    const t2Rows = sortedWeeks.map((w, idx) => {
+    const t2Rows = sortedGroups.map((g, idx) => {
       let sumActos = 0;
       let sumCondiciones = 0;
       let sumCampo = 0;
       let sumAcc = 0;
       let hasCampoCustom = false;
 
-      allProjectsData.forEach(data => {
+      allProjectsData.forEach(({ project, data }) => {
         const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
-        const row = t2.find(r => (r?.semana || '').trim().toUpperCase() === w.toUpperCase());
+        const row = t2.find(r => r?.semana && getRowGroupingKey(project, r.semana, viewMode).key === g.key);
         if (row) {
           sumActos += parseFloat(row.actos) || 0;
           sumCondiciones += parseFloat(row.condiciones) || 0;
@@ -163,7 +216,7 @@ const GeneralGraficasReports = ({ projects }) => {
 
       const baseRow = {
         id: `gen-t2-${idx}`,
-        semana: w,
+        semana: g.label,
         actos: sumActos,
         condiciones: sumCondiciones,
         incidencias_campo: hasCampoCustom ? sumCampo : '',
@@ -174,7 +227,7 @@ const GeneralGraficasReports = ({ projects }) => {
     });
 
     return { table1Rows: t1Rows, table2Rows: t2Rows };
-  }, [projects, allTasks, refreshIndex]);
+  }, [projects, allTasks, refreshIndex, viewMode]);
 
   const availableWeeks1 = table1Rows.map(r => r.semana || '').filter(Boolean);
   const activeRows1 = selectedWeek1 === 'ALL' ? table1Rows : (() => {
@@ -444,6 +497,96 @@ const GeneralGraficasReports = ({ projects }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* Selector de Modo de Agrupación Temporal */}
+      <div className="glass-card" style={{
+        padding: '16px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        background: isDarkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)',
+        border: '1px solid rgba(148, 163, 175, 0.2)',
+        borderRadius: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            color: '#3b82f6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '22px'
+          }}>
+            <FiClock />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
+              Criterio de Agrupación Temporal
+            </h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', maxWidth: '650px', lineHeight: '1.4' }}>
+              {viewMode === 'chronological'
+                ? 'Vista Cronológica: Suma las horas y estadísticas de los proyectos en función de su fecha de inicio real en el calendario (Semana Calendario / Año).'
+                : 'Vista Ciclo de Vida: Suma la Semana 1, Semana 2... de cada proyecto por igual sin importar en qué mes o fecha iniciaron.'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+          padding: '4px',
+          borderRadius: '12px',
+          border: '1px solid rgba(148, 163, 175, 0.2)'
+        }}>
+          <button
+            type="button"
+            onClick={() => setViewMode('chronological')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: viewMode === 'chronological' ? '#3b82f6' : 'transparent',
+              color: viewMode === 'chronological' ? '#ffffff' : (isDarkMode ? '#cbd5e1' : '#475569'),
+              boxShadow: viewMode === 'chronological' ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🗓️ Semana Calendario (Real)
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('lifecycle')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: viewMode === 'lifecycle' ? '#3b82f6' : 'transparent',
+              color: viewMode === 'lifecycle' ? '#ffffff' : (isDarkMode ? '#cbd5e1' : '#475569'),
+              boxShadow: viewMode === 'lifecycle' ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🔄 Ciclo de Vida (Semana 1, 2...)
+          </button>
+        </div>
+      </div>
+
       {/* Tabla 1 General Consolidada: Rendimiento */}
       <div className="glass-card graficas-activity-table-wrapper" style={{ padding: '0', overflow: 'hidden', border: 'none' }}>
         <div className="table-header-banner" style={{ backgroundColor: '#10b981', margin: 0, padding: '14px 20px', fontSize: '15px', fontWeight: 'bold', color: '#ffffff' }}>
