@@ -127,7 +127,7 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
     labels,
     datasets: [
       {
-        label: 'IF - ACCIDENTES INCAPACITANTES',
+        label: 'Tasa IF (por 1,000 HH)',
         data: ifAccData,
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -194,7 +194,18 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         usePointStyle: true,
         callbacks: {
           label: function(context) {
-            return `${context.dataset.label}: ${context.parsed.y}`;
+            if (context.dataset.label && (context.dataset.label.includes('META') || context.dataset.label.includes('BAJO') || context.dataset.label.includes('ALTO'))) {
+              return `${context.dataset.label}: ${context.parsed.y}`;
+            }
+            const idx = context.dataIndex;
+            const row = rowsToUse2[idx] || {};
+            const acc = calculateRowValues(row).accidentes_incapacitantes || 0;
+            const hh = getHHForIndex(row.semana, idx);
+            return [
+              `Tasa IF: ${context.parsed.y} (por 1,000 HH)`,
+              `Accidentes Reales: ${acc} ${acc === 1 ? 'accidente' : 'accidentes'}`,
+              `Horas-Hombre: ${hh.toLocaleString()} HH`
+            ];
           }
         }
       }
@@ -238,10 +249,10 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         <div>
           <h3 className="chart-title">
             <FiActivity className="title-icon" style={{ color: '#10b981' }} />
-            Índice de Frecuencia (IF) - {projectName}
+            Tasa de Frecuencia de Accidentes (IF) - {projectName}
           </h3>
-          <span className="chart-subtitle">
-            Fórmula: (Número de Accidentes Incapacitantes × 1,000,000) ÷ Horas-hombre trabajadas
+          <span className="chart-subtitle" style={{ display: 'block', marginTop: '4px', color: isDarkMode ? '#cbd5e1' : '#475569' }}>
+            <strong>Nota:</strong> Muestra el <em>Índice de Frecuencia (Tasa por cada 1,000 HH)</em>, NO la cantidad de accidentes reales. Fórmula: (No. de Accidentes × 1,000) ÷ HH.
           </span>
         </div>
         
@@ -287,11 +298,11 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669', marginTop: '4px' }}>{accumHH.toLocaleString()}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Accidentes Incapacitantes (Acum.)</span>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Accidentes Reales (Acum.)</span>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#fbbf24' : '#d97706', marginTop: '4px' }}>{accumAcc}</div>
             </div>
             <div className="kpi-item">
-              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>IF Acumulado</span>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Tasa IF Acumulada (por 1,000 HH)</span>
               <div style={{ fontSize: '22px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{ifAccAcum}</div>
             </div>
           </div>
