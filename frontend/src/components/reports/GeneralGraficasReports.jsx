@@ -132,9 +132,9 @@ const GeneralGraficasReports = ({ projects }) => {
         condiciones: sumCondiciones,
         ft: sumFt,
         total_hh: sumTotalHH,
-        meta: 0.8,
-        bajo: 0.7,
-        alto: 1.4
+        meta: 2.0,
+        bajo: 1.0,
+        alto: 3.5
       };
 
       return calculateRowValues(baseRow, 1000);
@@ -188,9 +188,9 @@ const GeneralGraficasReports = ({ projects }) => {
     const val = r._resultadoNum !== undefined ? r._resultadoNum : parseFloat(r.resultado);
     return isNaN(val) ? 0 : val;
   });
-  const metaData1 = rowsToUse1.map(r => parseFloat(r.meta) || 0.8);
-  const bajoData1 = rowsToUse1.map(r => parseFloat(r.bajo) || 0.7);
-  const altoData1 = rowsToUse1.map(r => parseFloat(r.alto) || 1.4);
+  const metaData1 = rowsToUse1.map(r => parseFloat(r.meta) || 2.0);
+  const bajoData1 = rowsToUse1.map(r => parseFloat(r.bajo) || 1.0);
+  const altoData1 = rowsToUse1.map(r => parseFloat(r.alto) || 3.5);
 
   const data1 = {
     labels: labels1,
@@ -209,7 +209,7 @@ const GeneralGraficasReports = ({ projects }) => {
         tension: 0.1,
       },
       {
-        label: 'META (0.8)',
+        label: 'META (2.0)',
         data: metaData1,
         borderColor: '#10b981',
         borderDash: [5, 5],
@@ -217,7 +217,7 @@ const GeneralGraficasReports = ({ projects }) => {
         pointRadius: 0,
       },
       {
-        label: 'BAJO (0.7)',
+        label: 'BAJO (1.0)',
         data: bajoData1,
         borderColor: '#f59e0b',
         borderDash: [5, 5],
@@ -225,7 +225,7 @@ const GeneralGraficasReports = ({ projects }) => {
         pointRadius: 0,
       },
       {
-        label: 'ALTO (1.4)',
+        label: 'ALTO (3.5)',
         data: altoData1,
         borderColor: '#ef4444',
         borderDash: [5, 5],
@@ -435,9 +435,9 @@ const GeneralGraficasReports = ({ projects }) => {
                     <td className={`cell-readonly ${calc.resultado === '#DIV/0!' ? 'cell-error' : ''}`} style={{ fontWeight: 'bold' }}>
                       {calc.resultado}
                     </td>
-                    <td className="cell-readonly">{row.meta || 0.8}</td>
-                    <td className="cell-readonly">{row.bajo || 0.7}</td>
-                    <td className="cell-readonly">{row.alto || 1.4}</td>
+                    <td className="cell-readonly">{row.meta || 2.0}</td>
+                    <td className="cell-readonly">{row.bajo || 1.0}</td>
+                    <td className="cell-readonly">{row.alto || 3.5}</td>
                   </tr>
                 );
               })}

@@ -5,12 +5,12 @@ import { updateTask } from '../../services/taskService';
 import './GraficasActivityTable.scss';
 
 const defaultRows = [
-  { id: 1, semana: 'SEMANA 1', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 2, semana: 'SEMANA 2', actos: 0, condiciones: 1, accidentes_incapacitantes: 0, ft: 11, total_hh: 550, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 3, semana: 'SEMANA 3', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 4, semana: 'SEMANA 4', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 5, semana: 'SEMANA 5', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
-  { id: 6, semana: 'SEMANA 6', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
+  { id: 1, semana: 'SEMANA 1', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 2.0, bajo: 1.0, alto: 3.5 },
+  { id: 2, semana: 'SEMANA 2', actos: 0, condiciones: 1, accidentes_incapacitantes: 0, ft: 11, total_hh: 550, meta: 2.0, bajo: 1.0, alto: 3.5 },
+  { id: 3, semana: 'SEMANA 3', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 2.0, bajo: 1.0, alto: 3.5 },
+  { id: 4, semana: 'SEMANA 4', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 2.0, bajo: 1.0, alto: 3.5 },
+  { id: 5, semana: 'SEMANA 5', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 2.0, bajo: 1.0, alto: 3.5 },
+  { id: 6, semana: 'SEMANA 6', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 2.0, bajo: 1.0, alto: 3.5 },
 ];
 
 export const calculateRowValues = (row, hoursFactor = 1000) => {
@@ -201,9 +201,9 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
       condiciones: 0,
       ft: 0,
       total_hh: 0,
-      meta: 0.8,
-      bajo: 0.7,
-      alto: 1.4
+      meta: 2.0,
+      bajo: 1.0,
+      alto: 3.5
     };
     const newRows = [...table1Rows, newRow];
     setTable1Rows(newRows);
@@ -357,7 +357,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     <input
                       type="number"
                       step="any"
-                      value={row.meta !== undefined ? row.meta : 0.8}
+                      value={row.meta !== undefined ? row.meta : 2.0}
                       onChange={(e) => handleCellChange1(idx, 'meta', e.target.value)}
                     />
                   </td>
@@ -365,7 +365,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     <input
                       type="number"
                       step="any"
-                      value={row.bajo !== undefined ? row.bajo : 0.7}
+                      value={row.bajo !== undefined ? row.bajo : 1.0}
                       onChange={(e) => handleCellChange1(idx, 'bajo', e.target.value)}
                     />
                   </td>
@@ -373,7 +373,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                     <input
                       type="number"
                       step="any"
-                      value={row.alto !== undefined ? row.alto : 1.4}
+                      value={row.alto !== undefined ? row.alto : 3.5}
                       onChange={(e) => handleCellChange1(idx, 'alto', e.target.value)}
                     />
                   </td>

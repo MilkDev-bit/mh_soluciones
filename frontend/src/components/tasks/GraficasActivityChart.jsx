@@ -102,9 +102,9 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
     return calc._resultadoNum || 0;
   });
 
-  const metaData = rowsToUse.map(r => parseFloat(r.meta) || 0.8);
-  const bajoData = rowsToUse.map(r => parseFloat(r.bajo) || 0.7);
-  const altoData = rowsToUse.map(r => parseFloat(r.alto) || 1.4);
+  const metaData = rowsToUse.map(r => parseFloat(r.meta) || 2.0);
+  const bajoData = rowsToUse.map(r => parseFloat(r.bajo) || 1.0);
+  const altoData = rowsToUse.map(r => parseFloat(r.alto) || 3.5);
 
   const data = {
     labels,
@@ -282,10 +282,10 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
 
         let statusColor = '#10b981'; // Green
         let statusText = 'Óptimo (Debajo de Meta)';
-        if (resVal > parseFloat(lastRow.alto || 1.4)) {
+        if (resVal > parseFloat(lastRow.alto || 3.5)) {
           statusColor = '#ef4444'; // Red
           statusText = 'Crítico (Supera Alto)';
-        } else if (resVal > parseFloat(lastRow.meta || 0.8)) {
+        } else if (resVal > parseFloat(lastRow.meta || 2.0)) {
           statusColor = '#f59e0b'; // Amber
           statusText = 'Alerta (Supera Meta)';
         }
