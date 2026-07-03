@@ -10,7 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { getGraficasData, calculateRowValues } from './GraficasActivityTable';
+import { getGraficasData, calculateRowValues, upgradeRowThresholds } from './GraficasActivityTable';
 import { FiTrendingUp } from 'react-icons/fi';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import './GraficasActivityChart.scss';
@@ -44,9 +44,10 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
       setHasGraficasTask(true);
       const data = getGraficasData(graficasTask, project || { id: projectId });
       const rowsToSet = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
-      setChartRows(rowsToSet);
+      setChartRows(upgradeRowThresholds(rowsToSet));
     } else {
       setHasGraficasTask(false);
+      setChartRows([]);
     }
   }, [projectId, tasks, project]);
 
@@ -57,7 +58,7 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
       if (String(evtPid) === String(projectId) && rows) {
         setHasGraficasTask(true);
         const rowsToSet = Array.isArray(rows) ? rows : (Array.isArray(rows?.table1) ? rows.table1 : []);
-        setChartRows(rowsToSet);
+        setChartRows(upgradeRowThresholds(rowsToSet));
       }
     };
 
@@ -68,7 +69,7 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
           if (parsed) {
             setHasGraficasTask(true);
             const rowsToSet = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.table1) ? parsed.table1 : []);
-            setChartRows(rowsToSet);
+            setChartRows(upgradeRowThresholds(rowsToSet));
           }
         } catch (err) {}
       }
@@ -102,9 +103,18 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
     return calc._resultadoNum || 0;
   });
 
-  const metaData = rowsToUse.map(r => parseFloat(r.meta) || 2.0);
-  const bajoData = rowsToUse.map(r => parseFloat(r.bajo) || 1.0);
-  const altoData = rowsToUse.map(r => parseFloat(r.alto) || 3.5);
+  const metaData = rowsToUse.map(r => {
+    const val = parseFloat(r.meta);
+    return (val === 0.8 || isNaN(val)) ? 2.0 : val;
+  });
+  const bajoData = rowsToUse.map(r => {
+    const val = parseFloat(r.bajo);
+    return (val === 0.7 || isNaN(val)) ? 1.0 : val;
+  });
+  const altoData = rowsToUse.map(r => {
+    const val = parseFloat(r.alto);
+    return (val === 1.4 || isNaN(val)) ? 3.5 : val;
+  });
 
   const data = {
     labels,
@@ -279,13 +289,17 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
         const accumHHCorregidas = accumTotalHH / 1000;
         const resVal = accumHHCorregidas === 0 ? 0 : (accumActos + accumCond) / accumHHCorregidas;
         const lastRow = rowsToUse[rowsToUse.length - 1] || {};
+        const lastAltoVal = parseFloat(lastRow.alto);
+        const lastAlto = (lastAltoVal === 1.4 || isNaN(lastAltoVal)) ? 3.5 : lastAltoVal;
+        const lastMetaVal = parseFloat(lastRow.meta);
+        const lastMeta = (lastMetaVal === 0.8 || isNaN(lastMetaVal)) ? 2.0 : lastMetaVal;
 
         let statusColor = '#10b981'; // Green
         let statusText = 'Óptimo (Debajo de Meta)';
-        if (resVal > parseFloat(lastRow.alto || 3.5)) {
+        if (resVal > lastAlto) {
           statusColor = '#ef4444'; // Red
           statusText = 'Crítico (Supera Alto)';
-        } else if (resVal > parseFloat(lastRow.meta || 2.0)) {
+        } else if (resVal > lastMeta) {
           statusColor = '#f59e0b'; // Amber
           statusText = 'Alerta (Supera Meta)';
         }

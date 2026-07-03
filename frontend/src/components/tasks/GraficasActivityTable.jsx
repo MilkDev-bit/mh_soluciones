@@ -55,6 +55,21 @@ export const calculateRowValues = (row, hoursFactor = 1000) => {
   };
 };
 
+export const upgradeRowThresholds = (rows) => {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map(r => {
+    const metaVal = parseFloat(r.meta);
+    const bajoVal = parseFloat(r.bajo);
+    const altoVal = parseFloat(r.alto);
+    return {
+      ...r,
+      meta: (metaVal === 0.8 || isNaN(metaVal)) ? 2.0 : metaVal,
+      bajo: (bajoVal === 0.7 || isNaN(bajoVal)) ? 1.0 : bajoVal,
+      alto: (altoVal === 1.4 || isNaN(altoVal)) ? 3.5 : altoVal,
+    };
+  });
+};
+
 export const getGraficasData = (task, project) => {
   const pid = project?.id || (typeof task?.project === 'object' ? task?.project?.id : task?.project);
   
@@ -90,14 +105,15 @@ export const getGraficasData = (task, project) => {
 
   // If stored as Array (old format), both tables get a copy of that array
   if (Array.isArray(rawData) && rawData.length > 0) {
-    return { table1: rawData, table2: JSON.parse(JSON.stringify(rawData)) };
+    const upgraded = upgradeRowThresholds(rawData);
+    return { table1: upgraded, table2: JSON.parse(JSON.stringify(upgraded)) };
   }
 
   // If stored as object { table1, table2 }
   if (rawData && (Array.isArray(rawData.table1) || Array.isArray(rawData.table2))) {
     return {
-      table1: Array.isArray(rawData.table1) && rawData.table1.length > 0 ? rawData.table1 : defaultRows,
-      table2: Array.isArray(rawData.table2) && rawData.table2.length > 0 ? rawData.table2 : defaultRows
+      table1: Array.isArray(rawData.table1) && rawData.table1.length > 0 ? upgradeRowThresholds(rawData.table1) : defaultRows,
+      table2: Array.isArray(rawData.table2) && rawData.table2.length > 0 ? upgradeRowThresholds(rawData.table2) : defaultRows
     };
   }
 
