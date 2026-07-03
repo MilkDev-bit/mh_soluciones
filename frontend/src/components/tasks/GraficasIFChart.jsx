@@ -139,6 +139,30 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         pointHoverRadius: 7,
         tension: 0.1,
       },
+      {
+        label: 'META (0.02)',
+        data: rowsToUse2.map(() => 0.02),
+        borderColor: '#10b981',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'BAJO (0.01)',
+        data: rowsToUse2.map(() => 0.01),
+        borderColor: '#f59e0b',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'ALTO (0.05)',
+        data: rowsToUse2.map(() => 0.05),
+        borderColor: '#ef4444',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
     ],
   };
 

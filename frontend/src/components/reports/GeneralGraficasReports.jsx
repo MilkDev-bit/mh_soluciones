@@ -329,6 +329,30 @@ const GeneralGraficasReports = ({ projects }) => {
         pointHoverRadius: 7,
         tension: 0.1,
       },
+      {
+        label: 'META (10.0)',
+        data: rowsToUse3.map(() => 10.0),
+        borderColor: '#10b981',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'BAJO (5.0)',
+        data: rowsToUse3.map(() => 5.0),
+        borderColor: '#f59e0b',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
+      {
+        label: 'ALTO (25.0)',
+        data: rowsToUse3.map(() => 25.0),
+        borderColor: '#ef4444',
+        borderDash: [5, 5],
+        borderWidth: 2,
+        pointRadius: 0,
+      },
     ],
   };
 
