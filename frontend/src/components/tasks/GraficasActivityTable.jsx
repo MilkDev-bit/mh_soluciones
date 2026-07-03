@@ -13,10 +13,10 @@ const defaultRows = [
   { id: 6, semana: 'SEMANA 6', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 0, total_hh: 0, meta: 0.8, bajo: 0.7, alto: 1.4 },
 ];
 
-export const calculateRowValues = (row) => {
+export const calculateRowValues = (row, hoursFactor = 1000) => {
   const ftVal = parseFloat(row.ft) || 0;
   const totalHH = ftVal * 50;
-  const hhCorregidas = totalHH / 1000;
+  const hhCorregidas = totalHH / hoursFactor;
   const condiciones = parseFloat(row.condiciones) || 0;
   const actos = parseFloat(row.actos) || 0;
 

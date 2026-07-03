@@ -137,7 +137,7 @@ const GeneralGraficasReports = ({ projects }) => {
         alto: 1.4
       };
 
-      return calculateRowValues(baseRow);
+      return calculateRowValues(baseRow, 1000000);
     });
 
     const t2Rows = sortedWeeks.map((w, idx) => {
@@ -523,7 +523,7 @@ const GeneralGraficasReports = ({ projects }) => {
           const accumCond = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
           const accumFt = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.ft) || 0), 0);
           const accumTotalHH = rowsToUse1.reduce((sum, r) => sum + ((parseFloat(r.ft) || 0) * 50), 0);
-          const accumHHCorregidas = accumTotalHH / 1000;
+          const accumHHCorregidas = accumTotalHH / 1000000;
           const accumResultadoVal = accumHHCorregidas === 0 ? 0 : (accumActos + accumCond) / accumHHCorregidas;
           const accumResultado = Number.isInteger(accumResultadoVal) ? accumResultadoVal.toString() : accumResultadoVal.toFixed(9).replace(/\.?0+$/, '');
 
