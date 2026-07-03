@@ -133,17 +133,17 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
         borderWidth: 2.5,
       },
       {
-        label: 'META',
+        label: 'META Frecuencia (2.0)',
         data: metaData,
-        borderColor: '#ef4444', // Red
-        backgroundColor: 'rgba(239, 68, 68, 0.5)',
-        pointBackgroundColor: '#ef4444',
+        borderColor: '#10b981', // Green
+        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+        pointBackgroundColor: '#10b981',
         pointRadius: 3,
         tension: 0,
         borderWidth: 2,
       },
       {
-        label: 'BAJO',
+        label: 'BAJO Frecuencia (1.0)',
         data: bajoData,
         borderColor: '#f59e0b', // Amber/Yellow
         backgroundColor: 'rgba(245, 158, 11, 0.5)',
@@ -153,11 +153,11 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
         borderWidth: 2,
       },
       {
-        label: 'ALTO',
+        label: 'ALTO Frecuencia (3.5)',
         data: altoData,
-        borderColor: '#10b981', // Green
-        backgroundColor: 'rgba(16, 185, 129, 0.5)',
-        pointBackgroundColor: '#10b981',
+        borderColor: '#ef4444', // Red
+        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+        pointBackgroundColor: '#ef4444',
         pointRadius: 3,
         tension: 0,
         borderWidth: 2,
@@ -202,6 +202,18 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
         },
         callbacks: {
           label: function(context) {
+            if (context.dataset.label && (context.dataset.label.includes('META') || context.dataset.label.includes('BAJO') || context.dataset.label.includes('ALTO'))) {
+              const label = context.dataset.label;
+              let desc = '';
+              if (label.includes('META')) desc = 'Promedio objetivo industrial. Operación controlada.';
+              if (label.includes('BAJO')) desc = 'Nivel óptimo de control. Muy pocas incidencias.';
+              if (label.includes('ALTO')) desc = 'Límite crítico superior. Alta concentración de actos/condiciones.';
+              return [
+                `${label}`,
+                `Valor Umbral: ${context.parsed.y}`,
+                `Significado: ${desc}`
+              ];
+            }
             const val = context.raw;
             const formatted = typeof val === 'number' ? val.toFixed(4).replace(/\.?0+$/, '') : val;
             return `${context.dataset.label}: ${formatted}`;
@@ -340,6 +352,40 @@ const GraficasActivityChart = ({ projectId, tasks, project }) => {
           </div>
         );
       })()}
+
+      <div className="reference-lines-explanation" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '12px',
+        margin: '0 0 16px 0',
+        padding: '12px 16px',
+        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.7)',
+        borderRadius: '10px',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        fontSize: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#f59e0b', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#fde68a' : '#b45309' }}>BAJO (Tasa 1.0):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Nivel óptimo de control de seguridad. Refleja muy pocas incidencias por cada 1,000 HH corregidas.</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#10b981', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#a7f3d0' : '#047857' }}>META (Tasa 2.0):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Promedio objetivo industrial. Indica una operación bajo supervisión dentro del margen controlable.</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#ef4444', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>ALTO (Tasa 3.5):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Límite crítico superior. Concentración alta de actos y condiciones inseguras que requiere intervención.</div>
+          </div>
+        </div>
+      </div>
 
       <div className="chart-container-box">
         <Line data={data} options={options} />

@@ -140,7 +140,7 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         tension: 0.1,
       },
       {
-        label: 'META (0.02)',
+        label: 'META IF (Tasa 0.02)',
         data: rowsToUse2.map(() => 0.02),
         borderColor: '#10b981',
         borderDash: [5, 5],
@@ -148,7 +148,7 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         pointRadius: 0,
       },
       {
-        label: 'BAJO (0.01)',
+        label: 'BAJO IF (Tasa 0.01)',
         data: rowsToUse2.map(() => 0.01),
         borderColor: '#f59e0b',
         borderDash: [5, 5],
@@ -156,7 +156,7 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         pointRadius: 0,
       },
       {
-        label: 'ALTO (0.05)',
+        label: 'ALTO IF (Tasa 0.05)',
         data: rowsToUse2.map(() => 0.05),
         borderColor: '#ef4444',
         borderDash: [5, 5],
@@ -195,7 +195,16 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
         callbacks: {
           label: function(context) {
             if (context.dataset.label && (context.dataset.label.includes('META') || context.dataset.label.includes('BAJO') || context.dataset.label.includes('ALTO'))) {
-              return `${context.dataset.label}: ${context.parsed.y}`;
+              const label = context.dataset.label;
+              let desc = '';
+              if (label.includes('META')) desc = 'Tasa meta u objetivo aceptable de control';
+              if (label.includes('BAJO')) desc = 'Tasa óptima que refleja excelencia en seguridad';
+              if (label.includes('ALTO')) desc = 'Tasa crítica de alerta que requiere atención';
+              return [
+                `${label}`,
+                `Valor Umbral: ${context.parsed.y} por cada 1,000 HH`,
+                `Significado: ${desc} (NO es conteo de accidentes)`
+              ];
             }
             const idx = context.dataIndex;
             const row = rowsToUse2[idx] || {};
@@ -308,6 +317,40 @@ const GraficasIFChart = ({ projectId, tasks, project }) => {
           </div>
         );
       })()}
+
+      <div className="reference-lines-explanation" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '12px',
+        margin: '0 0 16px 0',
+        padding: '12px 16px',
+        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.7)',
+        borderRadius: '10px',
+        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        fontSize: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#f59e0b', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#fde68a' : '#b45309' }}>BAJO IF (Tasa 0.01):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Nivel de excelencia en seguridad. Refleja un índice óptimo con mínima accidentabilidad por cada 1,000 horas.</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#10b981', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#a7f3d0' : '#047857' }}>META IF (Tasa 0.02):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Promedio industrial objetivo por 1,000 horas trabajadas. Representa un índice de accidentabilidad controlado.</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#ef4444', marginTop: '2px', flexShrink: 0 }}></span>
+          <div>
+            <strong style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>ALTO IF (Tasa 0.05):</strong>
+            <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Límite crítico superior de alerta roja. Superar esta tasa exige investigación e intervención prioritaria.</div>
+          </div>
+        </div>
+      </div>
 
       <div className="chart-container-box">
         <Line data={data} options={options} />
