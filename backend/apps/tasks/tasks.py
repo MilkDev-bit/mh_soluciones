@@ -70,12 +70,32 @@ def assign_tasks_to_students_weekly():
     """
     Tarea periódica semanal (domingos).
     Para cada proyecto activo, asigna automáticamente todos los miembros
-    con rol STUDENT al campo assigned_students de cada tarea abierta
-    del proyecto. No crea tareas duplicadas; solo garantiza que cada
-    estudiante miembro del proyecto aparezca en assigned_students.
+    con rol STUDENT al campo assigned_students de las 7 tareas estándar
+    del proyecto. Si existen duplicados con el mismo nombre, solo se
+    toma la más reciente de cada tipo.
+
+    Tareas objetivo (case-insensitive):
+      - Matriz de cumplimiento SH
+      - Platicas de seguridad
+      - PIRAMIDE SH
+      - QR WEEKLY
+      - GRAFICAS
+      - Campañas
+      - KPI
     """
     from apps.projects.models import Project, ProjectMember
     from apps.authentication.models import CustomUser
+
+    # Los 7 nombres canónicos (en minúsculas para comparación)
+    TASK_NAMES = [
+        'matriz de cumplimiento sh',
+        'platicas de seguridad',
+        'piramide sh',
+        'qr weekly',
+        'graficas',
+        'campañas',
+        'kpi',
+    ]
 
     now = timezone.now()
     logger.info(f"[WeeklyAssign] Iniciando asignación semanal de tareas a estudiantes - {now}")
@@ -102,19 +122,25 @@ def assign_tasks_to_students_weekly():
         if not student_member_ids:
             continue
 
-        # Tareas abiertas / activas del proyecto (excluir cerradas y completadas)
-        open_tasks = Task.objects.filter(
-            project=project,
-            status__in=['DRAFT', 'OPEN', 'IN_REVIEW', 'REOPENED', 'PENDING', 'IN_PROGRESS', 'FOR_REVIEW']
-        ).prefetch_related('assigned_students')
+        # Buscar solo las tareas que coincidan con los 7 nombres canónicos
+        # Si hay duplicados con el mismo nombre, tomar solo la más reciente
+        target_tasks = []
+        for task_name in TASK_NAMES:
+            matching = Task.objects.filter(
+                project=project,
+                title__iexact=task_name
+            ).order_by('-created_at')
 
-        if not open_tasks.exists():
+            if matching.exists():
+                target_tasks.append(matching.first())
+
+        if not target_tasks:
             continue
 
         project_assignments = 0
         project_tasks_touched = 0
 
-        for task in open_tasks:
+        for task in target_tasks:
             already_assigned_ids = set(task.assigned_students.values_list('id', flat=True))
             new_student_ids = set(student_member_ids) - already_assigned_ids
 
@@ -122,6 +148,10 @@ def assign_tasks_to_students_weekly():
                 task.assigned_students.add(*new_student_ids)
                 project_assignments += len(new_student_ids)
                 project_tasks_touched += 1
+                logger.info(
+                    f"[WeeklyAssign]   → Tarea '{task.title}' (ID:{task.id}): "
+                    f"+{len(new_student_ids)} estudiantes asignados"
+                )
 
         if project_tasks_touched > 0:
             total_projects += 1
@@ -141,3 +171,4 @@ def assign_tasks_to_students_weekly():
     }
     logger.info(f"[WeeklyAssign] Resumen final: {summary}")
     return summary
+
