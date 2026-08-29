@@ -449,6 +449,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync_deleted_drive_files_task',
         'schedule': crontab(hour='*/6', minute=0),  # Cada 6 horas
     },
+    'assign-tasks-to-students-weekly': {
+        'task': 'apps.tasks.tasks.assign_tasks_to_students_weekly',
+        'schedule': crontab(hour=0, minute=0, day_of_week=0),  # Domingos a medianoche
+    },
 }
 
 CELERY_WORKER_CONCURRENCY = config('CELERY_WORKER_CONCURRENCY', default=2, cast=int)
