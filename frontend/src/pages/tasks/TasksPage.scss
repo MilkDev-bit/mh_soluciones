@@ -667,3 +667,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+// Paginación dentro de la tarjeta de tareas: separada de la lista por una
+// línea y con los botones a los extremos.
+.glass-card > .pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-3;
+  margin-top: $spacing-5;
+  padding-top: $spacing-4;
+  border-top: 1px solid var(--border-color);
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-1;
+    white-space: nowrap;
+  }
+
+  .page-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+    white-space: nowrap;
+
+    strong {
+      color: var(--text-primary);
+    }
+  }
+
+  // En pantallas angostas solo queda "Página X de Y" entre los botones.
+  @media (max-width: $breakpoint-sm) {
+    .page-info-total {
+      display: none;
+    }
+  }
+}
