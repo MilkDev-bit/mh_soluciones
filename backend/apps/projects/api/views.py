@@ -259,8 +259,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='student-performance')
     def student_performance(self, request, pk=None):
         """
-        Returns student performance metrics based on task submissions.
-        Shows on-time vs late submissions for students (STUDENT role) in the project.
+        Desempeño de los estudiantes EN ESTE PROYECTO (ver project_student_performance).
         Accessible by admins and CLIENT role (if they are the project client).
         """
         try:
@@ -268,80 +267,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             user = request.user
             self._validate_client_access(user, project)
             
-            try:
-                project_member_student_ids = project.members.filter(
-                    role='STUDENT'
-                ).values_list('id', flat=True).distinct()
-            except Exception as e:
-                logger.warning(f"Error al obtener miembros estudiantes del proyecto {pk}: {str(e)}")
-                project_member_student_ids = []
-            
-            all_student_ids = set(project_member_student_ids)
-            
-            if not all_student_ids:
-                return Response({
-                    'students': [],
-                    'message': 'No hay estudiantes asignados a este proyecto'
-                }, status=status.HTTP_200_OK)
-            
-            students = CustomUser.objects.filter(id__in=all_student_ids, role='STUDENT')
-            
-            all_submissions = TaskSubmission.objects.filter(
-                task__project=project,
-                submitted_by_id__in=all_student_ids
-            ).select_related('task')
-            
-            submissions_by_student = {student.id: [] for student in students}
-            for submission in all_submissions:
-                if submission.submitted_by_id in submissions_by_student:
-                    submissions_by_student[submission.submitted_by_id].append(submission)
+            return Response(project_student_performance(project), status=status.HTTP_200_OK)
 
-            students_data = []
-            
-            for student in students:
-                student_submissions = submissions_by_student.get(student.id, [])
-                total_submissions = len(student_submissions)
-                on_time_count = 0
-                late_count = 0
-                
-                for submission in student_submissions:
-                    task = submission.task
-                    if task.due_date and submission.created_at:
-                        if isinstance(submission.created_at, datetime):
-                            submission_date = submission.created_at.date()
-                        elif isinstance(submission.created_at, date):
-                            submission_date = submission.created_at
-                        else:
-                            continue
-                        
-                        if submission_date <= task.due_date:
-                            on_time_count += 1
-                        else:
-                            late_count += 1
-                    else:
-                        on_time_count += 1
-
-                on_time_percentage = 0
-                if total_submissions > 0:
-                    on_time_percentage = round((on_time_count / total_submissions) * 100)
-                
-                students_data.append({
-                    'id': student.id,
-                    'name': f"{student.first_name} {student.last_name}",
-                    'email': student.email,
-                    'total_submissions': total_submissions,
-                    'on_time_submissions': on_time_count,
-                    'late_submissions': late_count,
-                    'on_time_percentage': on_time_percentage
-                })
-            
-            students_data.sort(key=lambda x: x['on_time_percentage'], reverse=True)
-            
-            return Response({
-                'students': students_data,
-                'total_students': len(students_data)
-            }, status=status.HTTP_200_OK)
-            
         except PermissionDenied:
             raise
         except Exception as e:
@@ -602,3 +529,95 @@ def get_project_drive_folder(request, project_id):
     except Exception as e:
         logger.error(f"Error al obtener archivos de Drive del proyecto: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def project_student_performance(project, now=None):
+    """
+    Desempeño de cada estudiante calculado SOLO con las tareas de `project`.
+
+    [FIX] Antes se contaba cada versión entregada (una tarea reenviada 3 veces
+    sumaba 3 "a tiempo"), se comparaba contra due_date a medianoche, y las
+    tareas que el alumno nunca entregó no contaban: con 1 entrega a tiempo y 20
+    tareas sin entregar salía "100% Excelente", lo que hacía parecer que el
+    dato venía de otros proyectos. Ahora, por cada tarea del proyecto asignada
+    al alumno (sin actividades continuas ni borradores):
+      - a tiempo:  su primera entrega llegó dentro de su fecha límite
+                   (incluye prórrogas; misma regla que apps/tasks/deadlines.py)
+      - tardía:    la primera entrega llegó después
+      - sin entregar: ya venció y no entregó nada
+      - pendiente: aún no vence y no ha entregado (no afecta el porcentaje)
+    Efectividad = a tiempo / (a tiempo + tardías + sin entregar).
+    """
+    from django.db.models import Min
+    from django.utils import timezone
+    from apps.tasks import deadlines
+    from apps.tasks.models import Task
+
+    now = now or timezone.now()
+    tasks = list(
+        Task.objects.filter(project=project, is_continuous=False)
+        .exclude(status='DRAFT')
+        .select_related('assigned_to')
+        .prefetch_related('assigned_students', 'reopen_logs__specific_students')
+    )
+
+    # Estudiantes: miembros con rol STUDENT + asignados a tareas del proyecto
+    students = {u.pk: u for u in project.members.filter(role='STUDENT')}
+    assignees = {}
+    for task in tasks:
+        ids = {s.pk for s in task.assigned_students.all()}
+        if task.assigned_to_id:
+            ids.add(task.assigned_to_id)
+            if task.assigned_to.role == 'STUDENT':
+                students.setdefault(task.assigned_to_id, task.assigned_to)
+        for s in task.assigned_students.all():
+            if s.role == 'STUDENT':
+                students.setdefault(s.pk, s)
+        assignees[task.pk] = ids
+
+    if not students:
+        return {'students': [], 'total_students': 0, 'scope': 'project',
+                'message': 'No hay estudiantes asignados a este proyecto'}
+
+    first_submission = {
+        (row['task_id'], row['submitted_by_id']): row['first_at']
+        for row in TaskSubmission.objects.filter(task__project=project, submitted_by_id__in=students.keys())
+        .values('task_id', 'submitted_by_id').annotate(first_at=Min('created_at'))
+    }
+
+    students_data = []
+    for student in students.values():
+        on_time = late = missed = pending = assigned = 0
+        for task in tasks:
+            if student.pk not in assignees.get(task.pk, ()):
+                continue
+            assigned += 1
+            deadline = deadlines.deadline_for(task, student)
+            submitted_at = first_submission.get((task.pk, student.pk))
+            if submitted_at:
+                if deadline is None or submitted_at <= deadline:
+                    on_time += 1
+                else:
+                    late += 1
+            elif deadline is not None and now > deadline:
+                missed += 1
+            else:
+                pending += 1
+        evaluated = on_time + late + missed
+        students_data.append({
+            'id': student.pk,
+            'name': f"{student.first_name} {student.last_name}".strip() or student.username,
+            'email': student.email,
+            'assigned_tasks': assigned,
+            'on_time_submissions': on_time,
+            'late_submissions': late,
+            'missed_tasks': missed,
+            'pending_tasks': pending,
+            # compatibilidad: antes era el total de versiones entregadas
+            'total_submissions': on_time + late,
+            'evaluated_tasks': evaluated,
+            'on_time_percentage': round(on_time * 100 / evaluated) if evaluated else 0,
+        })
+
+    students_data.sort(key=lambda x: (-x['on_time_percentage'], -x['evaluated_tasks'], x['name'].lower()))
+    return {'students': students_data, 'total_students': len(students_data), 'scope': 'project'}

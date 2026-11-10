@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getStudentPerformance } from '../../services/projectService';
-import { FiUser, FiCheckCircle, FiClock, FiTrendingUp, FiAward } from 'react-icons/fi';
+import { FiUser, FiCheckCircle, FiClock, FiTrendingUp, FiAward, FiXCircle } from 'react-icons/fi';
 import './StudentPerformance.scss';
 
 const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
@@ -105,15 +105,21 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
             <FiTrendingUp /> Desempeño de Estudiantes
           </h3>
           <p className="performance-subtitle">
-            Basado en entregas de tareas a tiempo ({total_students} {total_students === 1 ? 'estudiante' : 'estudiantes'})
+            Solo tareas de este proyecto: a tiempo, tardías y sin entregar ({total_students} {total_students === 1 ? 'estudiante' : 'estudiantes'})
           </p>
         </div>
       )}
 
       <div className="performance-list">
         {displayedStudents.map((student) => {
-          const { label, color } = getPerformanceLevel(student.on_time_percentage);
-          const percentage = student.on_time_percentage;
+          // Sin tareas vencidas ni entregadas aún: no hay con qué evaluar.
+          // Antes salía "0% · Necesita Mejorar" aunque no hubiera fallado nada.
+          const noData = student.evaluated_tasks === 0;
+          const { label, color } = noData
+            ? { label: 'Sin tareas por evaluar', color: '#94a3b8' }
+            : getPerformanceLevel(student.on_time_percentage);
+          const percentage = noData ? 0 : student.on_time_percentage;
+          const percentageText = noData ? '—' : `${percentage}%`;
           const circumference = 2 * Math.PI * 36; // radius = 36
           const offset = circumference - (percentage / 100) * circumference;
           
@@ -188,12 +194,24 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
                   </div>
                 </div>
 
+                {student.missed_tasks !== undefined && (
+                  <div className="stat-card">
+                    <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(100, 116, 139, 0.12)' }}>
+                      <FiXCircle style={{ color: '#64748b' }} />
+                    </div>
+                    <div className="stat-content">
+                      <p className="stat-value">{student.missed_tasks}</p>
+                      <p className="stat-label">Sin entregar</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="stat-card">
                   <div className="stat-icon-wrapper" style={{ backgroundColor: `${color}20` }}>
                     <FiTrendingUp style={{ color }} />
                   </div>
                   <div className="stat-content">
-                    <p className="stat-value" style={{ color }}>{percentage}%</p>
+                    <p className="stat-value" style={{ color }}>{percentageText}</p>
                     <p className="stat-label">Efectividad</p>
                   </div>
                 </div>
@@ -201,8 +219,8 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
 
               <div className="progress-bar-container">
                 <div className="progress-bar-header">
-                  <span className="progress-label">Progreso general</span>
-                  <span className="progress-percentage" style={{ color }}>{percentage}%</span>
+                  <span className="progress-label">Entregas a tiempo</span>
+                  <span className="progress-percentage" style={{ color }}>{percentageText}</span>
                 </div>
                 <div className="progress-bar">
                   <div
@@ -214,7 +232,14 @@ const StudentPerformance = ({ projectId, columnMode = 'full' }) => {
                   />
                 </div>
                 <p className="progress-text">
-                  {student.total_submissions} {student.total_submissions === 1 ? 'entrega total' : 'entregas totales'}
+                  {student.assigned_tasks !== undefined ? (
+                    <>
+                      {student.assigned_tasks} {student.assigned_tasks === 1 ? 'tarea asignada' : 'tareas asignadas'} en este proyecto
+                      {student.pending_tasks > 0 && ` · ${student.pending_tasks} aún sin vencer`}
+                    </>
+                  ) : (
+                    `${student.total_submissions} ${student.total_submissions === 1 ? 'entrega total' : 'entregas totales'}`
+                  )}
                 </p>
               </div>
             </div>

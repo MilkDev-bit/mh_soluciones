@@ -435,3 +435,15 @@
     .student-stats .stat-card .stat-value { font-size: 1rem; }
   }
 }
+
+// 4 métricas (a tiempo, tardías, sin entregar, efectividad): 4 en una fila si
+// la tarjeta es ancha, 2×2 si es angosta.
+.student-performance .student-card .student-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@container (max-width: 520px) {
+  .student-performance .student-card .student-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
