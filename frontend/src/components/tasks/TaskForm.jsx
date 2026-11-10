@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { createTask, updateTask } from '../../services/taskService';
+import { todayLocalISO } from '../../utils/taskStatus';
 import { FiPlus, FiTrash2, FiAward, FiAlertCircle } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 import './TaskForm.scss';
@@ -45,6 +46,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   };
 
   const maxScore = watch('max_score') || 100;
+  const isContinuous = watch('is_continuous');
+  const allowLate = watch('allow_late_submissions');
 
   useEffect(() => {
     if (isEditMode && task) {
@@ -59,6 +62,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       setValue('allow_late_submissions', task.allow_late_submissions || false);
       setValue('accept_after_close', task.accept_after_close || false);
       setValue('days_after_close', task.days_after_close || 0);
+      setValue('is_continuous', task.is_continuous || false);
       
       // Load assigned students: prefer assigned_students_data (array), fall back to assigned_to
       if (Array.isArray(task.assigned_students_data) && task.assigned_students_data.length > 0) {
@@ -196,6 +200,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
         formData.append('allow_late_submissions', data.allow_late_submissions || false);
         formData.append('accept_after_close', data.accept_after_close || false);
         formData.append('days_after_close', data.days_after_close || 0);
+        formData.append('is_continuous', data.is_continuous || false);
         formData.append('attachment', fileInput.files[0]);
         formData.append('grading_criteria', JSON.stringify(gradingCriteria));
         
@@ -218,6 +223,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           allow_late_submissions: data.allow_late_submissions || false,
           accept_after_close: data.accept_after_close || false,
           days_after_close: data.days_after_close || 0,
+          is_continuous: data.is_continuous || false,
           grading_criteria: gradingCriteria,
           assigned_students: assignedStudentsList,
           status: data.status || 'PENDING',  // Set default status to PENDING
@@ -319,9 +325,18 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
               id="due_date" 
               type="date" 
               className="form-input" 
-              {...register('due_date')} 
-              min={new Date().toISOString().split('T')[0]}
+              {...register('due_date', {
+                // Si no hay hora de cierre, se propone el fin del día elegido.
+                onChange: (e) => {
+                  if (e.target.value && !watch('close_date')) {
+                    setValue('close_date', `${e.target.value}T23:59`);
+                  }
+                },
+              })} 
+              min={todayLocalISO()}
+              disabled={isContinuous}
             />
+            <small className="form-hint">La tarea vence al final de este día (hora local) o a la hora de cierre indicada abajo.</small>
           </div>
 
           <div className="form-group">
@@ -407,6 +422,16 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
 
       <div className="form-section">
         <h3 className="form-section-title">Configuración de Entregas</h3>
+
+        <div className="form-group">
+          <label className="form-label checkbox-label">
+            <input type="checkbox" {...register('is_continuous')} />
+            Actividad continua (siempre abierta, nunca vence)
+          </label>
+          <small className="form-hint">
+            Úsala para actividades permanentes como GRAFICAS: se pueden reasignar cada semana sin que aparezcan como vencidas.
+          </small>
+        </div>
         
         {/* New Teams-style fields */}
         <div className="form-grid-2col">
@@ -421,14 +446,15 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="close_date">Fecha de Cierre *</label>
+            <label className="form-label" htmlFor="close_date">Fecha y Hora de Cierre {isContinuous ? '' : '*'}</label>
             <input 
               id="close_date" 
               type="datetime-local" 
               className="form-input" 
               {...register('close_date', {
-                required: 'La fecha de cierre es obligatoria'
+                validate: (value) => isContinuous || !!value || 'La fecha de cierre es obligatoria',
               })} 
+              disabled={isContinuous}
             />
             {errors.close_date && <span className="error-message">{errors.close_date.message}</span>}
           </div>
@@ -450,15 +476,32 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="days_after_close">Días Adicionales (Entregas Tardías)</label>
-            <input 
-              id="days_after_close" 
-              type="number" 
-              min="0"
-              className="form-input" 
-              {...register('days_after_close')} 
-              defaultValue="0"
-            />
+            <label className="form-label checkbox-label">
+              <input 
+                type="checkbox" 
+                {...register('allow_late_submissions')} 
+                disabled={isContinuous}
+              />
+              Permitir entregas tardías
+            </label>
+            {allowLate && !isContinuous && (
+              <>
+                <label className="form-label" htmlFor="days_after_close">Días de gracia después del vencimiento</label>
+                <input 
+                  id="days_after_close" 
+                  type="number" 
+                  min="0"
+                  max="60"
+                  className="form-input" 
+                  {...register('days_after_close', { min: { value: 0, message: 'No puede ser negativo' } })} 
+                  defaultValue="0"
+                />
+                <small className="form-hint">
+                  Los alumnos podrán entregar durante estos días y la entrega quedará marcada como tardía. 0 = sin límite.
+                  No necesitas cambiar la fecha ni reasignar la tarea.
+                </small>
+              </>
+            )}
           </div>
         </div>
 
@@ -467,19 +510,9 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
             <label className="form-label checkbox-label">
               <input 
                 type="checkbox" 
-                {...register('allow_late_submissions')} 
-              />
-              Permitir Entregas Tardías
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label checkbox-label">
-              <input 
-                type="checkbox" 
                 {...register('accept_after_close')} 
               />
-              Aceptar Entregas Después del Cierre
+              Aceptar entregas aunque la tarea esté cerrada
             </label>
           </div>
         </div>

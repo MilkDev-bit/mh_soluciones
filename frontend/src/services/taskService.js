@@ -148,3 +148,54 @@ export const addTaskComment = async (taskId, commentData) => {
     throw error.response?.data || new Error('Error al agregar comentario');
   }
 };
+// ── Flujo de revisión por alumno ─────────────────────────────────────────────
+
+/** Tablero: una fila por alumno asignado (con o sin entrega). */
+export const getReviewBoard = async (taskId) => {
+  try {
+    const { data } = await api.get(`/tasks/${taskId}/review-board/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('Error al obtener el tablero de revisión');
+  }
+};
+
+/** Tomar una entrega para revisarla. force=true solo para administradores. */
+export const claimSubmission = async (taskId, submissionId, force = false) => {
+  try {
+    const { data } = await api.post(`/tasks/${taskId}/submissions/${submissionId}/claim/`, { force });
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('No se pudo tomar la entrega');
+  }
+};
+
+export const releaseSubmission = async (taskId, submissionId) => {
+  try {
+    const { data } = await api.post(`/tasks/${taskId}/submissions/${submissionId}/release/`);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('No se pudo liberar la entrega');
+  }
+};
+
+/** decision: 'approve' | 'request_changes' */
+export const reviewSubmission = async (taskId, submissionId, payload) => {
+  try {
+    const { data } = await api.post(`/tasks/${taskId}/submissions/${submissionId}/review/`, payload);
+    return data;
+  } catch (error) {
+    throw error.response?.data || new Error('No se pudo guardar la revisión');
+  }
+};
+
+/**
+ * Prórroga sin editar la tarea: N días a partir de hoy (o una fecha exacta),
+ * para alumnos específicos o para todos (studentIds vacío).
+ */
+export const extendTaskDeadline = async (taskId, { studentIds = [], days, newDeadline, reason = '' }) => {
+  const payload = { specific_students: studentIds, reason };
+  if (newDeadline) payload.new_deadline = newDeadline;
+  else payload.days = days;
+  return reopenTask(taskId, payload);
+};

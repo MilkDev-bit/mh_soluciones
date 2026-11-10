@@ -314,4 +314,5 @@ class RHTaskSubmissionPermissionTests(TestCase):
         # Verify the submission was actually graded
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.score, 85)
-        self.assertEqual(self.submission.status, 'GRADED')
+        # /grade/ ahora usa el flujo de revisión: 85/100 ≥ 70 % → aprobada
+        self.assertEqual(self.submission.status, 'APPROVED')

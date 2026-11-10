@@ -149,7 +149,7 @@ class DashboardDataAPIView(APIView):
             },
             'projects_summary': ProjectStatusSerializer(user_projects[:10], many=True).data,
             'upcoming_deadlines': TaskSummarySerializer(
-                tasks.filter(due_date__gte=timezone.now(), due_date__lte=timezone.now() + timedelta(days=7)).order_by('due_date'),
+                tasks.filter(due_date__gte=timezone.localdate(), due_date__lte=timezone.localdate() + timedelta(days=7)).order_by('due_date'),
                 many=True
             ).data,
         }
@@ -181,8 +181,9 @@ class DashboardDataAPIView(APIView):
                 'pending_tasks': my_tasks.filter(status__in=ACTIVE_STATUSES).count(),
                 'completed_tasks': my_tasks.filter(status__in=DONE_STATUSES).count(),
                 'overdue_tasks': my_tasks.filter(
-                    due_date__lt=timezone.now().date(),
-                    status__in=ACTIVE_STATUSES
+                    due_date__lt=timezone.localdate(),
+                    status__in=ACTIVE_STATUSES,
+                    is_continuous=False,
                 ).count(),
             },
             'my_pending_tasks': TaskSummarySerializer(
@@ -221,7 +222,7 @@ class StatisticsAPIView(APIView):
         usuario_id = request.query_params.get('usuario', None)
         
         now = timezone.now()
-        today = now.date()
+        today = timezone.localdate()  # [FIX] fecha local, no UTC
         
         if rango == '7_dias':
             start_date = now - timedelta(days=7)
@@ -265,7 +266,8 @@ class StatisticsAPIView(APIView):
             totales=Count('id'),
             completadas=Count('id', filter=Q(status='COMPLETED')),
             en_progreso=Count('id', filter=Q(status='PENDING')),
-            vencidas=Count('id', filter=Q(due_date__lt=today, status__in=['PENDING', 'IN_PROGRESS'])),
+            vencidas=Count('id', filter=Q(due_date__lt=today, is_continuous=False,
+                                          status__in=['PENDING', 'IN_PROGRESS', 'OPEN', 'REOPENED', 'IN_REVIEW', 'FOR_REVIEW'])),
             tiempo_promedio=Avg(
                 ExpressionWrapper(F('updated_at') - F('created_at'), output_field=fields.DurationField()),
                 filter=Q(status='COMPLETED')

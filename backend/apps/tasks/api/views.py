@@ -4,12 +4,12 @@ import os
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, F, Avg
+from django.db.models import Q, F, Avg, Count, Max, Prefetch
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
@@ -25,6 +25,7 @@ from apps.documents.models import Document
 from apps.documents.services import GoogleDriveService
 from apps.documents.tasks import upload_document_to_drive
 from ..models import Task, TaskSubmission, TaskComment, TaskEditHistory, TaskReopenLog
+from .. import deadlines, review
 from .serializers import (
     TaskSerializer,
     TaskDetailSerializer,
@@ -90,13 +91,39 @@ class TaskViewSet(viewsets.ModelViewSet):
                 
                 logger.info(f"Student {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
 
+        base_queryset = self._with_review_data(base_queryset, user)
+
         project_id = getattr(self.request, 'query_params', self.request.GET).get('project', None)
         if project_id:
-            filtered = base_queryset.filter(project_id=project_id)
-            logger.info(f"Filtered by project {project_id}: {filtered.count()} tasks (user: {user.username})")
-            return filtered.order_by('-created_at')
+            return base_queryset.filter(project_id=project_id).order_by('-created_at')
 
         return base_queryset.order_by('-created_at')
+
+    @staticmethod
+    def _with_review_data(queryset, user):
+        """Anotaciones y prefetch para que el serializer no haga N+1 queries.
+
+        - submissions_total / last_submission_at / pending_review_total: conteos.
+        - reopen_logs__specific_students: prórrogas por alumno (deadlines.py).
+        - my_submissions: últimas entregas del alumno actual (ventana de entrega).
+        """
+        queryset = queryset.annotate(
+            submissions_total=Count('submissions', distinct=True),
+            last_submission_at=Max('submissions__created_at'),
+            pending_review_total=Count(
+                'submissions',
+                filter=Q(submissions__status__in=['SUBMITTED', 'IN_REVIEW', 'LATE']),
+                distinct=True,
+            ),
+        ).prefetch_related('reopen_logs__specific_students')
+        if user.role not in TEACHER_ROLES:
+            queryset = queryset.prefetch_related(Prefetch(
+                'submissions',
+                queryset=TaskSubmission.objects.filter(submitted_by=user)
+                .select_related('reviewer').order_by('-version'),
+                to_attr='my_submissions',
+            ))
+        return queryset
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -170,6 +197,10 @@ class TaskViewSet(viewsets.ModelViewSet):
 
             transaction.on_commit(notify)
 
+    # Campos que un alumno asignado puede modificar: solo la descripción, donde
+    # GraficasActivityTable guarda sus datos (<!-- GRAFICAS_DATA: ... -->).
+    STUDENT_EDITABLE_FIELDS = {'description'}
+
     def perform_update(self, serializer):
         instance = self.get_object()
         if self.request.user.role not in TEACHER_ROLES:
@@ -177,9 +208,23 @@ class TaskViewSet(viewsets.ModelViewSet):
             is_member = instance.project and instance.project.projectmember_set.filter(user=self.request.user).exists()
             if not (is_assigned or is_member or self.request.user == instance.created_by):
                 raise PermissionDenied("No tienes permisos para editar tareas.")
-        
+            # [FIX seguridad] Antes un alumno podía cambiar status, fechas o
+            # alumnos asignados vía PATCH (p. ej. marcar la tarea como COMPLETED).
+            forbidden = set(serializer.validated_data) - self.STUDENT_EDITABLE_FIELDS
+            if forbidden:
+                raise PermissionDenied(
+                    "Solo puedes actualizar los datos de la actividad. "
+                    f"Campos no permitidos: {', '.join(sorted(forbidden))}."
+                )
+
+        # Guardar los datos de GRAFICAS no es una edición de la tarea: no ensuciar el historial.
+        only_graficas_data = (
+            set(serializer.validated_data) == {'description'}
+            and 'GRAFICAS_DATA' in (serializer.validated_data.get('description') or '')
+        )
+
         # Check if task has submissions - use count() for better performance
-        submission_count = instance.submissions.count()
+        submission_count = 0 if only_graficas_data else instance.submissions.count()
         if submission_count > 0:
             # Log the changes
             changes = {}
@@ -215,46 +260,56 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='reopen')
     def reopen(self, request, pk=None):
         """
-        Reabrir una tarea cerrada.
-        Solo TEACHER y ADMIN pueden reabrir tareas.
+        Reabrir la tarea o dar prórroga.
+
+        - specific_students = [ids]: prórroga SOLO para esos alumnos. La fecha
+          general y el estado de la tarea no cambian.
+        - sin alumnos: nueva fecha límite general y estado REOPENED.
+        Acepta new_deadline (datetime) o days (N días a partir de hoy, hasta las 23:59).
         """
         task = self.get_object()
-        
         if request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para reabrir tareas.")
-        
+
         serializer = TaskReopenSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        
-        # Update task status
-        task.status = Task.TaskStatus.REOPENED
-        task.close_date = serializer.validated_data['new_deadline']
-        task.save()
-        
-        # Create reopen log
-        reopen_log = TaskReopenLog.objects.create(
-            task=task,
-            reopened_by=request.user,
-            new_deadline=serializer.validated_data['new_deadline'],
-            reason=serializer.validated_data.get('reason', '')
-        )
-        
-        # Add specific students if provided
-        if 'specific_students' in serializer.validated_data:
-            from apps.authentication.models import CustomUser
-            students = CustomUser.objects.filter(
-                id__in=serializer.validated_data['specific_students']
+        new_deadline = serializer.validated_data['new_deadline']
+        student_ids = serializer.validated_data.get('specific_students') or []
+
+        from apps.authentication.models import CustomUser
+        with transaction.atomic():
+            reopen_log = TaskReopenLog.objects.create(
+                task=task,
+                reopened_by=request.user,
+                new_deadline=new_deadline,
+                reason=serializer.validated_data.get('reason', ''),
             )
-            reopen_log.specific_students.set(students)
-        
-        # Send email notification
-        send_task_reopened_notification(task, reopen_log)
-        
+            if student_ids:
+                students = list(CustomUser.objects.filter(id__in=student_ids))
+                reopen_log.specific_students.set(students)
+                message = f"Prórroga otorgada a {len(students)} alumno(s) hasta el {deadlines.fmt(new_deadline)}."
+            else:
+                students = list(task.assigned_students.all())
+                if task.assigned_to and task.assigned_to not in students:
+                    students.append(task.assigned_to)
+                task.status = Task.TaskStatus.REOPENED
+                task.close_date = new_deadline
+                task.due_date = timezone.localtime(new_deadline).date()
+                task.save(update_fields=['status', 'close_date', 'due_date', 'updated_at'])
+                message = f"Tarea reabierta para todos hasta el {deadlines.fmt(new_deadline)}."
+
+        transaction.on_commit(lambda: review.notify_extension(task, students, new_deadline))
+        try:
+            send_task_reopened_notification(task, reopen_log)
+        except Exception as exc:
+            logger.error("Error enviando correo de reapertura de tarea %s: %s", task.pk, exc)
+
+        task = self._with_review_data(Task.objects.filter(pk=task.pk), request.user).get()
         return Response({
-            'message': 'Tarea reabierta exitosamente',
-            'task': TaskDetailSerializer(task).data
+            'message': message,
+            'task': TaskDetailSerializer(task, context={'request': request}).data
         })
-    
+
     @action(detail=True, methods=['post'], url_path='duplicate')
     def duplicate(self, request, pk=None):
         """
@@ -272,14 +327,15 @@ class TaskViewSet(viewsets.ModelViewSet):
         import datetime
         
         now = timezone.now()
-        # Días hasta el próximo domingo (6 es domingo en weekday() donde 0 es lunes)
-        days_to_sunday = (6 - now.weekday()) % 7
-        
-        # Si hoy es domingo (6-6=0), se queda hoy.
-        
-        close_date = now + datetime.timedelta(days=days_to_sunday)
-        # Establecer a las 14:00
-        close_date = close_date.replace(hour=14, minute=0, second=0, microsecond=0)
+        # [FIX zona horaria] Antes se usaba la hora UTC: el "domingo 14:00"
+        # quedaba en domingo 08:00 en México y, después de las 18:00 de un
+        # sábado local, el cálculo ya caía en el domingo siguiente.
+        local_now = timezone.localtime(now)
+        days_to_sunday = (6 - local_now.weekday()) % 7
+        close_date = (local_now + datetime.timedelta(days=days_to_sunday)).replace(
+            hour=14, minute=0, second=0, microsecond=0)
+        if close_date <= local_now:  # domingo después de las 14:00 → siguiente domingo
+            close_date += datetime.timedelta(days=7)
         
         # Crear duplicado — solo título, proyecto, fechas y estudiantes
         new_task = Task.objects.create(
@@ -291,6 +347,12 @@ class TaskViewSet(viewsets.ModelViewSet):
             due_date=close_date.date(),
             open_date=now,
             close_date=close_date,
+            allow_late_submissions=original_task.allow_late_submissions,
+            accept_after_close=original_task.accept_after_close,
+            days_after_close=original_task.days_after_close,
+            is_continuous=original_task.is_continuous,
+            max_score=original_task.max_score,
+            grading_criteria=original_task.grading_criteria,
         )
         
         # Copiar estudiantes asignados (M2M)
@@ -305,56 +367,58 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='my-tasks')
     def my_tasks(self, request):
         """
-        Obtener tareas del estudiante actual organizadas por estado.
+        Tareas del alumno agrupadas según su situación real.
+
+        Antes: 'vencida' solo miraba close_date (ignoraba due_date, días de
+        gracia, prórrogas y actividades continuas) y cualquier entrega no
+        calificada caía en 'entregadas', aunque se la hubieran devuelto.
         """
         user = request.user
-        
         if user.role not in ['STUDENT', 'PROFESSOR']:
-            return Response({
-                'error': 'Este endpoint es solo para estudiantes'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
+            return Response({'error': 'Este endpoint es solo para estudiantes'},
+                            status=status.HTTP_403_FORBIDDEN)
+
         tasks = Task.objects.filter(
             Q(assigned_students=user) | Q(assigned_to=user)
-        ).exclude(status='DRAFT').distinct()
-        
-        all_submissions = TaskSubmission.objects.filter(
-            task__in=tasks,
-            submitted_by=user
-        ).order_by('task_id', '-version')
-        
-        latest_submissions = {}
-        for submission in all_submissions:
-            if submission.task_id not in latest_submissions:
-                latest_submissions[submission.task_id] = submission
-        
-        now = timezone.now()
-        to_submit = []
-        submitted = []
-        graded = []
-        overdue = []
-        
+        ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to')
+        tasks = self._with_review_data(tasks, user)
+        if user.role in TEACHER_ROLES:  # PROFESSOR también recibe sus propias entregas
+            tasks = tasks.prefetch_related(Prefetch(
+                'submissions',
+                queryset=TaskSubmission.objects.filter(submitted_by=user)
+                .select_related('reviewer').order_by('-version'),
+                to_attr='my_submissions',
+            ))
+
+        buckets = {key: [] for key in (
+            'to_submit', 'late', 'changes_requested', 'submitted', 'graded', 'overdue'
+        )}
+        state_to_bucket = {
+            deadlines.STATE_NO_DEADLINE: 'to_submit',
+            deadlines.STATE_OPEN: 'to_submit',
+            deadlines.STATE_DUE_SOON: 'to_submit',
+            deadlines.STATE_NOT_OPEN: 'to_submit',
+            deadlines.STATE_LATE_WINDOW: 'late',
+            deadlines.STATE_CORRECTION: 'changes_requested',
+            deadlines.STATE_IN_REVIEW: 'submitted',
+            deadlines.STATE_APPROVED: 'graded',
+            deadlines.STATE_OVERDUE: 'overdue',
+            deadlines.STATE_CLOSED: 'overdue',
+        }
         for task in tasks:
-            submission = latest_submissions.get(task.id)
-            
-            if submission:
-                if submission.status == 'GRADED':
-                    graded.append(task)
-                else:
-                    submitted.append(task)
-            else:
-                if task.close_date and task.close_date < now:
-                    overdue.append(task)
-                else:
-                    to_submit.append(task)
-        
-        return Response({
-            'to_submit': self.get_serializer(to_submit, many=True).data,
-            'submitted': self.get_serializer(submitted, many=True).data,
-            'graded': self.get_serializer(graded, many=True).data,
-            'overdue': self.get_serializer(overdue, many=True).data
-        })
-    
+            latest = deadlines.latest_submission_for(task, user)
+            window = deadlines.submission_window(task, user, latest_submission=latest)
+            bucket = state_to_bucket.get(window.state, 'to_submit')
+            # Entregada y esperando revisión (puede reemplazarla mientras siga abierta)
+            if latest and latest.status in TaskSubmission.PENDING_REVIEW_STATUSES:
+                bucket = 'submitted'
+            elif latest and window.state == deadlines.STATE_CLOSED:
+                bucket = 'graded' if latest.status in TaskSubmission.FINAL_STATUSES else 'submitted'
+            buckets[bucket].append(task)
+
+        ser = lambda items: TaskSerializer(items, many=True, context={'request': request}).data
+        return Response({key: ser(items) for key, items in buckets.items()})
+
     @action(detail=False, methods=['get'], url_path='completed')
     def completed_tasks(self, request):
         """Endpoint específico para tareas completadas con estadísticas"""
@@ -376,16 +440,19 @@ class TaskViewSet(viewsets.ModelViewSet):
         if project_id:
             queryset = queryset.filter(project_id=project_id)
         
+        # [FIX] Usaba el campo inexistente `completed_at` (FieldError → error 500).
+        # Se toma la fecha local de la última actualización como fecha de cierre.
         total = queryset.count()
-        on_time = queryset.filter(completed_at__lte=F('due_date')).count()
-        delayed = queryset.filter(completed_at__gt=F('due_date')).count()
-        
-        delayed_tasks = queryset.filter(completed_at__gt=F('due_date'))
-        avg_delay = delayed_tasks.aggregate(
-            avg_delay=Avg(F('completed_at') - F('due_date'))
-        )['avg_delay']
-        
-        avg_delay_days = avg_delay.days if avg_delay else 0
+        on_time = 0
+        delays = []
+        for completed_at, due_date in queryset.exclude(due_date=None).values_list('updated_at', 'due_date'):
+            delay = (timezone.localtime(completed_at).date() - due_date).days
+            if delay > 0:
+                delays.append(delay)
+            else:
+                on_time += 1
+        delayed = len(delays)
+        avg_delay_days = round(sum(delays) / delayed, 1) if delayed else 0
         
         return Response({
             'total': total,
@@ -394,6 +461,88 @@ class TaskViewSet(viewsets.ModelViewSet):
             'average_delay_days': avg_delay_days,
             'on_time_percentage': (on_time / total * 100) if total > 0 else 0,
             'delayed_percentage': (delayed / total * 100) if total > 0 else 0
+        })
+
+    @action(detail=True, methods=['get'], url_path='review-board')
+    def review_board(self, request, pk=None):
+        """
+        Tablero de revisión: UNA fila por alumno asignado (haya entregado o no),
+        con el estado de su última versión y quién la revisa.
+
+        Reemplaza a submissions/by-student, que solo listaba a quienes ya
+        entregaron y mezclaba las versiones y los revisores.
+        """
+        if request.user.role not in TEACHER_ROLES:
+            raise PermissionDenied("No tienes permisos para revisar entregas.")
+        task = self.get_object()
+
+        students = {u.pk: u for u in task.assigned_students.all()}
+        if task.assigned_to_id:
+            students.setdefault(task.assigned_to_id, task.assigned_to)
+
+        subs = (TaskSubmission.objects.filter(task=task)
+                .select_related('submitted_by', 'graded_by', 'reviewer')
+                .prefetch_related('documents').order_by('submitted_by_id', '-version'))
+        by_student = {}
+        for sub in subs:
+            by_student.setdefault(sub.submitted_by_id, []).append(sub)
+            students.setdefault(sub.submitted_by_id, sub.submitted_by)
+
+        rows = []
+        summary = {'total': 0, 'missing': 0, 'to_review': 0, 'in_review': 0,
+                   'in_review_mine': 0, 'changes_requested': 0, 'approved': 0, 'late': 0}
+        for student_id, student in students.items():
+            history = by_student.get(student_id, [])
+            latest = history[0] if history else None
+            window = deadlines.submission_window(task, student, latest_submission=latest)
+            if latest is None:
+                state = 'MISSING'
+                summary['missing'] += 1
+            elif latest.status in TaskSubmission.FINAL_STATUSES:
+                state = 'APPROVED'
+                summary['approved'] += 1
+            elif latest.status == 'CHANGES_REQUESTED':
+                state = 'CHANGES_REQUESTED'
+                summary['changes_requested'] += 1
+            elif latest.status == 'IN_REVIEW':
+                state = 'IN_REVIEW'
+                summary['in_review'] += 1
+                if latest.reviewer_id == request.user.pk:
+                    summary['in_review_mine'] += 1
+            else:
+                state = 'TO_REVIEW'
+                summary['to_review'] += 1
+            if latest is not None and (latest.is_late or latest.status == 'LATE'):
+                summary['late'] += 1
+            summary['total'] += 1
+
+            rows.append({
+                'student': {
+                    'id': student.pk,
+                    'full_name': student.get_full_name() or student.username,
+                    'email': student.email,
+                },
+                'state': state,
+                'window': window.as_dict(),
+                'latest_submission': TaskSubmissionSerializer(
+                    latest, context={'request': request}).data if latest else None,
+                'history': TaskSubmissionSerializer(
+                    history[1:], many=True, context={'request': request}).data,
+            })
+
+        order = {'TO_REVIEW': 0, 'IN_REVIEW': 1, 'CHANGES_REQUESTED': 2, 'MISSING': 3, 'APPROVED': 4}
+        rows.sort(key=lambda r: (order[r['state']], r['student']['full_name'].lower()))
+        return Response({
+            'task': {
+                'id': task.pk,
+                'title': task.title,
+                'max_score': task.max_score,
+                'deadline': (deadlines.task_deadline(task).isoformat()
+                             if deadlines.task_deadline(task) else None),
+                'is_continuous': task.is_continuous,
+            },
+            'summary': summary,
+            'rows': rows,
         })
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
@@ -420,7 +569,8 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
     ViewSet para gestionar las entregas anidadas de las tareas.
     """
     serializer_class = TaskSubmissionSerializer
-    parser_classes = [MultiPartParser, FormParser]
+    # [FIX] Sin JSONParser, /grade/ y /review/ respondían 415 a las peticiones JSON del frontend.
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [CanInteractWithTask]
 
     def get_queryset(self):
@@ -449,6 +599,23 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
             return TaskSubmissionGradeSerializer
         return TaskSubmissionSerializer
 
+    def perform_update(self, serializer):
+        # Un alumno solo puede editar notas y enlace de su propia entrega
+        # mientras nadie la está revisando; la revisión va por /review/.
+        sub = serializer.instance
+        user = self.request.user
+        if user.role not in TEACHER_ROLES:
+            if sub.submitted_by_id != user.pk:
+                raise PermissionDenied("Solo puedes editar tus propias entregas.")
+            if sub.status not in ('SUBMITTED', 'LATE'):
+                raise PermissionDenied("Esta entrega ya está en revisión o fue revisada; envía una nueva versión.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.role not in ADMIN_ROLES:
+            raise PermissionDenied("Solo un administrador puede eliminar entregas.")
+        instance.delete()
+
     def create(self, request, *args, **kwargs):
         """
         Create task submission with support for multiple files.
@@ -457,27 +624,25 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         task_pk = kwargs.get('task_pk')
         
         try:
-            task = Task.objects.get(id=task_pk)
+            task = Task.objects.prefetch_related('reopen_logs__specific_students').get(id=task_pk)
         except Task.DoesNotExist:
             return Response(
                 {'error': 'Tarea no encontrada'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Check if task accepts submissions
-        now = timezone.now()
-        if task.status == 'CLOSED' and not task.accept_after_close:
+        # [FIX] Una sola regla de plazo (deadlines.py): fecha límite local,
+        # días de gracia, prórrogas por alumno, correcciones y actividades
+        # continuas. Se valida ANTES de procesar archivos y se responde con un
+        # código y un mensaje específicos en lugar de "el plazo ha vencido".
+        previous = (TaskSubmission.objects.filter(task=task, submitted_by=request.user)
+                    .select_related('reviewer').order_by('-version').first())
+        window = deadlines.submission_window(task, request.user, latest_submission=previous)
+        if not window.can_submit:
             return Response(
-                {'error': 'Esta tarea está cerrada y no acepta entregas.'},
+                {'error': window.message, 'code': window.state, 'window': window.as_dict()},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        if task.close_date and task.close_date < now:
-            if not task.allow_late_submissions and not task.accept_after_close:
-                return Response(
-                    {'error': 'El plazo para entregar esta tarea ha vencido.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
         
         # Get files from request (support both 'file' and 'files[]' for frontend compatibility)
         files = request.FILES.getlist('files[]')
@@ -498,21 +663,25 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         submission_data = {
             'notes': notes,
             'link': link,
-            'status': 'SUBMITTED'
         }
         
         serializer = self.get_serializer(data=submission_data)
         serializer.is_valid(raise_exception=True)
         
+        # "Tardía" es un atributo; el estado sigue siendo "Por revisar".
         task_submission = serializer.save(
             submitted_by=request.user,
-            task=task
+            task=task,
+            status=TaskSubmission.SubmissionStatus.SUBMITTED,
+            is_late=window.is_late,
         )
-        
-        # Mark as late if submitted after deadline
-        if task.close_date and task_submission.created_at > task.close_date:
-            task_submission.status = 'LATE'
-            task_submission.save()
+
+        # Las versiones anteriores sin decisión final ya no se revisan.
+        TaskSubmission.objects.filter(
+            task=task, submitted_by=request.user, version__lt=task_submission.version,
+        ).exclude(status__in=TaskSubmission.FINAL_STATUSES).update(
+            status=TaskSubmission.SubmissionStatus.SUPERSEDED, reviewer=None,
+        )
         
         # Process each file
         uploaded_documents = []
@@ -680,6 +849,13 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         response_data['files_count'] = len(uploaded_documents)
         response_data['uploaded_to_drive_count'] = uploaded_count
         response_data['failed_uploads_count'] = failed_count
+        response_data['message'] = (
+            'Corrección enviada. Tu revisor la verá en su lista.' if window.state == deadlines.STATE_CORRECTION
+            else 'Entrega tardía registrada. Quedará marcada como fuera de tiempo.' if window.is_late
+            else 'Entrega registrada. Te avisaremos cuando sea revisada.'
+        )
+        if failed_count:
+            response_data['message'] += f' {failed_count} archivo(s) no se pudieron procesar; vuelve a subirlos.'
         
         # Include documents in response
         response_data['documents'] = uploaded_documents
@@ -691,61 +867,89 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
+    def _review_response(self, func, *args, **kwargs):
+        try:
+            sub = func(*args, **kwargs)
+        except review.ReviewError as exc:
+            return Response({'error': exc.message, 'code': exc.code}, status=exc.http_status)
+        sub = TaskSubmission.objects.select_related('submitted_by', 'graded_by', 'reviewer') \
+            .prefetch_related('documents').get(pk=sub.pk)
+        return Response({'submission': TaskSubmissionSerializer(sub, context={'request': self.request}).data})
+
+    @action(detail=True, methods=['post'], url_path='claim')
+    def claim(self, request, task_pk=None, pk=None):
+        """Tomar la entrega para revisarla (evita que dos revisores la califiquen a la vez)."""
+        sub = self.get_object()
+        resp = self._review_response(review.claim, sub.pk, request.user,
+                                     force=bool(request.data.get('force')))
+        if resp.status_code == 200:
+            resp.data['message'] = 'Entrega asignada a ti para revisión.'
+        return resp
+
+    @action(detail=True, methods=['post'], url_path='release')
+    def release(self, request, task_pk=None, pk=None):
+        """Soltar la entrega para que otro revisor pueda tomarla."""
+        sub = self.get_object()
+        resp = self._review_response(review.release, sub.pk, request.user)
+        if resp.status_code == 200:
+            resp.data['message'] = 'Entrega liberada. Otro revisor puede tomarla.'
+        return resp
+
+    @action(detail=True, methods=['post'], url_path='review')
+    def review(self, request, task_pk=None, pk=None):
+        """
+        Decidir sobre la entrega: {decision: 'approve' | 'request_changes',
+        teacher_feedback, score?, criteria_scores?}.
+        """
+        sub = self.get_object()
+        score = request.data.get('score')
+        try:
+            score = float(score) if score not in (None, '') else None
+        except (TypeError, ValueError):
+            return Response({'error': 'La puntuación debe ser un número.', 'code': 'INVALID_SCORE'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        decision = request.data.get('decision')
+        resp = self._review_response(
+            review.decide, sub.pk, request.user, decision,
+            feedback=request.data.get('teacher_feedback', ''),
+            score=score,
+            criteria_scores=request.data.get('criteria_scores'),
+        )
+        if resp.status_code == 200:
+            resp.data['message'] = ('Entrega aprobada. Se notificó al alumno.' if decision == 'approve'
+                                    else 'Entrega devuelta con cambios. Se notificó al alumno.')
+        return resp
+
     @action(detail=True, methods=['post', 'patch'], url_path='grade')
     def grade(self, request, task_pk=None, pk=None):
         """
-        Calificar una entrega de tarea.
-        Solo TEACHER y ADMIN pueden calificar.
-        Envía notificación por email si la tarea es devuelta para revisión.
+        Compatibilidad con clientes anteriores. Usa el mismo flujo que /review/.
+        Sin `decision`, se aprueba si la puntuación alcanza el mínimo
+        (PASSING_SCORE_THRESHOLD) y se devuelve con cambios si no. Antes siempre
+        quedaba como GRADED y además se enviaba el correo de "devuelta".
         """
         if request.user.role not in TEACHER_ROLES:
             raise PermissionDenied("No tienes permisos para calificar entregas.")
-        
-        submission = self.get_object()
-        task = submission.task
-        serializer = TaskSubmissionGradeSerializer(
-            submission,
-            data=request.data,
-            partial=True,
-            context={'request': request}
+        sub = self.get_object()
+        decision = request.data.get('decision')
+        score = request.data.get('score')
+        score = float(score) if score not in (None, '') else None
+        if decision not in ('approve', 'request_changes'):
+            passing = float(sub.task.max_score) * PASSING_SCORE_THRESHOLD
+            decision = 'request_changes' if (score is not None and score < passing) else 'approve'
+        feedback = request.data.get('teacher_feedback', '')
+        if decision == 'request_changes' and not feedback.strip():
+            feedback = (f'La puntuación ({score}) no alcanza el mínimo aprobatorio. '
+                        'Revisa los criterios y vuelve a entregar.')
+        resp = self._review_response(
+            review.decide, sub.pk, request.user, decision,
+            feedback=feedback, score=score,
+            criteria_scores=request.data.get('criteria_scores'),
         )
-        serializer.is_valid(raise_exception=True)
-        
-        # Check if submission is being returned for revision
-        # A submission is considered "returned" if:
-        # 1. It has teacher feedback and is not approved, or
-        # 2. Status is not 'GRADED', or
-        # 3. Score is below passing threshold (default 70% of max_score)
-        is_returned = False
-        new_status = request.data.get('status', submission.status)
-        new_score = request.data.get('score')
-        has_feedback = bool(request.data.get('teacher_feedback'))
-        
-        if has_feedback and new_status != 'GRADED':
-            is_returned = True
-        elif new_score is not None and task.max_score:
-            # Consider it returned if score is less than passing threshold
-            score_value = float(new_score)
-            passing_score = float(task.max_score) * PASSING_SCORE_THRESHOLD
-            if score_value < passing_score:
-                is_returned = True
-        
-        # Update submission with grading data
-        if new_status == 'GRADED':
-            submission.status = 'GRADED'
-        submission.graded_by = request.user
-        submission.graded_at = timezone.now()
-        submission = serializer.save()
-        
-        # Send email notification if task is returned for revision
-        if is_returned and has_feedback:
-            send_task_returned_notification(task, submission)
-        
-        return Response({
-            'message': 'Entrega calificada exitosamente',
-            'submission': TaskSubmissionSerializer(submission).data
-        })
-    
+        if resp.status_code == 200:
+            resp.data['message'] = 'Entrega calificada exitosamente'
+        return resp
+
     @action(detail=False, methods=['get'], url_path='by-student')
     def by_student(self, request, task_pk=None):
         """

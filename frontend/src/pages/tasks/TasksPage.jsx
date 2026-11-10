@@ -21,11 +21,14 @@ import {
   FiCheckCircle,
   FiCalendar,
   FiPaperclip,
-  FiCopy
+  FiCopy,
+  FiInbox
 } from 'react-icons/fi';
 import AvatarGroup from '../../components/common/AvatarGroup';
-import { format, parseISO, isPast, isFuture, addDays, isWithinInterval } from 'date-fns';
-import { es } from 'date-fns/locale';
+import {
+  taskStatusLabel, taskStatusClass, taskDeadlineLabel, taskDeadlineDate, isTaskDone,
+  WINDOW_STATE, TONE_COLORS,
+} from '../../utils/taskStatus';
 import './TasksPage.scss';
 
 const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
@@ -67,6 +70,20 @@ const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
               <span>{task._formattedDate}</span>
             </div>
           )}
+
+          {task.my_window && (() => {
+            const meta = WINDOW_STATE[task.my_window.state];
+            const colors = TONE_COLORS[meta?.tone || 'info'];
+            return (
+              <div
+                className="task-window-chip"
+                title={task.my_window.message}
+                style={{ background: colors.bg, color: colors.text, borderRadius: 10, padding: '2px 8px', fontSize: '0.75rem', fontWeight: 600 }}
+              >
+                {meta?.label || task.my_window.state}
+              </div>
+            );
+          })()}
 
           {(task.assigned_students_data?.length > 0 || task.assigned_to) && (
             <div className="task-assignee">
@@ -305,8 +322,6 @@ const TasksPage = () => {
     notifyTaskChange(taskId, null, 'delete');
   }, [queryClient, notifyTaskChange]);
 
-  const UPCOMING_DAYS_THRESHOLD = 7;
-
   // NUEVO: Lógica combinada para filtrar por proyecto Y por filtro de Superadmin
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -328,14 +343,21 @@ const TasksPage = () => {
 
       result = result.filter(task => {
         if (adminTaskFilter === 'PENDING') {
-          return task.status === 'PENDING' || task.status === 'IN_PROGRESS' || task.status === 'OPEN' || (task.title && task.title.toUpperCase().includes('GRAFICAS'));
+          return !isTaskDone(task) && task.status !== 'DRAFT';
+        }
+        if (adminTaskFilter === 'TO_REVIEW') {
+          return (task.pending_review_count || 0) > 0;
+        }
+        if (adminTaskFilter === 'OVERDUE') {
+          return task.is_overdue;
         }
         if (adminTaskFilter === 'COMPLETED') {
-          return task.status === 'COMPLETED' || task.status === 'CLOSED';
+          return isTaskDone(task);
         }
         if (adminTaskFilter === 'THIS_WEEK') {
-          if (!task.due_date) return false;
-          const dueDate = new Date(task.due_date);
+          // [FIX] new Date('2026-11-15') se interpreta en UTC (= 14/11 18:00 en México)
+          const dueDate = taskDeadlineDate(task);
+          if (!dueDate) return false;
           return dueDate >= today && dueDate <= nextWeek;
         }
         return true;
@@ -345,42 +367,58 @@ const TasksPage = () => {
     return result;
   }, [tasks, selectedProject, adminTaskFilter, user?.role]);
 
-  // Procesar fechas una sola vez para evitar llamar parseISO en cada render
-  const processedTasks = useMemo(() => {
-    return filteredTasks.map(task => {
-      let isOverdue = false;
-      let dueDateObj = null;
-      if (task.due_date) {
-        dueDateObj = parseISO(task.due_date);
-        if (task.status !== 'COMPLETED') {
-          isOverdue = isPast(dueDateObj);
-        }
-      }
-      return {
-        ...task,
-        _dueDateObj: dueDateObj,
-        _isOverdue: isOverdue,
-        _formattedDate: dueDateObj ? format(dueDateObj, 'dd MMM yyyy', { locale: es }) : null
-      };
-    });
-  }, [filteredTasks]);
+  // El servidor decide si vence (deadline, is_overdue, my_window). Antes se usaba
+  // isPast(due_date), que vencía la tarea a las 00:00 del día límite, y GRAFICAS
+  // aparecía en "Próximamente" y en "Vencidas" al mismo tiempo.
+  const processedTasks = useMemo(() => filteredTasks.map(task => ({
+    ...task,
+    _isOverdue: Boolean(task.is_overdue),
+    _formattedDate: taskDeadlineLabel(task),
+  })), [filteredTasks]);
 
   const categorizedTasks = useMemo(() => {
-    const now = new Date();
-    const soon = addDays(now, UPCOMING_DAYS_THRESHOLD);
-
-    return {
-      upcoming: processedTasks.filter(task => {
-        if (task.title && task.title.toUpperCase().includes('GRAFICAS')) return true;
-        if (!task._dueDateObj || task.status === 'COMPLETED') return false;
-        return isFuture(task._dueDateObj) && isWithinInterval(task._dueDateObj, { start: now, end: soon });
-      }),
-      overdue: processedTasks.filter(task => {
-        if (!task._dueDateObj || task.status === 'COMPLETED') return false;
-        return task._isOverdue;
-      }),
-      completed: processedTasks.filter(task => task.status === 'COMPLETED')
-    };
+    const buckets = { pending: [], overdue: [], submitted: [], completed: [] };
+    processedTasks.forEach(task => {
+      const w = task.my_window;
+      if (!w) {
+        // Sin información por alumno (API antigua): usar los campos del servidor
+        if (isTaskDone(task)) buckets.completed.push(task);
+        else if (task.is_overdue) buckets.overdue.push(task);
+        else buckets.pending.push(task);
+        return;
+      }
+      switch (w.state) {
+        case 'APPROVED':
+          buckets.completed.push(task);
+          break;
+        case 'IN_REVIEW':
+          buckets.submitted.push(task);
+          break;
+        case 'OVERDUE':
+        case 'CLOSED':
+          (task.my_submission_status ? buckets.submitted : buckets.overdue).push(task);
+          break;
+        default: {
+          // OPEN / DUE_SOON / NO_DEADLINE / LATE_WINDOW / CORRECTION / NOT_OPEN
+          if (task.my_submission_status === 'SUBMITTED' && w.state !== 'CORRECTION') {
+            buckets.submitted.push(task);
+          } else {
+            buckets.pending.push(task);
+          }
+        }
+      }
+    });
+    // Lo urgente primero: correcciones, tardías, vence pronto; después por fecha
+    const priority = { CORRECTION: 0, LATE_WINDOW: 1, DUE_SOON: 2, OPEN: 3, NOT_OPEN: 4, NO_DEADLINE: 5 };
+    buckets.pending.sort((a, b) => {
+      const pa = priority[a.my_window?.state] ?? 9;
+      const pb = priority[b.my_window?.state] ?? 9;
+      if (pa !== pb) return pa - pb;
+      const da = taskDeadlineDate(a)?.getTime() ?? Infinity;
+      const db = taskDeadlineDate(b)?.getTime() ?? Infinity;
+      return da - db;
+    });
+    return buckets;
   }, [processedTasks]);
 
   if (loading || !user) {
@@ -514,10 +552,22 @@ const TasksPage = () => {
                   Pendientes
                 </button>
                 <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'TO_REVIEW' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('TO_REVIEW')}
+                >
+                  Por revisar
+                </button>
+                <button 
+                  className={`btn btn-sm ${adminTaskFilter === 'OVERDUE' ? 'btn-primary' : 'btn-secondary'}`} 
+                  onClick={() => setAdminTaskFilter('OVERDUE')}
+                >
+                  Vencidas
+                </button>
+                <button 
                   className={`btn btn-sm ${adminTaskFilter === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`} 
                   onClick={() => setAdminTaskFilter('COMPLETED')}
                 >
-                  Completadas
+                  Cerradas
                 </button>
                 <button 
                   className={`btn btn-sm ${adminTaskFilter === 'THIS_WEEK' ? 'btn-primary' : 'btn-secondary'}`} 
@@ -531,17 +581,17 @@ const TasksPage = () => {
 
           {isStudent(user.role) ? (
             // Student view - Board with 3 columns
-            <div className="tasks-board">
+            <div className="tasks-board tasks-board--four">
               <TaskColumn
-                title="Próximamente"
+                title="Por entregar"
                 icon={FiClock}
-                tasks={categorizedTasks.upcoming}
-                emptyMessage="No hay tareas próximas"
+                tasks={categorizedTasks.pending}
+                emptyMessage="No tienes tareas pendientes"
                 color="#f59e0b"
                 taskDocuments={taskDocuments}
                 setSelectedTask={setSelectedTask}
               />
-              
+
               <TaskColumn
                 title="Vencidas"
                 icon={FiAlertCircle}
@@ -551,12 +601,22 @@ const TasksPage = () => {
                 taskDocuments={taskDocuments}
                 setSelectedTask={setSelectedTask}
               />
-              
+
               <TaskColumn
-                title="Completadas"
+                title="Entregadas"
+                icon={FiInbox}
+                tasks={categorizedTasks.submitted}
+                emptyMessage="No hay entregas en revisión"
+                color="#3b82f6"
+                taskDocuments={taskDocuments}
+                setSelectedTask={setSelectedTask}
+              />
+
+              <TaskColumn
+                title="Aprobadas"
                 icon={FiCheckCircle}
                 tasks={categorizedTasks.completed}
-                emptyMessage="No hay tareas completadas"
+                emptyMessage="Aún no tienes entregas aprobadas"
                 color="#10b981"
                 taskDocuments={taskDocuments}
                 setSelectedTask={setSelectedTask}
@@ -587,11 +647,21 @@ const TasksPage = () => {
                             <FiCheckSquare />
                           </div>
                           <h3 className="task-title">{task.title}</h3>
-                          <div className={`task-status-badge status-${task.status.toLowerCase()}`}>
-                            {task.status === 'COMPLETED' ? 'Completada' : 
-                             task.status === 'IN_PROGRESS' ? 'En Progreso' : 'Pendiente'}
+                          <div className={`task-status-badge status-${task.status.toLowerCase()} ${taskStatusClass(task.status)}`}>
+                            {taskStatusLabel(task)}
                           </div>
-                          {(task.status === 'COMPLETED' || task._isOverdue) && user?.role === 'SUPERADMIN' && (
+                          {task._isOverdue && (
+                            <div className="task-status-badge status-overdue" style={{ background: '#fee2e2', color: '#991b1b' }}>Vencida</div>
+                          )}
+                          {task.is_continuous && (
+                            <div className="task-status-badge" style={{ background: '#e0f2fe', color: '#075985' }}>Continua</div>
+                          )}
+                          {task.pending_review_count > 0 && (
+                            <div className="task-status-badge" style={{ background: '#ede9fe', color: '#5b21b6' }}>
+                              {task.pending_review_count} por revisar
+                            </div>
+                          )}
+                          {(isTaskDone(task) || task._isOverdue) && user?.role === 'SUPERADMIN' && (
                             <button
                               className="btn btn-sm btn-secondary"
                               title="Duplicar tarea"

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { gradeSubmission } from '../../services/taskService';
-import { FiAward, FiCheck, FiFile, FiDownload, FiExternalLink, FiLink, FiMessageSquare } from 'react-icons/fi';
+import { reviewSubmission } from '../../services/taskService';
+import { apiErrorMessage } from '../../utils/taskStatus';
+import { FiAward, FiCheck, FiFile, FiDownload, FiExternalLink, FiLink, FiMessageSquare, FiRotateCcw, FiAlertTriangle } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 
 const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) => {
@@ -42,60 +43,57 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
     }
   };
 
-  const onSubmit = async (data) => {
-    try {
-      const gradeData = {
-        score: parseFloat(data.score),
-        teacher_feedback: data.teacher_feedback || '',
-        status: 'GRADED'
-      };
-
-      if (useCriteria && criteria.length > 0) {
-        gradeData.criteria_scores = data.criteria_scores;
-      }
-
-      await gradeSubmission(task.id, submission.id, gradeData);
-      
-      toast.success('✅ Entrega calificada exitosamente');
-      
-      if (onGradeComplete) {
-        onGradeComplete();
-      }
-      
-    } catch (error) {
-      console.error('Error al calificar:', error);
-      
-      let errorMessage = 'No se pudo calificar la entrega';
-      
-      if (error.response?.data) {
-        if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (error.response.data.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.data.score) {
-          errorMessage = Array.isArray(error.response.data.score) 
-            ? error.response.data.score[0] 
-            : error.response.data.score;
-        }
-      }
-      
-      toast.error(errorMessage);
+  /**
+   * Dos decisiones explícitas en lugar de "Guardar calificación":
+   * - approve: la entrega queda aprobada y el alumno recibe "Entrega aprobada".
+   * - request_changes: se devuelve con comentarios; el alumno puede corregir
+   *   aunque la tarea haya vencido y recibe "Entrega devuelta con cambios".
+   * Antes siempre se enviaba status=GRADED y el alumno recibía ambos mensajes.
+   */
+  const submitDecision = (decision) => handleSubmit(async (data) => {
+    if (decision === 'request_changes' && !data.teacher_feedback?.trim()) {
+      toast.error('Escribe qué debe corregir el alumno antes de devolver la entrega.');
+      return;
     }
-  };
+    if (decision === 'approve' && (data.score === '' || data.score === null || data.score === undefined) && !useCriteria) {
+      toast.error('Asigna una puntuación para aprobar.');
+      return;
+    }
+    try {
+      const payload = {
+        decision,
+        teacher_feedback: data.teacher_feedback || '',
+      };
+      if (data.score !== '' && data.score !== null && data.score !== undefined) {
+        payload.score = parseFloat(data.score);
+      }
+      if (useCriteria && criteria.length > 0) {
+        payload.criteria_scores = data.criteria_scores;
+      }
+      const result = await reviewSubmission(task.id, submission.id, payload);
+      toast.success(result?.message || (decision === 'approve' ? 'Entrega aprobada' : 'Entrega devuelta con cambios'));
+      if (onGradeComplete) onGradeComplete(result?.submission);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'No se pudo guardar la revisión'));
+    }
+  });
 
   if (!submission || !task) {
     return <div style={{padding:'20px', color:'red'}}>Error: Datos de entrega faltantes.</div>;
   }
 
-  // Debug: check for names
-  console.log("Rendering GradeSubmissionForm for student:", submission.submitted_by?.full_name);
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grading-form">
+    <form onSubmit={(e) => e.preventDefault()} className="grading-form">
       <div className="grading-header">
         <FiAward size={24} />
-        <h3>Calificar Entrega</h3>
+        <h3>Revisar Entrega</h3>
       </div>
+
+      {submission.is_late && (
+        <div className="late-warning">
+          <FiAlertTriangle /> Esta entrega se recibió después de la fecha límite.
+        </div>
+      )}
 
       <div className="student-info">
         <p><strong>Estudiante:</strong> {submission?.submitted_by?.first_name} {submission?.submitted_by?.last_name || submission?.submitted_by?.username} </p>
@@ -242,7 +240,7 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
       ) : (
         <div className="form-group">
           <label className="form-label" htmlFor="score">
-            Puntuación *
+            Puntuación (obligatoria para aprobar)
           </label>
           <input
             id="score"
@@ -252,7 +250,6 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
             max={task.max_score}
             className="form-input"
             {...register('score', {
-              required: 'La puntuación es obligatoria',
               min: { value: 0, message: 'La puntuación no puede ser negativa' },
               max: { value: task.max_score, message: `La puntuación no puede exceder ${task.max_score}` }
             })}
@@ -264,7 +261,7 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
 
       <div className="form-group">
         <label className="form-label" htmlFor="teacher_feedback">
-          Retroalimentación
+          Retroalimentación (obligatoria para devolver)
         </label>
         <textarea
           id="teacher_feedback"
@@ -284,19 +281,41 @@ const GradeSubmissionForm = ({ task, submission, onGradeComplete, onCancel }) =>
         >
           Cancelar
         </button>
-        <button 
-          type="submit" 
-          className="btn btn-primary" 
+        <button
+          type="button"
+          className="btn btn-warning"
           disabled={isSubmitting}
+          onClick={submitDecision('request_changes')}
+          title="El alumno podrá corregir y reenviar"
+        >
+          <FiRotateCcw />
+          {isSubmitting ? 'Guardando...' : 'Devolver con cambios'}
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={isSubmitting}
+          onClick={submitDecision('approve')}
         >
           <FiCheck />
-          {isSubmitting ? 'Guardando...' : 'Guardar Calificación'}
+          {isSubmitting ? 'Guardando...' : 'Aprobar'}
         </button>
       </div>
 
       <style jsx>{`
         .grading-form {
           padding: 1.5rem;
+        }
+        .late-warning {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+          padding: 0.6rem 0.9rem;
+          border-radius: 8px;
+          background: #fef3c7;
+          color: #92400e;
+          font-size: 0.9rem;
         }
 
         .grading-header {

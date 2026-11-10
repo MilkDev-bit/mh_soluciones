@@ -130,114 +130,64 @@ def create_task_assignment_notification(sender, instance, created, **kwargs):
 @receiver(post_save, sender=TaskSubmission)
 def create_task_submission_notification(sender, instance, created, **kwargs):
     """
-    Send notification when a task is submitted or graded.
+    Notifica a los revisores cuando llega una entrega.
+
+    Las notificaciones de aprobación o devolución ya no salen de aquí: las envía
+    apps.tasks.review.notify_decision con un mensaje distinto para cada caso
+    (antes el alumno recibía "calificada" y "devuelta" para la misma entrega).
     """
-    if not created and instance.status == 'GRADED' and instance.graded_by:
-        # Notify student that their submission was graded
-        notification = Notification.objects.create(
-            user=instance.submitted_by,
-            title="Tarea Calificada",
-            message=f"Tu entrega para la tarea '{instance.task.title}' ha sido calificada. Puntuación: {instance.score}/{instance.task.max_score}",
-            notification_type=Notification.NotificationType.TASK_COMPLETED,
-            content_object=instance.task
+    if not created:
+        return
+
+    from .review import submission_received_message
+
+    task = instance.task
+    recipients = set()
+    if task.created_by and task.created_by != instance.submitted_by:
+        recipients.add(task.created_by)
+    if hasattr(task.project, 'members'):
+        recipients.update(
+            m for m in task.project.members.all()
+            if m.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR', 'DIRECTOR']
+            and m != instance.submitted_by
         )
 
-        channel_layer = get_channel_layer()
-        group_name = f'user_{instance.submitted_by.id}_notifications'
-        serialized_notification = NotificationSerializer(notification).data
-
-        async_to_sync(channel_layer.group_send)(
-            group_name,
-            {
-                'type': 'send_notification',
-                'message': serialized_notification
-            }
-        )
-
-        # Send email notification
+    title, message = submission_received_message(instance)
+    channel_layer = get_channel_layer()
+    for recipient in recipients:
         try:
-            from utils.email_notifications import send_email_notification
-            from django.conf import settings
-            
-            if instance.submitted_by.email:
-                context = {
-                    'task': instance.task,
-                    'submission': instance,
-                    'score': instance.score,
-                    'max_score': instance.task.max_score,
-                    'feedback': instance.teacher_feedback,
-                    'project': instance.task.project,
-                    'frontend_url': settings.FRONTEND_URL,
-                }
-                
-                send_email_notification(
-                    subject=f"Tarea Calificada: {instance.task.title}",
-                    recipient_list=[instance.submitted_by.email],
-                    template_name='emails/task_graded.txt',
-                    context=context,
-                    html_template_name='emails/task_graded.html'
-                )
-                logger.info(f"Email notification sent for graded task: {instance.task.title}")
-        except Exception as e:
-            logger.error(f"Error sending email notification for graded task {instance.task.id}: {str(e)}")
-            
-    elif created:
-        task = instance.task
-        
-        recipients = set()
-        
-        if task.created_by and task.created_by != instance.submitted_by:
-            recipients.add(task.created_by)
-        
-        if hasattr(task.project, 'members'):
-            admin_members = [m for m in task.project.members.all() 
-                           if m.role in ['SUPERADMIN', 'ADMIN', 'CEO', 'RH', 'PROFESSOR'] 
-                           and m != instance.submitted_by]
-            recipients.update(admin_members)
-        
-        for recipient in recipients:
             notification = Notification.objects.create(
                 user=recipient,
-                title="Nueva Entrega de Tarea",
-                message=f"{instance.submitted_by.get_full_name()} ha entregado la tarea '{task.title}'",
+                title=title,
+                message=message,
                 notification_type=Notification.NotificationType.TASK_COMPLETED,
-                content_object=task
+                content_object=task,
             )
-
-            channel_layer = get_channel_layer()
-            group_name = f'user_{recipient.id}_notifications'
-            serialized_notification = NotificationSerializer(notification).data
-
             async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    'type': 'send_notification',
-                    'message': serialized_notification
-                }
+                f'user_{recipient.id}_notifications',
+                {'type': 'send_notification', 'message': NotificationSerializer(notification).data},
             )
+        except Exception as exc:
+            logger.error("Error notificando entrega %s a %s: %s", instance.pk, recipient.pk, exc)
 
-        try:
-            from utils.email_notifications import send_email_notification
-            from django.conf import settings
-            
-            recipient_emails = [r.email for r in recipients if r.email]
-            
-            if recipient_emails:
-                context = {
+    try:
+        from utils.email_notifications import send_email_notification
+        from django.conf import settings
+
+        recipient_emails = [r.email for r in recipients if r.email]
+        if recipient_emails:
+            send_email_notification(
+                subject=f"{title}: {task.title}",
+                recipient_list=recipient_emails,
+                template_name='emails/task_submitted.txt',
+                context={
                     'task': task,
                     'submission': instance,
                     'student': instance.submitted_by,
                     'project': task.project,
                     'frontend_url': settings.FRONTEND_URL,
-                }
-                
-                send_email_notification(
-                    subject=f"Nueva Entrega: {task.title}",
-                    recipient_list=recipient_emails,
-                    template_name='emails/task_submitted.txt',
-                    context=context,
-                    html_template_name='emails/task_submitted.html'
-                )
-                logger.info(f"Email notification sent for task submission: {task.title}")
-        except Exception as e:
-            logger.error(f"Error sending email notification for task submission {task.id}: {str(e)}")
+                },
+                html_template_name='emails/task_submitted.html',
+            )
+    except Exception as e:
+        logger.error(f"Error sending email notification for task submission {task.id}: {str(e)}")

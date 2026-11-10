@@ -651,3 +651,19 @@
     }
   }
 }
+// Tablero de alumno con 4 columnas: por entregar, vencidas, entregadas, aprobadas
+.tasks-board.tasks-board--four {
+  grid-template-columns: repeat(4, 1fr);
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(2, 1fr);
+
+    .task-column:last-child {
+      grid-column: auto;
+    }
+  }
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+  }
+}

@@ -121,7 +121,18 @@ class Task(TimeStampedModel):
     )
     days_after_close = models.IntegerField(
         default=0,
-        verbose_name=_("Días Adicionales Después del Cierre")
+        verbose_name=_("Días Adicionales Después del Cierre"),
+        help_text=_(
+            "Días de gracia para entregas tardías tras la fecha límite. "
+            "Requiere 'Permitir Entregas Tardías'. 0 = sin límite."
+        ),
+    )
+    # [NUEVO] Actividades permanentes (p. ej. GRAFICAS): siempre abiertas, nunca vencen.
+    # Evita que la reasignación semanal las muestre como vencidas por su fecha original.
+    is_continuous = models.BooleanField(
+        default=False,
+        verbose_name=_("Actividad Continua (sin vencimiento)"),
+        help_text=_("La tarea permanece abierta y nunca se marca como vencida."),
     )
 
     class Meta:
@@ -144,10 +155,22 @@ class TaskSubmission(TimeStampedModel):
     Representa la entrega de un documento o enlace para una tarea.
     """
     class SubmissionStatus(models.TextChoices):
-        SUBMITTED = 'SUBMITTED', _('Entregado')
-        GRADED = 'GRADED', _('Calificado')
+        # Flujo de revisión por alumno (cada entrega tiene su propio estado;
+        # ya no se usa el estado global de la tarea para revisar).
+        SUBMITTED = 'SUBMITTED', _('Por revisar')
+        IN_REVIEW = 'IN_REVIEW', _('En revisión')
+        CHANGES_REQUESTED = 'CHANGES_REQUESTED', _('Devuelta con cambios')
+        APPROVED = 'APPROVED', _('Aprobada')
+        SUPERSEDED = 'SUPERSEDED', _('Reemplazada por una versión nueva')
+        # Legacy: se conservan para datos históricos
+        GRADED = 'GRADED', _('Calificada')
         PENDING = 'PENDING', _('Pendiente')
         LATE = 'LATE', _('Entrega Tardía')
+
+    # Estados finales: la entrega ya no admite nuevas versiones
+    FINAL_STATUSES = ('APPROVED', 'GRADED')
+    # Estados que esperan acción de un revisor
+    PENDING_REVIEW_STATUSES = ('SUBMITTED', 'IN_REVIEW', 'LATE', 'PENDING')
     
     task = models.ForeignKey(
         Task,
@@ -249,12 +272,36 @@ class TaskSubmission(TimeStampedModel):
         verbose_name=_("Metadatos de Archivos"),
         help_text=_("Lista de objetos con name, gdrive_id, size, mime_type")
     )
+    # [NUEVO] "Tardía" es un atributo, no un estado: una entrega tardía
+    # también pasa por revisión, aprobación o devolución.
+    is_late = models.BooleanField(
+        default=False,
+        verbose_name=_("Entrega Tardía")
+    )
+    # [NUEVO] Revisor que tomó la entrega. Evita que dos revisores
+    # califiquen la misma entrega al mismo tiempo.
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewing_submissions',
+        verbose_name=_("Revisor asignado")
+    )
+    review_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Inicio de Revisión")
+    )
 
     class Meta:
         verbose_name = _("Entrega de Tarea")
         verbose_name_plural = _("Entregas de Tareas")
         ordering = ['-created_at']
         unique_together = [['task', 'submitted_by', 'version']]
+        indexes = [
+            models.Index(fields=['task', 'status'], name='tasksub_task_status_idx'),
+        ]
 
     def __str__(self):
         return f"Entrega de {self.submitted_by.username} para la tarea '{self.task.title}' (v{self.version})"

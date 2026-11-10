@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { format, parseISO, isPast } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import {
@@ -10,8 +10,14 @@ import {
   addTaskSubmission,
   getTaskComments,
   getTaskSubmissions,
-  duplicateTask
+  duplicateTask,
+  extendTaskDeadline,
+  reviewSubmission
 } from '../../services/taskService';
+import {
+  taskStatusLabel, taskStatusClass, taskDeadlineLabel, isTaskDone, formatDateTime, apiErrorMessage,
+} from '../../utils/taskStatus';
+import DeadlineBanner from './DeadlineBanner';
 import { uploadDocument, getDocumentsByTask, getFileUrl } from '../../services/documentService';
 import {
   FiDownload, FiUpload, FiX, FiClock, FiUser, FiFile, FiCheckCircle,
@@ -318,15 +324,29 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
     }
   };
 
-  const getStatusText = (status) => {
-    const statusMap = { 'PENDING': 'Pendiente', 'IN_PROGRESS': 'En Progreso', 'FOR_REVIEW': 'En Revisión', 'COMPLETED': 'Completada' };
-    return statusMap[status] || status;
+  // Etiquetas para TODOS los estados (antes OPEN, CLOSED, REOPENED... se
+  // mostraban como el código crudo o como "Pendiente").
+  // [FIX] El botón "Enviar comentario" llamaba a handleAddComment, que no
+  // existía (ReferenceError). Ahora devuelve la entrega con cambios usando el
+  // flujo de revisión, con su notificación correcta para el alumno.
+  const handleAddComment = async () => {
+    if (!commentingSubmission || !commentText.trim()) return;
+    try {
+      const result = await reviewSubmission(task.id, commentingSubmission.id, {
+        decision: 'request_changes',
+        teacher_feedback: commentText.trim(),
+      });
+      toast.success(result?.message || 'Entrega devuelta con cambios');
+      setCommentingSubmission(null);
+      setCommentText('');
+      await fetchSubmissions();
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'No se pudo enviar el comentario'));
+    }
   };
- 
-  const getStatusBadgeClass = (status) => {
-    const statusClasses = { 'PENDING': 'status-pending', 'IN_PROGRESS': 'status-progress', 'FOR_REVIEW': 'status-review', 'COMPLETED': 'status-completed' };
-    return statusClasses[status] || 'status-pending';
-  };
+
+  const getStatusText = () => taskStatusLabel(task);
+  const getStatusBadgeClass = (status) => taskStatusClass(status);
  
   const getPriorityText = (priority) => {
     const priorityMap = { 'LOW': 'Baja', 'MEDIUM': 'Media', 'HIGH': 'Alta' };
@@ -379,13 +399,13 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
 
   const handleMarkAsCompleted = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Estás seguro de que deseas marcar esta tarea como completada?')) {
+    if (!window.confirm('¿Cerrar esta tarea para TODOS los alumnos?\n\nYa no se aceptarán entregas. Para aprobar o devolver la entrega de un alumno usa "Revisar entregas".')) {
       return;
     }
     setIsCompleting(true);
     try {
       const updatedTaskData = await updateTask(task.id, { status: 'COMPLETED' });
-      toast.success('¡Tarea completada!');
+      toast.success('Tarea cerrada. Ya no recibe entregas.');
       
       if (typeof onTaskUpdated === 'function') {
         onTaskUpdated(updatedTaskData);
@@ -420,25 +440,28 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
     }
   };
 
-  const handleReassignTask = async () => {
+  // Antes "Pedir cambios" regresaba la TAREA COMPLETA a "En progreso" para
+  // todos los alumnos. Ahora los cambios se piden por entrega desde el
+  // tablero de revisión, y aquí solo se amplía el plazo general sin editar
+  // las fechas a mano.
+  const handleExtendForAll = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Estás seguro de que deseas solicitar cambios? El estado de la tarea volverá a "En Progreso".')) {
-        return;
+    const input = window.prompt('¿Cuántos días más tendrán TODOS los alumnos para entregar? (se cuenta desde hoy, hasta las 23:59)', '3');
+    if (input === null) return;
+    const days = parseInt(input, 10);
+    if (!days || days < 1 || days > 60) {
+      toast.error('Indica un número de días entre 1 y 60.');
+      return;
     }
     setIsReassigning(true);
     try {
-        const updatedTaskData = await updateTask(task.id, { status: 'IN_PROGRESS' });
-        toast.success('✅ Tarea devuelta para corrección.');
-        
-        if (typeof onTaskUpdated === 'function') {
-          onTaskUpdated(updatedTaskData);
-        }
-        
+      const result = await extendTaskDeadline(task.id, { days, reason: `Plazo ampliado ${days} día(s)` });
+      toast.success(result?.message || 'Plazo ampliado');
+      if (typeof onTaskUpdated === 'function') onTaskUpdated(result?.task);
     } catch (error) {
-        toast.error('❌ No se pudo reasignar la tarea.');
-        console.error("Error al reasignar la tarea:", error);
+      toast.error(apiErrorMessage(error, 'No se pudo ampliar el plazo.'));
     } finally {
-        setIsReassigning(false);
+      setIsReassigning(false);
     }
   };
 
@@ -459,28 +482,20 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
     }
   };
 
-  const formatDueDate = () => {
-    if (!task?.due_date) return 'Sin fecha límite';
-    try {
-      return format(parseISO(task.due_date), "dd 'de' MMMM 'de' yyyy", { locale: es });
-    } catch (error) {
-      console.error('Error al formatear fecha límite:', error);
-      return 'Fecha inválida';
-    }
-  };
+  const formatDueDate = () => taskDeadlineLabel(task) || 'Sin fecha límite';
 
   const handleRefreshData = async () => {
     await Promise.all([loadTaskComments(), fetchSubmissions(), loadDocuments()]);
     toast.success('Datos actualizados');
   };
 
-  const handleSubmissionComplete = () => {
+  const handleSubmissionComplete = (result) => {
     setShowSubmissionForm(false);
     if (typeof onClose === 'function') {
       onClose();
     }
     setTimeout(() => {
-      toast.success('✅ ¡Tarea entregada exitosamente!', {
+      toast.success(`✅ ${result?.message || '¡Tarea entregada exitosamente!'}`, {
         duration: 5000,
         style: {
           background: '#16a34a',
@@ -509,6 +524,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
         >
           <TaskSubmissionsReview
             task={task}
+            user={user}
             onClose={() => setShowSubmissionsReview(false)}
           />
         </Modal>
@@ -580,7 +596,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setCommentingSubmission(null)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={() => handleAddComment()} disabled={!commentText.trim()}><FiSend /> Enviar comentario</button>
+              <button className="btn btn-primary" onClick={() => handleAddComment()} disabled={!commentText.trim()}><FiSend /> Devolver con cambios</button>
             </div>
           </div>
         </div>
@@ -596,24 +612,26 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
 
             {canCompleteTask && !isEditing && (
               <div className="action-group">
-                {task?.status !== 'COMPLETED' && (
+                {!isTaskDone(task) && (
                   <button
                     className="btn btn-success btn-icon"
                     onClick={handleMarkAsCompleted}
                     disabled={isCompleting}
+                    title="Cierra la tarea para todos: ya no se aceptan entregas"
                   >
                     <FiCheckCircle />
-                    {isCompleting ? 'Completando...' : 'Completar Tarea'}
+                    {isCompleting ? 'Cerrando...' : 'Cerrar Tarea'}
                   </button>
                 )}
-                {['FOR_REVIEW', 'COMPLETED'].includes(task?.status) && (
+                {!task?.is_continuous && (isTaskDone(task) || task?.is_overdue) && (
                   <button
                     className="btn btn-warning btn-icon"
-                    onClick={handleReassignTask}
+                    onClick={handleExtendForAll}
                     disabled={isReassigning}
+                    title="Da más días a todos sin editar la fecha de la tarea"
                   >
                     <FiRotateCw />
-                    {isReassigning ? 'Reasignando...' : 'Pedir Cambios'}
+                    {isReassigning ? 'Guardando...' : 'Ampliar plazo'}
                   </button>
                 )}
               </div>
@@ -632,7 +650,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                     <button className="btn btn-icon btn-danger" onClick={handleDeleteTask} disabled={deleteLoading}><FiTrash2 size={18} />{deleteLoading ? 'Eliminando...' : 'Eliminar'}</button>
                   </>
                 )}
-                {(task?.status === 'COMPLETED' || (task?.due_date && task?.status !== 'COMPLETED' && isPast(parseISO(task?.due_date)))) && userRole === 'SUPERADMIN' && !isEditing && (
+                {(isTaskDone(task) || task?.is_overdue) && userRole === 'SUPERADMIN' && !isEditing && (
                   <button
                     className="btn btn-icon btn-secondary"
                     onClick={handleDuplicateTask}
@@ -654,7 +672,8 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
 
         {!isEditing && task && (
           <div className="status-priority-badges">
-            <div className={`status-badge ${getStatusBadgeClass(task.status)}`}>{getStatusText(task.status)}</div>
+            <div className={`status-badge ${getStatusBadgeClass(task.status)}`}>{getStatusText()}</div>
+            {task.is_continuous && <div className="status-badge status-progress">Actividad continua</div>}
             <div className={`priority-badge ${getPriorityBadgeClass(task.priority)}`}>{getPriorityText(task.priority)}</div>
           </div>
         )}
@@ -692,7 +711,10 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
               return (<div className="task-description"><h4>Descripción</h4><p>{cleanDesc}</p></div>);
             })()}
             <div className="task-meta">
-              <div className="meta-item"><FiClock className="meta-icon" /><span><strong>Fecha límite:</strong> {task?.due_date ? format(parseISO(task.due_date), 'dd MMMM yyyy', { locale: es }) : 'Sin fecha'}</span></div>
+              <div className="meta-item"><FiClock className="meta-icon" /><span><strong>Fecha límite:</strong> {formatDueDate()}</span></div>
+              {task?.allow_late_submissions && !task?.is_continuous && (
+                <div className="meta-item"><FiClock className="meta-icon" /><span><strong>Entregas tardías:</strong> {task.late_deadline ? `hasta ${formatDateTime(task.late_deadline)}` : 'sin límite'}</span></div>
+              )}
               {(task?.assigned_students_data?.length > 0 || task?.assigned_to) && (
                 <div className="meta-item">
                   <FiUser className="meta-icon" />
@@ -709,6 +731,10 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
             </div>
 
             {/* Teams-like action buttons */}
+            {(task?.assigned_to?.id === user?.id || isInAssignedStudents) && (
+              <DeadlineBanner window={task?.my_window} />
+            )}
+
             <div className="task-actions">
               {canCompleteTask && (
                 <button
@@ -716,19 +742,34 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                   onClick={() => setShowSubmissionsReview(true)}
                 >
                   <FiUsers />
-                  Ver Entregas de Estudiantes
+                  Revisar Entregas
+                  {task?.pending_review_count > 0 && ` (${task.pending_review_count} por revisar)`}
                 </button>
               )}
               
-              {(task?.assigned_to?.id === user?.id || isInAssignedStudents) && (
-                <button
-                  className="btn primary-action-btn submit-task-btn"
-                  onClick={() => setShowSubmissionForm(true)}
-                >
-                  <FiUploadCloud />
-                  Entregar Tarea
-                </button>
-              )}
+              {(task?.assigned_to?.id === user?.id || isInAssignedStudents) && (() => {
+                const w = task?.my_window;
+                const canSend = !w || w.can_submit;
+                const label = !w ? 'Entregar Tarea'
+                  : w.state === 'CORRECTION' ? 'Reenviar Corrección'
+                  : w.state === 'LATE_WINDOW' ? 'Entregar con Retraso'
+                  : task?.my_submission_status === 'SUBMITTED' ? 'Reemplazar Entrega'
+                  : canSend ? 'Entregar Tarea'
+                  : w.state === 'APPROVED' ? 'Entrega Aprobada'
+                  : w.state === 'IN_REVIEW' ? 'En Revisión'
+                  : 'Entrega Cerrada';
+                return (
+                  <button
+                    className="btn primary-action-btn submit-task-btn"
+                    onClick={() => setShowSubmissionForm(true)}
+                    disabled={!canSend}
+                    title={w?.message}
+                  >
+                    <FiUploadCloud />
+                    {label}
+                  </button>
+                );
+              })()}
             </div>
 
             {canInteract && (
