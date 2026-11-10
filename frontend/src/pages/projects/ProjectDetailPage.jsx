@@ -50,6 +50,7 @@ import {
   FiClock
 } from 'react-icons/fi';
 import { format, parseISO, isAfter } from 'date-fns';
+import { isTaskDone } from '../../utils/taskStatus';
 import { es } from 'date-fns/locale';
 import './ProjectDetailPage.scss';
 import ProjectForm from '../../components/projects/ProjectForm';
@@ -798,21 +799,19 @@ const ProjectDetailPage = () => {
     .filter(Boolean)
     .filter((u) => u.id && u.username);
 
-  const currentDate = new Date();
+  // [FIX] Antes: vencida desde las 00:00 del día límite (isAfter + due_date),
+  // CLOSED no contaba como terminada y GRAFICAS se forzaba como activa.
+  // Ahora se usa lo que calcula el servidor: is_overdue / my_window / is_continuous.
   const displayedTasks = tasks.filter(task => {
-    const isOverdueTask = task.due_date && task.status !== 'COMPLETED' && isAfter(currentDate, parseISO(task.due_date));
-    
-    if (taskFilter === 'COMPLETED') {
-      return task.status === 'COMPLETED';
-    } else if (taskFilter === 'OVERDUE') {
-      return isOverdueTask;
-    } else {
-      // ACTIVE view
-      if (task.title && task.title.toUpperCase().includes('GRAFICAS')) return true;
-      if (task.status === 'COMPLETED') return false;
-      if (isOverdueTask) return false;
-      return true;
-    }
+    const done = isTaskDone(task) || task.my_window?.state === 'APPROVED';
+    const isOverdueTask = !done && (
+      task.my_window ? task.my_window.state === 'OVERDUE' : Boolean(task.is_overdue)
+    );
+
+    if (taskFilter === 'COMPLETED') return done;
+    if (taskFilter === 'OVERDUE') return isOverdueTask;
+    // ACTIVE view
+    return !done && !isOverdueTask;
   });
 
   return (

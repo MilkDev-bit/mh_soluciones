@@ -277,3 +277,45 @@ class UtcSchedulingTests(Base):
         avisos = Notification.objects.filter(notification_type='TASK_OVERDUE')
         self.assertEqual(avisos.count(), 1)
         self.assertEqual(avisos.get().user, self.other)
+
+
+class SameProjectVisibilityTests(Base):
+    """Tareas de un mismo proyecto asignadas a usuarios distintos."""
+
+    def setUp(self):
+        super().setUp()
+        past = timezone.localdate() - timedelta(days=2)
+        self.mine = Task.objects.create(title='Mía', project=self.project, created_by=self.teacher,
+                                        status='OPEN', due_date=past)
+        self.mine.assigned_students.set([self.student])
+        self.theirs = Task.objects.create(title='De otro', project=self.project, created_by=self.teacher,
+                                          status='OPEN', due_date=past)
+        self.theirs.assigned_students.set([self.other])
+        self.theirs_direct = Task.objects.create(title='De otro directa', project=self.project,
+                                                 created_by=self.teacher, status='OPEN',
+                                                 due_date=past, assigned_to=self.other)
+        self.general = Task.objects.create(title='General', project=self.project,
+                                           created_by=self.teacher, status='OPEN')
+
+    def test_alumno_no_ve_tareas_asignadas_a_otros_del_mismo_proyecto(self):
+        resp = self.client_for(self.student).get(f'/api/v1/tasks/?project={self.project.pk}')
+        titles = {t['title'] for t in resp.data['results']}
+        self.assertIn('Mía', titles)
+        self.assertIn('General', titles)
+        self.assertNotIn('De otro', titles)
+        self.assertNotIn('De otro directa', titles)
+
+    def test_tarea_general_no_cuenta_como_pendiente_ni_vencida(self):
+        resp = self.client_for(self.student).get(f'/api/v1/tasks/?project={self.project.pk}')
+        by_title = {t['title']: t for t in resp.data['results']}
+        self.assertIsNone(by_title['General']['my_window'])
+        self.assertEqual(by_title['Mía']['my_window']['state'], 'OVERDUE')
+
+    def test_no_puede_entregar_ni_ver_entregas_de_tarea_ajena(self):
+        TaskSubmission.objects.create(task=self.theirs, submitted_by=self.other, notes='x')
+        c = self.client_for(self.student)
+        resp = c.post(f'/api/v1/tasks/{self.theirs.pk}/submissions/', {'notes': 'y'}, format='multipart')
+        self.assertEqual(resp.status_code, 403)
+        resp = c.get(f'/api/v1/tasks/{self.theirs.pk}/submissions/')
+        rows = resp.data['results'] if isinstance(resp.data, dict) else resp.data
+        self.assertEqual(len(rows), 0)
