@@ -7,7 +7,7 @@
   }
 
   @media (min-width: 1024px) {
-    padding: 2rem;
+    padding: 1.25rem 0.5rem;
   }
 
   .page-header {
@@ -940,16 +940,15 @@
 // Large desktop (1440px+)
 @media (min-width: 1440px) {
   .archivos-page {
-    max-width: 1400px;
-    margin: 0 auto;
+    max-width: none; // ocupa el ancho del contenedor principal
   }
 }
 
 // 4K and ultra-wide screens
 @media (min-width: 2560px) {
   .archivos-page {
-    max-width: 1800px;
-    padding: 3rem;
+    max-width: none;
+    padding: 2rem 0.5rem;
 
     .page-header h1 {
       font-size: 2.5rem;
