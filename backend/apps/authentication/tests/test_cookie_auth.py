@@ -80,6 +80,36 @@ class CookieAuthTests(TestCase):
         auth_response = self.client.get(reverse('auth_profile'))
         self.assertEqual(auth_response.status_code, status.HTTP_200_OK)
 
+    def test_token_refresh_rotates_refresh_cookie(self):
+        """El refresh nuevo (ROTATE_REFRESH_TOKENS) se guarda en la cookie.
+
+        Antes se descartaba y el navegador seguía con el refresh del login,
+        así que la sesión moría 24 h después de iniciar sesión.
+        """
+        refresh_name = settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH']
+        login = self.client.post(self.login_url, {
+            'username': 'testuser',
+            'password': 'StrongP@ssw0rd123!'
+        })
+        original_refresh = login.cookies[refresh_name].value
+
+        response = self.client.post(self.refresh_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(refresh_name, response.cookies)
+        rotated = response.cookies[refresh_name].value
+        self.assertTrue(rotated)
+        self.assertNotEqual(rotated, original_refresh)
+        self.assertTrue(response.cookies[refresh_name]['httponly'])
+        # Los tokens no viajan en el cuerpo
+        self.assertNotIn('refresh', response.data)
+        self.assertNotIn('access', response.data)
+
+        # Con la cookie rotada se puede volver a renovar
+        self.client.cookies.pop(settings.SIMPLE_JWT['AUTH_COOKIE'])
+        again = self.client.post(self.refresh_url)
+        self.assertEqual(again.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(reverse('auth_profile')).status_code, status.HTTP_200_OK)
+
     def test_logout_clears_cookies(self):
         """Test that logout deletes the cookies"""
         # Login
