@@ -232,12 +232,10 @@
   }
 }
 
+// El header es `position: sticky` (ocupa su lugar en el flujo), así que este
+// espaciador solo agregaba 64 px vacíos arriba de cada página.
 .header-spacer {
-  height: $header-height;
-
-  @media (max-width: $breakpoint-xs) {
-    height: 3.5rem;
-  }
+  display: none;
 }
 
 .notifications-dropdown {
@@ -1148,6 +1146,39 @@
           }
         }
       }
+    }
+  }
+}
+// En pantallas sin sidebar fija, el botón ☰ (fijo arriba a la izquierda)
+// tapaba el título de la página. Se deja espacio para él.
+@media (max-width: $breakpoint-lg) {
+  .main-header {
+    padding-left: calc(#{$spacing-4} + 3rem + #{$spacing-3});
+    padding-right: $spacing-3;
+    gap: $spacing-2;
+
+    // Este botón no tiene acción (MainLayout no le pasa onToggleSidebar);
+    // el menú móvil se abre con el botón naranja de la barra lateral.
+    .sidebar-toggle {
+      display: none;
+    }
+
+    // El título se recorta con "…" para que los botones de la derecha
+    // (tema, notificaciones, perfil) nunca se salgan de la pantalla.
+    .header-left {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .header-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 1.1rem;
+    }
+
+    .header-right {
+      flex-shrink: 0;
     }
   }
 }
