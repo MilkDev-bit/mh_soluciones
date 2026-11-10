@@ -1,0 +1,33 @@
+// ============================================================================
+// Ancho fluido para todas las páginas
+// ----------------------------------------------------------------------------
+// Antes cada página tenía su propio tope de ancho (800, 900, 1000, 1200, 1280,
+// 1400, 1600 px) y `margin: 0 auto`. Como `.content-container` es flex en
+// columna, el margen automático además impedía que la página se estirara:
+// Notificaciones y Actividad quedaban en ~900 px aunque hubiera 1660 px
+// disponibles. Aquí se unifica: toda página ocupa el ancho del contenedor
+// principal, con márgenes que crecen o se reducen según la pantalla.
+// ============================================================================
+
+// (El relleno y ancho máximo de .content-container están en layouts/MainLayout.scss)
+.content-container {
+  // La raíz de cada página
+  > * {
+    width: 100%;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: clamp(0rem, 0.6vw, 0.75rem) !important;
+    padding-right: clamp(0rem, 0.6vw, 0.75rem) !important;
+    padding-top: clamp(0rem, 0.5vw, 0.5rem) !important;
+    min-height: 0;
+  }
+
+  // Contenedores internos que repetían el tope de ancho
+  .profile-container,
+  .page-container {
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}

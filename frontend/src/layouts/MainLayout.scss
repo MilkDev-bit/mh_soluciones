@@ -188,23 +188,16 @@
 }
 
 .content-container {
-  // Antes: máximo 80rem (1280 px) y 2rem a cada lado → en pantallas Full HD
-  // quedaban franjas vacías grandes. Ahora usa casi todo el ancho disponible.
-  padding: 0 $spacing-5 $spacing-6;
-  max-width: 1760px;
+  // Márgenes proporcionales a la pantalla: ~12 px en móvil, hasta ~32 px en
+  // monitores grandes. El ancho de cada página se controla en
+  // assets/styles/_page-layout.scss.
+  padding: clamp(0.75rem, 1.4vw, 1.5rem) clamp(0.75rem, 1.6vw, 2rem) clamp(1rem, 2vw, 2rem);
+  max-width: 2200px;
   margin: 0 auto;
   width: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
-
-  @media (max-width: $breakpoint-md) {
-    padding: $spacing-5;
-  }
-
-  @media (max-width: $breakpoint-sm) {
-    padding: $spacing-4;
-  }
 }
 
 .mobile-menu-toggle {
