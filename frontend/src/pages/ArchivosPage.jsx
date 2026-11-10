@@ -1,635 +1,368 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  FiFile,
-  FiUpload,
-  FiDownload,
-  FiTrash2,
-  FiSearch,
-  FiGrid,
-  FiList,
-  FiCheckCircle,
-  FiClock,
-  FiAlertCircle,
-  FiExternalLink,
-  FiFolder,
-  FiChevronRight,
-  FiArrowLeft
+  FiFile, FiUpload, FiDownload, FiTrash2, FiSearch, FiGrid, FiList, FiCheckCircle, FiClock,
+  FiAlertCircle, FiExternalLink, FiFolder, FiChevronRight, FiArrowLeft, FiUser, FiBriefcase, FiX,
 } from 'react-icons/fi';
 import { useDropzone } from 'react-dropzone';
-import { getAllDocuments, uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
-import { getProjects } from '../services/projectService';
-import { handleViewFile, forceDownloadFile, downloadFilesAsZip } from '../utils/fileUtils';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import api from '../services/api';
+import { uploadDocument, deleteDocument, getFoldersForProject } from '../services/documentService';
+import { handleViewFile } from '../utils/fileUtils';
 import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
 import PdfThumbnail from '../components/common/PdfThumbnail';
 import './ArchivosPage.scss';
 
+/**
+ * Centro de Archivos.
+ *
+ * Antes: descargaba hasta 1000 documentos de golpe y filtraba en el navegador
+ * (con más de 1000, los demás no aparecían); las carpetas salían de la API de
+ * Google Drive en cada clic y solo para un proyecto; el ZIP solo existía para
+ * 6 carpetas fijas y omitía los archivos guardados solo en Drive.
+ *
+ * Ahora:
+ *  - Navegación por carpetas: Proyectos › Carpeta (tarea) › Persona, con
+ *    número de archivos, tamaño y última subida. Se calcula en el servidor
+ *    sin consultar Drive (/documents/folder-summary/).
+ *  - Búsqueda, tipo y fechas se aplican en el servidor, con paginación real.
+ *  - "Descargar carpeta" baja TODO lo que estás viendo (con los filtros) como
+ *    un ZIP organizado en subcarpetas, generado en streaming por el servidor.
+ */
+
+const PAGE_SIZE = 60;
+
+const DATE_RANGES = {
+  week: 7, month: 30, '3months': 90, '6months': 182, year: 365,
+};
+
+const localISO = (date) => format(date, 'yyyy-MM-dd');
+
+const formatearTamano = (bytes) => {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), units.length - 1);
+  return `${Math.round((bytes / Math.pow(k, i)) * 10) / 10} ${units[i]}`;
+};
+
+const formatearFecha = (iso) => {
+  if (!iso) return '';
+  try { return format(parseISO(iso), 'dd MMM yyyy', { locale: es }); } catch { return ''; }
+};
+
+const iconoArchivo = (tipo = '') => {
+  if (tipo.startsWith('image/')) return '🖼️';
+  if (tipo.includes('pdf')) return '📄';
+  if (tipo.includes('word')) return '📝';
+  if (tipo.includes('excel') || tipo.includes('spreadsheet')) return '📊';
+  if (tipo.includes('powerpoint') || tipo.includes('presentation')) return '📊';
+  if (tipo.includes('zip') || tipo.includes('rar')) return '📦';
+  if (tipo.startsWith('video/')) return '🎬';
+  return '📁';
+};
+
+const EstadoDrive = ({ estado }) => {
+  switch (estado) {
+    case 'COMPLETE': return <span className="estado-badge completo"><FiCheckCircle /> Sincronizado</span>;
+    case 'UPLOADING': return <span className="estado-badge subiendo"><FiClock /> Subiendo...</span>;
+    case 'FAILED': return <span className="estado-badge fallido"><FiAlertCircle /> Falló</span>;
+    default: return <span className="estado-badge pendiente"><FiClock /> Pendiente</span>;
+  }
+};
+
 const ArchivosPage = () => {
   const { user: currentUser } = useAuth();
-  const [archivos, setArchivos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [vistaTipo, setVistaTipo] = useState('grid'); // 'grid' o 'list'
-  const [filtroTipo, setFiltroTipo] = useState(FILTER_TYPES.ALL);
-  const [filtroCarpeta, setFiltroCarpeta] = useState('ALL'); // Changed to use string IDs
+  const isSuperadmin = currentUser?.role === 'SUPERADMIN';
+
+  // Ruta de navegación: proyecto › carpeta › persona
+  const [ruta, setRuta] = useState({ project: null, folder: null, person: null });
+
+  // Filtros (se aplican en el servidor)
   const [busqueda, setBusqueda] = useState('');
-  const [subiendo, setSubiendo] = useState(false);
-  const [error, setError] = useState(null);
-  const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
-  const [proyectos, setProyectos] = useState([]);
-  const [carpetasDrive, setCarpetasDrive] = useState([]); // Carpetas del nivel actual
-  const [carpetaStack, setCarpetaStack] = useState([]); // Pila de navegación [{id, name}]
-  const [cargandoCarpetas, setCargandoCarpetas] = useState(false);
-  const [filtroFecha, setFiltroFecha] = useState('all'); // 'all', 'week', 'month', '3months', '6months', 'year', 'custom'
+  const [busquedaAplicada, setBusquedaAplicada] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState(FILTER_TYPES.ALL);
+  const [filtroFecha, setFiltroFecha] = useState('all');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
-  const [errorFecha, setErrorFecha] = useState('');
-  const [imageErrors, setImageErrors] = useState({});
-  const [visibleCount, setVisibleCount] = useState(50);
-  const debounceTimer = useRef(null);
-  const isFirstLoad = useRef(true);
 
-  // Resetea el conteo de elementos visibles cuando cambian los filtros
+  const [vistaTipo, setVistaTipo] = useState('grid');
+  const [carpetas, setCarpetas] = useState({ level: 'projects', items: [] });
+  const [cargandoCarpetas, setCargandoCarpetas] = useState(true);
+  const [archivos, setArchivos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pagina, setPagina] = useState(1);
+  const [hayMas, setHayMas] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [error, setError] = useState(null);
+  const [descargando, setDescargando] = useState(false);
+
+  // Subida (solo SUPERADMIN): carpeta de Drive destino opcional
+  const [subiendo, setSubiendo] = useState(false);
+  const [carpetasDrive, setCarpetasDrive] = useState([]);
+  const [carpetaDriveDestino, setCarpetaDriveDestino] = useState('');
+
+  // Búsqueda con debounce de 350 ms
   useEffect(() => {
-    setVisibleCount(50);
-  }, [busqueda, filtroTipo, filtroCarpeta, filtroFecha, fechaDesde, fechaHasta, proyectoSeleccionado]);
+    const t = setTimeout(() => setBusquedaAplicada(busqueda.trim()), 350);
+    return () => clearTimeout(t);
+  }, [busqueda]);
 
-  // Helper para calcular fechas de rangos predefinidos
-  const calcularFechaDesde = (rangoTipo) => {
-    let hoy;
-    switch (rangoTipo) {
-      case 'week':
-        hoy = new Date();
-        hoy.setDate(hoy.getDate() - 7);
-        hoy.setHours(0, 0, 0, 0);
-        return hoy;
-      case 'month':
-        hoy = new Date();
-        hoy.setMonth(hoy.getMonth() - 1);
-        hoy.setHours(0, 0, 0, 0);
-        return hoy;
-      case '3months':
-        hoy = new Date();
-        hoy.setMonth(hoy.getMonth() - 3);
-        hoy.setHours(0, 0, 0, 0);
-        return hoy;
-      case '6months':
-        hoy = new Date();
-        hoy.setMonth(hoy.getMonth() - 6);
-        hoy.setHours(0, 0, 0, 0);
-        return hoy;
-      case 'year':
-        hoy = new Date();
-        hoy.setFullYear(hoy.getFullYear() - 1);
-        hoy.setHours(0, 0, 0, 0);
-        return hoy;
-      default:
-        return null;
-    }
-  };
+  const errorFecha = filtroFecha === 'custom' && fechaDesde && fechaHasta && fechaDesde > fechaHasta
+    ? 'La fecha "desde" no puede ser posterior a "hasta"'
+    : '';
 
-  // Función para manejar cambios en el filtro de fecha
-  const handleFiltroFechaChange = (value) => {
-    setFiltroFecha(value);
-    setErrorFecha('');
-
-    // Reset custom dates when switching to predefined range
-    if (value !== 'custom') {
-      setFechaDesde('');
-      setFechaHasta('');
-    }
-  };
-
-  // Función para validar rango de fechas personalizadas
-  const validarFechasPersonalizadas = useCallback(() => {
-    if (filtroFecha === 'custom' && fechaDesde && fechaHasta) {
-      const desde = new Date(fechaDesde);
-      const hasta = new Date(fechaHasta);
-
-      if (desde > hasta) {
-        setErrorFecha('La fecha desde no puede ser posterior a la fecha hasta');
-        return false;
+  /** Parámetros comunes a carpetas, archivos y ZIP. */
+  const buildParams = useCallback(() => {
+    const params = {};
+    if (ruta.project) params.project = ruta.project.id;
+    if (ruta.folder) params.folder = ruta.folder;
+    if (ruta.person) params.uploaded_by = ruta.person.id;
+    if (busquedaAplicada) params.search = busquedaAplicada;
+    if (filtroTipo !== FILTER_TYPES.ALL) params.folder_type = filtroTipo;
+    if (filtroFecha === 'custom') {
+      if (!errorFecha) {
+        if (fechaDesde) params.date_from = fechaDesde;
+        if (fechaHasta) params.date_to = fechaHasta;
       }
+    } else if (DATE_RANGES[filtroFecha]) {
+      const d = new Date();
+      d.setDate(d.getDate() - DATE_RANGES[filtroFecha]);
+      params.date_from = localISO(d);
     }
-    setErrorFecha('');
-    return true;
-  }, [filtroFecha, fechaDesde, fechaHasta]);
+    return params;
+  }, [ruta, busquedaAplicada, filtroTipo, filtroFecha, fechaDesde, fechaHasta, errorFecha]);
 
-  const cargarProyectos = async () => {
-    try {
-      const data = await getProjects();
-      // Handle both array and paginated response
-      const proyectosList = Array.isArray(data) ? data : (data.results || []);
-      setProyectos(proyectosList);
-    } catch (error) {
-      console.error('Error cargando proyectos:', error);
-      toast.error('Error al cargar proyectos');
-    }
-  };
-
-  const cargarCarpetasDrive = useCallback(async (projectId, parentFolderId = null) => {
-    if (!projectId) {
-      setCarpetasDrive([]);
-      setCarpetaStack([]);
-      setFiltroCarpeta('ALL');
-      return;
-    }
-
-    try {
-      setCargandoCarpetas(true);
-      const folders = await getFoldersForProject(projectId, parentFolderId);
-      setCarpetasDrive(folders);
-    } catch (error) {
-      console.error('Error cargando carpetas:', error);
-
-      if (error.statusCode === 403) {
-        toast.error('No tiene permisos para ver las carpetas de este proyecto');
-      } else if (error.type === 'refresh_error') {
-        toast.error('Error de autenticación con Google Drive. Contacte al administrador.');
-      } else if (error.type === 'permission_error') {
-        toast.error('Sin permisos para acceder a Google Drive. Contacte al administrador.');
-      } else {
-        toast.error('Error al cargar carpetas del proyecto');
-      }
-      setCarpetasDrive([]);
-    } finally {
+  // Carpetas del nivel actual (no aplica al nivel de persona: ahí solo hay archivos)
+  useEffect(() => {
+    if (ruta.person) {
+      setCarpetas({ level: 'files', items: [] });
       setCargandoCarpetas(false);
+      return undefined;
     }
-  }, []);
+    const controller = new AbortController();
+    setCargandoCarpetas(true);
+    api.get('/documents/folder-summary/', { params: buildParams(), signal: controller.signal })
+      .then(({ data }) => setCarpetas(data))
+      .catch((err) => {
+        if (err.name !== 'CanceledError') toast.error('No se pudieron cargar las carpetas');
+      })
+      .finally(() => setCargandoCarpetas(false));
+    return () => controller.abort();
+  }, [buildParams, ruta.person]);
 
-  const cargarArchivos = useCallback(async () => {
+  // Archivos: primera página cada vez que cambian ruta o filtros
+  const archivosRequest = useRef(null);
+  const cargarArchivos = useCallback(async (page = 1) => {
+    archivosRequest.current?.abort();
+    const controller = new AbortController();
+    archivosRequest.current = controller;
+    page === 1 ? setCargando(true) : setCargandoMas(true);
+    setError(null);
     try {
-      setCargando(true);
-      setError(null);
-
-      // Build query params based on folder_type mapping
-      const params = { page_size: 1000 };
-
-      // Apply type filter if selected (IMAGENES, DOCUMENTOS, etc.)
-      if (filtroTipo !== FILTER_TYPES.ALL) {
-        params.folder_type = filtroTipo;
-      }
-
-      // Filter by selected project
-      if (proyectoSeleccionado) {
-        params.project = proyectoSeleccionado;
-      }
-
-      // Filter by selected Drive folder (send folder ID to backend)
-      // Only send if it's a real Drive folder ID, not a static filter
-      if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_')) {
-        params.drive_folder_id = filtroCarpeta;
-      }
-
-      // For static folder filters, send folder_name so backend can filter by
-      // drive_parent_folder_name OR task title (icontains), covering all upload paths
-      if (filtroCarpeta && filtroCarpeta.startsWith('STATIC_')) {
-        params.folder_name = filtroCarpeta.replace('STATIC_', '');
-      }
-
-      const documentos = await getAllDocuments(params);
-      setArchivos(documentos);
-    } catch (error) {
-      console.error('Error cargando archivos:', error);
-      setError('No se pudieron cargar los archivos. Por favor, intenta de nuevo.');
-      toast.error('Error al cargar archivos');
+      const { data } = await api.get('/documents/', {
+        params: { ...buildParams(), page, page_size: PAGE_SIZE },
+        signal: controller.signal,
+      });
+      const results = Array.isArray(data) ? data : (data.results || []);
+      setArchivos((prev) => (page === 1 ? results : [...prev, ...results]));
+      setTotal(Array.isArray(data) ? results.length : (data.count ?? results.length));
+      setHayMas(Boolean(data.next));
+      setPagina(page);
+    } catch (err) {
+      if (err.name === 'CanceledError') return;
+      setError('No se pudieron cargar los archivos. Intenta de nuevo.');
     } finally {
-      setCargando(false);
+      if (archivosRequest.current === controller) {
+        setCargando(false);
+        setCargandoMas(false);
+      }
     }
-  }, [filtroTipo, proyectoSeleccionado, filtroCarpeta]);
+  }, [buildParams]);
 
+  useEffect(() => { cargarArchivos(1); }, [cargarArchivos]);
+
+  // Carpetas de Drive para elegir destino al subir (solo con proyecto)
   useEffect(() => {
-    cargarProyectos();
-  }, []);
+    setCarpetaDriveDestino('');
+    if (!isSuperadmin || !ruta.project) { setCarpetasDrive([]); return; }
+    getFoldersForProject(ruta.project.id)
+      .then((folders) => setCarpetasDrive((folders || []).filter((f) => !f.isProjectRoot)))
+      .catch(() => setCarpetasDrive([]));
+  }, [isSuperadmin, ruta.project]);
 
-  // Cuando cambia el proyecto: cargar carpetas y luego recargar archivos
-  // Se usa un handler explícito en el select para evitar el doble-fetch en cadena
-  const handleProyectoChange = useCallback(async (projectId) => {
-    setProyectoSeleccionado(projectId || null);
-    setFiltroCarpeta('ALL');
-    setCarpetaStack([]);
-    if (projectId) {
-      await cargarCarpetasDrive(projectId);
-    } else {
-      setCarpetasDrive([]);
-    }
-  }, [cargarCarpetasDrive]);
-
-  // Entrar a una subcarpeta: carga sus hijos y empuja al stack
-  const handleEntrarCarpeta = useCallback(async (carpeta) => {
-    setCarpetaStack(prev => [...prev, carpeta]);
-    setFiltroCarpeta(carpeta.id);
-    await cargarCarpetasDrive(proyectoSeleccionado, carpeta.id);
-  }, [cargarCarpetasDrive, proyectoSeleccionado]);
-
-  // Volver al nivel anterior del stack
-  const handleVolverCarpeta = useCallback(async (targetIndex) => {
-    // targetIndex === -1 => volver a raíz
-    const newStack = targetIndex >= 0 ? carpetaStack.slice(0, targetIndex + 1) : [];
-    setCarpetaStack(newStack);
-    if (newStack.length === 0) {
-      setFiltroCarpeta('ALL');
-      await cargarCarpetasDrive(proyectoSeleccionado);
-    } else {
-      const parent = newStack[newStack.length - 1];
-      setFiltroCarpeta(parent.id);
-      await cargarCarpetasDrive(proyectoSeleccionado, parent.id);
-    }
-  }, [carpetaStack, cargarCarpetasDrive, proyectoSeleccionado]);
-
-  // Debounce: espera 300ms después del último cambio de filtro antes de llamar a la API
-  useEffect(() => {
-    if (isFirstLoad.current) {
-      isFirstLoad.current = false;
-      cargarArchivos();
+  // --- Navegación ---------------------------------------------------------
+  const entrar = (item) => {
+    if (item.kind === 'project' && item.id == null) {
+      toast('Estos archivos no pertenecen a ningún proyecto; búscalos por nombre.');
       return;
     }
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      cargarArchivos();
-    }, 300);
-    return () => clearTimeout(debounceTimer.current);
-  }, [cargarArchivos]);
+    if (item.kind === 'project') setRuta({ project: { id: item.id, name: item.name }, folder: null, person: null });
+    else if (item.kind === 'folder') setRuta((r) => ({ ...r, folder: item.name, person: null }));
+    else if (item.kind === 'person') setRuta((r) => ({ ...r, person: { id: item.id, name: item.name } }));
+  };
 
+  const irA = (nivel) => {
+    if (nivel === 'root') setRuta({ project: null, folder: null, person: null });
+    if (nivel === 'project') setRuta((r) => ({ ...r, folder: null, person: null }));
+    if (nivel === 'folder') setRuta((r) => ({ ...r, person: null }));
+  };
 
+  const atras = () => {
+    if (ruta.person) irA('folder');
+    else if (ruta.folder) irA('project');
+    else irA('root');
+  };
+
+  const nombreNivel = ruta.person?.name || ruta.folder || ruta.project?.name || 'Todos los proyectos';
+  const hayFiltros = Boolean(busquedaAplicada || filtroTipo !== FILTER_TYPES.ALL || filtroFecha !== 'all');
+
+  const limpiarFiltros = () => {
+    setBusqueda('');
+    setFiltroTipo(FILTER_TYPES.ALL);
+    setFiltroFecha('all');
+    setFechaDesde('');
+    setFechaHasta('');
+  };
+
+  // --- Descarga de carpeta completa --------------------------------------
+  const descargarZip = async () => {
+    if (!total) return;
+    if (currentUser?.role === 'CLIENT' && !ruta.project) {
+      toast.error('Entra a un proyecto para descargarlo.');
+      return;
+    }
+    if (total > 300 && !window.confirm(`Vas a descargar ${total} archivos en un ZIP. ¿Continuar?`)) return;
+    setDescargando(true);
+    try {
+      // Petición ligera antes de descargar: si la sesión expiró, el
+      // interceptor la renueva y la descarga no termina en un error 401.
+      await api.get('/documents/', { params: { ...buildParams(), page_size: 1 } });
+      const params = new URLSearchParams({ ...buildParams(), zip_name: nombreNivel });
+      const base = (api.defaults.baseURL || '/api/v1').replace(/\/$/, '');
+      const link = document.createElement('a');
+      link.href = `${base}/documents/download-zip/?${params.toString()}`;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('La descarga del ZIP comenzó. Los archivos grandes pueden tardar unos minutos.');
+    } catch {
+      toast.error('No se pudo iniciar la descarga.');
+    } finally {
+      setTimeout(() => setDescargando(false), 1500);
+    }
+  };
+
+  // --- Subida ---------------------------------------------------------------
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: async (archivosAceptados) => {
-      if (archivosAceptados.length === 0) return;
-
-      // Validate project is selected
-      if (!proyectoSeleccionado) {
-        toast.error('Por favor selecciona un proyecto primero');
-        return;
-      }
-
-      setSubiendo(true);
-      try {
-        // Get the selected folder name for display
-        // carpetaStack tiene la ruta de navegación actual; la última entrada es la carpeta activa
-        const carpetaActual = carpetaStack.length > 0 ? carpetaStack[carpetaStack.length - 1] : null;
-        const nombreCarpetaDestino = carpetaActual?.name || null;
-
-        // Upload each file
-        const promises = archivosAceptados.map(async (file) => {
-          const formData = new FormData();
-          formData.append('file', file);
-
-          // Determine folder_type for upload
-          // Use the type filter if it's not 'ALL', otherwise use default DOCUMENTS
-          const selectedFolderType = filtroTipo !== FILTER_TYPES.ALL
-            ? filtroTipo
-            : FILTER_TYPES.DOCUMENTS;
-          formData.append('folder_type', selectedFolderType);
-
-          // Add project ID (required)
-          formData.append('project', proyectoSeleccionado);
-
-          // Add target folder ID if a specific folder is selected
-          // Only send if it's not 'ALL' y no es un filtro estático
-          if (filtroCarpeta && filtroCarpeta !== 'ALL' && !filtroCarpeta.startsWith('STATIC_')) {
-            formData.append('target_folder_id', filtroCarpeta);
-          }
-
-          return uploadDocument(formData);
-        });
-
-        await Promise.all(promises);
-
-        // Show success message with folder destination
-        if (nombreCarpetaDestino) {
-          toast.success(
-            `${archivosAceptados.length} archivo(s) subido(s) correctamente a la carpeta "${nombreCarpetaDestino}"`
-          );
-        } else {
-          toast.success(
-            `${archivosAceptados.length} archivo(s) subido(s) correctamente`
-          );
-        }
-
-        // Recargar archivos después de la subida
-        await cargarArchivos();
-      } catch (error) {
-        console.error('Error subiendo archivos:', error);
-
-        // Show specific error message based on error type
-        let errorMessage = 'No se pudo subir el documento - Verifique acceso/estructura en Drive';
-
-        if (error.type === 'refresh_error') {
-          errorMessage = 'No se pudo subir el documento - Las credenciales de Google Drive han expirado. Contacte al administrador.';
-        } else if (error.type === 'permission_error') {
-          errorMessage = 'No se pudo subir el documento - Sin permisos para acceder a Google Drive. Contacte al administrador.';
-        } else if (error.type === 'folder_error') {
-          errorMessage = 'No se pudo subir el documento - Error al acceder a la carpeta del proyecto en Drive. Verifique la estructura.';
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-
-        toast.error(errorMessage);
-      } finally {
-        setSubiendo(false);
-      }
-    },
-    disabled: !proyectoSeleccionado,
-    maxSize: 900 * 1024 * 1024, // 900MB
+    disabled: !ruta.project || subiendo,
+    maxSize: 900 * 1024 * 1024,
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/zip': ['.zip'],
       'application/x-rar-compressed': ['.rar'],
       'image/*': ['.jpg', '.jpeg', '.png', '.gif'],
-      'text/plain': ['.txt']
-    }
+      'text/plain': ['.txt'],
+    },
+    onDrop: async (files) => {
+      if (!files.length || !ruta.project) return;
+      setSubiendo(true);
+      try {
+        await Promise.all(files.map((file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('folder_type', filtroTipo !== FILTER_TYPES.ALL ? filtroTipo : FILTER_TYPES.DOCUMENTS);
+          formData.append('project', ruta.project.id);
+          if (carpetaDriveDestino) formData.append('target_folder_id', carpetaDriveDestino);
+          return uploadDocument(formData);
+        }));
+        const destino = carpetasDrive.find((c) => c.id === carpetaDriveDestino)?.name;
+        toast.success(`${files.length} archivo(s) subido(s)${destino ? ` a "${destino}"` : ''}`);
+        cargarArchivos(1);
+      } catch (err) {
+        const porTipo = {
+          refresh_error: 'Las credenciales de Google Drive expiraron. Contacta al administrador.',
+          permission_error: 'Sin permisos para acceder a Google Drive. Contacta al administrador.',
+          folder_error: 'No se pudo acceder a la carpeta del proyecto en Drive.',
+        };
+        toast.error(porTipo[err.type] || err.message || 'No se pudo subir el archivo.');
+      } finally {
+        setSubiendo(false);
+      }
+    },
   });
 
-  const handleDeleteArchivo = async (archivoId) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
-      return;
-    }
-
+  const eliminar = async (archivo) => {
+    if (!window.confirm(`¿Eliminar "${archivo.name}"?`)) return;
     try {
-      await deleteDocument(archivoId);
-      toast.success('Archivo eliminado correctamente');
-      await cargarArchivos();
-    } catch (error) {
-      console.error('Error eliminando archivo:', error);
-      toast.error('Error al eliminar el archivo');
+      await deleteDocument(archivo.id);
+      toast.success('Archivo eliminado');
+      setArchivos((prev) => prev.filter((a) => a.id !== archivo.id));
+      setTotal((t) => Math.max(0, t - 1));
+    } catch {
+      toast.error('No se pudo eliminar el archivo');
     }
   };
 
-  const handleDownloadArchivo = async (archivo) => {
-    try {
-      await handleViewFile(archivo);
-    } catch (error) {
-      console.error('Error descargando archivo:', error);
-      toast.error('Error al procesar el archivo');
-    }
+  const abrir = async (archivo) => {
+    try { await handleViewFile(archivo); } catch { toast.error('No se pudo abrir el archivo'); }
   };
 
-  const formatearTamano = (bytes) => {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const tamaños = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + tamaños[i];
-  };
-
-  const obtenerIconoArchivo = (tipo) => {
-    if (!tipo) return '📁';
-    if (tipo.startsWith('image/')) return '🖼️';
-    if (tipo.includes('pdf')) return '📄';
-    if (tipo.includes('word')) return '📝';
-    if (tipo.includes('excel') || tipo.includes('spreadsheet')) return '📊';
-    if (tipo.includes('powerpoint') || tipo.includes('presentation')) return '📊';
-    if (tipo.includes('zip') || tipo.includes('rar')) return '📦';
-    return '📁';
-  };
-
-  const obtenerThumbnail = (archivo) => {
+  // --- Render -----------------------------------------------------------------
+  // Función (no componente): un componente declarado dentro del render se
+  // vuelve a montar en cada cambio de estado y volvería a descargar los PDFs.
+  const renderThumbnail = (archivo) => {
     const tipo = archivo.file_type || '';
-    const url = archivo.file_url || archivo.drive_file_url || '';
-
-    if (tipo.startsWith('image/') && url) {
-      if (imageErrors[archivo.id]) {
-        return <span className="icono-tipo-grande">{obtenerIconoArchivo(tipo)}</span>;
-      }
-      return (
-        <img
-          src={url}
-          alt={archivo.name}
-          className="archivo-thumbnail-img"
-          onError={() => setImageErrors(prev => ({ ...prev, [archivo.id]: true }))}
-        />
-      );
+    const url = archivo.file_url || '';
+    // Miniaturas solo en vista de cuadrícula; en lista basta el ícono
+    if (vistaTipo === 'grid' && url && tipo.startsWith('image/')) {
+      return <img src={url} alt="" loading="lazy" decoding="async" className="archivo-thumbnail-img" />;
     }
-
-    if (tipo.includes('pdf') && url) {
-      return (
-        <PdfThumbnail
-          url={url}
-          fileName={archivo.name}
-          fallbackIcon={obtenerIconoArchivo(tipo)}
-        />
-      );
+    if (vistaTipo === 'grid' && url && tipo.includes('pdf')) {
+      return <PdfThumbnail url={url} fileName={archivo.name} fallbackIcon={iconoArchivo(tipo)} />;
     }
-
-    return (
-      <span className="icono-tipo-grande">{obtenerIconoArchivo(tipo)}</span>
-    );
+    return <span className="icono-tipo-grande">{iconoArchivo(tipo)}</span>;
   };
 
-  const obtenerEstadoDrive = (estado) => {
-    switch (estado) {
-      case 'COMPLETE':
-        return <span className="estado-badge completo"><FiCheckCircle /> Sincronizado</span>;
-      case 'UPLOADING':
-        return <span className="estado-badge subiendo"><FiClock /> Subiendo...</span>;
-      case 'FAILED':
-        return <span className="estado-badge fallido"><FiAlertCircle /> Fallo</span>;
-      case 'PENDING':
-        return <span className="estado-badge pendiente"><FiClock /> Pendiente</span>;
-      default:
-        return <span className="estado-badge pendiente"><FiClock /> Pendiente</span>;
-    }
-  };
-
-  // Memoize the date limit calculation for better performance
-  const fechaLimiteCalculada = useMemo(() => {
-    if (filtroFecha === 'all' || filtroFecha === 'custom') {
-      return null;
-    }
-    return calcularFechaDesde(filtroFecha);
-  }, [filtroFecha]);
-
-  const archivosFiltrados = useMemo(() => {
-    // Preparar variables de filtrado fuera del loop para mejor rendimiento
-    const busquedaLower = busqueda.toLowerCase();
-    
-    let isStaticFolder = false;
-    let targetNameStatic = '';
-    
-    if (filtroCarpeta && filtroCarpeta.startsWith('STATIC_')) {
-      isStaticFolder = true;
-      targetNameStatic = (filtroCarpeta.replace('STATIC_', '') || '').normalize('NFC').toLowerCase();
-    }
-    
-    const normalizeStr = (str) => (str || '').normalize('NFC').toLowerCase();
-
-    return archivos.filter(archivo => {
-      // Búsqueda general
-      if (busquedaLower) {
-        const nombreArchivo = (archivo.name || '').toLowerCase();
-        const proyectoNombre = (archivo.project_info?.name || '').toLowerCase();
-        
-        if (!nombreArchivo.includes(busquedaLower) && !proyectoNombre.includes(busquedaLower)) {
-          return false;
-        }
-      }
-
-      // Filtro por tipo de carpeta
-      if (filtroTipo !== FILTER_TYPES.ALL) {
-        if (archivo.folder_type !== filtroTipo) {
-          return false;
-        }
-      }
-
-      // Filtro por carpeta de Drive seleccionada
-      if (filtroCarpeta && filtroCarpeta !== 'ALL') {
-        if (isStaticFolder) {
-          const driveParent = normalizeStr(archivo.drive_parent_folder_name);
-          const folderType = normalizeStr(archivo.folder_type);
-          const name = normalizeStr(archivo.name);
-          const taskName = normalizeStr(archivo.task_name);
-          
-          if (!driveParent.includes(targetNameStatic) && 
-              !folderType.includes(targetNameStatic) && 
-              !name.includes(targetNameStatic) && 
-              !taskName.includes(targetNameStatic)) {
-            return false;
-          }
-        } else {
-          // filtroCarpeta es un ID de carpeta de Drive — filtrar por carpeta padre directa
-          if (archivo.drive_parent_folder_id !== filtroCarpeta) {
-            return false;
-          }
-        }
-      }
-
-      // Filtro por fecha
-      if (filtroFecha !== 'all' && archivo.created_at) {
-        const fechaArchivo = new Date(archivo.created_at);
-
-        if (filtroFecha === 'custom') {
-          // No aplicar si hay error de validación
-          if (!errorFecha) {
-            if (fechaDesde) {
-              const fechaDesdeInicio = new Date(fechaDesde);
-              fechaDesdeInicio.setHours(0, 0, 0, 0);
-              if (fechaArchivo < fechaDesdeInicio) return false;
-            }
-            if (fechaHasta) {
-              const fechaHastaFin = new Date(fechaHasta);
-              fechaHastaFin.setHours(23, 59, 59, 999);
-              if (fechaArchivo > fechaHastaFin) return false;
-            }
-          }
-        } else {
-          if (fechaLimiteCalculada && fechaArchivo < fechaLimiteCalculada) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    });
-  }, [archivos, busqueda, filtroTipo, filtroCarpeta, filtroFecha, fechaDesde, fechaHasta, errorFecha, fechaLimiteCalculada]);
-
-  const archivosMostrados = archivosFiltrados.slice(0, visibleCount);
-
-  // Carpetas del nivel actual (carpetasDrive ya viene filtrada del backend)
-  const carpetasHijas = useMemo(() => {
-    if (!proyectoSeleccionado) return [];
-    // Excluir la carpeta raíz del proyecto (isProjectRoot) - no es navegable como subfolder
-    return carpetasDrive.filter(c => !c.isProjectRoot);
-  }, [carpetasDrive, proyectoSeleccionado]);
-
-  // Breadcrumb usa carpetaStack directamente
-  const breadcrumb = carpetaStack;
+  const iconoCarpeta = { project: FiBriefcase, folder: FiFolder, person: FiUser };
 
   return (
     <div className="archivos-page">
       <div className="page-header">
         <div>
           <h1>Centro de Archivos</h1>
-          <p className="page-subtitle">
-            Gestiona y organiza todos tus documentos con sincronización a Google Drive
-          </p>
+          <p className="page-subtitle">Navega por proyecto, carpeta y persona; filtra y descarga carpetas completas.</p>
         </div>
       </div>
 
       <div className="archivos-toolbar">
         <div className="toolbar-izquierda">
-          <div className="proyecto-filter-container">
-            <label htmlFor="proyecto-filter">Proyecto:</label>
-            <select
-              id="proyecto-filter"
-              value={proyectoSeleccionado || ''}
-              onChange={(e) => handleProyectoChange(e.target.value)}
-              className="proyecto-select"
-            >
-              <option value="">Todos los proyectos</option>
-              {proyectos.map(proyecto => (
-                <option key={proyecto.id} value={proyecto.id}>
-                  {proyecto.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="busqueda-container">
             <FiSearch />
             <input
               type="text"
-              placeholder="Buscar archivos..."
+              placeholder="Buscar por archivo, tarea o persona..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
-          <select
-            className="filtro-tipo"
-            value={filtroTipo}
-            onChange={(e) => setFiltroTipo(e.target.value)}
-          >
+          <select className="filtro-tipo" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
             <option value={FILTER_TYPES.ALL}>Todos los tipos</option>
             <option value={FILTER_TYPES.IMAGES}>Imágenes</option>
             <option value={FILTER_TYPES.DOCUMENTS}>Documentos</option>
             <option value={FILTER_TYPES.VIDEOS}>Videos</option>
             <option value={FILTER_TYPES.FILES}>Archivos</option>
           </select>
-          <select
-            className="filtro-carpeta"
-            value={filtroCarpeta}
-            onChange={async (e) => {
-              const val = e.target.value;
-              if (val === 'ALL') {
-                await handleVolverCarpeta(-1);
-              } else {
-                // Buscar la carpeta en el nivel actual y entrar
-                const carpeta = carpetasDrive.find(c => c.id === val);
-                if (carpeta) await handleEntrarCarpeta(carpeta);
-              }
-            }}
-          >
-            <option value="ALL">Todas las carpetas</option>
-
-            {!proyectoSeleccionado && [
-              'Matriz de cumplimiento SH',
-              'QR WEEKLY',
-              'PIRAMIDE SH',
-              'Campañas',
-              'KPI',
-              'Platicas de seguridad'
-            ].map(nombre => (
-              <option key={`STATIC_${nombre}`} value={`STATIC_${nombre}`}>{nombre}</option>
-            ))}
-
-            {proyectoSeleccionado && carpetasDrive.length === 0 && !cargandoCarpetas && (
-              <option value="ALL" disabled>Sin subcarpetas</option>
-            )}
-            {proyectoSeleccionado && cargandoCarpetas && (
-              <option value="ALL" disabled>Cargando carpetas...</option>
-            )}
-            {proyectoSeleccionado && carpetasDrive.filter(c => !c.isProjectRoot).map(carpeta => (
-              <option key={carpeta.id} value={carpeta.id}>
-                📁 {carpeta.name}
-              </option>
-            ))}
-          </select>
           <div className="fecha-filter-container">
-            <select
-              className="fecha-rango-select"
-              value={filtroFecha}
-              onChange={(e) => handleFiltroFechaChange(e.target.value)}
-            >
+            <select className="fecha-rango-select" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)}>
               <option value="all">Todas las fechas</option>
               <option value="week">Última semana</option>
               <option value="month">Último mes</option>
@@ -638,234 +371,179 @@ const ArchivosPage = () => {
               <option value="year">Último año</option>
               <option value="custom">Personalizado</option>
             </select>
-            <div className={`fecha-personalizada ${filtroFecha !== 'custom' ? 'disabled' : ''}`}>
-              <input
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-                disabled={filtroFecha !== 'custom'}
-                aria-label="Fecha desde"
-              />
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-                disabled={filtroFecha !== 'custom'}
-                aria-label="Fecha hasta"
-              />
-            </div>
-            {errorFecha && (
-              <span className="error-fecha">{errorFecha}</span>
+            {filtroFecha === 'custom' && (
+              <div className="fecha-personalizada">
+                <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} aria-label="Fecha desde" />
+                <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} aria-label="Fecha hasta" />
+              </div>
             )}
+            {errorFecha && <span className="error-fecha">{errorFecha}</span>}
           </div>
+          {hayFiltros && (
+            <button className="btn-limpiar-filtros" onClick={limpiarFiltros}><FiX /> Limpiar filtros</button>
+          )}
         </div>
         <div className="toolbar-derecha">
           <div className="vista-toggle">
-            <button
-              className={vistaTipo === 'grid' ? 'activo' : ''}
-              onClick={() => setVistaTipo('grid')}
-            >
-              <FiGrid />
-            </button>
-            <button
-              className={vistaTipo === 'list' ? 'activo' : ''}
-              onClick={() => setVistaTipo('list')}
-            >
-              <FiList />
-            </button>
+            <button className={vistaTipo === 'grid' ? 'activo' : ''} onClick={() => setVistaTipo('grid')} title="Cuadrícula"><FiGrid /></button>
+            <button className={vistaTipo === 'list' ? 'activo' : ''} onClick={() => setVistaTipo('list')} title="Lista"><FiList /></button>
           </div>
         </div>
       </div>
 
-      {currentUser?.role === 'SUPERADMIN' && !proyectoSeleccionado && (
-        <div className="warning-banner">
-          <FiAlertCircle />
-          <span>Selecciona un proyecto para poder subir archivos</span>
-        </div>
-      )}
-
-      {currentUser?.role === 'SUPERADMIN' && (
-      <div className="zona-subida" {...getRootProps()}>
-        <input {...getInputProps()} />
-        <div className={`zona-contenido ${isDragActive ? 'arrastrando' : ''} ${!proyectoSeleccionado ? 'zona-deshabilitada' : ''}`}>
-          <FiUpload size={48} />
-          {subiendo ? (
-            <p>Subiendo archivos...</p>
-          ) : !proyectoSeleccionado ? (
-            <>
-              <p>Selecciona un proyecto primero</p>
-              <p className="zona-ayuda">Debes elegir un proyecto antes de subir archivos</p>
-            </>
-          ) : isDragActive ? (
-            <p>Suelta los archivos aquí...</p>
-          ) : (
-            <>
-              <p>Arrastra archivos aquí o haz clic para seleccionar</p>
-              <p className="zona-ayuda">Los archivos se subirán automáticamente a Google Drive</p>
-            </>
+      {/* Ruta + descarga de la carpeta actual */}
+      <div className="explorador-barra">
+        <div className="carpeta-breadcrumb">
+          {ruta.project && (
+            <button className="breadcrumb-back" onClick={atras} title="Volver"><FiArrowLeft /></button>
+          )}
+          <button className="breadcrumb-item" onClick={() => irA('root')}>Todos los proyectos</button>
+          {ruta.project && (
+            <span className="breadcrumb-trail"><FiChevronRight />
+              {ruta.folder ? <button className="breadcrumb-item" onClick={() => irA('project')}>{ruta.project.name}</button>
+                : <span className="breadcrumb-current">{ruta.project.name}</span>}
+            </span>
+          )}
+          {ruta.folder && (
+            <span className="breadcrumb-trail"><FiChevronRight />
+              {ruta.person ? <button className="breadcrumb-item" onClick={() => irA('folder')}>{ruta.folder}</button>
+                : <span className="breadcrumb-current">{ruta.folder}</span>}
+            </span>
+          )}
+          {ruta.person && (
+            <span className="breadcrumb-trail"><FiChevronRight /><span className="breadcrumb-current">{ruta.person.name}</span></span>
           )}
         </div>
+        <button
+          className="btn-descargar-carpeta"
+          onClick={descargarZip}
+          disabled={!total || descargando || Boolean(errorFecha)}
+          title={hayFiltros ? 'Descarga solo los archivos que coinciden con los filtros' : 'Descarga todo el contenido de esta carpeta'}
+        >
+          <FiDownload /> {descargando ? 'Preparando...' : `Descargar ${ruta.project ? 'carpeta' : 'todo'} (${total})`}
+        </button>
       </div>
-      )}
 
-      {currentUser?.role !== 'CLIENT' && filtroCarpeta.startsWith('STATIC_') && archivosFiltrados.length > 0 && !cargando && !error && (
-        <div style={{ padding: '0 2rem 1rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <button 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem', background: 'var(--primary-color, #3b82f6)', color: 'white', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-            onClick={async () => {
-              const zipName = `${filtroCarpeta.replace('STATIC_', '')}.zip`;
-              const idDescarga = toast.loading(`Preparando ZIP con ${archivosFiltrados.length} archivos...`);
-              
-              try {
-                await downloadFilesAsZip(archivosFiltrados, zipName);
-                toast.success('ZIP descargado correctamente', { id: idDescarga });
-              } catch (error) {
-                toast.error('Error al generar el ZIP: ' + error.message, { id: idDescarga });
-              }
-            }}
-          >
-            <FiDownload /> Descargar como ZIP ({archivosFiltrados.length})
-          </button>
+      {isSuperadmin && (
+        <div className="zona-subida-wrapper">
+          {ruta.project && carpetasDrive.length > 0 && (
+            <label className="destino-drive">
+              Subir a carpeta de Drive:
+              <select value={carpetaDriveDestino} onChange={(e) => setCarpetaDriveDestino(e.target.value)}>
+                <option value="">Automática (Año / Proyecto / Usuario)</option>
+                {carpetasDrive.map((c) => <option key={c.id} value={c.id}>📁 {c.name}</option>)}
+              </select>
+            </label>
+          )}
+          <div className="zona-subida" {...getRootProps()}>
+            <input {...getInputProps()} />
+            <div className={`zona-contenido ${isDragActive ? 'arrastrando' : ''} ${!ruta.project ? 'zona-deshabilitada' : ''}`}>
+              <FiUpload size={36} />
+              {subiendo ? <p>Subiendo archivos...</p>
+                : !ruta.project ? <p>Entra a un proyecto para subir archivos</p>
+                  : isDragActive ? <p>Suelta los archivos aquí...</p>
+                    : <p>Arrastra archivos aquí o haz clic para seleccionar</p>}
+            </div>
+          </div>
         </div>
       )}
 
-      {cargando ? (
-        <div className="cargando">
-          <div className="spinner"></div>
-          <p>Cargando archivos...</p>
+      {/* Carpetas del nivel actual */}
+      {!ruta.person && (
+        <div className="carpetas-seccion">
+          {cargandoCarpetas ? (
+            <div className="carpetas-cargando">Cargando carpetas...</div>
+          ) : carpetas.items.length > 0 && (
+            <div className="carpetas-grid">
+              {carpetas.items.map((item) => {
+                const Icon = iconoCarpeta[item.kind] || FiFolder;
+                return (
+                  <div
+                    key={`${item.kind}-${item.id}`}
+                    className="carpeta-card"
+                    onClick={() => entrar(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && entrar(item)}
+                    title={item.name}
+                  >
+                    <div className="carpeta-card-icono"><Icon /></div>
+                    <div className="carpeta-card-info">
+                      <span className="carpeta-card-nombre">{item.name}</span>
+                      <span className="carpeta-card-meta">
+                        {item.count} archivo{item.count === 1 ? '' : 's'} · {formatearTamano(item.size)}
+                        {item.last_upload && ` · ${formatearFecha(item.last_upload)}`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      ) : error ? (
+      )}
+
+      {/* Archivos */}
+      <div className="archivos-resumen">
+        {cargando ? 'Cargando archivos...' : `${total} archivo${total === 1 ? '' : 's'} en ${nombreNivel}${hayFiltros ? ' (filtrados)' : ''}`}
+      </div>
+
+      {error ? (
         <div className="error-container">
           <FiFile size={48} />
           <p>{error}</p>
-          <button onClick={cargarArchivos} className="btn-reintentar">
-            Reintentar
-          </button>
+          <button onClick={() => cargarArchivos(1)} className="btn-reintentar">Reintentar</button>
+        </div>
+      ) : cargando ? (
+        <div className="cargando"><div className="spinner"></div></div>
+      ) : archivos.length === 0 ? (
+        <div className="sin-archivos">
+          <FiFile size={48} />
+          <p>{hayFiltros ? 'Ningún archivo coincide con los filtros.' : 'No hay archivos aquí.'}</p>
         </div>
       ) : (
-        <>
-          {/* Breadcrumb de navegación de carpetas */}
-          {proyectoSeleccionado && breadcrumb.length > 0 && (
-            <div className="carpeta-breadcrumb">
-              <button
-                className="breadcrumb-back"
-                onClick={() => handleVolverCarpeta(breadcrumb.length - 2)}
-                title="Volver atrás"
-              >
-                <FiArrowLeft />
-              </button>
-              <button className="breadcrumb-item" onClick={() => handleVolverCarpeta(-1)}>
-                Inicio
-              </button>
-              {breadcrumb.map((item, idx) => (
-                <span key={item.id} className="breadcrumb-trail">
-                  <FiChevronRight />
-                  {idx < breadcrumb.length - 1 ? (
-                    <button className="breadcrumb-item" onClick={() => handleVolverCarpeta(idx)}>
-                      {item.name}
-                    </button>
-                  ) : (
-                    <span className="breadcrumb-current">{item.name}</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Subcarpetas de la carpeta actual */}
-          {carpetasHijas.length > 0 && (
-            <div className="carpetas-seccion">
-              <div className="carpetas-grid">
-                {carpetasHijas.map(carpeta => (
-                  <div
-                    key={carpeta.id}
-                    className="carpeta-card"
-                    onClick={() => handleEntrarCarpeta(carpeta)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && handleEntrarCarpeta(carpeta)}
-                  >
-                    <div className="carpeta-card-icono">
-                      <FiFolder />
-                    </div>
-                    <span className="carpeta-card-nombre">{carpeta.name}</span>
-                  </div>
-                ))}
+        <div className={`archivos-contenedor ${vistaTipo}`}>
+          {archivos.map((archivo) => (
+            <div key={archivo.id} className="archivo-item">
+              <div className="archivo-thumbnail" onClick={() => abrir(archivo)}>
+                {renderThumbnail(archivo)}
               </div>
-            </div>
-          )}
-
-          {/* Listado de archivos */}
-          <div className={`archivos-contenedor ${vistaTipo}`}>
-            {archivosFiltrados.length === 0 && carpetasHijas.length === 0 ? (
-              <div className="sin-archivos">
-                <FiFile size={48} />
-                <p>No se encontraron archivos</p>
-              </div>
-            ) : archivosFiltrados.length > 0 ? (
-              archivosMostrados.map(archivo => (
-                <div key={archivo.id} className="archivo-item">
-                  <div className="archivo-thumbnail" onClick={() => handleDownloadArchivo(archivo)}>
-                    {obtenerThumbnail(archivo)}
-                  </div>
-                  <div className="archivo-info">
-                    <h4 className="archivo-nombre">{archivo.name}</h4>
-                    <div className="archivo-meta">
-                      <span>{formatearTamano(archivo.file_size)}</span>
-                      <span>•</span>
-                      <span>{archivo.uploaded_by?.username || 'Usuario'}</span>
-                      {archivo.project_info?.name && (
-                        <>
-                          <span>•</span>
-                          <span>{archivo.project_info.name}</span>
-                        </>
-                      )}
-                    </div>
-                    {obtenerEstadoDrive(archivo.upload_status)}
-                  </div>
-                  {currentUser?.role !== 'CLIENT' && (
-                    <div className="archivo-acciones">
-                      {archivo.drive_file_url && (
-                        <button
-                          className="btn-icono"
-                          title="Ver en Drive"
-                          onClick={() => window.open(archivo.drive_file_url, '_blank')}
-                        >
-                          <FiExternalLink />
-                        </button>
-                      )}
-                      <button
-                        className="btn-icono"
-                        title="Descargar"
-                        onClick={() => handleDownloadArchivo(archivo)}
-                      >
-                        <FiDownload />
-                      </button>
-                      {currentUser?.role === 'SUPERADMIN' && (
-                        <button
-                          className="btn-icono btn-peligro"
-                          title="Eliminar"
-                          onClick={() => handleDeleteArchivo(archivo.id)}
-                        >
-                          <FiTrash2 />
-                        </button>
-                      )}
-                    </div>
+              <div className="archivo-info">
+                <h4 className="archivo-nombre" title={archivo.name}>{archivo.name}</h4>
+                <div className="archivo-meta">
+                  <span>{formatearTamano(archivo.file_size)}</span>
+                  <span>•</span>
+                  <span>{archivo.uploaded_by?.full_name || archivo.uploaded_by?.username || 'Usuario'}</span>
+                  <span>•</span>
+                  <span>{formatearFecha(archivo.created_at)}</span>
+                  {!ruta.folder && (archivo.task_name || archivo.drive_parent_folder_name) && (
+                    <><span>•</span><span>{archivo.task_name || archivo.drive_parent_folder_name}</span></>
                   )}
                 </div>
-              ))
-            ) : null}
-          </div>
-        </>
+                <EstadoDrive estado={archivo.upload_status} />
+              </div>
+              {currentUser?.role !== 'CLIENT' && (
+                <div className="archivo-acciones">
+                  {archivo.drive_file_url && (
+                    <button className="btn-icono" title="Ver en Drive" onClick={() => window.open(archivo.drive_file_url, '_blank', 'noopener')}>
+                      <FiExternalLink />
+                    </button>
+                  )}
+                  <button className="btn-icono" title="Abrir / descargar" onClick={() => abrir(archivo)}><FiDownload /></button>
+                  {isSuperadmin && (
+                    <button className="btn-icono btn-peligro" title="Eliminar" onClick={() => eliminar(archivo)}><FiTrash2 /></button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
-      
-      {!cargando && !error && archivosFiltrados.length > visibleCount && (
-        <div style={{ textAlign: 'center', padding: '2rem 0', width: '100%' }}>
-          <button 
-            style={{ padding: '0.75rem 2rem', background: '#f97316', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-            onClick={() => setVisibleCount(prev => prev + 50)}
-          >
-            Cargar más archivos ({archivosFiltrados.length - visibleCount} restantes)
+
+      {!cargando && hayMas && (
+        <div className="cargar-mas">
+          <button onClick={() => cargarArchivos(pagina + 1)} disabled={cargandoMas}>
+            {cargandoMas ? 'Cargando...' : `Cargar más (${total - archivos.length} restantes)`}
           </button>
         </div>
       )}

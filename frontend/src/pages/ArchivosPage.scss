@@ -1173,3 +1173,104 @@
     }
   }
 }
+
+// ── Explorador por carpetas ────────────────────────────────────────────────
+.archivos-page {
+  .explorador-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+
+    .carpeta-breadcrumb { margin-bottom: 0; flex: 1; min-width: 0; }
+  }
+
+  .btn-descargar-carpeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: 8px;
+    background: #ff7c15;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &:not(:disabled):hover { background: #ea6a05; }
+  }
+
+  .btn-limpiar-filtros {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .zona-subida-wrapper {
+    margin-bottom: 1rem;
+
+    .destino-drive {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+
+      select { padding: 0.35rem 0.5rem; border-radius: 6px; }
+    }
+
+    .zona-contenido { padding: 1.25rem; }
+  }
+
+  .carpeta-card {
+    .carpeta-card-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .carpeta-card-meta {
+      font-size: 0.75rem;
+      color: #6b7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .carpetas-cargando,
+  .archivos-resumen {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0.25rem 0 0.75rem;
+  }
+
+  .cargar-mas {
+    text-align: center;
+    padding: 1.5rem 0;
+
+    button {
+      padding: 0.7rem 2rem;
+      background: #f97316;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:disabled { opacity: 0.6; cursor: wait; }
+    }
+  }
+}

@@ -7,7 +7,9 @@ class DocumentSerializer(serializers.ModelSerializer):
     Serializador para el modelo Document.
     Define cómo se muestran y se reciben los datos del documento.
     """
-    uploaded_by = UserSerializer(read_only=True)
+    # Datos mínimos del usuario (antes UserSerializer completo por archivo:
+    # más lento y exponía allowed_ips / 2FA de otros usuarios).
+    uploaded_by = serializers.SerializerMethodField()
     file_url = serializers.SerializerMethodField()
     project_info = serializers.SerializerMethodField()
     task_name = serializers.SerializerMethodField()
@@ -44,6 +46,19 @@ class DocumentSerializer(serializers.ModelSerializer):
             'drive_parent_folder_id', 'drive_parent_folder_name', 'project_info',
             'task_name', 'is_link', 'link',
         ]
+
+    def get_uploaded_by(self, obj):
+        user = obj.uploaded_by
+        if not user:
+            return None
+        return {
+            'id': user.id,
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'full_name': user.get_full_name() or user.username,
+            'role': user.role,
+        }
 
     def get_file_url(self, obj):
         if obj.file:
