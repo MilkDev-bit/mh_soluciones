@@ -6,18 +6,28 @@ import { getCurrentUserFromSession } from '../../services/userService';
 import Loading from '../../components/common/Loading';
 import Modal from '../../components/common/Modal';
 import TaskDetailsView from '../../components/tasks/TaskDetailsView';
-import { FiCheckSquare, FiClock, FiAward, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
-import { format, parseISO, differenceInHours } from 'date-fns';
-import { es } from 'date-fns/locale';
+import {
+  FiCheckSquare, FiClock, FiAward, FiAlertCircle, FiRefreshCw, FiRotateCcw, FiAlertTriangle, FiInbox,
+} from 'react-icons/fi';
+import { taskDeadlineLabel, WINDOW_STATE, TONE_COLORS } from '../../utils/taskStatus';
 import './TasksPage.scss';
+
+// Pestañas = grupos que calcula el backend en /tasks/my-tasks/
+const TABS = [
+  { key: 'to_submit', label: 'Por entregar', icon: FiCheckSquare, empty: 'No tienes tareas por entregar' },
+  { key: 'changes_requested', label: 'Correcciones', icon: FiRotateCcw, empty: 'No tienes entregas devueltas' },
+  { key: 'late', label: 'Entrega tardía', icon: FiAlertTriangle, empty: 'No tienes tareas en periodo de entrega tardía' },
+  { key: 'submitted', label: 'En revisión', icon: FiInbox, empty: 'No tienes entregas esperando revisión' },
+  { key: 'graded', label: 'Aprobadas', icon: FiAward, empty: 'Aún no tienes entregas aprobadas' },
+  { key: 'overdue', label: 'Vencidas', icon: FiAlertCircle, empty: 'No tienes tareas vencidas' },
+];
+
+const TONE_TO_CLASS = { danger: 'status-overdue', warning: 'status-soon', info: 'status-open', success: 'status-open' };
 
 const StudentTasksPage = () => {
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState({
-    to_submit: [],
-    submitted: [],
-    graded: [],
-    overdue: []
+    to_submit: [], changes_requested: [], late: [], submitted: [], graded: [], overdue: [],
   });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -38,7 +48,7 @@ const StudentTasksPage = () => {
       ]);
 
       setUser(userData);
-      setTasks(tasksData);
+      setTasks(prev => ({ ...prev, ...tasksData }));
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -62,21 +72,11 @@ const StudentTasksPage = () => {
     fetchData(true);
   }, [fetchData]);
 
+  // El color sale del estado que calcula el servidor (antes se comparaba
+  // close_date con la hora del navegador e ignoraba due_date y prórrogas).
   const getTaskStatusIndicator = (task) => {
-    const now = new Date();
-    const closeDate = task.close_date ? parseISO(task.close_date) : null;
-    
-    if (!closeDate) return 'status-default';
-    
-    const hoursUntilClose = differenceInHours(closeDate, now);
-    
-    if (hoursUntilClose < 0) {
-      return 'status-overdue'; // Red
-    } else if (hoursUntilClose <= 48) {
-      return 'status-soon'; // Yellow
-    } else {
-      return 'status-open'; // Green
-    }
+    const tone = WINDOW_STATE[task.my_window?.state]?.tone;
+    return TONE_TO_CLASS[tone] || 'status-default';
   };
 
   const renderTaskCard = (task, icon) => {
@@ -105,12 +105,21 @@ const StudentTasksPage = () => {
           <p className="task-description">{task.description || 'Sin descripción'}</p>
           
           <div className="task-meta">
-            {task.close_date && (
+            {taskDeadlineLabel(task) && (
               <div className="task-deadline">
                 <FiClock size={14} />
-                <span>Cierre: {format(parseISO(task.close_date), "dd MMM yyyy 'a las' HH:mm", { locale: es })}</span>
+                <span>Vence: {taskDeadlineLabel(task)}</span>
               </div>
             )}
+
+            {task.my_window?.message && (() => {
+              const colors = TONE_COLORS[WINDOW_STATE[task.my_window.state]?.tone || 'info'];
+              return (
+                <p className="task-window-message" style={{ color: colors.text, fontSize: '0.8rem', margin: '0.25rem 0 0' }}>
+                  {task.my_window.message}
+                </p>
+              );
+            })()}
             
             {task.max_score && (
               <div className="task-score">
@@ -171,88 +180,31 @@ const StudentTasksPage = () => {
         <div className="glass-card">
           <div className="tabs-container">
             <div className="tabs-header">
-              <button
-                className={`tab ${activeTab === 'to_submit' ? 'active' : ''}`}
-                onClick={() => setActiveTab('to_submit')}
-              >
-                <FiCheckSquare />
-                Por Entregar ({tasks.to_submit.length})
-              </button>
-              <button
-                className={`tab ${activeTab === 'submitted' ? 'active' : ''}`}
-                onClick={() => setActiveTab('submitted')}
-              >
-                <FiCheckSquare />
-                Entregadas ({tasks.submitted.length})
-              </button>
-              <button
-                className={`tab ${activeTab === 'graded' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graded')}
-              >
-                <FiAward />
-                Calificadas ({tasks.graded.length})
-              </button>
-              <button
-                className={`tab ${activeTab === 'overdue' ? 'active' : ''}`}
-                onClick={() => setActiveTab('overdue')}
-              >
-                <FiAlertCircle />
-                Vencidas ({tasks.overdue.length})
-              </button>
+              {TABS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  className={`tab ${activeTab === key ? 'active' : ''}`}
+                  onClick={() => setActiveTab(key)}
+                >
+                  <Icon />
+                  {label} ({tasks[key]?.length || 0})
+                </button>
+              ))}
             </div>
 
             <div className="tabs-content">
-              {activeTab === 'to_submit' && (
-                <div className="tasks-grid">
-                  {tasks.to_submit.length > 0 ? (
-                    tasks.to_submit.map((task) => renderTaskCard(task, <FiCheckSquare />))
+              {TABS.filter(t => t.key === activeTab).map(({ key, icon: Icon, empty }) => (
+                <div className="tasks-grid" key={key}>
+                  {tasks[key]?.length > 0 ? (
+                    tasks[key].map((task) => renderTaskCard(task, <Icon />))
                   ) : (
                     <div className="empty-state">
-                      <FiCheckSquare size={48} />
-                      <p>No tienes tareas por entregar</p>
+                      <Icon size={48} />
+                      <p>{empty}</p>
                     </div>
                   )}
                 </div>
-              )}
-
-              {activeTab === 'submitted' && (
-                <div className="tasks-grid">
-                  {tasks.submitted.length > 0 ? (
-                    tasks.submitted.map((task) => renderTaskCard(task, <FiCheckSquare />))
-                  ) : (
-                    <div className="empty-state">
-                      <FiCheckSquare size={48} />
-                      <p>No tienes tareas entregadas pendientes de calificación</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'graded' && (
-                <div className="tasks-grid">
-                  {tasks.graded.length > 0 ? (
-                    tasks.graded.map((task) => renderTaskCard(task, <FiAward />))
-                  ) : (
-                    <div className="empty-state">
-                      <FiAward size={48} />
-                      <p>No tienes tareas calificadas aún</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'overdue' && (
-                <div className="tasks-grid">
-                  {tasks.overdue.length > 0 ? (
-                    tasks.overdue.map((task) => renderTaskCard(task, <FiAlertCircle />))
-                  ) : (
-                    <div className="empty-state">
-                      <FiAlertCircle size={48} />
-                      <p>No tienes tareas vencidas</p>
-                    </div>
-                  )}
-                </div>
-              )}
+              ))}
             </div>
           </div>
         </div>

@@ -17,6 +17,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Estados en los que una tarea sigue esperando entregas
+ESTADOS_ABIERTOS = ['OPEN', 'REOPENED', 'PENDING', 'IN_PROGRESS']
+
 
 @shared_task(name='verificar_recordatorios_vencimiento_tareas')
 def verificar_recordatorios_vencimiento_tareas():
@@ -26,14 +29,15 @@ def verificar_recordatorios_vencimiento_tareas():
     """
     logger.info("Iniciando verificación de recordatorios de vencimiento de tareas")
     
-    ahora = timezone.now()
-    fecha_hoy = ahora.date()
+    # [FIX zona horaria] timezone.now().date() es la fecha UTC: después de las
+    # 18:00 en México ya es "mañana" y los recordatorios salían un día antes.
+    fecha_hoy = timezone.localdate()
     
     # Recordatorios 7 días antes
     fecha_7_dias = fecha_hoy + timedelta(days=7)
     tareas_7_dias = Task.objects.filter(
         due_date=fecha_7_dias,
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
+        status__in=ESTADOS_ABIERTOS, is_continuous=False
     ).select_related('assigned_to', 'project').prefetch_related('assigned_students')
     
     for tarea in tareas_7_dias:
@@ -59,7 +63,7 @@ def verificar_recordatorios_vencimiento_tareas():
     fecha_manana = fecha_hoy + timedelta(days=1)
     tareas_24h = Task.objects.filter(
         due_date=fecha_manana,
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
+        status__in=ESTADOS_ABIERTOS, is_continuous=False
     ).select_related('assigned_to', 'project').prefetch_related('assigned_students')
     
     for tarea in tareas_24h:
@@ -72,7 +76,7 @@ def verificar_recordatorios_vencimiento_tareas():
     # Recordatorios día de vencimiento
     tareas_hoy = Task.objects.filter(
         due_date=fecha_hoy,
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
+        status__in=ESTADOS_ABIERTOS, is_continuous=False
     ).select_related('assigned_to', 'project').prefetch_related('assigned_students')
     
     for tarea in tareas_hoy:
@@ -93,45 +97,66 @@ def verificar_recordatorios_vencimiento_tareas():
 @shared_task(name='verificar_tareas_vencidas')
 def verificar_tareas_vencidas():
     """
-    Verifica tareas vencidas y envía notificaciones diarias
-    Se ejecuta diariamente a las 10:00 AM
+    Avisa a los alumnos que NO entregaron una tarea vencida.
+
+    [FIX] Antes:
+    - usaba la fecha UTC y notificaba un día antes,
+    - avisaba también a quien ya había entregado,
+    - incluía actividades continuas (GRAFICAS) y borradores,
+    - repetía la notificación TODOS los días, sin fin.
+    Ahora usa la misma regla de plazo que el endpoint de entrega
+    (apps.tasks.deadlines) y avisa una sola vez por alumno y tarea, con el
+    mensaje que corresponde: "aún puedes entregar con retraso hasta…" o
+    "pide una prórroga".
     """
+    from django.contrib.contenttypes.models import ContentType
+    from apps.tasks import deadlines
+    from apps.tasks.models import TaskSubmission
+
     logger.info("Iniciando verificación de tareas vencidas")
-    
     ahora = timezone.now()
-    fecha_hoy = ahora.date()
-    
-    # Tareas vencidas (no completadas y fecha de vencimiento pasada)
-    tareas_vencidas = Task.objects.filter(
-        due_date__lt=fecha_hoy,
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT', 'IN_REVIEW']
-    ).select_related('assigned_to', 'project').prefetch_related('assigned_students')
-    
-    for tarea in tareas_vencidas:
-        destinatarios = []
-        if tarea.assigned_to:
-            prefs = getattr(tarea.assigned_to, 'preferencias_notificacion', None)
-            if not prefs or prefs.email_tarea_vencida:
-                destinatarios.append(tarea.assigned_to)
-        
-        for estudiante in tarea.assigned_students.all():
-            prefs = getattr(estudiante, 'preferencias_notificacion', None)
-            if not prefs or prefs.email_tarea_vencida:
-                destinatarios.append(estudiante)
-        
-        if destinatarios:
-            # Crear notificación en la app
-            for destinatario in destinatarios:
-                Notification.objects.create(
-                    user=destinatario,
-                    title=f"Tarea Vencida: {tarea.title}",
-                    message=f"La tarea '{tarea.title}' venció el {tarea.due_date.strftime('%d/%m/%Y')}. Por favor, complétala lo antes posible.",
-                    notification_type=Notification.NotificationType.TASK_OVERDUE,
-                    content_object=tarea
-                )
-    
-    logger.info(f"Finalizada verificación de tareas vencidas: {tareas_vencidas.count()} tareas")
-    return {'tareas_vencidas': tareas_vencidas.count()}
+    ct = ContentType.objects.get_for_model(Task)
+
+    candidatas = Task.objects.filter(
+        status__in=ESTADOS_ABIERTOS, is_continuous=False,
+    ).filter(
+        Q(due_date__lt=timezone.localdate()) | Q(close_date__lt=ahora)
+    ).select_related('assigned_to', 'project').prefetch_related(
+        'assigned_students', 'reopen_logs__specific_students'
+    )
+
+    avisos = 0
+    for tarea in candidatas:
+        alumnos = list(tarea.assigned_students.all())
+        if tarea.assigned_to and tarea.assigned_to not in alumnos:
+            alumnos.append(tarea.assigned_to)
+        entregaron = set(TaskSubmission.objects.filter(task=tarea)
+                         .values_list('submitted_by_id', flat=True))
+        ya_avisados = set(Notification.objects.filter(
+            content_type=ct, object_id=tarea.pk,
+            notification_type=Notification.NotificationType.TASK_OVERDUE,
+        ).values_list('user_id', flat=True))
+
+        for alumno in alumnos:
+            if alumno.pk in entregaron or alumno.pk in ya_avisados:
+                continue
+            ventana = deadlines.submission_window(tarea, alumno, now=ahora)
+            if ventana.state not in (deadlines.STATE_LATE_WINDOW, deadlines.STATE_OVERDUE):
+                continue  # tiene prórroga o la tarea aún no vence para él
+            prefs = getattr(alumno, 'preferencias_notificacion', None)
+            if prefs and not prefs.email_tarea_vencida:
+                continue
+            Notification.objects.create(
+                user=alumno,
+                title=f"Tarea vencida: {tarea.title}",
+                message=ventana.message,
+                notification_type=Notification.NotificationType.TASK_OVERDUE,
+                content_object=tarea,
+            )
+            avisos += 1
+
+    logger.info(f"Finalizada verificación de tareas vencidas: {avisos} avisos nuevos")
+    return {'avisos': avisos}
 
 
 @shared_task(name='verificar_recordatorios_eventos_calendario')

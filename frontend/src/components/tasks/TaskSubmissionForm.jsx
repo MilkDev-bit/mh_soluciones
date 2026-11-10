@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { addTaskSubmission } from '../../services/taskService';
+import { apiErrorMessage } from '../../utils/taskStatus';
+import DeadlineBanner from './DeadlineBanner';
 import { FiUpload, FiX, FiFile } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 
@@ -90,37 +92,32 @@ const TaskSubmissionForm = ({ task, onSubmissionComplete, onCancel }) => {
       }
       
     } catch (error) {
-      console.error('Error al subir entrega:', error);
-      
-      let errorMessage = 'No se pudo realizar la entrega';
-      
-      // El servicio lanza error.response?.data directamente (no el objeto axios)
-      // por lo que 'error' puede ser el objeto data {error:"..."} o un Error nativo
-      if (error && typeof error === 'object') {
-        if (typeof error === 'string') {
-          errorMessage = error;
-        } else if (error.error && typeof error.error === 'string') {
-          errorMessage = error.error;
-        } else if (error.detail && typeof error.detail === 'string') {
-          errorMessage = error.detail;
-        } else if (error.message && typeof error.message === 'string' && !error.stack) {
-          errorMessage = error.message;
-        } else if (error.response?.data) {
-          const d = error.response.data;
-          if (typeof d === 'string') errorMessage = d;
-          else if (d.error) errorMessage = d.error;
-          else if (d.detail) errorMessage = d.detail;
-          else if (d.message) errorMessage = d.message;
-        }
-      }
-      
+      // El backend responde {error, code, window} con el motivo exacto
+      // (vencida, en revisión, ya aprobada, cerrada...).
+      const errorMessage = apiErrorMessage(error, 'No se pudo realizar la entrega');
       toast.error(errorMessage);
       setUploadProgress(0);
     }
   };
 
+  const submitWindow = task?.my_window;
+  const blocked = submitWindow && !submitWindow.can_submit;
+
+  if (blocked) {
+    // No dejar que el alumno suba archivos para luego recibir un error genérico.
+    return (
+      <div className="submission-form">
+        <DeadlineBanner window={submitWindow} />
+        <div className="form-actions">
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>Cerrar</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="submission-form">
+      <DeadlineBanner window={submitWindow} compact />
       <div className="form-section">
         <h3>Subir Archivos</h3>
         

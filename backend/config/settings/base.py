@@ -415,6 +415,15 @@ LOGGING = {
     },
 }
 
+# [FIX] Sin esto Celery usa UTC: "diario a las 8:00" corría a las 2:00 en
+# México y "domingos a medianoche" se ejecutaba el sábado a las 18:00.
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Días que tiene un alumno para reenviar una entrega devuelta con cambios,
+# aunque la tarea ya haya vencido (apps/tasks/deadlines.py).
+TASK_CORRECTION_DAYS = config('TASK_CORRECTION_DAYS', default=3, cast=int)
+
 # Celery Beat Schedule for periodic tasks
 CELERY_BEAT_SCHEDULE = {
     'send-task-due-reminders': {

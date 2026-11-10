@@ -764,3 +764,98 @@
     }
   }
 }
+
+// ── Tablero de revisión por alumno ──────────────────────────────────────────
+.task-submissions-review {
+  .review-deadline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: $neutral-600;
+  }
+
+  .review-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .review-filter {
+    border: 1px solid $neutral-300;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: $neutral-700;
+
+    .count {
+      margin-left: 0.35rem;
+      font-weight: 700;
+    }
+
+    &.active {
+      background: $primary-600;
+      border-color: $primary-600;
+      color: #fff;
+    }
+  }
+
+  .board-state {
+    color: #fff;
+    padding: 0.25rem 0.65rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .late-chip,
+  .reviewer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .late-chip { background: #fef3c7; color: #92400e; }
+  .reviewer-chip { background: #ede9fe; color: #5b21b6; }
+
+  .submission-status.status-review { background: #ede9fe; color: #5b21b6; }
+
+  .extend-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: $neutral-50;
+    border-top: 1px solid $neutral-200;
+
+    input {
+      width: 4rem;
+      margin: 0 0.4rem;
+      padding: 0.25rem 0.4rem;
+    }
+  }
+
+  .window-message {
+    width: 100%;
+    margin: 0;
+    font-size: 0.875rem;
+    color: $neutral-600;
+  }
+
+  .submission-item.previous { opacity: 0.8; }
+
+  .spinning { animation: spin 1s linear infinite; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

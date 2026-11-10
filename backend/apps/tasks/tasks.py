@@ -13,56 +13,38 @@ from utils.email_notifications import send_task_due_reminder
 
 logger = logging.getLogger(__name__)
 
+# Estados en los que la tarea sigue recibiendo entregas
+OPEN_STATUSES = ['OPEN', 'REOPENED', 'PENDING', 'IN_PROGRESS']
+
 
 @shared_task
 def send_task_due_reminders():
     """
-    Periodic task to send reminders for tasks that are due soon.
-    Should be scheduled to run daily.
-    Sends reminders for tasks due in 1 day and 3 days.
+    Recordatorio 3 días antes de la fecha límite.
+
+    [FIX] Antes filtraba `due_date__date=...` sobre un DateField (FieldError: la
+    tarea fallaba todos los días) y usaba la fecha UTC. Los recordatorios de 7
+    días, 1 día y el mismo día los envía notifications.verificar_recordatorios_
+    vencimiento_tareas; aquí ya no se duplica el de 1 día.
     """
-    now = timezone.now()
-    
-    # Tasks due in 1 day
-    one_day_from_now = now + timedelta(days=1)
-    tasks_due_tomorrow = Task.objects.filter(
-        due_date__date=one_day_from_now.date(),
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
+    target = timezone.localdate() + timedelta(days=3)
+    tasks = Task.objects.filter(
+        due_date=target,
+        is_continuous=False,
+        status__in=OPEN_STATUSES,
     ).filter(
         Q(assigned_to__isnull=False) | Q(assigned_students__isnull=False)
     ).select_related('project', 'assigned_to').prefetch_related('assigned_students').distinct()
-    
-    for task in tasks_due_tomorrow:
+
+    sent = 0
+    for task in tasks:
         try:
             send_task_due_reminder(task)
-            logger.info(f"Sent due reminder for task {task.id}: {task.title}")
-        except Exception as e:
-            logger.error(f"Failed to send reminder for task {task.id}: {str(e)}")
-    
-    # Tasks due in 3 days
-    three_days_from_now = now + timedelta(days=3)
-    tasks_due_in_three_days = Task.objects.filter(
-        due_date__date=three_days_from_now.date(),
-        status__in=['OPEN', 'IN_PROGRESS', 'DRAFT']
-    ).filter(
-        Q(assigned_to__isnull=False) | Q(assigned_students__isnull=False)
-    ).select_related('project', 'assigned_to').prefetch_related('assigned_students').distinct()
-    
-    for task in tasks_due_in_three_days:
-        try:
-            send_task_due_reminder(task)
-            logger.info(f"Sent 3-day reminder for task {task.id}: {task.title}")
+            sent += 1
         except Exception as e:
             logger.error(f"Failed to send 3-day reminder for task {task.id}: {str(e)}")
-    
-    total_sent = tasks_due_tomorrow.count() + tasks_due_in_three_days.count()
-    logger.info(f"Sent {total_sent} task due reminders")
-    
-    return {
-        'sent': total_sent,
-        'due_tomorrow': tasks_due_tomorrow.count(),
-        'due_in_three_days': tasks_due_in_three_days.count()
-    }
+    logger.info(f"Sent {sent} task due reminders (3 días)")
+    return {'sent': sent, 'due_in_three_days': sent}
 
 
 @shared_task
@@ -97,7 +79,7 @@ def assign_tasks_to_students_weekly():
         'kpi',
     ]
 
-    now = timezone.now()
+    now = timezone.localtime()
     logger.info(f"[WeeklyAssign] Iniciando asignación semanal de tareas a estudiantes - {now}")
 
     # Proyectos activos (no archivados, no cancelados)
