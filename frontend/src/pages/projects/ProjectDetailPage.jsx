@@ -16,7 +16,7 @@ import {
   deleteProject
 } from '../../services/projectService';
 import { getCurrentUserFromSession } from '../../services/userService';
-import { getTasks } from '../../services/taskService';
+import { getAllProjectTasks } from '../../services/taskService';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { isAdmin, canViewAnalytics, canAccessDrive, canSubmit, canCreateTasks } from '../../constants/roles';
 import { getDocumentsByProject } from '../../services/documentService';
@@ -531,19 +531,11 @@ const ProjectDetailPage = () => {
     refetch: refetchTasks 
   } = useQuery({
     queryKey: ['projectTasks', projectId],
-    queryFn: async () => {
-      const tasksData = await getTasks(projectId);
-      
-      const rawTasks = Array.isArray(tasksData?.results) 
-        ? tasksData.results 
-        : (Array.isArray(tasksData) ? tasksData : []);
-        
-      let safeTasks = (rawTasks || []).filter(Boolean);
-      
-      return safeTasks;
-    },
+    queryFn: async () => (await getAllProjectTasks(projectId)).filter(Boolean),
     staleTime: 2000,
-    refetchInterval: 4000,
+    // Los cambios hechos desde esta app ya refrescan la lista al instante
+    // (utils/taskCache.js); el sondeo solo trae cambios de otras personas.
+    refetchInterval: 30000,
     refetchOnWindowFocus: true,
     gcTime: 10 * 60 * 1000,
     enabled: !!projectId && projectId !== 'undefined' && !!currentUser,

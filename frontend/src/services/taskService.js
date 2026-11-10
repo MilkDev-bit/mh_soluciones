@@ -20,6 +20,31 @@ export const getTasks = async (projectId = null, page = 1) => {
   }
 };
 
+/**
+ * TODAS las tareas de un proyecto (recorre todas las páginas).
+ * Antes el detalle del proyecto pedía solo `page_size=100`: en proyectos con
+ * más de 100 tareas las demás no aparecían en ninguna pestaña y los
+ * contadores sumaban exactamente 100.
+ */
+export const getAllProjectTasks = async (projectId) => {
+  const cleanId = typeof projectId === 'object' ? projectId?.id : projectId;
+  if (!cleanId || cleanId === '[object Object]') return [];
+  const PAGE_SIZE = 500;
+  const all = [];
+  try {
+    for (let page = 1; page <= 50; page += 1) {
+      const { data } = await api.get(`/tasks/?project=${cleanId}&page=${page}&page_size=${PAGE_SIZE}`);
+      const results = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+      all.push(...results);
+      if (!data?.next || results.length === 0) break;
+    }
+    return all;
+  } catch (error) {
+    console.error('Error en getAllProjectTasks:', error);
+    throw error.response?.data || new Error('Error al obtener las tareas del proyecto');
+  }
+};
+
 export const getMyTasks = async () => {
   try {
     const response = await api.get('/tasks/my-tasks/');
