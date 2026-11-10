@@ -426,37 +426,54 @@ class LogoutAPIView(APIView):
         return response
 
 class CookieTokenRefreshView(TokenRefreshView):
+    """
+    Renueva el access token usando la cookie del refresh token.
+
+    [FIX] Con ROTATE_REFRESH_TOKENS=True SimpleJWT devuelve un refresh token
+    NUEVO (con vigencia renovada), pero aquí solo se guardaba la cookie del
+    access y el refresh nuevo se descartaba. El navegador seguía usando el
+    refresh del login, que vence 24 h después de iniciar sesión: la sesión se
+    cerraba sola a mitad del trabajo aunque el usuario estuviera activo.
+    Ahora también se guarda la cookie del refresh nuevo (sesión deslizante:
+    vence tras 24 h SIN uso, no 24 h después del login).
+    """
+
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])
-        
+
         if refresh_token:
             data = request.data.copy()
             data['refresh'] = refresh_token
             request._full_data = data
-            
+
         response = super().post(request, *args, **kwargs)
-        
+
         if response.status_code == 200:
-            access_token = response.data.get('access')
+            cookie_settings = settings.SIMPLE_JWT
+            cookie_kwargs = dict(
+                secure=cookie_settings['AUTH_COOKIE_SECURE'],
+                httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
+                samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
+                path=cookie_settings['AUTH_COOKIE_PATH'],
+            )
+            access_token = response.data.pop('access', None)
             if access_token:
-                cookie_settings = settings.SIMPLE_JWT
                 response.set_cookie(
                     cookie_settings['AUTH_COOKIE'],
                     access_token,
                     expires=timezone.now() + cookie_settings['ACCESS_TOKEN_LIFETIME'],
-                    secure=cookie_settings['AUTH_COOKIE_SECURE'],
-                    httponly=cookie_settings['AUTH_COOKIE_HTTP_ONLY'],
-                    samesite=cookie_settings['AUTH_COOKIE_SAMESITE'],
-                    path=cookie_settings['AUTH_COOKIE_PATH']
+                    **cookie_kwargs,
                 )
-                # Remove access and refresh from body if they are there
-                if 'access' in response.data:
-                    del response.data['access']
-                if 'refresh' in response.data:
-                    del response.data['refresh']
-        
-        return response
+            new_refresh = response.data.pop('refresh', None)
+            if new_refresh:
+                response.set_cookie(
+                    cookie_settings['AUTH_COOKIE_REFRESH'],
+                    new_refresh,
+                    expires=timezone.now() + cookie_settings['REFRESH_TOKEN_LIFETIME'],
+                    **cookie_kwargs,
+                )
 
+        return response
 
 class PasswordChangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

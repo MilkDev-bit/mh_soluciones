@@ -97,12 +97,21 @@ api.interceptors.response.use(
 
         console.error('Token refresh failed:', refreshError);
 
-        if (window.location.pathname !== '/login') {
+        // Solo se cierra la sesión si el servidor RECHAZÓ el refresh token
+        // (vencido o inválido). Antes cualquier falla —sin internet, timeout,
+        // o un 502 mientras Railway reinicia el servidor en un despliegue—
+        // mandaba al login aunque la sesión siguiera siendo válida.
+        const refreshStatus = refreshError.response?.status;
+        const sessionInvalid = [400, 401, 403].includes(refreshStatus);
+
+        if (sessionInvalid && window.location.pathname !== '/login') {
           sessionStorage.setItem(SESSION_EXPIRED_KEY, 'true');
           window.location.href = '/login';
+          return Promise.reject(refreshError);
         }
 
-        return Promise.reject(refreshError);
+        // Falla temporal: se devuelve el error original y la sesión sigue.
+        return Promise.reject(error);
       }
     }
 

@@ -18,7 +18,14 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('auth/profile/');
       setUser(data);
     } catch (error) {
-      setUser(null);
+      // En las verificaciones silenciosas (cada 5 min y al volver a la
+      // pestaña) un error de red o un 5xx durante un despliegue NO debe
+      // sacar al usuario: solo un 401/403 significa que la sesión terminó.
+      const status = error?.response?.status;
+      const sessionEnded = status === 401 || status === 403;
+      if (!silent || sessionEnded) {
+        setUser(null);
+      }
       if (!silent && location.pathname !== '/login') {
         console.log("Sesión no activa o expirada");
       }
