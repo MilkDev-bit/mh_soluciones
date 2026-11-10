@@ -136,24 +136,59 @@ else:
     print('ℹ️ Superusuario ya existe')
 "
 
-echo "📤 Reintentando documentos pendientes de subir a Drive (máx 60s)..."
-timeout 60 python manage.py retry_pending_uploads || echo "⚠️ retry_pending_uploads omitido (timeout o error), el servidor continuará iniciando..."
+# [RENDIMIENTO] Antes esto bloqueaba el arranque hasta 60 s en cada deploy o
+# reinicio (la app no respondía mientras tanto). Ahora corre en segundo plano.
+echo "📤 Reintentando documentos pendientes de subir a Drive (en segundo plano)..."
+( timeout 120 python manage.py retry_pending_uploads > /tmp/retry_pending_uploads.log 2>&1 \
+    || echo "⚠️ retry_pending_uploads terminó con error/timeout (ver /tmp/retry_pending_uploads.log)" ) &
 
 echo "✅ Configuración completada"
-echo "🚀 Iniciando servidor Daphne en puerto $PORT..."
+# ============================================================================
+# SERVIDOR
+# [RENDIMIENTO] Antes: UN solo proceso Daphne para toda la app. En ASGI, Django
+# ejecuta las vistas síncronas (todas las de la API) en un único hilo por
+# proceso, así que las peticiones de todos los usuarios se atendían en fila:
+# si una tardaba (reporte, subida, consulta pesada), las demás esperaban.
+# Ahora: Gunicorn con N workers Uvicorn (ASGI, sigue soportando WebSockets).
+#   WEB_CONCURRENCY  número de procesos (por defecto 3; súbelo si tu plan de
+#                    Railway tiene más RAM; cada proceso usa ~150-250 MB)
+#   ASGI_SERVER=daphne  vuelve al servidor anterior si lo necesitas.
+# Con varios procesos las notificaciones WebSocket necesitan Redis (REDIS_URL)
+# para compartir el channel layer; sin Redis se usa 1 solo proceso.
+# ============================================================================
+WORKERS="${WEB_CONCURRENCY:-3}"
+if [ -z "$REDIS_URL" ]; then
+    echo "⚠️ REDIS_URL no definido: se usa 1 proceso para no romper las notificaciones en tiempo real"
+    WORKERS=1
+fi
+
+echo "✅ Configuración completada"
 echo "📍 Health check disponible en http://localhost:$PORT/health/"
 
-# Start Daphne with the configured PORT
-# If no command is provided or if "daphne" is explicitly requested,
-# use daphne with the configured PORT
-if [ $# -eq 0 ] || [ "$1" = "daphne" ]; then
-    exec daphne -b 0.0.0.0 -p "$PORT" \
-        --access-log - \
-        --proxy-headers \
-        --application-close-timeout 300 \
-        --ping-interval 20 \
-        --ping-timeout 30 \
-        config.asgi:application
+if [ $# -eq 0 ] || [ "$1" = "daphne" ] || [ "$1" = "web" ]; then
+    if [ "${ASGI_SERVER:-gunicorn}" = "daphne" ]; then
+        echo "🚀 Iniciando Daphne en puerto $PORT..."
+        exec daphne -b 0.0.0.0 -p "$PORT" \
+            --access-log - \
+            --proxy-headers \
+            --application-close-timeout 300 \
+            --ping-interval 20 \
+            --ping-timeout 30 \
+            config.asgi:application
+    fi
+    echo "🚀 Iniciando Gunicorn + Uvicorn ($WORKERS procesos) en puerto $PORT..."
+    export FORWARDED_ALLOW_IPS="${FORWARDED_ALLOW_IPS:-*}"
+    exec gunicorn config.asgi:application \
+        --worker-class uvicorn.workers.UvicornWorker \
+        --workers "$WORKERS" \
+        --bind "0.0.0.0:$PORT" \
+        --timeout 300 \
+        --graceful-timeout 30 \
+        --keep-alive 5 \
+        --max-requests 1000 \
+        --max-requests-jitter 100 \
+        --access-logfile - \
+        --forwarded-allow-ips "$FORWARDED_ALLOW_IPS"
 else
     exec "$@"
 fi

@@ -156,6 +156,18 @@ class TaskViewSet(viewsets.ModelViewSet):
             ))
         return queryset
 
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        if self.action == 'retrieve':
+            # [RENDIMIENTO] El detalle anida entregas, documentos, comentarios,
+            # historial y reaperturas: sin esto eran ~40 queries por tarea.
+            queryset = queryset.select_related('created_by', 'project').prefetch_related(
+                'submissions__submitted_by', 'submissions__graded_by', 'submissions__reviewer',
+                'submissions__documents', 'comments__user', 'edit_history__edited_by',
+                'reopen_logs__reopened_by',
+            )
+        return queryset
+
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return TaskCreateUpdateSerializer

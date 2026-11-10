@@ -9,6 +9,7 @@ from apps.authentication.models import CustomUser
 from apps.projects.models import Project, ProjectMember
 from apps.tasks.models import Task
 from .serializers import (
+    with_project_stats,
     SearchResultSerializer, 
     ProjectStatusSerializer, 
     TaskSummarySerializer, 
@@ -73,7 +74,7 @@ class DashboardDataAPIView(APIView):
 
         recent_tasks = Task.objects.order_by('-created_at')[:5]
         
-        recent_projects = Project.objects.order_by('-created_at')[:5]
+        recent_projects = with_project_stats(Project.objects.all()).order_by('-created_at')[:5]
 
         return {
             'kpis': {
@@ -110,7 +111,7 @@ class DashboardDataAPIView(APIView):
         ).order_by('status')
 
         recent_tasks = Task.objects.filter(project__in=user_projects).order_by('-created_at')[:5]
-        recent_projects = user_projects.order_by('-created_at')[:5]
+        recent_projects = with_project_stats(user_projects).order_by('-created_at')[:5]
 
         return {
             'kpis': {
@@ -147,7 +148,7 @@ class DashboardDataAPIView(APIView):
                     Task.TaskStatus.COMPLETED, Task.TaskStatus.CLOSED,
                 ]).count(),
             },
-            'projects_summary': ProjectStatusSerializer(user_projects[:10], many=True).data,
+            'projects_summary': ProjectStatusSerializer(with_project_stats(user_projects)[:10], many=True).data,
             'upcoming_deadlines': TaskSummarySerializer(
                 tasks.filter(due_date__gte=timezone.localdate(), due_date__lte=timezone.localdate() + timedelta(days=7)).order_by('due_date'),
                 many=True
@@ -206,7 +207,7 @@ class DashboardDataAPIView(APIView):
                 'active_projects_count': client_projects.filter(status=Project.ProjectStatus.IN_PROGRESS).count(),
                 'completed_projects_count': client_projects.filter(status=Project.ProjectStatus.COMPLETED).count(),
             },
-            'projects_summary': ProjectStatusSerializer(client_projects, many=True).data,
+            'projects_summary': ProjectStatusSerializer(with_project_stats(client_projects), many=True).data,
         }
 
 class StatisticsAPIView(APIView):
