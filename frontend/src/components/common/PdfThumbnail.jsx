@@ -8,11 +8,42 @@ pdfjsLib.verbosity = pdfjsLib.VerbosityLevel ? pdfjsLib.VerbosityLevel.ERRORS : 
 
 const THUMBNAIL_WIDTH = 280;
 
+/*
+ * [RENDIMIENTO] Antes cada tarjeta PDF visible descargaba el PDF COMPLETO
+ * y todas a la vez: con 20 PDFs en pantalla el navegador se trababa.
+ * Ahora:
+ *  - máximo 2 miniaturas generándose al mismo tiempo (cola),
+ *  - pdf.js pide solo los bytes de la primera página (range requests),
+ *  - la miniatura generada se guarda en memoria: volver a una carpeta no
+ *    vuelve a descargar nada,
+ *  - el documento se libera al terminar.
+ */
+const MAX_CONCURRENT = 2;
+const thumbCache = new Map(); // url -> dataURL | 'error'
+let running = 0;
+const queue = [];
+
+const runQueued = (job) => new Promise((resolve, reject) => {
+  queue.push({ job, resolve, reject });
+  pump();
+});
+
+function pump() {
+  while (running < MAX_CONCURRENT && queue.length) {
+    const { job, resolve, reject } = queue.shift();
+    running += 1;
+    job().then(resolve, reject).finally(() => {
+      running -= 1;
+      pump();
+    });
+  }
+}
+
 const PdfThumbnail = ({ url, fileName, fallbackIcon }) => {
   const containerRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const cached = thumbCache.get(url);
+  const [error, setError] = useState(cached === 'error');
+  const [dataUrl, setDataUrl] = useState(cached && cached !== 'error' ? cached : null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -34,49 +65,50 @@ const PdfThumbnail = ({ url, fileName, fallbackIcon }) => {
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !url || error) return;
+    if (!isVisible || !url || error || dataUrl) return undefined;
 
     let cancelled = false;
 
     const renderPdf = async () => {
+      let pdf = null;
       try {
-        setLoading(true);
         const loadingTask = pdfjsLib.getDocument({
           url,
           withCredentials: true,
+          disableAutoFetch: true, // no bajar el resto del archivo
+          disableStream: true,    // usar range requests (solo la 1.ª página)
+          rangeChunkSize: 65536,
         });
-        const pdf = await loadingTask.promise;
+        pdf = await loadingTask.promise;
         if (cancelled) return;
-
         const page = await pdf.getPage(1);
         if (cancelled) return;
 
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
         const viewport = page.getViewport({ scale: 1 });
-        // Scale to fit the canvas container (max width ~280px)
         const scale = THUMBNAIL_WIDTH / viewport.width;
         const scaledViewport = page.getViewport({ scale });
-
+        const canvas = document.createElement('canvas');
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
-
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-        if (!cancelled) setLoading(false);
-      } catch (err) {
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport }).promise;
+        const result = canvas.toDataURL('image/jpeg', 0.7);
+        thumbCache.set(url, result);
         if (!cancelled) {
-          console.warn('PdfThumbnail error:', err);
-          setError(true);
-          setLoading(false);
+          setDataUrl(result);
         }
+      } catch (err) {
+        thumbCache.set(url, 'error');
+        if (!cancelled) {
+          setError(true);
+        }
+      } finally {
+        if (pdf) pdf.destroy();
       }
     };
 
-    renderPdf();
+    runQueued(() => (cancelled ? Promise.resolve() : renderPdf()));
     return () => { cancelled = true; };
-  }, [url, error]);
+  }, [isVisible, url, error, dataUrl]);
 
   if (error || !url) {
     return <span className="icono-tipo-grande">{fallbackIcon}</span>;
@@ -84,16 +116,15 @@ const PdfThumbnail = ({ url, fileName, fallbackIcon }) => {
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {(!isVisible || loading) && <span className="icono-tipo-grande">{fallbackIcon}</span>}
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: isVisible && !loading ? 'block' : 'none',
-        }}
-      />
+      {dataUrl ? (
+        <img
+          src={dataUrl}
+          alt={fileName || ''}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        <span className="icono-tipo-grande">{fallbackIcon}</span>
+      )}
     </div>
   );
 };

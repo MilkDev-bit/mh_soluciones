@@ -22,6 +22,7 @@ from ..tasks import upload_document_to_drive
 from ..services import GoogleDriveService
 from .permissions import IsOwnerOrAdminReadOnly
 from .serializers import DocumentSerializer
+from .. import browser
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +89,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrAdminReadOnly]
     parser_classes = [MultiPartParser, FormParser]
 
-    def get_queryset(self):
-        """
-        Filtra los documentos. Si se provee un 'task_id' en la URL,
-        filtra por esa tarea. De lo contrario, devuelve los documentos
-        según los permisos del usuario.
-        """
+    def _base_queryset(self):
+        """Documentos que el usuario puede ver (sin filtros del explorador)."""
         user = self.request.user
         queryset = Document.objects.select_related(
             'task', 'task__project', 'project', 'uploaded_by', 'task_submission'
@@ -102,7 +99,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if not user.is_anonymous and user.role not in ADMIN_ROLES:
             if user.role == 'CLIENT':
                 # Clients see documents from projects where they are the client FK or a member
-                from apps.projects.models import ProjectMember
                 member_project_ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
                 queryset = queryset.filter(
                     Q(project__client=user) |
@@ -117,41 +113,104 @@ class DocumentViewSet(viewsets.ModelViewSet):
                     Q(task__project__in=user_projects) |
                     Q(uploaded_by=user)
                 ).distinct()
-        
-        # Filter by specific project
-        project_id = self.request.query_params.get('project')
-        if project_id:
-            try:
-                queryset = queryset.filter(project_id=int(project_id))
-            except (ValueError, TypeError):
-                queryset = queryset.none()
-        
-        # Filter by folder_type
-        folder_type = self.request.query_params.get('folder_type')
-        if folder_type:
-            queryset = queryset.filter(folder_type=folder_type)
+                if user.role == 'STUDENT':
+                    # [FIX privacidad] Un alumno no ve los archivos que sus
+                    # compañeros entregaron en sus tareas (igual que en Tareas).
+                    queryset = queryset.filter(
+                        Q(task_submission__isnull=True)
+                        | Q(task_submission__submitted_by=user)
+                        | Q(uploaded_by=user)
+                    )
+        return queryset
+
+    def get_queryset(self):
+        """
+        Filtra los documentos. Si se provee un 'task_id' en la URL,
+        filtra por esa tarea. De lo contrario, devuelve los documentos
+        según los permisos del usuario.
+
+        Filtros del explorador (todos en servidor, ver documents/browser.py):
+        project, folder, uploaded_by, search, folder_type, date_from, date_to.
+        """
+        params = self.request.query_params
+        queryset = browser.apply_filters(self._base_queryset(), params)
         
         # Filter by Drive folder ID (matches drive_parent_folder_id on the document)
-        drive_folder_id = self.request.query_params.get('drive_folder_id')
+        drive_folder_id = params.get('drive_folder_id')
         if drive_folder_id:
             queryset = queryset.filter(drive_parent_folder_id=drive_folder_id)
 
         # Filter by folder name (case-insensitive, matches drive_parent_folder_name OR task title)
-        folder_name = self.request.query_params.get('folder_name')
+        folder_name = params.get('folder_name')
         if folder_name:
             queryset = queryset.filter(
                 Q(drive_parent_folder_name__icontains=folder_name) |
                 Q(task__title__icontains=folder_name)
             )
         
-        task_id = self.request.query_params.get('task')
+        task_id = params.get('task')
         if task_id:
             try:
                 return queryset.filter(task_id=int(task_id))
             except (ValueError, TypeError):
                 return queryset.none()
         
-        return queryset
+        return queryset.order_by('-created_at')
+
+    @action(detail=False, methods=['get'], url_path='folder-summary')
+    def folder_summary(self, request):
+        """
+        Carpetas del nivel actual con número de archivos, tamaño y última
+        subida. Se calcula en la base de datos: no consulta Google Drive.
+        """
+        return Response(browser.folder_summary(self._base_queryset(), request.query_params))
+
+    @action(detail=False, methods=['get'], url_path='download-zip')
+    def download_zip(self, request):
+        """
+        Descarga como ZIP todo lo que coincide con los filtros actuales
+        (proyecto, carpeta, persona, búsqueda, tipo, fechas), organizado en
+        carpetas Carpeta/Persona/archivo. Se envía en streaming: no se arma en
+        memoria y el navegador empieza a descargar de inmediato.
+        """
+        from asgiref.sync import sync_to_async
+        from django.http import StreamingHttpResponse
+
+        if request.user.role == 'CLIENT' and not request.query_params.get('project'):
+            return Response({'error': 'Selecciona un proyecto para descargar.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.get_queryset()
+        docs = browser.zip_document_rows(queryset)
+        if not docs:
+            return Response({'error': 'No hay archivos para descargar con estos filtros.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        if len(docs) > browser.MAX_ZIP_FILES:
+            return Response({
+                'error': f'La descarga tiene más de {browser.MAX_ZIP_FILES} archivos. '
+                         'Entra a una carpeta o filtra por fechas para dividirla.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        entries = browser.zip_entries(docs, request.query_params)
+        sync_iter = browser.iter_zip(entries)
+        sentinel = object()
+
+        async def stream():
+            # En ASGI, Django guarda en memoria un iterador síncrono completo
+            # antes de enviarlo; este iterador asíncrono envía cada parte
+            # apenas está lista.
+            while True:
+                chunk = await sync_to_async(next, thread_sensitive=False)(sync_iter, sentinel)
+                if chunk is sentinel:
+                    break
+                yield chunk
+
+        filename = browser.safe_name(request.query_params.get('zip_name') or 'archivos', 'archivos')
+        response = StreamingHttpResponse(stream(), content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.zip"'
+        response['X-Accel-Buffering'] = 'no'  # que nginx no acumule el ZIP completo
+        logger.info("ZIP de %s archivos solicitado por %s", len(entries), request.user.username)
+        return response
 
     def perform_create(self, serializer):
         """
