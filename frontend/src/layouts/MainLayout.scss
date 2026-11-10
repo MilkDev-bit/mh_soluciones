@@ -6,7 +6,11 @@
   background: var(--bg-secondary);
   position: relative;
   transition: background-color $transition;
+  // `clip` (no `hidden`): recorta el desborde horizontal sin convertir el
+  // layout en contenedor de scroll. Con `hidden` el navegador fuerza
+  // overflow-y: auto y el header `position: sticky` deja de quedarse fijo.
   overflow-x: hidden;
+  overflow-x: clip;
 
   &.sidebar-collapsed {
     .sidebar {
@@ -177,8 +181,11 @@
   flex: 1;
   margin-left: 0;
   transition: margin-left $transition;
-  overflow-y: auto;
+  // Quien hace scroll es la ventana, no este contenedor; así el header
+  // sticky queda pegado arriba mientras el contenido se desplaza.
   overflow-x: hidden;
+  overflow-x: clip;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 
