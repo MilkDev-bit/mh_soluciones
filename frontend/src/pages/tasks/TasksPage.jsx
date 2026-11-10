@@ -22,7 +22,9 @@ import {
   FiCalendar,
   FiPaperclip,
   FiCopy,
-  FiInbox
+  FiInbox,
+  FiChevronLeft,
+  FiChevronRight
 } from 'react-icons/fi';
 import AvatarGroup from '../../components/common/AvatarGroup';
 import {
@@ -30,6 +32,8 @@ import {
   WINDOW_STATE, TONE_COLORS,
 } from '../../utils/taskStatus';
 import './TasksPage.scss';
+
+const TASKS_PAGE_SIZE = 20;
 
 const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
   const documents = taskDocuments?.[task.id] || [];
@@ -207,6 +211,12 @@ const TasksPage = () => {
     },
     enabled: !!user, // Only fetch when user is available
   });
+
+  // Total de páginas a partir del `count` de DRF (page_size = 20 en
+  // apps/core/pagination.py).
+  const totalPages = tasksData?.count
+    ? Math.max(1, Math.ceil(tasksData.count / TASKS_PAGE_SIZE))
+    : 0;
 
   // Fetch projects with React Query
   const { 
@@ -725,29 +735,37 @@ const TasksPage = () => {
               )}
             </div>
           )}
+
+          {/* Paginación dentro de la tarjeta, debajo de la lista. Solo se
+              muestra cuando hay más de una página. */}
+          {(currentPage > 1 || tasksData?.next) && (
+            <div className="pagination-bar">
+              <button
+                className="btn btn-sm btn-secondary"
+                disabled={currentPage === 1 || tasksFetching}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+              >
+                <FiChevronLeft /> Anterior
+              </button>
+
+              <span className="page-info">
+                Página <strong>{currentPage}</strong>
+                {totalPages > 1 && <> de <strong>{totalPages}</strong></>}
+                {typeof tasksData?.count === 'number' && (
+                  <span className="page-info-total"> · {tasksData.count} tareas</span>
+                )}
+              </span>
+
+              <button
+                className="btn btn-sm btn-secondary"
+                disabled={!tasksData?.next || tasksFetching}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+              >
+                Siguiente <FiChevronRight />
+              </button>
+            </div>
+          )}
         </div>
-      </div>
-
-      <div className="pagination-bar">
-        <button 
-          className="btn btn-secondary"
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage(prev => prev - 1)}
-        >
-          Anterior
-        </button>
-        
-        <span className="page-info">
-          Página <strong>{currentPage}</strong>
-        </span>
-
-        <button 
-          className="btn btn-secondary"
-          disabled={!tasksData?.next}
-          onClick={() => setCurrentPage(prev => prev + 1)}
-        >
-          Siguiente
-        </button>
       </div>
     </>
   );
