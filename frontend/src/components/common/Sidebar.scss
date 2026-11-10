@@ -166,6 +166,13 @@
   }
 }
 
+// Plegar solo tiene sentido en escritorio; en el cajón móvil está la X.
+.collapse-toggle {
+  @media (max-width: $breakpoint-lg) {
+    display: none;
+  }
+}
+
 .sidebar-close {
   display: none;
 
@@ -526,12 +533,18 @@
   bottom: 0;
   background: rgba($neutral-900, 0.7);
   backdrop-filter: blur(4px);
-  z-index: $z-modal - 1;
+  // Debajo del menú (z-fixed) y encima del header (z-sticky). Antes usaba
+  // z-modal - 1 y, como nunca recibía la clase .active, no se mostraba:
+  // tocar fuera del menú no lo cerraba.
+  z-index: $z-fixed - 1;
   display: none;
 
   @media (max-width: $breakpoint-lg) {
     &.active {
       display: block;
+      // MainLayout.scss también define .sidebar-overlay (con z-modal) y se
+      // carga después: con más especificidad se asegura que quede debajo.
+      z-index: $z-fixed - 1;
     }
   }
 }

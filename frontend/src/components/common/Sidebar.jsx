@@ -146,8 +146,9 @@ const Sidebar = () => {
 
       {isSidebarOpen && (
         <div
-          className="sidebar-overlay"
+          className="sidebar-overlay active"
           onClick={closeMobileMenu}
+          aria-hidden="true"
         />
       )}
 
