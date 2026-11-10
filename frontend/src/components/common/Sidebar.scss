@@ -611,3 +611,101 @@
     border-radius: $border-radius-sm;
   }
 }
+// ---------------------------------------------------------------------------
+// Menú plegado (70 px). Antes solo se ocultaban los textos: el logo y el
+// botón de plegar no cabían en la misma fila, aparecían barras de scroll
+// horizontal/vertical, la línea de "Salas de trabajo" quedaba suelta y la
+// tarjeta del usuario se cortaba. Aquí todo se apila y se centra.
+// ---------------------------------------------------------------------------
+.sidebar.sidebar-collapsed {
+  .sidebar-content {
+    padding: $spacing-4 0;
+  }
+
+  .sidebar-header {
+    flex-direction: column;
+    justify-content: center;
+    gap: $spacing-3;
+    padding: 0 0 $spacing-4;
+  }
+
+  .logo-container .logo {
+    justify-content: center;
+  }
+
+  .logo-container .logo-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .header-actions {
+    justify-content: center;
+  }
+
+  .sidebar-nav {
+    padding: $spacing-3 0;
+    gap: 0;
+    overflow-x: hidden;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // Sin títulos de sección: una línea fina separa los grupos.
+  .menu-section {
+    padding: $spacing-2 0;
+
+    & + .menu-section {
+      border-top: 1px solid rgba($neutral-50, 0.1);
+    }
+  }
+
+  .menu-section-title,
+  .section-header {
+    display: none;
+  }
+
+  .menu-item {
+    justify-content: center;
+    gap: 0;
+    padding: $spacing-3 0;
+    margin: 0 $spacing-2;
+    border-radius: $border-radius;
+
+    svg {
+      font-size: 1.3rem;
+      min-width: 0;
+    }
+
+    &::before {
+      left: -#{$spacing-2};
+    }
+  }
+
+  .projects-loading,
+  .projects-empty {
+    justify-content: center;
+    padding: $spacing-3 0;
+  }
+
+  .sidebar-footer {
+    padding: $spacing-3 $spacing-2 0;
+  }
+
+  .user-profile {
+    flex-direction: column;
+    gap: $spacing-2;
+    padding: $spacing-2 0;
+
+    &:hover {
+      transform: none;
+    }
+
+    .user-avatar {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+}

@@ -190,6 +190,7 @@ const Sidebar = () => {
                 <NavLink
                   to="/"
                   className="menu-item"
+                  title={isSidebarCollapsed ? 'Panel de Control' : undefined}
                   onClick={closeMobileMenu}
                 >
                   <FiHome />
@@ -199,6 +200,7 @@ const Sidebar = () => {
                 <NavLink
                   to="/actividad"
                   className="menu-item"
+                  title={isSidebarCollapsed ? 'Actividad' : undefined}
                   onClick={closeMobileMenu}
                 >
                   <FiActivity />
@@ -208,6 +210,7 @@ const Sidebar = () => {
                 <NavLink
                   to="/notificaciones"
                   className="menu-item"
+                  title={isSidebarCollapsed ? 'Notificaciones' : undefined}
                   onClick={closeMobileMenu}
                 >
                   <FiBell />
@@ -217,6 +220,7 @@ const Sidebar = () => {
                 <NavLink
                   to="/projects"
                   className="menu-item"
+                  title={isSidebarCollapsed ? 'Equipos' : undefined}
                   onClick={closeMobileMenu}
                 >
                   <FiBriefcase />
@@ -228,6 +232,7 @@ const Sidebar = () => {
                   <NavLink
                     to="/tasks"
                     className="menu-item"
+                    title={isSidebarCollapsed ? 'Tareas' : undefined}
                     onClick={closeMobileMenu}
                   >
                     <FiCheckSquare />
@@ -238,6 +243,7 @@ const Sidebar = () => {
                 <NavLink
                   to="/calendar"
                   className="menu-item"
+                  title={isSidebarCollapsed ? 'Calendario' : undefined}
                   onClick={closeMobileMenu}
                 >
                   <FiCalendar />
@@ -248,6 +254,7 @@ const Sidebar = () => {
                   <NavLink
                     to="/archivos"
                     className="menu-item"
+                    title={isSidebarCollapsed ? 'Archivos' : undefined}
                     onClick={closeMobileMenu}
                   >
                     <FiFile />
@@ -259,6 +266,7 @@ const Sidebar = () => {
                   <NavLink
                     to="/reportes"
                     className="menu-item"
+                    title={isSidebarCollapsed ? 'Reportes' : undefined}
                     onClick={closeMobileMenu}
                   >
                     <FiBarChart2 />
@@ -295,6 +303,7 @@ const Sidebar = () => {
                         key={project.id}
                         to={`/projects/${project.id}`}
                         className="menu-item project-item"
+                        title={isSidebarCollapsed ? project.name : undefined}
                         onClick={closeMobileMenu}
                       >
                         <FiFolder />
@@ -332,6 +341,7 @@ const Sidebar = () => {
                   <NavLink
                     to="/admin/users"
                     className="menu-item"
+                    title={isSidebarCollapsed ? 'Usuarios' : undefined}
                     onClick={closeMobileMenu}
                   >
                     <FiUsers />
@@ -342,6 +352,7 @@ const Sidebar = () => {
                     <NavLink
                       to="/admin/accesos"
                       className="menu-item"
+                      title={isSidebarCollapsed ? 'Accesos' : undefined}
                       onClick={closeMobileMenu}
                     >
                       <FiShield />
@@ -353,6 +364,7 @@ const Sidebar = () => {
                     <NavLink
                       to="/admin/audit-log"
                       className="menu-item"
+                      title={isSidebarCollapsed ? 'Auditoría' : undefined}
                       onClick={closeMobileMenu}
                     >
                       <FiClipboard />
@@ -370,6 +382,7 @@ const Sidebar = () => {
                   <NavLink
                     to="/hr"
                     className="menu-item"
+                    title={isSidebarCollapsed ? 'Portal RH' : undefined}
                     onClick={closeMobileMenu}
                   >
                     <FiFileText />
