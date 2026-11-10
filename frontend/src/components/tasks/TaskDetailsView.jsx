@@ -30,6 +30,7 @@ import TaskSubmissionForm from './TaskSubmissionForm';
 import TaskForm from './TaskForm';
 import GraficasActivityTable from './GraficasActivityTable';
 import Modal from '../common/Modal';
+import ExtendDeadlineModal from './ExtendDeadlineModal';
 import './TaskDetailsView.scss';
 
 // File icon mapping for different file types
@@ -90,6 +91,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   const [taskComments, setTaskComments] = useState([]);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isReassigning, setIsReassigning] = useState(false);
+  const [showExtendModal, setShowExtendModal] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [showSubmissionsReview, setShowSubmissionsReview] = useState(false);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
@@ -444,19 +446,13 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
   // todos los alumnos. Ahora los cambios se piden por entrega desde el
   // tablero de revisión, y aquí solo se amplía el plazo general sin editar
   // las fechas a mano.
-  const handleExtendForAll = async () => {
+  const handleExtendForAll = async ({ days, reason }) => {
     if (!task || !task.id) return;
-    const input = window.prompt('¿Cuántos días más tendrán TODOS los alumnos para entregar? (se cuenta desde hoy, hasta las 23:59)', '3');
-    if (input === null) return;
-    const days = parseInt(input, 10);
-    if (!days || days < 1 || days > 60) {
-      toast.error('Indica un número de días entre 1 y 60.');
-      return;
-    }
     setIsReassigning(true);
     try {
-      const result = await extendTaskDeadline(task.id, { days, reason: `Plazo ampliado ${days} día(s)` });
+      const result = await extendTaskDeadline(task.id, { days, reason });
       toast.success(result?.message || 'Plazo ampliado');
+      setShowExtendModal(false);
       if (typeof onTaskUpdated === 'function') onTaskUpdated(result?.task);
     } catch (error) {
       toast.error(apiErrorMessage(error, 'No se pudo ampliar el plazo.'));
@@ -528,6 +524,15 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
             onClose={() => setShowSubmissionsReview(false)}
           />
         </Modal>
+      )}
+
+      {showExtendModal && (
+        <ExtendDeadlineModal
+          task={task}
+          saving={isReassigning}
+          onConfirm={handleExtendForAll}
+          onClose={() => setShowExtendModal(false)}
+        />
       )}
 
       {showSubmissionForm && (
@@ -626,7 +631,7 @@ const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskU
                 {!task?.is_continuous && (isTaskDone(task) || task?.is_overdue) && (
                   <button
                     className="btn btn-warning btn-icon"
-                    onClick={handleExtendForAll}
+                    onClick={() => setShowExtendModal(true)}
                     disabled={isReassigning}
                     title="Da más días a todos sin editar la fecha de la tarea"
                   >

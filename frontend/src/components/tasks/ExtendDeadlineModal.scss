@@ -1,0 +1,212 @@
+@import '../../assets/styles/variables';
+
+// Modal "Ampliar plazo" (TaskDetailsView). Usa variables de tema para que
+// se vea bien en claro y oscuro.
+.extend-deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  color: var(--text-primary);
+
+  .extend-deadline-intro {
+    display: flex;
+    gap: $spacing-2;
+    align-items: flex-start;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+
+    svg {
+      flex-shrink: 0;
+      margin-top: 3px;
+      color: #f59e0b;
+    }
+
+    strong {
+      color: var(--text-primary);
+    }
+  }
+
+  .extend-deadline-field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-2;
+    border: 0;
+    padding: 0;
+    margin: 0;
+
+    legend,
+    .legend {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: $spacing-2;
+      padding: 0;
+
+      em {
+        font-style: normal;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+    }
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 3.5rem;
+      padding: $spacing-2 $spacing-3;
+      border-radius: $border-radius;
+      border: 1px solid var(--border-color);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 0.9rem;
+
+      &:focus {
+        outline: none;
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+      }
+    }
+  }
+
+  .extend-deadline-chips {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $spacing-2;
+  }
+
+  .extend-chip {
+    padding: $spacing-2 0;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover:not(:disabled) {
+      border-color: #f59e0b;
+    }
+
+    &.active {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: #fff;
+    }
+  }
+
+  .extend-deadline-input {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+
+    input {
+      width: 5.5rem;
+      padding: $spacing-2 $spacing-3;
+      border-radius: $border-radius;
+      border: 1px solid var(--border-color);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+
+      &:focus {
+        outline: none;
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+      }
+
+      &[aria-invalid='true'] {
+        border-color: #ef4444;
+      }
+    }
+  }
+
+  .extend-deadline-error {
+    color: #ef4444;
+    font-size: 0.8rem;
+  }
+
+  .extend-deadline-preview {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    padding: $spacing-3 $spacing-4;
+    border-radius: $border-radius-lg;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+
+    > svg {
+      flex-shrink: 0;
+      font-size: 1.25rem;
+      color: #f59e0b;
+    }
+
+    .label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    strong {
+      font-size: 0.95rem;
+
+      &::first-letter {
+        text-transform: uppercase;
+      }
+    }
+
+    &.is-empty {
+      opacity: 0.6;
+    }
+  }
+
+  .extend-deadline-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-3;
+    padding-top: $spacing-2;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-2;
+    }
+
+    // El modal se monta en <body>, fuera de .task-details-view, así que el
+    // botón de confirmar lleva su propio estilo.
+    .btn-warning {
+      background: $warning;
+      border: 1px solid $warning;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: darken($warning, 8%);
+      }
+
+      &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+    }
+
+    .spinning {
+      animation: extend-deadline-spin 0.9s linear infinite;
+    }
+  }
+}
+
+@keyframes extend-deadline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
