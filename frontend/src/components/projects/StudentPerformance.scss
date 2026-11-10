@@ -346,3 +346,70 @@
     }
   }
 }
+
+// Las tarjetas internas usan la clase `.stat-card`, que también define el
+// Panel de Control de forma global (círculo decorativo, height: 100%, padding
+// grande). Eso tapaba los números y encimaba "Progreso general".
+.student-performance .student-stats .stat-card {
+  height: auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: none;
+  color: inherit;
+
+  &::before,
+  &::after {
+    display: none;
+  }
+
+  .stat-icon-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stat-content {
+    min-width: 0;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// `.progress-bar-container` global (lista de proyectos) fija height: 8px y
+// overflow: hidden: recortaba "Progreso general", la barra y el texto inferior.
+.student-performance .student-card .progress-bar-container {
+  height: auto;
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  flex: none;
+  margin-top: 0;
+}
+
+// Con las tarjetas compactas, las 3 métricas caben en una fila incluso en
+// teléfono (antes se apilaban y cada alumno ocupaba toda la pantalla).
+.student-performance .student-card .student-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .student-performance .student-stats .stat-card {
+    padding: 0.6rem 0.5rem;
+
+    .stat-value { font-size: 1.1rem; }
+    .stat-label { font-size: 0.6rem; letter-spacing: 0; }
+  }
+}
