@@ -47,7 +47,10 @@ def _name(user):
 
 
 def _lock(submission_id):
-    return (TaskSubmission.objects.select_for_update()
+    # of=('self',): bloquea SOLO la fila de la entrega. Sin esto PostgreSQL
+    # rechaza la consulta porque `reviewer` es nullable (LEFT JOIN):
+    # "FOR UPDATE cannot be applied to the nullable side of an outer join" → 500.
+    return (TaskSubmission.objects.select_for_update(of=('self',))
             .select_related('task', 'submitted_by', 'reviewer')
             .get(pk=submission_id))
 
