@@ -40,6 +40,9 @@ const Modal = ({ title, children, onClose, size = 'medium', zIndex }) => {
   // Handle keyboard events for accessibility
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
+      // Los portales propagan eventos por el árbol de React: sin esto, Esc en
+      // un modal abierto encima de otro cerraría los dos.
+      e.stopPropagation();
       onClose();
       return;
     }

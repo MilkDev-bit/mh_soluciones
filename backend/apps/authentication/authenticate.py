@@ -26,11 +26,11 @@ class CookieJWTAuthentication(JWTAuthentication):
         
         # Enforce CSRF validation for cookie-based authentication
         if header is None:
-            self.enforce_csrf(request)
+            self.enforce_csrf(request, user)
             
         return user, validated_token
 
-    def enforce_csrf(self, request):
+    def enforce_csrf(self, request, user=None):
         """
         Enforce CSRF validation for session-like authentication.
         """
@@ -47,5 +47,8 @@ class CookieJWTAuthentication(JWTAuthentication):
             # CSRF failed, raise a 403 error.
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"CSRF Validation Failed for user {request.user}: {reason}")
+            # No usar request.user aquí: estamos dentro de la autenticación y
+            # acceder a request.user vuelve a llamar a authenticate() → recursión
+            # infinita y un 500 en lugar del 403 esperado.
+            logger.warning(f"CSRF Validation Failed for user {user}: {reason}")
             raise exceptions.PermissionDenied('CSRF Failed: %s' % reason)
