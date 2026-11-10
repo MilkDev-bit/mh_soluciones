@@ -46,8 +46,7 @@ import {
   FiTrash2,
   FiSave,
   FiX,
-  FiCalendar,
-  FiClock
+  FiCalendar
 } from 'react-icons/fi';
 import { format, parseISO, isAfter } from 'date-fns';
 import { isTaskDone } from '../../utils/taskStatus';
@@ -802,17 +801,40 @@ const ProjectDetailPage = () => {
   // [FIX] Antes: vencida desde las 00:00 del día límite (isAfter + due_date),
   // CLOSED no contaba como terminada y GRAFICAS se forzaba como activa.
   // Ahora se usa lo que calcula el servidor: is_overdue / my_window / is_continuous.
-  const displayedTasks = tasks.filter(task => {
+  // Cada tarea cae en un solo grupo: completada, vencida o activa.
+  const taskBucket = (task) => {
     const done = isTaskDone(task) || task.my_window?.state === 'APPROVED';
-    const isOverdueTask = !done && (
-      task.my_window ? task.my_window.state === 'OVERDUE' : Boolean(task.is_overdue)
-    );
+    if (done) return 'COMPLETED';
+    const isOverdueTask = task.my_window ? task.my_window.state === 'OVERDUE' : Boolean(task.is_overdue);
+    return isOverdueTask ? 'OVERDUE' : 'ACTIVE';
+  };
+  const taskCounts = tasks.reduce(
+    (acc, task) => { acc[taskBucket(task)] += 1; return acc; },
+    { ACTIVE: 0, OVERDUE: 0, COMPLETED: 0 },
+  );
+  const displayedTasks = tasks.filter((task) => taskBucket(task) === taskFilter);
 
-    if (taskFilter === 'COMPLETED') return done;
-    if (taskFilter === 'OVERDUE') return isOverdueTask;
-    // ACTIVE view
-    return !done && !isOverdueTask;
-  });
+  // Etiqueta visible en cada fila para saber el estado sin abrir la tarea.
+  const taskRowBadge = (task) => {
+    const bucket = taskBucket(task);
+    if (bucket === 'COMPLETED') {
+      return isTaskDone(task)
+        ? { label: 'Completada', tone: 'success' }
+        : { label: 'Aprobada', tone: 'success' };
+    }
+    if (bucket === 'OVERDUE') return { label: 'Vencida', tone: 'danger' };
+    if (task.pending_review_count > 0) return { label: `${task.pending_review_count} por revisar`, tone: 'review' };
+    if (task.is_continuous) return { label: 'Continua', tone: 'info' };
+    if (task.status === 'REOPENED') return { label: 'Reabierta', tone: 'warning' };
+    if (task.status === 'DRAFT') return { label: 'Borrador', tone: 'muted' };
+    return null;
+  };
+
+  const TASK_FILTERS = [
+    { key: 'ACTIVE', label: 'Activas' },
+    { key: 'OVERDUE', label: 'Vencidas' },
+    { key: 'COMPLETED', label: 'Completadas' },
+  ];
 
   return (
     <>
@@ -1015,23 +1037,26 @@ const ProjectDetailPage = () => {
               <div className="glass-card">
                 <div className="section-header">
                   <h2>
-                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : `Tareas del Proyecto (${displayedTasks.length})`}
+                    {currentUser?.role === 'STUDENT' ? 'Mis Tareas en este Proyecto' : 'Tareas del Proyecto'}
                   </h2>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button 
-                      className={`btn btn-sm ${taskFilter === 'COMPLETED' ? 'btn-primary' : 'btn-secondary'}`} 
-                      onClick={() => setTaskFilter(taskFilter === 'COMPLETED' ? 'ACTIVE' : 'COMPLETED')}
-                      title={taskFilter === 'COMPLETED' ? 'Ocultar tareas completadas' : 'Mostrar tareas completadas'}
-                    >
-                      <FiCheckSquare /> {taskFilter === 'COMPLETED' ? 'Ocultar' : 'Mostrar'} Completadas
-                    </button>
-                    <button 
-                      className={`btn btn-sm ${taskFilter === 'OVERDUE' ? 'btn-danger' : 'btn-secondary'}`} 
-                      onClick={() => setTaskFilter(taskFilter === 'OVERDUE' ? 'ACTIVE' : 'OVERDUE')}
-                      title={taskFilter === 'OVERDUE' ? 'Ocultar tareas vencidas' : 'Mostrar tareas vencidas'}
-                    >
-                      <FiClock /> {taskFilter === 'OVERDUE' ? 'Ocultar' : 'Mostrar'} Vencidas
-                    </button>
+                  <div className="task-section-actions">
+                    {/* Antes eran dos botones "Mostrar/Ocultar" cuyo texto
+                        cambiaba al activarse y confundía qué se estaba viendo. */}
+                    <div className="task-filter-tabs" role="tablist" aria-label="Filtrar tareas">
+                      {TASK_FILTERS.map(({ key, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          role="tab"
+                          aria-selected={taskFilter === key}
+                          className={`task-filter-tab tab-${key.toLowerCase()} ${taskFilter === key ? 'active' : ''}`}
+                          onClick={() => setTaskFilter(key)}
+                        >
+                          {label}
+                          <span className="count">{taskCounts[key]}</span>
+                        </button>
+                      ))}
+                    </div>
                     {currentUser && canCreateTasks(currentUser.role) && (
                       <button className="btn btn-primary btn-sm" onClick={() => setIsModalOpen(true)}>
                         <FiPlus /> Nueva Tarea
@@ -1055,8 +1080,8 @@ const ProjectDetailPage = () => {
                       }
 
                       return (
-                        <div key={task.id} className="task-item clickable" onClick={() => setSelectedTask(task)}>
-                          <FiCheckSquare className={`task-status-icon status-${(task.status || 'pending').toLowerCase()}`} />
+                        <div key={task.id} className={`task-item clickable bucket-${taskBucket(task).toLowerCase()}`} onClick={() => setSelectedTask(task)}>
+                          <FiCheckSquare className={`task-status-icon status-${taskBucket(task) === 'COMPLETED' ? 'completed' : (task.status || 'pending').toLowerCase()}`} />
                           <div className="task-info">
                             <p className="task-title">{task.title || 'Tarea sin título'}</p>
                             {(documents.length > 0 || task.has_attachment || task.attachment || task.submissions_count > 0) && (
@@ -1071,6 +1096,12 @@ const ProjectDetailPage = () => {
                             )}
                           </div>
                           <div className="task-right-section">
+                            {(() => {
+                              const badge = taskRowBadge(task);
+                              return badge ? (
+                                <span className={`task-row-badge tone-${badge.tone}`}>{badge.label}</span>
+                              ) : null;
+                            })()}
                             {(task?.assigned_students_data?.length > 0 || task?.assigned_to) && (
                               <AvatarGroup
                                 students={
@@ -1086,7 +1117,11 @@ const ProjectDetailPage = () => {
                       );
                     })
                   ) : (
-                    <p>No hay tareas en esta vista para este proyecto todavía.</p>
+                    <p className="task-list-empty">
+                      {taskFilter === 'COMPLETED' ? 'Aún no hay tareas completadas en este proyecto.'
+                        : taskFilter === 'OVERDUE' ? 'No hay tareas vencidas. 🎉'
+                        : 'No hay tareas activas en este proyecto.'}
+                    </p>
                   )}
                 </div>
               </div>

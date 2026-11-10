@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -31,6 +32,7 @@ import TaskForm from './TaskForm';
 import GraficasActivityTable from './GraficasActivityTable';
 import Modal from '../common/Modal';
 import ExtendDeadlineModal from './ExtendDeadlineModal';
+import { invalidateTaskQueries } from '../../utils/taskCache';
 import './TaskDetailsView.scss';
 
 // File icon mapping for different file types
@@ -73,7 +75,21 @@ const FILE_ICON_MAP = {
   default: FiFile
 };
 
-const TaskDetailsView = ({ task, user, project, projectMembers, onClose, onTaskUpdated, onTaskDeleted, onDocumentUpload }) => {
+const TaskDetailsView = ({
+  task, user, project, projectMembers, onClose,
+  onTaskUpdated: onTaskUpdatedProp, onTaskDeleted: onTaskDeletedProp, onDocumentUpload,
+}) => {
+  // Cualquier cambio a la tarea (cerrar, ampliar plazo, editar, eliminar…)
+  // refresca TODAS las vistas que la muestran, no solo la que abrió el modal.
+  const queryClient = useQueryClient();
+  const onTaskUpdated = (...args) => {
+    invalidateTaskQueries(queryClient);
+    return onTaskUpdatedProp?.(...args);
+  };
+  const onTaskDeleted = (...args) => {
+    invalidateTaskQueries(queryClient);
+    return onTaskDeletedProp?.(...args);
+  };
   const [file, setFile] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [documents, setDocuments] = useState([]);
