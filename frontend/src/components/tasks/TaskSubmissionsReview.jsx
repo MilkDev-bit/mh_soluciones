@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getReviewBoard, claimSubmission, releaseSubmission, extendTaskDeadline,
 } from '../../services/taskService';
@@ -10,6 +11,7 @@ import {
 import GradeSubmissionForm from './GradeSubmissionForm';
 import Modal from '../common/Modal';
 import Loading from '../common/Loading';
+import { invalidateTaskQueries } from '../../utils/taskCache';
 import {
   BOARD_STATE, submissionStatusLabel, submissionStatusClass, formatDateTime, apiErrorMessage,
 } from '../../utils/taskStatus';
@@ -146,6 +148,7 @@ const SubmissionBody = ({ submission, maxScore }) => (
 );
 
 const TaskSubmissionsReview = ({ task, user }) => {
+  const queryClient = useQueryClient();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('TO_REVIEW');
@@ -199,6 +202,7 @@ const TaskSubmissionsReview = ({ task, user }) => {
     try {
       const res = await fn();
       toast.success(res?.message || successMsg);
+      invalidateTaskQueries(queryClient);
       await fetchBoard();
       return res;
     } catch (error) {
@@ -235,6 +239,8 @@ const TaskSubmissionsReview = ({ task, user }) => {
 
   const handleGradeComplete = async () => {
     setGrading(null);
+    // Aprobar / pedir cambios cambia pendientes, desempeño y panel.
+    invalidateTaskQueries(queryClient);
     await fetchBoard();
   };
 

@@ -1329,3 +1329,141 @@
     gap: var(--perf-gap);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Tareas del proyecto: filtro por pestañas con contador y etiqueta de estado
+// por fila (antes no había forma de ver que una tarea estaba completada sin
+// abrirla, y los botones "Mostrar/Ocultar" cambiaban de texto al activarse).
+// ---------------------------------------------------------------------------
+.task-section-actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.task-filter-tabs {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+
+  .task-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-2;
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+
+    .count {
+      min-width: 1.5rem;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba($neutral-500, 0.18);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    &:hover:not(.active) {
+      color: var(--text-primary);
+    }
+
+    &.active {
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+      .count {
+        background: rgba(255, 255, 255, 0.25);
+      }
+    }
+
+    &.tab-active.active { background: $primary-500; }
+    &.tab-overdue.active { background: #ef4444; }
+    &.tab-completed.active { background: #10b981; }
+  }
+}
+
+.task-row-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &.tone-success { background: rgba(16, 185, 129, 0.15); color: #059669; }
+  &.tone-danger { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+  &.tone-warning { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+  &.tone-review { background: rgba(139, 92, 246, 0.15); color: #7c3aed; }
+  &.tone-info { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+  &.tone-muted { background: rgba($neutral-500, 0.15); color: var(--text-secondary); }
+}
+
+[data-theme="dark"] .task-row-badge {
+  &.tone-success { color: #34d399; }
+  &.tone-danger { color: #f87171; }
+  &.tone-warning { color: #fbbf24; }
+  &.tone-review { color: #a78bfa; }
+  &.tone-info { color: #60a5fa; }
+}
+
+.task-list-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: $spacing-6 0;
+}
+
+@media (max-width: $breakpoint-md) {
+  .task-section-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .task-filter-tabs .task-filter-tab {
+    padding: 6px 10px;
+  }
+}
+
+// Celular: las tres pestañas ocupan todo el ancho y se reparten el espacio.
+@media (max-width: $breakpoint-sm) {
+  .task-section-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .task-filter-tabs {
+    display: flex;
+    width: 100%;
+
+    .task-filter-tab {
+      flex: 1;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 4px;
+      font-size: 0.78rem;
+
+      .count {
+        min-width: 1.25rem;
+        padding: 1px 5px;
+      }
+    }
+  }
+}
+
+.glass-card > .section-header {
+  flex-wrap: wrap;
+}

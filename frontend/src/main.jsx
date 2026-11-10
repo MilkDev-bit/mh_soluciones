@@ -21,7 +21,12 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: false, 
       refetchOnReconnect: false, 
-      refetchOnMount: false, 
+      // true = al volver a una pantalla solo se recarga si sus datos ya están
+      // vencidos (staleTime) o fueron invalidados. Con `false` las pantallas
+      // nunca se actualizaban al regresar: p. ej. al cerrar una tarea desde
+      // un proyecto, Tareas y el Panel de Control seguían mostrándola abierta
+      // hasta recargar la página.
+      refetchOnMount: true,
     },
     mutations: {
       retry: 1,
