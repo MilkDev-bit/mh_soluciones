@@ -1,8 +1,8 @@
 @import '../assets/styles/variables';
 
 .dashboard-page {
-  padding: $spacing-8;
-  max-width: 1600px;
+  padding: $spacing-6 $spacing-4;
+  max-width: none;
   margin: 0 auto;
   min-height: 100vh;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);

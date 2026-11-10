@@ -188,8 +188,10 @@
 }
 
 .content-container {
-  padding:  0 $spacing-8 $spacing-8;
-  max-width: $max-width-7xl;
+  // Antes: máximo 80rem (1280 px) y 2rem a cada lado → en pantallas Full HD
+  // quedaban franjas vacías grandes. Ahora usa casi todo el ancho disponible.
+  padding: 0 $spacing-5 $spacing-6;
+  max-width: 1760px;
   margin: 0 auto;
   width: 100%;
   flex: 1;
