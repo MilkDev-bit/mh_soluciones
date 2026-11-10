@@ -220,3 +220,78 @@ def latest_submission_for(task, user):
         return cached[0] if cached else None
     return (task.submissions.filter(submitted_by=user)
             .select_related('reviewer').order_by('-version').first())
+
+
+# ---------------------------------------------------------------------------
+# Clasificación de las tareas de un usuario (Mis Tareas y Panel de Control)
+# ---------------------------------------------------------------------------
+
+BUCKETS = ('to_submit', 'late', 'changes_requested', 'submitted', 'graded', 'overdue')
+
+_STATE_TO_BUCKET = {
+    STATE_NO_DEADLINE: 'to_submit',
+    STATE_OPEN: 'to_submit',
+    STATE_DUE_SOON: 'to_submit',
+    STATE_NOT_OPEN: 'to_submit',
+    STATE_LATE_WINDOW: 'late',
+    STATE_CORRECTION: 'changes_requested',
+    STATE_IN_REVIEW: 'submitted',
+    STATE_APPROVED: 'graded',
+    STATE_OVERDUE: 'overdue',
+    STATE_CLOSED: 'overdue',
+}
+
+# Orden de urgencia para listas de pendientes
+_URGENCY = {STATE_CORRECTION: 0, STATE_LATE_WINDOW: 1, STATE_DUE_SOON: 2, STATE_OPEN: 3,
+            STATE_NOT_OPEN: 4, STATE_NO_DEADLINE: 5}
+
+
+def user_task_queryset(user):
+    """Tareas asignadas al usuario, con prefetch para clasificarlas sin N+1."""
+    from django.db.models import Prefetch, Q
+    from .models import Task, TaskSubmission
+
+    return (Task.objects.filter(Q(assigned_students=user) | Q(assigned_to=user))
+            .exclude(status='DRAFT').distinct()
+            .select_related('project', 'assigned_to')
+            .prefetch_related(
+                'assigned_students',
+                'reopen_logs__specific_students',
+                Prefetch('submissions',
+                         queryset=TaskSubmission.objects.filter(submitted_by=user)
+                         .select_related('reviewer').order_by('-version'),
+                         to_attr='my_submissions'),
+            ))
+
+
+def classify_user_tasks(user, tasks=None, now=None):
+    """Agrupa las tareas del usuario según SU situación (entrega + plazo).
+
+    Devuelve {bucket: [(task, window), ...]}. Es la única regla que usan
+    /tasks/my-tasks/ y el Panel de Control; antes el panel contaba como
+    "pendiente" toda tarea con estado abierto, aunque el alumno ya la hubiera
+    entregado, y como "vencida" cualquier due_date pasada.
+    """
+    from .models import TaskSubmission
+
+    tasks = user_task_queryset(user) if tasks is None else tasks
+    now = now or timezone.now()
+    buckets = {key: [] for key in BUCKETS}
+    for task in tasks:
+        latest = latest_submission_for(task, user)
+        window = submission_window(task, user, latest_submission=latest, now=now)
+        bucket = _STATE_TO_BUCKET.get(window.state, 'to_submit')
+        if latest and latest.status in TaskSubmission.PENDING_REVIEW_STATUSES:
+            bucket = 'submitted'  # entregada, esperando revisión
+        elif latest and window.state == STATE_CLOSED:
+            bucket = 'graded' if latest.status in TaskSubmission.FINAL_STATUSES else 'submitted'
+        buckets[bucket].append((task, window))
+
+    def urgency(item):
+        task, window = item
+        dl = window.correction_deadline or window.deadline
+        return (_URGENCY.get(window.state, 9), dl.timestamp() if dl else float('inf'))
+
+    for key in ('to_submit', 'late', 'changes_requested'):
+        buckets[key].sort(key=urgency)
+    return buckets

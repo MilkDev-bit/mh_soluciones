@@ -103,7 +103,7 @@ const DashboardPage = () => {
           statsWidgets.push(
             { id: 'assigned', type: 'stat', title: 'Asignadas', value: kpis.assigned_tasks, icon: 'check', color: 'blue' },
             { id: 'pending', type: 'stat', title: 'Pendientes', value: kpis.pending_tasks, icon: 'folder', color: 'orange' },
-            { id: 'completed', type: 'stat', title: 'Completadas', value: kpis.completed_tasks, icon: 'check', color: 'green' },
+            { id: 'completed', type: 'stat', title: 'Entregadas', value: kpis.completed_tasks, icon: 'check', color: 'green' },
             { id: 'overdue', type: 'stat', title: 'Vencidas', value: kpis.overdue_tasks, icon: 'alert', color: 'red' }
           );
           commonWidgets.push({ id: 'my-tasks', type: 'my-tasks' });
