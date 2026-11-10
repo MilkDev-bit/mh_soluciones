@@ -49,6 +49,40 @@ logger = logging.getLogger(__name__)
 PASSING_SCORE_THRESHOLD = 0.7  # 70% of max score is considered passing
 
 
+def student_visible_tasks_q(user):
+    """
+    Tareas que ve un alumno/empleado.
+
+    [FIX] Antes bastaba con ser miembro del proyecto para ver TODAS sus tareas,
+    incluidas las asignadas a otros usuarios; como el alumno no las había
+    entregado, le aparecían en "Vencidas" o "Pendientes". Ahora ve:
+      - las tareas asignadas a él (assigned_to o assigned_students),
+      - las que creó,
+      - y las tareas generales de sus proyectos (sin nadie asignado).
+    """
+    from apps.projects.models import ProjectMember
+
+    member_project_ids = ProjectMember.objects.filter(user=user).values('project_id')
+    tasks_with_assignees = Task.assigned_students.through.objects.values('task_id')
+    general_project_task = (
+        Q(project_id__in=member_project_ids)
+        & Q(assigned_to__isnull=True)
+        & ~Q(id__in=tasks_with_assignees)
+    )
+    return (
+        Q(assigned_to=user)
+        | Q(assigned_students=user)
+        | Q(created_by=user)
+        | general_project_task
+    )
+
+
+def is_task_assignee(task, user):
+    if task.assigned_to_id == user.pk:
+        return True
+    return any(s.pk == user.pk for s in task.assigned_students.all())
+
+
 class TaskViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar Tareas.
@@ -83,10 +117,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 # 3. Student is in assigned_students field
                 # 4. Student created the task
                 base_queryset = Task.objects.filter(
-                    Q(project__projectmember__user=user) |  # Student is member of project
-                    Q(assigned_to=user) |                    # Task assigned to student
-                    Q(assigned_students=user) |              # Student in assigned_students list
-                    Q(created_by=user)                       # Student created the task
+                    student_visible_tasks_q(user)
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
                 
                 logger.info(f"Student {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
@@ -577,10 +608,16 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
         queryset = TaskSubmission.objects.filter(
             task_id=self.kwargs['task_pk']
         ).select_related(
-            'submitted_by', 'graded_by'
+            'submitted_by', 'graded_by', 'reviewer'
         ).prefetch_related(
             'documents'  # Prefetch related documents for efficiency
         )
+
+        # [FIX privacidad] Un alumno solo ve sus propias entregas (antes veía las
+        # de todos los asignados a la tarea). Revisores y clientes ven todas.
+        user = self.request.user
+        if user.role not in TEACHER_ROLES and user.role != 'CLIENT':
+            queryset = queryset.filter(submitted_by=user)
         
         # Filter by student if specified
         student_id = self.request.query_params.get('student', None)
@@ -631,6 +668,16 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Solo pueden entregar los usuarios asignados (si la tarea tiene asignados).
+        has_assignees = task.assigned_to_id or task.assigned_students.exists()
+        if (request.user.role not in TEACHER_ROLES and has_assignees
+                and not is_task_assignee(task, request.user)):
+            return Response(
+                {'error': 'Esta tarea está asignada a otros usuarios; no puedes entregarla.',
+                 'code': 'NOT_ASSIGNED'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # [FIX] Una sola regla de plazo (deadlines.py): fecha límite local,
         # días de gracia, prórrogas por alumno, correcciones y actividades
         # continuas. Se valida ANTES de procesar archivos y se responde con un

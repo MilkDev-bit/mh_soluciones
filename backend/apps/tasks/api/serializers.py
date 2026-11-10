@@ -182,16 +182,29 @@ class TaskSerializer(serializers.ModelSerializer):
             return None
         return user
 
+    def _assigned_student(self, obj):
+        """El usuario actual solo si es alumno ASIGNADO a esta tarea.
+
+        Las tareas de otros (o generales del proyecto) no tienen plazo para él,
+        así que no deben aparecer como pendientes ni vencidas en su tablero.
+        """
+        user = self._student()
+        if user is None:
+            return None
+        if obj.assigned_to_id == user.pk or any(s.pk == user.pk for s in obj.assigned_students.all()):
+            return user
+        return None
+
     def get_my_window(self, obj):
         """Ventana de entrega del usuario actual (solo alumnos asignados)."""
-        user = self._student()
+        user = self._assigned_student(obj)
         if user is None:
             return None
         latest = deadlines.latest_submission_for(obj, user)
         return deadlines.submission_window(obj, user, latest_submission=latest).as_dict()
 
     def get_my_submission_status(self, obj):
-        user = self._student()
+        user = self._assigned_student(obj)
         if user is None:
             return None
         latest = deadlines.latest_submission_for(obj, user)
