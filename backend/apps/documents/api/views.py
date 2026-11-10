@@ -26,18 +26,33 @@ from .serializers import DocumentSerializer
 logger = logging.getLogger(__name__)
 
 
+_CELERY_CHECK = {'value': None, 'checked_at': 0.0}
+_CELERY_CHECK_TTL = 60  # segundos
+
+
 def _is_celery_worker_available():
     """
     Verifica si hay al menos un Celery worker activo consultando Redis.
     Retorna False si no hay workers o si hay cualquier error.
+
+    [FIX] Importaba `config.celery_app`, que no existe: siempre devolvía False y
+    TODAS las subidas a Drive se hacían en un hilo del servidor web aunque
+    hubiera worker de Celery.
+    [RENDIMIENTO] Cada consulta esperaba hasta 0.5 s y se hacía POR ARCHIVO
+    (5 archivos = 2.5 s extra por entrega). Ahora el resultado se guarda 60 s.
     """
+    import time
+    now = time.monotonic()
+    if _CELERY_CHECK['value'] is not None and now - _CELERY_CHECK['checked_at'] < _CELERY_CHECK_TTL:
+        return _CELERY_CHECK['value']
     try:
-        from config.celery_app import app as celery_app
+        from config.celery import app as celery_app
         inspector = celery_app.control.inspect(timeout=0.5)
-        active = inspector.active()
-        return bool(active)
+        available = bool(inspector.ping())
     except Exception:
-        return False
+        available = False
+    _CELERY_CHECK.update(value=available, checked_at=now)
+    return available
 
 
 def _run_upload_sync(document, target_folder_id=None):

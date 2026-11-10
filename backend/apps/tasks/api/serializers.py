@@ -16,6 +16,35 @@ logger = logging.getLogger(__name__)
 from .. import deadlines
 
 
+class UserMiniSerializer(serializers.Serializer):
+    """
+    Datos mínimos de un usuario para listas (asignados, avatares).
+
+    [RENDIMIENTO + PRIVACIDAD] Antes cada tarea de la lista incluía el
+    UserSerializer completo de cada asignado (con allowed_ips, requires_2fa,
+    last_login...): mucho más JSON y trabajo por tarea, y datos de seguridad
+    visibles para cualquier alumno.
+    """
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+    role = serializers.CharField()
+    profile_picture = serializers.SerializerMethodField()
+
+    def get_profile_picture(self, obj):
+        pic = getattr(obj, 'profile_picture', None)
+        if not pic:
+            return None
+        try:
+            url = pic.url
+        except Exception:
+            return None
+        request = self.context.get('request')
+        return request.build_absolute_uri(url) if request and url.startswith('/') else url
+
+
 class ReviewerMiniSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     full_name = serializers.SerializerMethodField()
@@ -116,8 +145,8 @@ class TaskReopenLogSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     """ Serializador para la vista de lista de tareas. """
-    assigned_to = UserSerializer(read_only=True)
-    assigned_students_data = UserSerializer(source='assigned_students', many=True, read_only=True)
+    assigned_to = UserMiniSerializer(read_only=True)
+    assigned_students_data = UserMiniSerializer(source='assigned_students', many=True, read_only=True)
     project_name = serializers.CharField(source='project.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
@@ -195,20 +224,26 @@ class TaskSerializer(serializers.ModelSerializer):
             return user
         return None
 
+    def _my_state(self, obj):
+        """(última entrega, ventana) del usuario actual, calculado una vez por tarea."""
+        cache = self.context.setdefault('_my_state_cache', {})
+        if obj.pk not in cache:
+            user = self._assigned_student(obj)
+            if user is None:
+                cache[obj.pk] = (None, None)
+            else:
+                latest = deadlines.latest_submission_for(obj, user)
+                cache[obj.pk] = (latest, deadlines.submission_window(obj, user, latest_submission=latest))
+        return cache[obj.pk]
+
     def get_my_window(self, obj):
         """Ventana de entrega del usuario actual (solo alumnos asignados)."""
-        user = self._assigned_student(obj)
-        if user is None:
-            return None
-        latest = deadlines.latest_submission_for(obj, user)
-        return deadlines.submission_window(obj, user, latest_submission=latest).as_dict()
+        _, window = self._my_state(obj)
+        return window.as_dict() if window else None
 
     def get_my_submission_status(self, obj):
-        user = self._assigned_student(obj)
-        if user is None:
-            return None
-        latest = deadlines.latest_submission_for(obj, user)
-        return latest.status if latest else None
+        latest, window = self._my_state(obj)
+        return latest.status if (window and latest) else None
 
 
 class TaskDetailSerializer(TaskSerializer):

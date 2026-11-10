@@ -103,6 +103,10 @@ server {
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
+    # [RENDIMIENTO] Sin gzip_proxied, nginx NO comprime si la petición llega a
+    # través de otro proxy (el de Railway): JS, CSS y JSON viajaban sin comprimir.
+    gzip_proxied any;
+    gzip_comp_level 5;
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/rss+xml application/json application/javascript;
     
     # ===========================================================================

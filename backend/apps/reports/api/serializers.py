@@ -14,18 +14,40 @@ class ProjectStatusSerializer(serializers.ModelSerializer):
         model = Project
         fields = ['id', 'name', 'status', 'status_display', 'progress', 'member_count', 'tasks_count']
     
+    # [RENDIMIENTO] Usa los conteos anotados por with_project_stats() (1 query
+    # para toda la lista); si no vienen anotados, cae a contar por proyecto.
+    def _tasks_total(self, obj):
+        value = getattr(obj, 'stats_tasks_total', None)
+        return value if value is not None else obj.tasks.count()
+
     def get_progress(self, obj):
-        total_tasks = obj.tasks.count()
+        total_tasks = self._tasks_total(obj)
         if total_tasks == 0:
             return 0
-        completed_tasks = obj.tasks.filter(status=Task.TaskStatus.COMPLETED).count()
+        completed_tasks = getattr(obj, 'stats_tasks_completed', None)
+        if completed_tasks is None:
+            completed_tasks = obj.tasks.filter(status=Task.TaskStatus.COMPLETED).count()
         return int((completed_tasks / total_tasks) * 100)
     
     def get_member_count(self, obj):
-        return obj.members.count()
+        value = getattr(obj, 'stats_members_total', None)
+        return value if value is not None else obj.members.count()
     
     def get_tasks_count(self, obj):
-        return obj.tasks.count()
+        return self._tasks_total(obj)
+
+
+def with_project_stats(queryset):
+    """Anota los conteos que usa ProjectStatusSerializer."""
+    from django.db.models import Count, Q
+    # Re-filtrar por pk evita que un filter(members=...) previo distorsione
+    # Count('members') (Django reutilizaría ese mismo JOIN).
+    base = queryset.model.objects.filter(pk__in=queryset.values('pk'))
+    return base.annotate(
+        stats_tasks_total=Count('tasks', distinct=True),
+        stats_tasks_completed=Count('tasks', filter=Q(tasks__status=Task.TaskStatus.COMPLETED), distinct=True),
+        stats_members_total=Count('members', distinct=True),
+    )
 
 class TaskSummarySerializer(serializers.ModelSerializer):
     """Serializador para mostrar un resumen de una tarea."""
