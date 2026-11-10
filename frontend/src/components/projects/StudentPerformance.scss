@@ -34,7 +34,7 @@
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    padding: 1.75rem;
+    padding: 1.25rem;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
@@ -405,11 +405,33 @@
   gap: 0.5rem;
 }
 
-@media (max-width: 480px) {
-  .student-performance .student-stats .stat-card {
-    padding: 0.6rem 0.5rem;
+// La tarjeta se adapta a SU propio ancho (container query), no al de la
+// pantalla: en una cuadrícula de 3 columnas en laptop cada tarjeta mide
+// ~320 px y antes se cortaban "100%" y "EFECTIVIDAD".
+.student-performance .student-card {
+  container-type: inline-size;
+}
 
-    .stat-value { font-size: 1.1rem; }
-    .stat-label { font-size: 0.6rem; letter-spacing: 0; }
+@container (max-width: 440px) {
+  .student-performance .student-card {
+    .student-stats .stat-card {
+      padding: 0.6rem 0.5rem;
+      align-items: center;
+      text-align: center;
+
+      .stat-icon-wrapper { width: 32px; height: 32px; }
+      .stat-content { width: 100%; }
+      .stat-value { font-size: 1.15rem; }
+      .stat-label { font-size: 0.6rem; letter-spacing: 0; }
+    }
+  }
+}
+
+@container (max-width: 360px) {
+  .student-performance .student-card {
+    .student-header { gap: 0.75rem; }
+    .student-name { font-size: 1rem; }
+    .performance-badge { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+    .student-stats .stat-card .stat-value { font-size: 1rem; }
   }
 }

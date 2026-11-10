@@ -1315,9 +1315,17 @@
 .project-overview-performance {
   margin: 0;
 
+  // Las tarjetas se estiran hasta los bordes: 1 alumno ocupa todo el ancho,
+  // 2 la mitad cada uno, 3 un tercio; del 4.º en adelante pasan a la siguiente
+  // fila (máximo 3 por fila). En pantallas angostas bajan a 2 y luego a 1.
+  // auto-fit colapsa las columnas vacías; la columna mínima es 1/3 del ancho.
   .student-performance .performance-list {
+    --perf-gap: #{$spacing-4};
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
-    gap: $spacing-4;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, max(300px, calc((100% - 2 * var(--perf-gap)) / 3))), 1fr)
+    );
+    gap: var(--perf-gap);
   }
 }
