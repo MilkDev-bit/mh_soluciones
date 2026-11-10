@@ -319,3 +319,31 @@ class SameProjectVisibilityTests(Base):
         resp = c.get(f'/api/v1/tasks/{self.theirs.pk}/submissions/')
         rows = resp.data['results'] if isinstance(resp.data, dict) else resp.data
         self.assertEqual(len(rows), 0)
+
+
+class StudentDashboardTests(Base):
+    """Panel de Control: 'Mis Tareas Pendientes' y los indicadores del alumno."""
+
+    def test_panel_usa_la_situacion_del_alumno(self):
+        today = timezone.localdate()
+        vieja = self.make_task(title='Campañas', due_date=date(2026, 5, 9))        # vencida, sin entregar
+        entregada = self.make_task(title='PIRAMIDE SH', due_date=today + timedelta(days=2))
+        TaskSubmission.objects.create(task=entregada, submitted_by=self.student, notes='x')
+        aprobada = self.make_task(title='KPI', due_date=today + timedelta(days=2))
+        s = TaskSubmission.objects.create(task=aprobada, submitted_by=self.student, notes='x')
+        review.decide(s.pk, self.teacher, 'approve', score=90)
+        por_entregar = self.make_task(title='QR WEEKLY', due_date=today + timedelta(days=1))
+        continua = self.make_task(title='GRAFICAS', due_date=date(2026, 5, 9), is_continuous=True)
+
+        resp = self.client_for(self.student).get('/api/v1/reports/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        kpis = resp.data['kpis']
+        self.assertEqual(kpis['assigned_tasks'], 5)
+        self.assertEqual(kpis['pending_tasks'], 2)     # QR WEEKLY + GRAFICAS
+        self.assertEqual(kpis['completed_tasks'], 2)   # entregada + aprobada
+        self.assertEqual(kpis['overdue_tasks'], 1)     # Campañas de mayo
+        titles = [t['title'] for t in resp.data['my_pending_tasks']]
+        self.assertEqual(titles, ['QR WEEKLY', 'GRAFICAS'])
+        self.assertNotIn(vieja.title, titles)
+        self.assertNotIn(entregada.title, titles)
+        self.assertTrue(resp.data['my_pending_tasks'][1]['is_continuous'])

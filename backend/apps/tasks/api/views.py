@@ -131,7 +131,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return base_queryset.order_by('-created_at')
 
     @staticmethod
-    def _with_review_data(queryset, user):
+    def _with_review_data(queryset, user, my_submissions=True):
         """Anotaciones y prefetch para que el serializer no haga N+1 queries.
 
         - submissions_total / last_submission_at / pending_review_total: conteos.
@@ -147,7 +147,7 @@ class TaskViewSet(viewsets.ModelViewSet):
                 distinct=True,
             ),
         ).prefetch_related('reopen_logs__specific_students')
-        if user.role not in TEACHER_ROLES:
+        if my_submissions and user.role not in TEACHER_ROLES:
             queryset = queryset.prefetch_related(Prefetch(
                 'submissions',
                 queryset=TaskSubmission.objects.filter(submitted_by=user)
@@ -409,43 +409,11 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Este endpoint es solo para estudiantes'},
                             status=status.HTTP_403_FORBIDDEN)
 
-        tasks = Task.objects.filter(
-            Q(assigned_students=user) | Q(assigned_to=user)
-        ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to')
-        tasks = self._with_review_data(tasks, user)
-        if user.role in TEACHER_ROLES:  # PROFESSOR también recibe sus propias entregas
-            tasks = tasks.prefetch_related(Prefetch(
-                'submissions',
-                queryset=TaskSubmission.objects.filter(submitted_by=user)
-                .select_related('reviewer').order_by('-version'),
-                to_attr='my_submissions',
-            ))
-
-        buckets = {key: [] for key in (
-            'to_submit', 'late', 'changes_requested', 'submitted', 'graded', 'overdue'
-        )}
-        state_to_bucket = {
-            deadlines.STATE_NO_DEADLINE: 'to_submit',
-            deadlines.STATE_OPEN: 'to_submit',
-            deadlines.STATE_DUE_SOON: 'to_submit',
-            deadlines.STATE_NOT_OPEN: 'to_submit',
-            deadlines.STATE_LATE_WINDOW: 'late',
-            deadlines.STATE_CORRECTION: 'changes_requested',
-            deadlines.STATE_IN_REVIEW: 'submitted',
-            deadlines.STATE_APPROVED: 'graded',
-            deadlines.STATE_OVERDUE: 'overdue',
-            deadlines.STATE_CLOSED: 'overdue',
-        }
-        for task in tasks:
-            latest = deadlines.latest_submission_for(task, user)
-            window = deadlines.submission_window(task, user, latest_submission=latest)
-            bucket = state_to_bucket.get(window.state, 'to_submit')
-            # Entregada y esperando revisión (puede reemplazarla mientras siga abierta)
-            if latest and latest.status in TaskSubmission.PENDING_REVIEW_STATUSES:
-                bucket = 'submitted'
-            elif latest and window.state == deadlines.STATE_CLOSED:
-                bucket = 'graded' if latest.status in TaskSubmission.FINAL_STATUSES else 'submitted'
-            buckets[bucket].append(task)
+        # Misma clasificación que el Panel de Control (apps/tasks/deadlines.py)
+        # (user_task_queryset ya precarga las entregas del usuario)
+        tasks = self._with_review_data(deadlines.user_task_queryset(user), user, my_submissions=False)
+        buckets = {key: [task for task, _ in items]
+                   for key, items in deadlines.classify_user_tasks(user, tasks).items()}
 
         ser = lambda items: TaskSerializer(items, many=True, context={'request': request}).data
         return Response({key: ser(items) for key, items in buckets.items()})

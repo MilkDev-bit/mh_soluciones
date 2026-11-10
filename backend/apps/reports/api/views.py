@@ -155,41 +155,42 @@ class DashboardDataAPIView(APIView):
         }
 
     def _get_student_dashboard_data(self, user):
-        """Genera datos para el rol de Alumno/Empleado."""
-        my_tasks = Task.objects.filter(
-            Q(assigned_to=user) | Q(assigned_students=user)
-        ).distinct()
+        """
+        Panel del Alumno/Empleado.
 
-        # Estatutos activos (tarea no finalizada): nuevos + legacy
-        ACTIVE_STATUSES = [
-            Task.TaskStatus.OPEN,
-            Task.TaskStatus.REOPENED,
-            Task.TaskStatus.IN_REVIEW,
-            Task.TaskStatus.PENDING,
-            Task.TaskStatus.IN_PROGRESS,
-            Task.TaskStatus.FOR_REVIEW,
-        ]
-        # Estatutos finalizados: nuevos + legacy
-        DONE_STATUSES = [
-            Task.TaskStatus.COMPLETED,
-            Task.TaskStatus.CLOSED,
-        ]
+        [FIX] Antes los indicadores y "Mis Tareas Pendientes" se calculaban con el
+        estado GLOBAL de la tarea: una tarea seguía "pendiente" aunque el alumno
+        ya la hubiera entregado (o aprobado), las tareas viejas de semanas
+        anteriores nunca salían de la lista y "Vencidas" contaba cualquier
+        due_date pasada. Ahora se usa la misma regla que Mis Tareas
+        (apps.tasks.deadlines.classify_user_tasks): entrega del alumno + plazo.
+        """
+        from apps.tasks import deadlines
+
+        buckets = deadlines.classify_user_tasks(user)
+        actionable = buckets['changes_requested'] + buckets['late'] + buckets['to_submit']
+
+        def summary(task, window):
+            data = TaskSummarySerializer(task).data
+            data.update({
+                'deadline': window.deadline.isoformat() if window.deadline else None,
+                'is_continuous': task.is_continuous,
+                'window_state': window.state,
+                'window_message': window.message,
+            })
+            return data
 
         return {
             'kpis': {
-                'assigned_tasks': my_tasks.count(),
-                'pending_tasks': my_tasks.filter(status__in=ACTIVE_STATUSES).count(),
-                'completed_tasks': my_tasks.filter(status__in=DONE_STATUSES).count(),
-                'overdue_tasks': my_tasks.filter(
-                    due_date__lt=timezone.localdate(),
-                    status__in=ACTIVE_STATUSES,
-                    is_continuous=False,
-                ).count(),
+                'assigned_tasks': sum(len(v) for v in buckets.values()),
+                # Lo que el alumno todavía puede (y debe) entregar
+                'pending_tasks': len(actionable),
+                # Entregadas (en revisión) + aprobadas
+                'completed_tasks': len(buckets['submitted']) + len(buckets['graded']),
+                # Vencidas sin entrega y sin posibilidad de entregar tarde
+                'overdue_tasks': len(buckets['overdue']),
             },
-            'my_pending_tasks': TaskSummarySerializer(
-                my_tasks.filter(status__in=ACTIVE_STATUSES).order_by('due_date')[:10],
-                many=True
-            ).data,
+            'my_pending_tasks': [summary(t, w) for t, w in actionable[:10]],
         }
     
     def _get_client_dashboard_data(self, user):
