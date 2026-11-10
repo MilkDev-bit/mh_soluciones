@@ -1282,3 +1282,42 @@
     h2 { color: $neutral-400; }
   }
 }
+// ── Resumen del proyecto por filas (sin huecos) ─────────────────────────────
+.project-overview {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-5;
+  margin-bottom: $spacing-5;
+
+  @media (max-width: $breakpoint-md) {
+    gap: $spacing-4;
+  }
+}
+
+// Eventos y Miembros lado a lado, con la misma altura
+.project-overview-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: $spacing-5;
+  align-items: stretch;
+
+  > .glass-card {
+    margin: 0;
+    height: 100%;
+  }
+
+  @media (max-width: $breakpoint-md) {
+    gap: $spacing-4;
+  }
+}
+
+// Desempeño: tarjetas de estudiantes en cuadrícula que llena el ancho
+.project-overview-performance {
+  margin: 0;
+
+  .student-performance .performance-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+    gap: $spacing-4;
+  }
+}
