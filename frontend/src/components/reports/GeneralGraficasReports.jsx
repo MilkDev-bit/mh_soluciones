@@ -139,7 +139,12 @@ const GeneralGraficasReports = ({ projects }) => {
       });
     });
 
-    const sortedGroups = Array.from(groupMap.values()).sort((a, b) => a.sortNum - b.sortNum);
+    // Solo hasta la semana ISO actual: las tablas de GRAFICAS traen filas de
+    // semanas que aún no ocurren (en ceros) y hundían las gráficas al final.
+    const currentWeekKey = isoWeekKey(isoWeek(new Date()));
+    const sortedGroups = Array.from(groupMap.values())
+      .filter(g => g.sortNum <= currentWeekKey)
+      .sort((a, b) => a.sortNum - b.sortNum);
 
     if (sortedGroups.length === 0) {
       for (let i = 1; i <= 6; i++) {
