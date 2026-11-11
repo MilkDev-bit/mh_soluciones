@@ -1,5 +1,11 @@
 import api from './api';
 
+/** Totales de todos los usuarios: { total, active, inactive }. */
+export const getUserStats = async () => {
+  const { data } = await api.get('auth/users/stats/');
+  return data;
+};
+
 export const getUsers = async (page = 1, search = '', pageSize = null) => {
   try {
     let url = `auth/users/?page=${page}`;
