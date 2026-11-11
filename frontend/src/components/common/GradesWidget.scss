@@ -33,37 +33,44 @@
 }
 
 .grades-widget {
-  background: linear-gradient(135deg, $white 0%, $neutral-50 100%);
-  border-radius: $border-radius-md;
-  padding: $spacing-4;
+  // Colores del tema (antes fijos en blanco: en modo oscuro quedaba una
+  // tarjeta blanca entre tarjetas oscuras).
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: $border-radius-lg;
+  padding: $spacing-5;
   margin: $spacing-3;
-  border: 2px solid $neutral-200;
+  border: 1px solid var(--border-color);
   box-shadow: $shadow-sm;
-  transition: all $transition;
+  transition: border-color $transition, box-shadow $transition;
 
   &:hover {
-    border-color: $primary-300;
+    border-color: rgba($primary-500, 0.45);
     box-shadow: $shadow-md;
   }
 
+  // DashboardPage.scss define otro .widget-header global (space-between)
+  // que empujaba el título a la derecha: se fija aquí.
   .widget-header {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: $spacing-2;
     margin-bottom: $spacing-4;
     padding-bottom: $spacing-3;
-    border-bottom: 2px solid $neutral-200;
+    border-bottom: 1px solid var(--border-color);
 
     svg {
-      color: $primary-600;
+      color: $primary-500;
       width: 20px;
       height: 20px;
+      flex-shrink: 0;
     }
 
     span {
       font-weight: 600;
-      color: $neutral-900;
-      font-size: 0.9375rem;
+      color: var(--text-primary);
+      font-size: 1rem;
     }
   }
 
@@ -71,23 +78,41 @@
   .widget-empty {
     text-align: center;
     padding: $spacing-4;
-    color: $neutral-500;
+    color: var(--text-secondary);
     font-size: 0.875rem;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  // Promedio a la izquierda y calificaciones a la derecha cuando hay espacio.
+  .grades-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $spacing-4;
+  }
+
+  @container grades (min-width: 640px) {
+    .grades-body {
+      grid-template-columns: minmax(180px, 220px) 1fr;
+      align-items: start;
+    }
   }
 
   .average-score {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: $spacing-4;
+    justify-content: center;
     padding: $spacing-4;
-    background: linear-gradient(135deg, $primary-50 0%, $primary-100 100%);
+    background: rgba($primary-500, 0.08);
     border-radius: $border-radius-md;
-    border: 2px solid $primary-200;
+    border: 1px solid rgba($primary-500, 0.25);
 
     .score-circle {
-      width: 80px;
-      height: 80px;
+      width: 84px;
+      height: 84px;
       border-radius: 50%;
       background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
       display: flex;
@@ -118,33 +143,35 @@
       margin: 0;
       font-size: 0.875rem;
       font-weight: 600;
-      color: $primary-800;
+      color: var(--text-secondary);
     }
   }
 
   .recent-grades {
+    min-width: 0;
+
     h4 {
       font-size: 0.875rem;
       font-weight: 600;
-      color: $neutral-800;
+      color: var(--text-secondary);
       margin: 0 0 $spacing-3 0;
     }
 
+    .grade-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: $spacing-3;
+    }
+
     .grade-item {
-      margin-bottom: $spacing-3;
       padding: $spacing-3;
-      background: $white;
-      border: 1px solid $neutral-200;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
       border-radius: $border-radius;
-      transition: all $transition-fast;
+      transition: border-color $transition-fast;
 
       &:hover {
-        border-color: $primary-300;
-        box-shadow: $shadow-sm;
-      }
-
-      &:last-child {
-        margin-bottom: 0;
+        border-color: rgba($primary-500, 0.45);
       }
 
       .grade-info {
@@ -156,7 +183,7 @@
         .task-name {
           font-size: 0.8125rem;
           font-weight: 500;
-          color: $neutral-800;
+          color: var(--text-primary);
           flex: 1;
           @include text-truncate;
         }
@@ -164,14 +191,14 @@
         .grade-score {
           font-size: 0.875rem;
           font-weight: 700;
-          color: $primary-700;
+          color: $primary-500;
           margin-left: $spacing-2;
         }
       }
 
       .grade-bar {
         height: 6px;
-        background: $neutral-200;
+        background: var(--bg-tertiary);
         border-radius: $border-radius-full;
         overflow: hidden;
         margin-bottom: $spacing-2;
@@ -186,7 +213,7 @@
       .grade-percentage {
         font-size: 0.75rem;
         font-weight: 600;
-        color: $neutral-600;
+        color: var(--text-secondary);
         display: block;
         text-align: right;
       }

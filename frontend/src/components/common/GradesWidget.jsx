@@ -26,27 +26,30 @@ const GradesWidget = ({ isCollapsed }) => {
       let totalMaxScore = 0;
 
       gradedTasks.forEach(task => {
-        if (task.submissions && task.submissions.length > 0) {
-          // Find the latest submission by version (most reliable)
-          const latestSubmission = task.submissions.reduce((latest, current) => {
-            return (current.version > latest.version) ? current : latest;
-          });
-          
-          if (latestSubmission.score !== null && latestSubmission.score !== undefined) {
-            gradesData.push({
-              taskTitle: task.title,
-              score: latestSubmission.score,
-              maxScore: task.max_score || 100,
-              percentage: ((latestSubmission.score / (task.max_score || 100)) * 100).toFixed(1)
-            });
-            
-            totalScore += parseFloat(latestSubmission.score);
-            totalMaxScore += parseFloat(task.max_score || 100);
-          }
+        // [FIX] La lista de tareas no trae `submissions`; la calificación
+        // del alumno viene en `my_score` (última entrega). Se deja
+        // `submissions` como respaldo por compatibilidad.
+        let score = task.my_score;
+        if ((score === null || score === undefined) && Array.isArray(task.submissions) && task.submissions.length > 0) {
+          const latestSubmission = task.submissions.reduce((latest, current) =>
+            (current.version > latest.version ? current : latest));
+          score = latestSubmission.score;
         }
+        if (score === null || score === undefined) return;
+
+        const maxScore = Number(task.max_score) || 100;
+        gradesData.push({
+          taskTitle: task.title,
+          score: Number(score),
+          maxScore,
+          percentage: ((Number(score) / maxScore) * 100).toFixed(1),
+        });
+        totalScore += Number(score);
+        totalMaxScore += maxScore;
       });
 
-      setGrades(gradesData.slice(0, 3)); // Show only top 3
+      // Con todo el ancho caben más: se muestran las 6 más recientes.
+      setGrades(gradesData.slice(0, 6));
       
       if (totalMaxScore > 0) {
         setAverageScore(((totalScore / totalMaxScore) * 100).toFixed(1));
@@ -102,6 +105,7 @@ const GradesWidget = ({ isCollapsed }) => {
         <span>Mis Calificaciones</span>
       </div>
 
+      <div className="grades-body">
       <div className="average-score">
         <div className="score-circle">
           <FiTrendingUp />
@@ -112,6 +116,7 @@ const GradesWidget = ({ isCollapsed }) => {
 
       <div className="recent-grades">
         <h4>Calificaciones Recientes</h4>
+        <div className="grade-list">
         {grades.map((grade, index) => (
           <div key={index} className="grade-item">
             <div className="grade-info">
@@ -132,6 +137,8 @@ const GradesWidget = ({ isCollapsed }) => {
             <span className="grade-percentage">{grade.percentage}%</span>
           </div>
         ))}
+        </div>
+      </div>
       </div>
     </div>
   );
