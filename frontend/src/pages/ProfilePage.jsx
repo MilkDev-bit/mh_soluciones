@@ -199,7 +199,7 @@ const ProfilePage = () => {
       <Helmet><title>Mi Perfil | MH Soluciones</title></Helmet>
 
       {isPwdModalOpen && (
-        <Modal title="Cambiar Contraseña" onClose={() => setIsPwdModalOpen(false)}>
+        <Modal title="Cambiar Contraseña" onClose={() => setIsPwdModalOpen(false)} className="profile-modal">
           <form onSubmit={pwdHandleSubmit(onPasswordSubmit)} className="modal-form">
             <div className="form-group">
                 <label>Contraseña Actual</label>
@@ -227,7 +227,7 @@ const ProfilePage = () => {
       )}
 
       {is2FAModalOpen && (
-        <Modal title="Activar Autenticación de Dos Factores" onClose={() => setIs2FAModalOpen(false)}>
+        <Modal title="Activar Autenticación de Dos Factores" onClose={() => setIs2FAModalOpen(false)} className="profile-modal">
             <div className="two-factor-modal-content">
                 <p>Escanea este código QR con tu aplicación de autenticación (ej. Google Authenticator).</p>
                 <div className="qr-code-container">
