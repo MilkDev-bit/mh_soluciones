@@ -97,7 +97,7 @@ class EntregablesReportTests(TestCase):
         self.assertEqual(by_name['Mexicali'].cumplimiento, '0 de 7')
         self.assertEqual(by_name['Mexicali'].comment, 'Inicio')
         self.assertEqual(by_name['Guram'].cumplimiento, 'Entregado')
-        self.assertEqual(by_name['Seis'].cumplimiento, '0 de 6')
+        self.assertEqual(by_name['Seis'].cumplimiento, '0 de 7')       # siempre de 7
 
     def test_graficas_counts_only_when_week_captured(self):
         _, t = self.project('Axioma', date(2026, 9, 1))
@@ -125,7 +125,37 @@ class EntregablesReportTests(TestCase):
         p, _ = self.project('Axioma', date(2026, 9, 1), tasks=FILES[:3])
         nueva = Task.objects.create(title='KPI', project=p, created_by=self.admin)
         Task.objects.filter(pk=nueva.pk).update(created_at=local(2026, 11, 12, 9, 0))
-        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].total, 3)
+        row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
+        kpi = next(d for d in row.detail if d['entregable'] == 'KPI')
+        self.assertEqual(kpi['motivo'], 'El proyecto no tiene esta tarea')
+
+    def test_titles_matched_by_keyword(self):
+        self.project('Axioma', date(2026, 9, 1), tasks=['MATRIZ SH', 'Plática de Seguridad', 'Pirámide', 'QR',
+                                                        'Gráficas', 'Campaña de seguridad', 'KPIs'])
+        row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
+        self.assertFalse([d for d in row.detail if d['motivo'] == 'El proyecto no tiene esta tarea'])
+
+    def test_week_task_wins_over_other_weeks_submissions(self):
+        # La Matriz de esta semana no se entregó; subir la de la semana pasada
+        # durante esta semana no la cubre.
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        vieja = t['Matriz de cumplimiento SH']
+        Task.objects.filter(pk=vieja.pk).update(due_date=date(2026, 10, 30))
+        nueva = Task.objects.create(title='Matriz de cumplimiento SH', project=p, created_by=self.admin,
+                                    due_date=date(2026, 11, 6))
+        Task.objects.filter(pk=nueva.pk).update(created_at=local(2026, 11, 2, 8, 0))
+        self.deliver(vieja, local(2026, 11, 3, 9, 0))
+        row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
+        self.assertEqual(row.done, 0)
+
+    def test_completed_projects(self):
+        # Cerrado esa semana pero con entregas: se cuentan sus entregables.
+        _, t = self.project('Paseo', date(2026, 9, 1), status='COMPLETED', end=date(2026, 11, 6))
+        self.deliver(t['KPI'], local(2026, 11, 4, 9, 0))
+        # Cerrado sin fecha de fin ni entregas: no aparece.
+        self.project('Constitucion', date(2026, 8, 1), status='COMPLETED')
+        rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
+        self.assertEqual([(r.name, r.cumplimiento) for r in rows], [('Paseo', '1 de 7')])
 
     def test_weekly_duplicate_tasks_count_by_name(self):
         # Cada semana se crea otra "Matriz de cumplimiento SH": cuenta la entrega
@@ -149,7 +179,7 @@ class EntregablesReportTests(TestCase):
         content = build_workbook(rows, self.YEAR, self.WEEK)
 
         sheets, charts, cells = read_xlsx(content)
-        self.assertEqual(sheets, ['Reporte_Estadisticas', 'Grafico de porcentajes'])
+        self.assertEqual(sheets, ['Reporte_Estadisticas', 'Grafico de porcentajes', 'Detalle'])
         self.assertEqual(len(charts), 1)
         val = lambda ref: cells[ref][0]
         self.assertEqual([val(f'{c}10') for c in 'ABCDE'],
