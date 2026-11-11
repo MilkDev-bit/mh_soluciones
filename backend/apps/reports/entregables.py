@@ -137,32 +137,34 @@ def collect_rows(projects_qs, year, week):
         nombre = m.user.get_full_name().strip() or m.user.username
         cri_by_project.setdefault(m.project_id, []).append(nombre)
 
-    # Tareas estándar de cada proyecto (si hay duplicados, la más reciente).
-    std_tasks = {}
-    for t in (Task.objects.filter(project_id__in=project_ids)
-              .only('id', 'title', 'project_id', 'created_at')
-              .order_by('project_id', '-created_at')):
+    # Tareas estándar de cada proyecto. Un proyecto puede tener varias tareas
+    # con el mismo nombre (una por semana): se agrupan por nombre y cuenta la
+    # entrega hecha en cualquiera de ellas.
+    std_tasks = {}       # project_id -> {nombre normalizado: [task ids]}
+    task_key = {}        # task_id -> (project_id, nombre normalizado)
+    for t in Task.objects.filter(project_id__in=project_ids).only('id', 'title', 'project_id'):
         key = normalize(t.title)
         if key in STANDARD_TASKS:
-            std_tasks.setdefault(t.project_id, {}).setdefault(key, t.id)
+            std_tasks.setdefault(t.project_id, {}).setdefault(key, []).append(t.id)
+            task_key[t.id] = (t.project_id, key)
 
-    # Entregas hechas dentro de la semana.
-    task_ids = [tid for per in std_tasks.values() for tid in per.values()]
+    # Entregas hechas dentro de la semana: primer día de entrega por (proyecto, tarea).
     delivered = {}
-    for s in (TaskSubmission.objects
-              .filter(task_id__in=task_ids, created_at__gte=week_start, created_at__lt=week_end)
-              .values('task_id', 'created_at')):
-        local_day = timezone.localtime(s['created_at']).date()
-        prev = delivered.get(s['task_id'])
+    for sub in (TaskSubmission.objects
+                .filter(task_id__in=list(task_key), created_at__gte=week_start, created_at__lt=week_end)
+                .values('task_id', 'created_at')):
+        local_day = timezone.localtime(sub['created_at']).date()
+        k = task_key[sub['task_id']]
+        prev = delivered.get(k)
         if prev is None or local_day < prev:
-            delivered[s['task_id']] = local_day   # primera entrega de la semana
+            delivered[k] = local_day
 
     rows = []
     for p, start, end in candidates:
         tasks = std_tasks.get(p.id, {})
         row = ProjectRow(name=p.name, cri=', '.join(cri_by_project.get(p.id, [])))
         row.total = len(tasks) or len(STANDARD_TASKS)
-        days = [delivered[tid] for tid in tasks.values() if tid in delivered]
+        days = [delivered[(p.id, key)] for key in tasks if (p.id, key) in delivered]
         row.done = len(days)
         row.delivery_days = [(d - monday).days + 1 for d in days]
         if p.status == Project.ProjectStatus.COMPLETED and end and monday <= end <= sunday:

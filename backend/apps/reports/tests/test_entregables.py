@@ -90,6 +90,18 @@ class EntregablesReportTests(TestCase):
         self.assertEqual(by_name['Guram'].cumplimiento, 'Entregado')
         self.assertEqual(by_name['Seis'].cumplimiento, '0 de 6')
 
+    def test_weekly_duplicate_tasks_count_by_name(self):
+        # Cada semana se crea otra "Matriz de cumplimiento SH": cuenta la entrega
+        # hecha en cualquiera de ellas, una sola vez por nombre.
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        nueva = Task.objects.create(title='Matriz de cumplimiento SH', project=p, created_by=self.admin)
+        self.deliver(t['Matriz de cumplimiento SH'], local(2026, 11, 2, 9, 0))
+        self.deliver(nueva, local(2026, 11, 3, 9, 0))
+        self.deliver(t['KPI'], local(2026, 11, 4, 9, 0))
+        row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
+        self.assertEqual(row.cumplimiento, '2 de 7')
+        self.assertEqual(sorted(row.delivery_days), [1, 3])
+
     def test_workbook_layout_and_values(self):
         _, t1 = self.project('Axioma', date(2026, 9, 1))
         for title in STD[:5]:
