@@ -13,7 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers, FiActivity, FiClock } from 'react-icons/fi';
 import api from '../../services/api';
-import { isoWeek, isoWeekKey, isoWeekLabel, isoWeekRangeLabel, parseIsoWeekString, parseLocalDate } from '../../utils/isoWeek';
+import { isoWeek, isoWeekKey, isoWeekLabel, isoWeekRangeLabel, isoWeeksInYear, parseIsoWeekString, parseLocalDate } from '../../utils/isoWeek';
 import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import '../tasks/GraficasActivityChart.scss';
@@ -70,9 +70,12 @@ const getRowGroupingKey = (project, rowStr) => {
 const GeneralGraficasReports = ({ projects }) => {
   const themeContext = useContext(ThemeContext);
   const isDarkMode = themeContext ? themeContext.isDarkMode : true;
-  const [selectedWeek1, setSelectedWeek1] = useState('ALL');
-  const [selectedWeek2, setSelectedWeek2] = useState('ALL');
-  const [selectedWeek3, setSelectedWeek3] = useState('ALL');
+  // [CAMBIO] El filtro de cada gráfica es por año ISO (antes era por semana).
+  // Por defecto el año ISO en curso: semana 1 hasta la semana actual.
+  const currentIsoYear = isoWeek(new Date()).year;
+  const [selectedYear1, setSelectedYear1] = useState(String(currentIsoYear));
+  const [selectedYear2, setSelectedYear2] = useState(String(currentIsoYear));
+  const [selectedYear3, setSelectedYear3] = useState(String(currentIsoYear));
   const [refreshIndex, setRefreshIndex] = useState(0);
 
   const { data: allTasksData } = useQuery({
@@ -109,9 +112,10 @@ const GeneralGraficasReports = ({ projects }) => {
     };
   }, []);
 
-  const { table1Rows, table2Rows } = useMemo(() => {
+  const { table1Rows, table2Rows, availableYears } = useMemo(() => {
+    const nowIso = isoWeek(new Date());
     if (!Array.isArray(projects) || projects.length === 0) {
-      return { table1Rows: [], table2Rows: [] };
+      return { table1Rows: [], table2Rows: [], availableYears: [nowIso.year] };
     }
 
     const allProjectsData = projects.map(p => {
@@ -139,19 +143,31 @@ const GeneralGraficasReports = ({ projects }) => {
       });
     });
 
-    // Solo hasta la semana ISO actual: las tablas de GRAFICAS traen filas de
-    // semanas que aún no ocurren (en ceros) y hundían las gráficas al final.
-    const currentWeekKey = isoWeekKey(isoWeek(new Date()));
-    const sortedGroups = Array.from(groupMap.values())
-      .filter(g => g.sortNum <= currentWeekKey)
-      .sort((a, b) => a.sortNum - b.sortNum);
-
-    if (sortedGroups.length === 0) {
-      for (let i = 1; i <= 6; i++) {
-        const info = getRowGroupingKey(null, `SEMANA ${i}`);
-        sortedGroups.push(info);
+    // [CAMBIO] Filtro por año: para cada año ISO con datos (y el año en curso)
+    // se generan TODAS sus semanas, de la 1 a la 52/53, o hasta la semana
+    // actual si es el año en curso. Las semanas sin captura quedan en cero, así
+    // el eje X es continuo. Nunca se muestran semanas futuras: las tablas de
+    // GRAFICAS traen filas en ceros de semanas que aún no ocurren.
+    const currentWeekKey = isoWeekKey(nowIso);
+    const years = new Set([nowIso.year]);
+    groupMap.forEach(g => {
+      if (g.sortNum <= currentWeekKey) years.add(g.calYear);
+    });
+    const yearList = Array.from(years).sort((a, b) => a - b);
+    const sortedGroups = [];
+    yearList.forEach(year => {
+      const lastWeek = year === nowIso.year ? nowIso.week : isoWeeksInYear(year);
+      for (let week = 1; week <= lastWeek; week++) {
+        sortedGroups.push({
+          key: `ISO_${year}_${week}`,
+          label: isoWeekLabel({ year, week }),
+          range: isoWeekRangeLabel(year, week),
+          sortNum: isoWeekKey({ year, week }),
+          calYear: year,
+          calWeekNo: week,
+        });
       }
-    }
+    });
 
     const t1Rows = sortedGroups.map((g, idx) => {
       let sumActos = 0;
@@ -174,6 +190,8 @@ const GeneralGraficasReports = ({ projects }) => {
       const baseRow = {
         id: `gen-t1-${idx}`,
         semana: g.label,
+        _year: g.calYear,
+        _week: g.calWeekNo,
         actos: sumActos,
         condiciones: sumCondiciones,
         ft: sumFt,
@@ -210,6 +228,8 @@ const GeneralGraficasReports = ({ projects }) => {
       const baseRow = {
         id: `gen-t2-${idx}`,
         semana: g.label,
+        _year: g.calYear,
+        _week: g.calWeekNo,
         actos: sumActos,
         condiciones: sumCondiciones,
         incidencias_campo: hasCampoCustom ? sumCampo : '',
@@ -219,17 +239,18 @@ const GeneralGraficasReports = ({ projects }) => {
       return calculateRowValues(baseRow);
     });
 
-    return { table1Rows: t1Rows, table2Rows: t2Rows };
+    return { table1Rows: t1Rows, table2Rows: t2Rows, availableYears: yearList.slice().reverse() };
   }, [projects, allTasks, refreshIndex]);
 
-  const availableWeeks1 = table1Rows.map(r => r.semana || '').filter(Boolean);
-  const activeRows1 = selectedWeek1 === 'ALL' ? table1Rows : (() => {
-    const idx = table1Rows.findIndex(r => r.semana === selectedWeek1);
-    return idx !== -1 ? table1Rows.slice(0, idx + 1) : table1Rows;
-  })();
-  const rowsToUse1 = activeRows1.length > 0 ? activeRows1 : table1Rows;
+  // Filas del año elegido ('ALL' = todos los años). En la vista de un solo año
+  // el eje muestra "SEM n" (el año ya está en el filtro).
+  const filterByYear = (rows, year) => (year === 'ALL' ? rows : rows.filter(r => String(r._year) === String(year)));
+  const axisLabel = (r, year) => (year === 'ALL' ? (r.semana || '') : `SEM ${r._week}`);
+  const yearOptionLabel = (y) => (y === currentIsoYear ? `${y} (sem 1 – ${isoWeek(new Date()).week})` : `${y}`);
 
-  const labels1 = rowsToUse1.map(r => r.semana || '');
+  const rowsToUse1 = filterByYear(table1Rows, selectedYear1);
+
+  const labels1 = rowsToUse1.map(r => axisLabel(r, selectedYear1));
   const resultadoData1 = rowsToUse1.map(r => {
     const val = r._resultadoNum !== undefined ? r._resultadoNum : parseFloat(r.resultado);
     return isNaN(val) ? 0 : val;
@@ -281,14 +302,9 @@ const GeneralGraficasReports = ({ projects }) => {
     ],
   };
 
-  const availableWeeks2 = table2Rows.map(r => r.semana || '').filter(Boolean);
-  const activeRows2 = selectedWeek2 === 'ALL' ? table2Rows : (() => {
-    const idx = table2Rows.findIndex(r => r.semana === selectedWeek2);
-    return idx !== -1 ? table2Rows.slice(0, idx + 1) : table2Rows;
-  })();
-  const rowsToUse2 = activeRows2.length > 0 ? activeRows2 : table2Rows;
+  const rowsToUse2 = filterByYear(table2Rows, selectedYear2);
 
-  const labels2 = rowsToUse2.map(r => r.semana || '');
+  const labels2 = rowsToUse2.map(r => axisLabel(r, selectedYear2));
   const kpiData2 = rowsToUse2.map(r => r.incidencias_kpi || 0);
   const campoData2 = rowsToUse2.map(r => r.incidencias_campo || 0);
   const totalData2 = rowsToUse2.map(r => r.incidencias_total || 0);
@@ -338,18 +354,14 @@ const GeneralGraficasReports = ({ projects }) => {
     ],
   };
 
-  const availableWeeks3 = table2Rows.map(r => r.semana || '').filter(Boolean);
-  const activeRows3 = selectedWeek3 === 'ALL' ? table2Rows : (() => {
-    const idx = table2Rows.findIndex(r => r.semana === selectedWeek3);
-    return idx !== -1 ? table2Rows.slice(0, idx + 1) : table2Rows;
-  })();
-  const rowsToUse3 = activeRows3.length > 0 ? activeRows3 : table2Rows;
+  const rowsToUse3 = filterByYear(table2Rows, selectedYear3);
 
-  const labels3 = rowsToUse3.map(r => r.semana || '');
+  const labels3 = rowsToUse3.map(r => axisLabel(r, selectedYear3));
 
-  const getHHForIndexGen = (semana, idx) => {
-    let t1Row = table1Rows.find(r => r.semana === semana);
-    if (!t1Row && table1Rows[idx]) t1Row = table1Rows[idx];
+  // Las HH vienen de la tabla 1; se busca por la etiqueta completa
+  // ("SEM n · año"), que es única entre años.
+  const getHHForIndexGen = (semana) => {
+    const t1Row = table1Rows.find(r => r.semana === semana);
     if (!t1Row) return 0;
     return parseFloat(t1Row.total_hh) || 0;
   };
@@ -485,8 +497,6 @@ const GeneralGraficasReports = ({ projects }) => {
     },
   };
 
-  const selectedRow1 = table1Rows.find(r => r.semana === selectedWeek1);
-  const selectedRow2 = table2Rows.find(r => r.semana === selectedWeek2);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -522,7 +532,7 @@ const GeneralGraficasReports = ({ projects }) => {
             </h4>
             <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', maxWidth: '760px', lineHeight: '1.4' }}>
               Los datos de todos los proyectos se suman por semana del calendario (lunes a domingo; la semana 1 es la que
-              contiene el primer jueves del año). La semana de cada registro se calcula a partir de la fecha de inicio del proyecto.
+              contiene el primer jueves del año). La semana de cada registro se calcula a partir de la fecha de inicio del proyecto. Cada gráfica se filtra por año: del año en curso se muestran de la semana 1 a la actual.
             </p>
           </div>
         </div>
@@ -641,11 +651,11 @@ const GeneralGraficasReports = ({ projects }) => {
           </div>
           
           <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label htmlFor="week-select-gen1" style={{ fontSize: '13px', fontWeight: '500' }}>Filtrar Semana:</label>
+            <label htmlFor="year-select-gen1" style={{ fontSize: '13px', fontWeight: '500' }}>Año:</label>
             <select
-              id="week-select-gen1"
-              value={selectedWeek1}
-              onChange={(e) => setSelectedWeek1(e.target.value)}
+              id="year-select-gen1"
+              value={selectedYear1}
+              onChange={(e) => setSelectedYear1(e.target.value)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -655,15 +665,15 @@ const GeneralGraficasReports = ({ projects }) => {
                 cursor: 'pointer'
               }}
             >
-              <option value="ALL">Todas las semanas ({table1Rows.length})</option>
-              {availableWeeks1.map((w, idx) => (
-                <option key={idx} value={w}>{w}</option>
+              {availableYears.map(y => (
+                <option key={y} value={String(y)}>{yearOptionLabel(y)}</option>
               ))}
+              {availableYears.length > 1 && <option value="ALL">Todos los años</option>}
             </select>
           </div>
         </div>
 
-        {selectedWeek1 !== 'ALL' && rowsToUse1.length > 0 && (() => {
+        {selectedYear1 !== 'ALL' && rowsToUse1.length > 0 && (() => {
           const accumActos = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
           const accumCond = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
           const accumFt = rowsToUse1.reduce((sum, r) => sum + (parseFloat(r.ft) || 0), 0);
@@ -760,11 +770,11 @@ const GeneralGraficasReports = ({ projects }) => {
           </div>
           
           <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label htmlFor="week-select-gen2" style={{ fontSize: '13px', fontWeight: '500' }}>Filtrar Semana:</label>
+            <label htmlFor="year-select-gen2" style={{ fontSize: '13px', fontWeight: '500' }}>Año:</label>
             <select
-              id="week-select-gen2"
-              value={selectedWeek2}
-              onChange={(e) => setSelectedWeek2(e.target.value)}
+              id="year-select-gen2"
+              value={selectedYear2}
+              onChange={(e) => setSelectedYear2(e.target.value)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -774,15 +784,15 @@ const GeneralGraficasReports = ({ projects }) => {
                 cursor: 'pointer'
               }}
             >
-              <option value="ALL">Todas las semanas ({table2Rows.length})</option>
-              {availableWeeks2.map((w, idx) => (
-                <option key={idx} value={w}>{w}</option>
+              {availableYears.map(y => (
+                <option key={y} value={String(y)}>{yearOptionLabel(y)}</option>
               ))}
+              {availableYears.length > 1 && <option value="ALL">Todos los años</option>}
             </select>
           </div>
         </div>
 
-        {selectedWeek2 !== 'ALL' && rowsToUse2.length > 0 && (() => {
+        {selectedYear2 !== 'ALL' && rowsToUse2.length > 0 && (() => {
           const accumActos = rowsToUse2.reduce((sum, r) => sum + (parseFloat(r.actos) || 0), 0);
           const accumCond = rowsToUse2.reduce((sum, r) => sum + (parseFloat(r.condiciones) || 0), 0);
           const accumKpi = rowsToUse2.reduce((sum, r) => sum + (calculateRowValues(r).incidencias_kpi || 0), 0);
@@ -841,11 +851,11 @@ const GeneralGraficasReports = ({ projects }) => {
           </div>
           
           <div className="chart-week-filter" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label htmlFor="week-select-gen3" style={{ fontSize: '13px', fontWeight: '500' }}>Filtrar Semana:</label>
+            <label htmlFor="year-select-gen3" style={{ fontSize: '13px', fontWeight: '500' }}>Año:</label>
             <select
-              id="week-select-gen3"
-              value={selectedWeek3}
-              onChange={(e) => setSelectedWeek3(e.target.value)}
+              id="year-select-gen3"
+              value={selectedYear3}
+              onChange={(e) => setSelectedYear3(e.target.value)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -855,15 +865,15 @@ const GeneralGraficasReports = ({ projects }) => {
                 cursor: 'pointer'
               }}
             >
-              <option value="ALL">Todas las semanas ({table2Rows.length})</option>
-              {availableWeeks3.map((w, idx) => (
-                <option key={idx} value={w}>{w}</option>
+              {availableYears.map(y => (
+                <option key={y} value={String(y)}>{yearOptionLabel(y)}</option>
               ))}
+              {availableYears.length > 1 && <option value="ALL">Todos los años</option>}
             </select>
           </div>
         </div>
 
-        {selectedWeek3 !== 'ALL' && rowsToUse3.length > 0 && (() => {
+        {selectedYear3 !== 'ALL' && rowsToUse3.length > 0 && (() => {
           const accumAcc = rowsToUse3.reduce((sum, r) => sum + (calculateRowValues(r).accidentes_incapacitantes || 0), 0);
           const accumHH = rowsToUse3.reduce((sum, r, idx) => sum + getHHForIndexGen(r.semana, idx), 0);
           const ifAccAcum = calcIF(accumAcc, accumHH);
