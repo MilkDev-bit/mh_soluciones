@@ -40,7 +40,7 @@ from apps.core.utils import (
     updated_response, deleted_response, validation_error_response,
     forbidden_response, unauthorized_response
 )
-from ..models import GoogleApiCredentials, CustomUser, LoginActivity, BlockedIP
+from ..models import GoogleApiCredentials, CustomUser, LoginActivity, BlockedIP, PrivacyConsent
 from ..constants import SENSITIVE_OAUTH_PARAMS, SENSITIVE_HEADERS
 from .serializers import (
     LoginSerializer, 
@@ -612,6 +612,45 @@ def current_user_view(request):
 def current_user_from_session(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+class PrivacyNoticeView(APIView):
+    """
+    GET  → {version, accepted, accepted_at} del usuario actual.
+    POST {version} → registra la aceptación de la versión vigente
+    (con IP y navegador como evidencia). Es idempotente.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _state(self, user):
+        version = settings.PRIVACY_NOTICE_VERSION
+        consent = PrivacyConsent.objects.filter(user=user, version=version).first()
+        return {
+            'version': version,
+            'accepted': consent is not None,
+            'accepted_at': consent.accepted_at if consent else None,
+        }
+
+    def get(self, request):
+        return Response(self._state(request.user))
+
+    def post(self, request):
+        version = settings.PRIVACY_NOTICE_VERSION
+        sent = str(request.data.get('version') or '')
+        if sent != version:
+            # El usuario leyó otra versión (p. ej. frontend viejo en caché).
+            return Response({
+                'detail': 'El aviso de privacidad cambió. Recarga la página para leer la versión vigente.',
+                'version': version,
+            }, status=status.HTTP_409_CONFLICT)
+
+        forwarded = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+        ip = forwarded or request.META.get('REMOTE_ADDR') or None
+        PrivacyConsent.objects.get_or_create(
+            user=request.user, version=version,
+            defaults={'ip_address': ip, 'user_agent': (request.META.get('HTTP_USER_AGENT') or '')[:300]},
+        )
+        return Response(self._state(request.user), status=status.HTTP_200_OK)
+
 
 class ClientListView(generics.ListAPIView):
     """Clientes para el formulario de proyecto (solo quien gestiona proyectos)."""

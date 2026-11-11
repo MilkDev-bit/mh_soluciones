@@ -1,0 +1,192 @@
+@import '../../assets/styles/variables';
+
+// Texto del aviso (modal y página pública)
+.privacy-notice-content {
+  color: var(--text-primary);
+  font-size: 0.925rem;
+  line-height: 1.6;
+
+  .privacy-notice-meta {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin: 0 0 $spacing-4;
+  }
+
+  section + section {
+    margin-top: $spacing-5;
+  }
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 $spacing-2;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0 0 $spacing-2;
+    color: var(--text-secondary);
+  }
+
+  ul {
+    margin: 0 0 $spacing-2;
+    padding-left: 1.25rem;
+    color: var(--text-secondary);
+
+    li + li {
+      margin-top: $spacing-1;
+    }
+  }
+}
+
+// Pantalla bloqueante de aceptación
+.privacy-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-4;
+  background: var(--bg-primary);
+  background-image: radial-gradient(circle at top, rgba($primary-500, 0.12), transparent 60%);
+}
+
+.privacy-gate-card {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius-xl;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.privacy-gate-header {
+  display: flex;
+  gap: $spacing-4;
+  align-items: flex-start;
+  padding: $spacing-6 $spacing-6 $spacing-4;
+  border-bottom: 1px solid var(--border-color);
+
+  > svg {
+    flex-shrink: 0;
+    font-size: 2rem;
+    color: $primary-500;
+  }
+
+  h2 {
+    margin: 0 0 $spacing-1;
+    font-size: 1.4rem;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.925rem;
+  }
+}
+
+.privacy-gate-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: $spacing-5 $spacing-6;
+
+  &:focus-visible {
+    outline: 2px solid rgba($primary-500, 0.5);
+    outline-offset: -2px;
+  }
+}
+
+.privacy-gate-footer {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+  padding: $spacing-4 $spacing-6 $spacing-5;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.privacy-gate-check {
+  display: flex;
+  gap: $spacing-3;
+  align-items: flex-start;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.925rem;
+  font-weight: 500;
+
+  input {
+    margin-top: 3px;
+    width: 18px;
+    height: 18px;
+    accent-color: $primary-500;
+    flex-shrink: 0;
+  }
+}
+
+.privacy-gate-hint {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.privacy-gate-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-3;
+  flex-wrap: wrap;
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    flex-direction: column-reverse;
+
+    .btn {
+      justify-content: center;
+    }
+  }
+}
+
+// Página pública /aviso-de-privacidad
+.privacy-page {
+  min-height: 100dvh;
+  padding: $spacing-8 $spacing-4;
+  background: var(--bg-primary);
+
+  .privacy-page-card {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: $spacing-8;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-xl;
+
+    @media (max-width: $breakpoint-sm) {
+      padding: $spacing-5;
+    }
+  }
+
+  h1 {
+    margin: 0 0 $spacing-2;
+    color: var(--text-primary);
+    font-size: 1.75rem;
+  }
+
+  .privacy-page-back {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-2;
+    margin-bottom: $spacing-5;
+    color: $primary-500;
+    font-weight: 600;
+    text-decoration: none;
+  }
+}

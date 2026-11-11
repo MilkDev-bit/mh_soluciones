@@ -24,6 +24,7 @@ const ActividadPage = lazy(() => import('./pages/ActividadPage'));
 const ArchivosPage = lazy(() => import('./pages/ArchivosPage'));
 const ReportesPage = lazy(() => import('./pages/ReportesPage'));
 const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
+const PrivacyNoticePage = lazy(() => import('./pages/PrivacyNoticePage'));
 
 const AppRoutes = () => {
   console.log("AppRoutes -> Renderizando el mapa de rutas.");
@@ -34,6 +35,9 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/verify-2fa" element={<TwoFactorPage />} />
       </Route>
+
+      {/* Aviso de Privacidad - Public route */}
+      <Route path="/aviso-de-privacidad" element={<PrivacyNoticePage />} />
 
       {/* Google OAuth Callback - Public route */}
       <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />

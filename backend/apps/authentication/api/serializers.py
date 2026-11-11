@@ -11,15 +11,24 @@ class UserSerializer(serializers.ModelSerializer):
     Serializador para MOSTRAR la información del usuario.
     """
     profile_picture = serializers.SerializerMethodField()
+    # ¿Aceptó la versión vigente del Aviso de Privacidad? (si no, el frontend
+    # lo muestra antes de dejar usar la aplicación)
+    privacy_accepted = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'profile_picture', 'is_active', 'last_login',
-            'allowed_ips', 'requires_2fa',
+            'allowed_ips', 'requires_2fa', 'privacy_accepted',
         )
         read_only_fields = ('last_login',)
+
+    def get_privacy_accepted(self, obj):
+        version = getattr(settings, 'PRIVACY_NOTICE_VERSION', None)
+        if not version:
+            return True
+        return obj.privacy_consents.filter(version=version).exists()
 
     def get_profile_picture(self, obj):
         """

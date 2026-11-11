@@ -7,6 +7,7 @@ import logo from '/icons/MatrixMh.png';
 import { FiLogIn, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
 import Modal from '../../components/common/Modal';
 import api from '../../services/api';
+import { Link } from 'react-router-dom';
 import { SESSION_EXPIRED_KEY } from '../../utils/token';
 import './AuthPages.scss';
 
@@ -182,6 +183,7 @@ const LoginPage = () => {
 
             <div className="auth-footer">
               <p>© {new Date().getFullYear()} MH Soluciones. Todos los derechos reservados.</p>
+              <p><Link to="/aviso-de-privacidad" className="privacy-link">Aviso de Privacidad</Link></p>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import CustomUser, LoginActivity
+from .models import CustomUser, LoginActivity, PrivacyConsent
 
 
 @admin.register(CustomUser)
@@ -60,3 +60,19 @@ class LoginActivityAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(PrivacyConsent)
+class PrivacyConsentAdmin(admin.ModelAdmin):
+    """Evidencia de aceptación del Aviso de Privacidad (solo lectura)."""
+    list_display = ('user', 'version', 'accepted_at', 'ip_address')
+    list_filter = ('version',)
+    search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name')
+    readonly_fields = ('user', 'version', 'accepted_at', 'ip_address', 'user_agent')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+

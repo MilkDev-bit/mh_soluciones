@@ -259,3 +259,35 @@ class BlockedIP(models.Model):
         return f"{self.ip_address} - {self.reason}"
 
         # Escudo de seguridad de IPs activado
+
+
+class PrivacyConsent(models.Model):
+    """
+    Constancia de que el usuario aceptó una versión del Aviso de Privacidad.
+
+    Se guarda una fila por usuario y versión (con fecha, IP y navegador) como
+    evidencia del consentimiento. Si se publica una versión nueva del aviso
+    (settings.PRIVACY_NOTICE_VERSION), se vuelve a pedir la aceptación.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='privacy_consents',
+        verbose_name=_("Usuario"),
+    )
+    version = models.CharField(max_length=32, verbose_name=_("Versión del aviso"))
+    accepted_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Aceptado el"))
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name=_("IP"))
+    user_agent = models.CharField(max_length=300, blank=True, verbose_name=_("Navegador"))
+
+    class Meta:
+        verbose_name = _("Aceptación de Aviso de Privacidad")
+        verbose_name_plural = _("Aceptaciones de Aviso de Privacidad")
+        ordering = ['-accepted_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'version'], name='unique_privacy_consent_per_version'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} — aviso {self.version} ({self.accepted_at:%Y-%m-%d %H:%M})"
+
