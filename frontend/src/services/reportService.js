@@ -29,3 +29,19 @@ export const globalSearch = async (query) => {
     throw error;
   }
 };
+/**
+ * Descarga el reporte semanal de entregables (.xlsx) de la semana ISO indicada.
+ * Devuelve { blob, filename }.
+ */
+export const downloadEntregablesReport = async (year, week) => {
+  const response = await api.get('/reports/entregables/', {
+    params: { year, week },
+    responseType: 'blob',
+  });
+  const disposition = response.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return {
+    blob: response.data,
+    filename: match ? match[1] : `Entregables-SEM-${week}-${year}.xlsx`,
+  };
+};

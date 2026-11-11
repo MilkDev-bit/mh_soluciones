@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from django.db.models import Count, Q, Avg, F, ExpressionWrapper, fields
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -477,3 +477,46 @@ class GlobalSearchAPIView(APIView):
 
         serializer = self.serializer_class(instance=results, many=True)
         return Response(serializer.data)
+
+
+class EntregablesReportAPIView(APIView):
+    """
+    Descarga el reporte semanal de entregables en Excel
+    (mismo formato que "Entregables-Semana-02_al_08_de_Noviembre.xlsx").
+
+    Parámetros: year y week (semana ISO 8601). Por defecto, la semana anterior
+    a la actual (la última semana completa).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        from django.http import HttpResponse
+        from apps.reports.entregables import build_workbook, collect_rows, week_filename
+
+        user = request.user
+        if user.role not in ADMIN_ROLES:
+            return Response({'detail': 'No tienes permiso para descargar este reporte.'}, status=403)
+
+        default = timezone.localdate() - timedelta(days=7)
+        default_year, default_week, _ = default.isocalendar()
+        try:
+            year = int(request.query_params.get('year', default_year))
+            week = int(request.query_params.get('week', default_week))
+            date.fromisocalendar(year, week, 1)
+        except (TypeError, ValueError):
+            return Response({'detail': 'Semana ISO inválida.'}, status=400)
+
+        projects_qs = Project.objects.filter(es_archivado=False)
+        if user.role == 'ADMIN':
+            projects_qs = projects_qs.filter(id__in=get_admin_accessible_projects(user).values('id'))
+
+        rows = collect_rows(projects_qs, year, week)
+        content = build_workbook(rows, year, week)
+        filename = week_filename(year, week)
+        response = HttpResponse(
+            content,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return response

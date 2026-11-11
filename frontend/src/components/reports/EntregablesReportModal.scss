@@ -1,0 +1,88 @@
+@import '../../assets/styles/variables';
+
+.entregables-modal {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  .entregables-ayuda {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+  }
+
+  .entregables-campos {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      span {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+    }
+
+    select {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+      }
+    }
+  }
+
+  .entregables-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    .btn-secundario {
+      background: var(--bg-page);
+      color: var(--text-primary);
+    }
+
+    .btn-primario {
+      background: $primary-500;
+      border-color: $primary-500;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: darken($primary-500, 8%);
+      }
+    }
+  }
+}

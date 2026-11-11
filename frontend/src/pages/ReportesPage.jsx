@@ -42,6 +42,7 @@ import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import logo from '../assets/img/logo.png';
 import GeneralGraficasReports from '../components/reports/GeneralGraficasReports';
+import EntregablesReportModal from '../components/reports/EntregablesReportModal';
 import './ReportesPage.scss';
 import { isoWeek, isoWeekStart, isoWeekEnd, isoWeeksInYear, isoWeekRangeLabel, parseLocalDate } from '../utils/isoWeek';
 
@@ -61,6 +62,9 @@ const ReportesPage = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [rangoFecha, setRangoFecha] = useState('30_dias');
+  const [modalEntregables, setModalEntregables] = useState(false);
+  // Reporte de entregables (Excel): mismos roles que el endpoint.
+  const puedeDescargarEntregables = ['SUPERADMIN', 'ADMIN', 'CEO', 'RH'].includes(user?.role);
   const [proyectoFiltro, setProyectoFiltro] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
@@ -395,6 +399,7 @@ const ReportesPage = () => {
 
   return (
     <div className="reportes-page">
+      {modalEntregables && <EntregablesReportModal onClose={() => setModalEntregables(false)} />}
       <header className="page-header">
         <div className="header-title">
           <h1>Reportes</h1>
@@ -412,6 +417,16 @@ const ReportesPage = () => {
             <option value="30_dias">30 Días</option>
             <option value="12_meses">12 Meses</option>
           </select>
+
+          {puedeDescargarEntregables && (
+            <button
+              className="btn-entregables"
+              onClick={() => setModalEntregables(true)}
+              title="Descargar el reporte semanal de entregables en Excel"
+            >
+              <FiCheckSquare /> Reporte de entregables
+            </button>
+          )}
 
           <div className="btn-group">
             <button className="btn-icon" onClick={exportarCSV} title="Excel"><FiFileText /></button>
