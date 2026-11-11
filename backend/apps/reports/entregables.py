@@ -104,50 +104,92 @@ def _num(value):
         return 0.0
 
 
-def graficas_week_row(description, project, year, week):
-    """
-    Fila de la tabla de GRÁFICAS que corresponde a la semana ISO (year, week).
-    Las filas guardan "SEMANA n" relativa al inicio del proyecto (o "2026-W46");
-    se convierten igual que en las gráficas de Reportes: inicio + (n-1) semanas.
-    Devuelve {'semana': texto, 'captured': bool} o None si no hay fila. Una fila
-    está capturada si tiene FT, actos, condiciones, incidencias o accidentes > 0.
-    """
+def _graficas_rows(description):
+    """Filas guardadas en la tabla de GRÁFICAS (table1 + table2), o []."""
     match = GRAFICAS_RE.search(description or '')
     if not match:
-        return None
+        return []
     try:
         data = json.loads(match.group(1))
     except (ValueError, TypeError):
-        return None
+        return []
     if isinstance(data, list):
-        rows = data
-    elif isinstance(data, dict):
-        rows = (data.get('table1') or []) + (data.get('table2') or [])
-    else:
-        return None
+        return [r for r in data if isinstance(r, dict)]
+    if isinstance(data, dict):
+        return [r for r in (data.get('table1') or []) + (data.get('table2') or []) if isinstance(r, dict)]
+    return []
 
+
+def _graficas_table1(description):
+    """Solo las filas de la tabla 1 (actos, condiciones, FT)."""
+    match = GRAFICAS_RE.search(description or '')
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(1))
+    except (ValueError, TypeError):
+        return []
+    rows = data if isinstance(data, list) else (data.get('table1') or []) if isinstance(data, dict) else []
+    return [r for r in rows if isinstance(r, dict)]
+
+
+def graficas_row_week(row, project):
+    """
+    Semana ISO (year, week) de una fila de GRÁFICAS. Las filas guardan
+    "SEMANA n" relativa al inicio del proyecto (o "2026-W46"); se convierten
+    igual que en las gráficas de Reportes: inicio + (n-1) semanas.
+    """
+    texto = str(row.get('semana') or '')
+    iso = ISO_WEEK_RE.search(texto)
+    if iso:
+        return int(iso.group(1)), int(iso.group(2))
+    n = re.search(r'\d+', texto)
     base = project.start_date or (timezone.localtime(project.created_at).date() if project.created_at else None)
+    if not n or not base:
+        return None
+    y, w, _ = (base + timedelta(weeks=int(n.group()) - 1)).isocalendar()
+    return y, w
+
+
+CAMPOS_CAPTURA = ('ft', 'actos', 'condiciones', 'incidencias_campo', 'accidentes_incapacitantes')
+
+
+def graficas_week_row(description, project, year, week):
+    """
+    Fila de la tabla de GRÁFICAS que corresponde a la semana ISO (year, week).
+    Devuelve {'semana': texto, 'captured': bool} o None si no hay fila. Una fila
+    está capturada si tiene FT, actos, condiciones, incidencias o accidentes > 0.
+    """
     found = None
-    for row in rows:
-        if not isinstance(row, dict):
+    for row in _graficas_rows(description):
+        if graficas_row_week(row, project) != (year, week):
             continue
         texto = str(row.get('semana') or '')
-        iso = ISO_WEEK_RE.search(texto)
-        if iso:
-            row_year, row_week = int(iso.group(1)), int(iso.group(2))
-        else:
-            n = re.search(r'\d+', texto)
-            if not n or not base:
-                continue
-            row_year, row_week, _ = (base + timedelta(weeks=int(n.group()) - 1)).isocalendar()
-        if (row_year, row_week) != (year, week):
-            continue
-        campos = ('ft', 'actos', 'condiciones', 'incidencias_campo', 'accidentes_incapacitantes')
-        captured = any(_num(row.get(c)) > 0 for c in campos)
-        if captured:
+        if any(_num(row.get(c)) > 0 for c in CAMPOS_CAPTURA):
             return {'semana': texto, 'captured': True}
         found = found or {'semana': texto, 'captured': False}
     return found
+
+
+def graficas_safety_by_week(description, project):
+    """
+    {(year, week): {'actos', 'condiciones', 'ft', 'hh', 'indice'}} de la tabla 1
+    de GRÁFICAS. Índice de frecuencia = (actos + condiciones) / (FT·50 / 1000),
+    la misma fórmula de la tabla de la tarea; None si no hay FT.
+    """
+    out = {}
+    for row in _graficas_table1(description):
+        key = graficas_row_week(row, project)
+        if not key:
+            continue
+        acc = out.setdefault(key, {'actos': 0.0, 'condiciones': 0.0, 'ft': 0.0})
+        acc['actos'] += _num(row.get('actos'))
+        acc['condiciones'] += _num(row.get('condiciones'))
+        acc['ft'] += _num(row.get('ft'))
+    for acc in out.values():
+        acc['hh'] = acc['ft'] * 50
+        acc['indice'] = round((acc['actos'] + acc['condiciones']) / (acc['hh'] / 1000), 2) if acc['hh'] else None
+    return out
 
 
 def graficas_week_captured(description, project, year, week):
@@ -221,15 +263,18 @@ def _project_dates(project):
     return start, end
 
 
-def collect_rows(projects_qs, year, week):
+def collect_rows(projects_qs, year, week, only_in_progress=True):
     monday, sunday = iso_week_bounds(year, week)
     tz = timezone.get_current_timezone()
     week_start = timezone.make_aware(datetime.combine(monday, time.min), tz)
     week_end = timezone.make_aware(datetime.combine(sunday + timedelta(days=1), time.min), tz)
 
-    # Solo proyectos En Progreso que ya habían iniciado al terminar la semana.
+    # Solo proyectos En Progreso que ya habían iniciado al terminar la semana
+    # (only_in_progress=False: cualquier estado, para el detalle de un proyecto).
     candidates = []
-    for p in projects_qs.filter(status=Project.ProjectStatus.IN_PROGRESS):
+    if only_in_progress:
+        projects_qs = projects_qs.filter(status=Project.ProjectStatus.IN_PROGRESS)
+    for p in projects_qs:
         start, end = _project_dates(p)
         if not start or start > sunday:
             continue

@@ -30,54 +30,168 @@
   }
 }
 
-.progress-summary {
-  display: flex;
-  align-items: center;
+// ---- Indicadores del estado actual (fichas)
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: $spacing-4;
-  padding: $spacing-4;
-  background: linear-gradient(135deg, rgba($primary-500, 0.1) 0%, rgba($secondary-500, 0.1) 100%);
-  border-radius: $border-radius-md;
-  
-  @media (max-width: $breakpoint-sm) {
-    flex-direction: column;
-    text-align: center;
-  }
+  margin-bottom: $spacing-6;
 }
 
-.progress-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, $primary-500 0%, $secondary-500 100%);
+.kpi-tile {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: $shadow-md;
-  
-  .progress-value {
-    font-size: 1.25rem;
+  flex-direction: column;
+  gap: $spacing-2;
+  padding: $spacing-4;
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $border-radius-md;
+  min-width: 0;
+
+  &.is-current {
+    border-color: rgba($primary-500, 0.45);
+    box-shadow: 0 0 0 1px rgba($primary-500, 0.15);
+  }
+
+  .kpi-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    font-size: 0.75rem;
     font-weight: 700;
-    color: $white;
-    font-family: $font-mono;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: $neutral-500;
+
+    svg { color: $primary-500; }
+  }
+
+  .kpi-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-2;
+    flex-wrap: wrap;
+  }
+
+  .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: $neutral-900;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: $neutral-500;
+    }
+  }
+
+  .kpi-sub {
+    font-size: 0.78rem;
+    color: $neutral-500;
+  }
+
+  .kpi-missing {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: $neutral-700;
+
+    &.ok { color: $neutral-600; }
+  }
+
+  .kpi-note {
+    margin: 0;
+    font-size: 0.78rem;
+    color: $neutral-500;
+  }
+
+  .kpi-empty {
+    margin: 0;
+    font-size: 0.85rem;
+    color: $neutral-500;
+  }
+
+  .kpi-list,
+  .punct-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: $neutral-600;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+
+      strong {
+        margin-left: auto;
+        color: $neutral-900;
+        font-variant-numeric: tabular-nums;
+      }
+    }
   }
 }
 
-.progress-stats {
-  p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: $neutral-700;
-    
-    &:first-child {
-      margin-bottom: $spacing-1;
-    }
-    
-    strong {
-      color: $neutral-900;
-      font-weight: 600;
-    }
-  }
+// Semáforo: color + icono + texto (nunca solo color)
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.status-green { background: rgba(#10b981, 0.14); color: #047857; }
+  &.status-yellow { background: rgba(#f59e0b, 0.16); color: #b45309; }
+  &.status-red { background: rgba(#ef4444, 0.14); color: #b91c1c; }
+}
+
+$c-on-time: #10b981;
+$c-late: #f59e0b;
+$c-missing: #ef4444;
+
+.punct-bar,
+.time-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: $neutral-200;
+}
+
+.punct-bar .seg {
+  display: block;
+  height: 100%;
+  &.on-time { background: $c-on-time; }
+  &.late { background: $c-late; }
+  &.missing { background: $c-missing; }
+}
+
+.punct-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  &.on-time { background: $c-on-time; }
+  &.late { background: $c-late; }
+  &.missing { background: $c-missing; }
+}
+
+.time-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: $primary-500;
 }
 
 .charts-grid {
@@ -110,6 +224,23 @@
       color: $primary-500;
     }
   }
+}
+
+.chart-hint {
+  margin: -#{$spacing-2} 0 $spacing-3;
+  font-size: 0.78rem;
+  color: $neutral-500;
+}
+
+.chart-empty-msg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: $spacing-4;
+  font-size: 0.875rem;
+  color: $neutral-500;
 }
 
 .chart-wrapper {
@@ -191,17 +322,35 @@
     color: $neutral-100;
   }
   
-  .progress-summary {
-    background: linear-gradient(135deg, rgba($primary-500, 0.2) 0%, rgba($secondary-500, 0.2) 100%);
-  }
-  
-  .progress-stats p {
-    color: $neutral-300;
-    
-    strong {
-      color: $neutral-100;
+  .kpi-tile {
+    background: $neutral-800;
+    border-color: $neutral-700;
+
+    .kpi-title,
+    .kpi-sub,
+    .kpi-note,
+    .kpi-empty,
+    .kpi-value small { color: $neutral-400; }
+    .kpi-value { color: $neutral-100; }
+    .kpi-missing { color: $neutral-300; }
+    .kpi-list,
+    .punct-legend {
+      color: $neutral-300;
+      li strong { color: $neutral-100; }
     }
   }
+
+  .status-badge {
+    &.status-green { background: rgba(#10b981, 0.18); color: #6ee7b7; }
+    &.status-yellow { background: rgba(#f59e0b, 0.18); color: #fcd34d; }
+    &.status-red { background: rgba(#ef4444, 0.18); color: #fca5a5; }
+  }
+
+  .punct-bar,
+  .time-bar { background: $neutral-700; }
+
+  .chart-hint,
+  .chart-empty-msg { color: $neutral-400; }
   
   .chart-container {
     background: $neutral-800;

@@ -224,40 +224,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ).exists()
             if not is_member:
                 raise PermissionDenied("No eres miembro de este proyecto.")
-        tasks = project.tasks.all()
-        submissions = project.submissions.all()
+        # [CAMBIO] Estado actual del proyecto (mismo criterio que el reporte
+        # semanal de entregables): cumplimiento de esta semana y la anterior,
+        # tendencia semanal, puntualidad, seguridad (tabla de GRÁFICAS),
+        # revisión pendiente y avance en el tiempo. Antes se contaban estados
+        # de tarea que ya no se usan y entregas de un modelo viejo (salía 0).
+        from apps.reports.project_status import build_project_status
 
-        # Task status distribution
-        task_stats = {
-            'pending': tasks.filter(status='PENDING').count(),
-            'in_progress': tasks.filter(status='IN_PROGRESS').count(),
-            'for_review': tasks.filter(status='FOR_REVIEW').count(),
-            'completed': tasks.filter(status='COMPLETED').count(),
-        }
-        total_tasks = sum(task_stats.values())
-
-        # Task priority distribution
-        priority_stats = {
-            'low': tasks.filter(priority='LOW').count(),
-            'medium': tasks.filter(priority='MEDIUM').count(),
-            'high': tasks.filter(priority='HIGH').count(),
-        }
-
-        # Submission stats
-        total_submissions = submissions.count()
-
-        # Calculate overall progress percentage
-        progress_percentage = 0
-        if total_tasks > 0:
-            progress_percentage = round((task_stats['completed'] / total_tasks) * 100)
-
-        return Response({
-            'task_stats': task_stats,
-            'priority_stats': priority_stats,
-            'total_tasks': total_tasks,
-            'total_submissions': total_submissions,
-            'progress_percentage': progress_percentage,
-        }, status=status.HTTP_200_OK)
+        data = build_project_status(project)
+        data['total_tasks'] = project.tasks.count()
+        return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='student-performance')
     def student_performance(self, request, pk=None):
