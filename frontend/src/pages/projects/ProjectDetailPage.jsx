@@ -804,7 +804,18 @@ const ProjectDetailPage = () => {
     (acc, task) => { acc[taskBucket(task)] += 1; return acc; },
     { ACTIVE: 0, OVERDUE: 0, COMPLETED: 0 },
   );
+  // [FIX] Completadas: de la más reciente a la más antigua, por la fecha de su
+  // última entrega (o, si no tiene, la de su última modificación). Antes
+  // salían en el orden del servidor (por fecha límite) y se veían revueltas.
+  const completedSortDate = (task) => {
+    const value = task.last_submission_date || task.updated_at || task.due_date;
+    const time = value ? new Date(value).getTime() : 0;
+    return Number.isNaN(time) ? 0 : time;
+  };
   const displayedTasks = tasks.filter((task) => taskBucket(task) === taskFilter);
+  if (taskFilter === 'COMPLETED') {
+    displayedTasks.sort((a, b) => completedSortDate(b) - completedSortDate(a));
+  }
 
   // Etiqueta visible en cada fila para saber el estado sin abrir la tarea.
   const taskRowBadge = (task) => {
