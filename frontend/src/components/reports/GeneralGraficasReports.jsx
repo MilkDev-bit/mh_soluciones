@@ -13,6 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { FiTrendingUp, FiAlertTriangle, FiBarChart2, FiLayers, FiActivity, FiClock } from 'react-icons/fi';
 import api from '../../services/api';
+import { isoWeek, isoWeekKey, isoWeekLabel, isoWeekRangeLabel, parseIsoWeekString, parseLocalDate } from '../../utils/isoWeek';
 import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTable';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import '../tasks/GraficasActivityChart.scss';
@@ -34,58 +35,45 @@ const calcIF = (accidentes, hh) => {
   return isNaN(val) || !isFinite(val) ? 0 : Number(val.toFixed(2));
 };
 
-const getRowGroupingKey = (project, rowStr, mode) => {
-  const cleanStr = (rowStr || '').trim().toUpperCase();
-  const numMatch = cleanStr.match(/\d+/);
-  const weekNum = numMatch ? parseInt(numMatch[0], 10) : 1;
-
-  if (mode === 'lifecycle') {
-    return {
-      key: `LIFECYCLE_${weekNum}`,
-      label: `SEMANA ${weekNum}`,
-      sortNum: weekNum
-    };
-  } else {
-    let baseDate = project?.start_date ? new Date(project.start_date + 'T00:00:00') : null;
-    if (!baseDate || isNaN(baseDate.getTime())) {
-      baseDate = project?.created_at ? new Date(project.created_at) : new Date(new Date().getFullYear(), 0, 1);
-    }
-    if (isNaN(baseDate.getTime())) {
-      baseDate = new Date(new Date().getFullYear(), 0, 1);
-    }
-
-    const targetDate = new Date(baseDate.getTime() + (weekNum - 1) * 7 * 24 * 60 * 60 * 1000);
-    
-    const d = new Date(Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const calWeekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    const calYear = d.getUTCFullYear();
-
-    return {
-      key: `CHRONO_${calYear}_${calWeekNo}`,
-      label: `SEMANA CAL. ${calWeekNo} (${calYear})`,
-      sortNum: calYear * 100 + calWeekNo,
-      calYear,
-      calWeekNo
-    };
+/**
+ * Semana ISO 8601 de una fila de GRAFICAS.
+ *
+ * [CAMBIO] Antes había dos vistas y la de "Ciclo de Vida" sumaba la
+ * "SEMANA 1" de todos los proyectos aunque fueran de fechas distintas. Los
+ * reportes ahora se agrupan siempre por semana ISO 8601 (lunes a domingo).
+ * Las filas guardan la semana relativa al inicio del proyecto ("SEMANA 3"),
+ * así que se convierte a fecha real: inicio del proyecto + (n-1) semanas.
+ * Si la fila ya trae la semana ISO ("2026-W46") se usa tal cual.
+ */
+const getRowGroupingKey = (project, rowStr) => {
+  const direct = parseIsoWeekString(rowStr);
+  let iso = direct;
+  if (!iso) {
+    const numMatch = (rowStr || '').match(/\d+/);
+    const weekNum = numMatch ? parseInt(numMatch[0], 10) : 1;
+    const baseDate = parseLocalDate(project?.start_date)
+      || parseLocalDate(project?.created_at)
+      || new Date(new Date().getFullYear(), 0, 1);
+    const target = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + (weekNum - 1) * 7);
+    iso = isoWeek(target);
   }
+  return {
+    key: `ISO_${iso.year}_${iso.week}`,
+    label: isoWeekLabel(iso),
+    range: isoWeekRangeLabel(iso.year, iso.week),
+    sortNum: isoWeekKey(iso),
+    calYear: iso.year,
+    calWeekNo: iso.week,
+  };
 };
 
 const GeneralGraficasReports = ({ projects }) => {
   const themeContext = useContext(ThemeContext);
   const isDarkMode = themeContext ? themeContext.isDarkMode : true;
-  const [viewMode, setViewMode] = useState('chronological');
   const [selectedWeek1, setSelectedWeek1] = useState('ALL');
   const [selectedWeek2, setSelectedWeek2] = useState('ALL');
   const [selectedWeek3, setSelectedWeek3] = useState('ALL');
   const [refreshIndex, setRefreshIndex] = useState(0);
-
-  useEffect(() => {
-    setSelectedWeek1('ALL');
-    setSelectedWeek2('ALL');
-    setSelectedWeek3('ALL');
-  }, [viewMode]);
 
   const { data: allTasksData } = useQuery({
     queryKey: ['allTasksForGeneralReports', refreshIndex],
@@ -139,13 +127,13 @@ const GeneralGraficasReports = ({ projects }) => {
       const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
       t1.forEach(r => {
         if (r?.semana) {
-          const info = getRowGroupingKey(project, r.semana, viewMode);
+          const info = getRowGroupingKey(project, r.semana);
           if (!groupMap.has(info.key)) groupMap.set(info.key, info);
         }
       });
       t2.forEach(r => {
         if (r?.semana) {
-          const info = getRowGroupingKey(project, r.semana, viewMode);
+          const info = getRowGroupingKey(project, r.semana);
           if (!groupMap.has(info.key)) groupMap.set(info.key, info);
         }
       });
@@ -155,7 +143,7 @@ const GeneralGraficasReports = ({ projects }) => {
 
     if (sortedGroups.length === 0) {
       for (let i = 1; i <= 6; i++) {
-        const info = getRowGroupingKey(null, `SEMANA ${i}`, viewMode);
+        const info = getRowGroupingKey(null, `SEMANA ${i}`);
         sortedGroups.push(info);
       }
     }
@@ -168,7 +156,7 @@ const GeneralGraficasReports = ({ projects }) => {
 
       allProjectsData.forEach(({ project, data }) => {
         const t1 = Array.isArray(data) ? data : (Array.isArray(data?.table1) ? data.table1 : []);
-        const row = t1.find(r => r?.semana && getRowGroupingKey(project, r.semana, viewMode).key === g.key);
+        const row = t1.find(r => r?.semana && getRowGroupingKey(project, r.semana).key === g.key);
         if (row) {
           sumActos += parseFloat(row.actos) || 0;
           sumCondiciones += parseFloat(row.condiciones) || 0;
@@ -202,7 +190,7 @@ const GeneralGraficasReports = ({ projects }) => {
 
       allProjectsData.forEach(({ project, data }) => {
         const t2 = Array.isArray(data) ? data : (Array.isArray(data?.table2) ? data.table2 : []);
-        const row = t2.find(r => r?.semana && getRowGroupingKey(project, r.semana, viewMode).key === g.key);
+        const row = t2.find(r => r?.semana && getRowGroupingKey(project, r.semana).key === g.key);
         if (row) {
           sumActos += parseFloat(row.actos) || 0;
           sumCondiciones += parseFloat(row.condiciones) || 0;
@@ -227,7 +215,7 @@ const GeneralGraficasReports = ({ projects }) => {
     });
 
     return { table1Rows: t1Rows, table2Rows: t2Rows };
-  }, [projects, allTasks, refreshIndex, viewMode]);
+  }, [projects, allTasks, refreshIndex]);
 
   const availableWeeks1 = table1Rows.map(r => r.semana || '').filter(Boolean);
   const activeRows1 = selectedWeek1 === 'ALL' ? table1Rows : (() => {
@@ -525,66 +513,31 @@ const GeneralGraficasReports = ({ projects }) => {
           </div>
           <div>
             <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
-              Criterio de Agrupación Temporal
+              Semanas ISO 8601
             </h4>
-            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', maxWidth: '650px', lineHeight: '1.4' }}>
-              {viewMode === 'chronological'
-                ? 'Vista Cronológica: Suma las horas y estadísticas de los proyectos en función de su fecha de inicio real en el calendario (Semana Calendario / Año).'
-                : 'Vista Ciclo de Vida: Suma la Semana 1, Semana 2... de cada proyecto por igual sin importar en qué mes o fecha iniciaron.'}
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', maxWidth: '760px', lineHeight: '1.4' }}>
+              Los datos de todos los proyectos se suman por semana del calendario (lunes a domingo; la semana 1 es la que
+              contiene el primer jueves del año). La semana de cada registro se calcula a partir de la fecha de inicio del proyecto.
             </p>
           </div>
         </div>
 
-        <div style={{
-          display: 'flex',
-          backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(241, 245, 249, 0.9)',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid rgba(148, 163, 175, 0.2)'
-        }}>
-          <button
-            type="button"
-            onClick={() => setViewMode('chronological')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
+        {(() => {
+          const now = isoWeek(new Date());
+          return (
+            <div style={{
+              padding: '8px 14px',
+              borderRadius: '10px',
               fontSize: '13px',
               fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: viewMode === 'chronological' ? '#3b82f6' : 'transparent',
-              color: viewMode === 'chronological' ? '#ffffff' : (isDarkMode ? '#cbd5e1' : '#475569'),
-              boxShadow: viewMode === 'chronological' ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🗓️ Semana Calendario (Real)
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('lifecycle')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: viewMode === 'lifecycle' ? '#3b82f6' : 'transparent',
-              color: viewMode === 'lifecycle' ? '#ffffff' : (isDarkMode ? '#cbd5e1' : '#475569'),
-              boxShadow: viewMode === 'lifecycle' ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🔄 Ciclo de Vida (Semana 1, 2...)
-          </button>
-        </div>
+              backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : 'rgba(241, 245, 249, 0.9)',
+              border: '1px solid rgba(148, 163, 175, 0.2)',
+              color: isDarkMode ? '#cbd5e1' : '#475569'
+            }}>
+              🗓️ Semana actual: {now.week} · {now.year} ({isoWeekRangeLabel(now.year, now.week)})
+            </div>
+          );
+        })()}
       </div>
 
       {/* Tabla 1 General Consolidada: Rendimiento */}

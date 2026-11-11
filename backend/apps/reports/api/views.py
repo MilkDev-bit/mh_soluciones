@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from django.db.models import Count, Q, Avg, F, ExpressionWrapper, fields
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -28,6 +28,27 @@ def get_admin_accessible_projects(user):
         Q(id__in=project_ids) | Q(created_by=user)
     ).distinct()
 
+
+
+def iso_week_trend(tasks_qs, today, count=4):
+    """
+    Tareas completadas por semana ISO 8601 (lunes a domingo en hora local)
+    para las últimas `count` semanas, incluida la actual.
+    Devuelve (valores, etiquetas) en orden cronológico; etiqueta "SEM 46 · 2026".
+    """
+    tz = timezone.get_current_timezone()
+    monday = today - timedelta(days=today.weekday())
+    aggregates, labels = {}, []
+    for i in range(count - 1, -1, -1):
+        start_day = monday - timedelta(weeks=i)
+        start = timezone.make_aware(datetime.combine(start_day, time.min), tz)
+        end = start + timedelta(weeks=1)
+        iso_year, iso_week, _ = start_day.isocalendar()
+        key = f'w{i}'
+        aggregates[key] = Count('id', filter=Q(status='COMPLETED', updated_at__gte=start, updated_at__lt=end))
+        labels.append((key, f'SEM {iso_week} · {iso_year}'))
+    stats = tasks_qs.aggregate(**aggregates)
+    return [stats[k] for k, _ in labels], [label for _, label in labels]
 
 class DashboardDataAPIView(APIView):
     """
@@ -370,21 +391,10 @@ class StatisticsAPIView(APIView):
                     'calificacion_cri': promedio_cri
                 })
 
-        weekly_data = []
-        week_delta = timedelta(days=7)
-        week_aggregates = {}
-        
-        for i in range(min(weeks, 4)):
-            week_start = now - week_delta * (i + 1)
-            week_end = now - week_delta * i
-            week_aggregates[f'week_{i}'] = Count('id', filter=Q(status='COMPLETED', updated_at__gte=week_start, updated_at__lt=week_end))
-        
-        if week_aggregates:
-            trend_stats = tasks_qs.aggregate(**week_aggregates)
-            for i in range(min(weeks, 4)):
-                weekly_data.insert(0, trend_stats[f'week_{i}'])
-        else:
-            weekly_data = [0, 0, 0, 0]
+        # [CAMBIO] Tendencia por semanas ISO 8601 (lunes a domingo, hora
+        # local): las últimas 4 semanas incluyendo la actual. Antes eran
+        # ventanas de 7 días contadas hacia atrás desde "ahora".
+        weekly_data, weekly_labels = iso_week_trend(tasks_qs, today, count=4)
 
         return Response({
             'tareasTotales': total_tasks,
@@ -397,6 +407,7 @@ class StatisticsAPIView(APIView):
             'tiempoPromedioDias': tiempo_promedio,
             'topPerformers': top_performers,
             'tendenciaSemanal': weekly_data,
+            'tendenciaSemanalEtiquetas': weekly_labels,
             'tareasPorProyecto': project_task_counts,
             'proyectosDetalle': proyectos_detalle,
         })
