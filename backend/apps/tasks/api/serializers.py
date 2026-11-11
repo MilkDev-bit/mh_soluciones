@@ -160,6 +160,7 @@ class TaskSerializer(serializers.ModelSerializer):
     is_overdue = serializers.SerializerMethodField()
     my_window = serializers.SerializerMethodField()
     my_submission_status = serializers.SerializerMethodField()
+    my_score = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -169,7 +170,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'open_date', 'close_date', 'max_score', 'assigned_students', 
             'assigned_students_data', 'allow_late_submissions', 'accept_after_close',
             'days_after_close', 'is_continuous',
-            'deadline', 'late_deadline', 'is_overdue', 'my_window', 'my_submission_status',
+            'deadline', 'late_deadline', 'is_overdue', 'my_window', 'my_submission_status', 'my_score',
             'created_at', 'updated_at', 'has_attachment', 'submissions_count',
             'last_submission_date', 'pending_review_count'
         ]
@@ -244,6 +245,17 @@ class TaskSerializer(serializers.ModelSerializer):
     def get_my_submission_status(self, obj):
         latest, window = self._my_state(obj)
         return latest.status if (window and latest) else None
+
+    def get_my_score(self, obj):
+        """Calificación de la última entrega del alumno (o None).
+
+        El widget "Mis Calificaciones" leía task.submissions, que este
+        serializer no incluye: nunca mostraba calificaciones.
+        """
+        latest, window = self._my_state(obj)
+        if not (window and latest) or latest.score is None:
+            return None
+        return float(latest.score)
 
 
 class TaskDetailSerializer(TaskSerializer):
