@@ -16,6 +16,26 @@ from apps.authentication.models import GoogleApiCredentials
 logger = logging.getLogger(__name__)
 
 
+
+def oauth_client_for(stored_credentials):
+    """
+    (client_id, client_secret) para refrescar el token de Drive.
+
+    [FIX seguridad] Antes se usaba la copia del client_secret guardada en la
+    BD al conectar la cuenta. Si el secreto se rota en Google Cloud (p. ej.
+    porque se filtró) y se desactiva el anterior, TODAS las subidas a Drive
+    fallaban hasta volver a conectar cada cuenta. Ahora, si las credenciales
+    son del mismo cliente OAuth configurado en el servidor, se usa el secreto
+    actual de la variable de entorno GOOGLE_CLIENT_SECRET; rotarlo solo
+    requiere actualizar esa variable.
+    """
+    current_id = getattr(settings, 'GOOGLE_CLIENT_ID', '') or ''
+    current_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '') or ''
+    stored_id = stored_credentials.client_id or ''
+    if current_id and current_secret and (not stored_id or stored_id == current_id):
+        return current_id, current_secret
+    return stored_id, stored_credentials.client_secret
+
 class GoogleDriveService:
     """
     Servicio para interactuar con la API de Google Drive usando
@@ -54,12 +74,13 @@ class GoogleDriveService:
         """Inicializa el servicio de Google Drive"""
         try:
             stored_credentials = GoogleApiCredentials.objects.get(user=self.user)
+            client_id, client_secret = oauth_client_for(stored_credentials)
             self.credentials = Credentials(
                 token=stored_credentials.access_token,
                 refresh_token=stored_credentials.refresh_token,
                 token_uri=stored_credentials.token_uri or "https://oauth2.googleapis.com/token",
-                client_id=stored_credentials.client_id,
-                client_secret=stored_credentials.client_secret,
+                client_id=client_id,
+                client_secret=client_secret,
                 scopes=stored_credentials.scopes.split(' ') if stored_credentials.scopes else [
                     'https://www.googleapis.com/auth/drive.file'
                 ]
