@@ -28,6 +28,7 @@ from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from django.db.models import Q
 from django.db import DatabaseError
 from rest_framework.filters import SearchFilter, OrderingFilter
+from apps.core.search import AccentInsensitiveSearchFilter
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from datetime import timedelta
@@ -71,7 +72,9 @@ class UserViewSet(viewsets.ModelViewSet):
     - Others: Cannot access
     """
     queryset = User.objects.all().order_by('first_name', 'last_name')
-    filter_backends = [SearchFilter, OrderingFilter]
+    # Búsqueda sin acentos ("adan" encuentra "Adán") y por varias palabras
+    # en cualquier orden ("torres adrian"). Ver apps/core/search.py.
+    filter_backends = [AccentInsensitiveSearchFilter, OrderingFilter]
     search_fields = ['username', 'first_name', 'last_name', 'email']
     ordering_fields = ['first_name', 'last_name', 'email', 'created_at']
 
@@ -81,7 +84,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'stats']:
             # ADMIN can read, but only SUPERADMIN can write
             self.permission_classes = [permissions.IsAuthenticated]
         else:
@@ -89,6 +92,18 @@ class UserViewSet(viewsets.ModelViewSet):
             self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
         return super().get_permissions()
     
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        Totales de TODOS los usuarios para las tarjetas de Gestión de Usuarios.
+        [FIX] Antes "Activos"/"Inactivos" se contaban solo con la página
+        visible (20 usuarios): 176 en total pero "18 activos" y "10%".
+        """
+        qs = User.objects.all()
+        total = qs.count()
+        active = qs.filter(is_active=True).count()
+        return Response({'total': total, 'active': active, 'inactive': total - active})
+
     def list(self, request, *args, **kwargs):
         """
         Custom list method with explicit page_size handling and detailed logging.

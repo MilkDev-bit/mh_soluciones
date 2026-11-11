@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUsers, deleteUser, activateUser } from '../../services/userService';
+import { getUsers, getUserStats, deleteUser, activateUser } from '../../services/userService';
 import UserModal from '../../components/admin/UserModal';
 import ChangePasswordModal from '../../components/admin/ChangePasswordModal';
 import UserCard from '../../components/admin/UserCard';
@@ -20,6 +20,13 @@ const UsersPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  // [FIX] Cada tecla lanzaba una búsqueda nueva y, mientras cargaba, la
+  // página entera se cambiaba por el esqueleto de carga: el campo de
+  // búsqueda se desmontaba y perdía el foco (solo se podía escribir una
+  // letra a la vez). Ahora lo escrito vive en `searchInput`, la búsqueda se
+  // lanza 350 ms después de dejar de escribir y los resultados anteriores
+  // se mantienen en pantalla mientras llegan los nuevos.
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
@@ -35,7 +42,26 @@ const UsersPage = () => {
     queryFn: () => getUsers(currentPage, searchTerm),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
+
+  // Totales de todos los usuarios (no solo de la página visible).
+  const { data: userStats } = useQuery({
+    queryKey: ['users', 'stats'],
+    queryFn: getUserStats,
+    staleTime: 60 * 1000,
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchInput.trim();
+      if (next !== searchTerm) {
+        setSearchTerm(next);
+        setCurrentPage(1);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchTerm]);
 
   // Handle errors with useEffect to avoid re-render loops
   useEffect(() => {
@@ -100,8 +126,7 @@ const UsersPage = () => {
   };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1);
+    setSearchInput(e.target.value);
   };
 
   const handlePageChange = (newPage) => {
@@ -110,21 +135,21 @@ const UsersPage = () => {
     }
   };
 
-  // Calculate statistics
+  // Calculate statistics (totales globales; respaldo con la página actual)
   const stats = useMemo(() => {
-    const activeUsers = users.filter(u => u.is_active).length;
-    const inactiveUsers = users.filter(u => !u.is_active).length;
-    const activationRate = totalCount > 0 ? Math.round((activeUsers / totalCount) * 100) : 0;
-    
+    const total = userStats?.total ?? totalCount;
+    const active = userStats?.active ?? users.filter(u => u.is_active).length;
+    const inactive = userStats?.inactive ?? users.filter(u => !u.is_active).length;
     return {
-      total: totalCount,
-      active: activeUsers,
-      inactive: inactiveUsers,
-      activationRate
+      total,
+      active,
+      inactive,
+      activationRate: total > 0 ? Math.round((active / total) * 100) : 0,
     };
-  }, [users, totalCount]);
+  }, [userStats, users, totalCount]);
 
-  if (loading) {
+  // Esqueleto solo en la PRIMERA carga, nunca al buscar o cambiar de página.
+  if (loading && !usersData) {
     return <UsersPageSkeleton viewMode={viewMode} />;
   }
 
@@ -212,7 +237,7 @@ const UsersPage = () => {
             <input
               type="text"
               placeholder="Buscar por nombre, usuario o email..."
-              value={searchTerm}
+              value={searchInput}
               onChange={handleSearchChange}
             />
           </div>
