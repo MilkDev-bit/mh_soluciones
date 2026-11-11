@@ -6,7 +6,10 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from apps.notifications.models import Notification, PushSubscription
 from .serializers import NotificationSerializer, PushSubscriptionSerializer, SendPushNotificationSerializer
-from apps.notifications.push_utils import vapid_config, send_notification_to_user, send_notification_to_multiple_users
+from apps.notifications.push_utils import (
+    vapid_config, send_notification_to_user, send_notification_to_user_detailed,
+    send_notification_to_multiple_users,
+)
 from django.contrib.auth import get_user_model
 import logging
 
@@ -170,18 +173,28 @@ class PushSubscriptionViewSet(viewsets.ModelViewSet):
             'icon': '/icons/icon-192x192.png',
             'tag': 'test-notification'
         }
-        
-        sent_count = send_notification_to_user(request.user, notification_data)
-        
-        if sent_count > 0:
+
+        result = send_notification_to_user_detailed(request.user, notification_data)
+
+        if result['sent'] > 0:
+            return Response({'status': 'sent', 'count': result['sent']})
+
+        # [FIX] Antes siempre "400 No active subscriptions or sending failed":
+        # no se sabía si faltaba la suscripción o si falló el envío.
+        if result['active'] == 0:
             return Response({
-                'status': 'sent',
-                'count': sent_count
-            })
-        else:
-            return Response({
-                'error': 'No active subscriptions or sending failed'
+                'error': 'Este dispositivo no tiene una suscripción activa en el servidor.',
+                'code': 'no_subscription',
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        statuses = {f.get('status') for f in result['failures']}
+        return Response({
+            'error': 'El servicio de notificaciones del navegador rechazó el envío.',
+            # 400/401/403: la suscripción se creó con otra clave VAPID (hay
+            # que volver a suscribirse); 404/410: la suscripción expiró.
+            'code': 'resubscribe' if statuses & {400, 401, 403, 404, 410} else 'push_failed',
+            'failures': result['failures'],
+        }, status=status.HTTP_502_BAD_GATEWAY)
 
 
 @api_view(['POST'])

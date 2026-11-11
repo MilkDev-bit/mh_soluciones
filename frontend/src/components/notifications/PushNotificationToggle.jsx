@@ -6,7 +6,8 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
   isPushSubscribed,
-  sendTestPushNotification
+  sendTestPushNotification,
+  syncPushSubscription
 } from '../../services/pushNotificationService';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,10 @@ const PushNotificationToggle = () => {
         if (currentPermission === 'granted') {
           const subscribed = await isPushSubscribed();
           setIsSubscribed(subscribed);
+          if (subscribed) {
+            // Asegura que el servidor tenga activa la suscripción de este navegador.
+            syncPushSubscription().catch((err) => console.warn('No se pudo sincronizar la suscripción push:', err));
+          }
         }
       }
     } catch (error) {
@@ -91,11 +96,28 @@ const PushNotificationToggle = () => {
 
     setIsSending(true);
     try {
-      await sendTestPushNotification();
+      try {
+        await sendTestPushNotification();
+      } catch (error) {
+        // [FIX] Antes cualquier 400 terminaba en "Error al enviar". Ahora,
+        // si al servidor le falta la suscripción o el servicio push la
+        // rechaza, se vuelve a suscribir este navegador y se reintenta 1 vez.
+        const code = error?.response?.data?.code;
+        if (code === 'no_subscription') {
+          await syncPushSubscription();
+        } else if (code === 'resubscribe') {
+          await subscribeToPush({ force: true });
+        } else {
+          throw error;
+        }
+        await sendTestPushNotification();
+      }
       toast.success('Notificación de prueba enviada');
     } catch (error) {
       console.error('Error sending test notification:', error);
-      toast.error('Error al enviar notificación de prueba');
+      const data = error?.response?.data;
+      const detail = data?.failures?.[0]?.status ? ` (servicio push: ${data.failures[0].status})` : '';
+      toast.error(`${data?.error || 'Error al enviar notificación de prueba'}${detail}`);
     } finally {
       setIsSending(false);
     }

@@ -85,8 +85,16 @@ export const getVapidPublicKey = async () => {
   }
 };
 
-// Subscribe to push notifications
-export const subscribeToPush = async () => {
+const sameKey = (buffer, uint8) => {
+  if (!buffer || !uint8) return false;
+  const a = new Uint8Array(buffer);
+  if (a.length !== uint8.length) return false;
+  return a.every((v, i) => v === uint8[i]);
+};
+
+// Subscribe to push notifications.
+// `force`: descarta la suscripción actual del navegador y crea una nueva.
+export const subscribeToPush = async ({ force = false } = {}) => {
   if (!isPushNotificationSupported()) {
     throw new Error('Push notifications not supported in this browser');
   }
@@ -108,13 +116,19 @@ export const subscribeToPush = async () => {
     const vapidPublicKey = await getVapidPublicKey();
     const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
 
-    // Subscribe to push
+    // [FIX] Si el navegador ya tenía una suscripción creada con OTRA clave
+    // VAPID (p. ej. tras cambiar las claves del servidor), el servicio push
+    // rechaza todos los envíos. Se descarta y se crea una nueva.
+    const existing = await registration.pushManager.getSubscription();
+    if (existing && (force || !sameKey(existing.options?.applicationServerKey, convertedVapidKey))) {
+      await existing.unsubscribe();
+    }
+
+    // Subscribe to push (devuelve la existente si sigue siendo válida)
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: convertedVapidKey
     });
-
-    console.log('Push subscription created:', subscription);
 
     // Send subscription to server
     await sendSubscriptionToServer(subscription);
@@ -124,6 +138,27 @@ export const subscribeToPush = async () => {
     console.error('Error subscribing to push notifications:', error);
     throw error;
   }
+};
+
+/**
+ * [FIX] El interruptor solo miraba si el NAVEGADOR estaba suscrito. Si el
+ * servidor no tenía la suscripción (o la había desactivado), se veía
+ * "activado" pero "Enviar prueba" respondía 400. Al abrir la pantalla se
+ * vuelve a registrar la suscripción del navegador en el servidor.
+ */
+export const syncPushSubscription = async () => {
+  if (!isPushNotificationSupported() || getNotificationPermission() !== 'granted') return false;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = registration && await registration.pushManager.getSubscription();
+  if (!subscription) return false;
+
+  const vapidPublicKey = await getVapidPublicKey();
+  if (!sameKey(subscription.options?.applicationServerKey, urlBase64ToUint8Array(vapidPublicKey))) {
+    await subscribeToPush({ force: true });
+    return true;
+  }
+  await sendSubscriptionToServer(subscription);
+  return true;
 };
 
 // Send subscription to backend

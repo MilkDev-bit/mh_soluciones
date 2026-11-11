@@ -70,110 +70,98 @@ class VAPIDConfig:
 vapid_config = VAPIDConfig()
 
 
-def send_push_notification(
-    subscription_info: Dict,
-    data: Dict,
-    ttl: int = 3600
-) -> bool:
+# Códigos del servicio push que significan "esta suscripción ya no sirve".
+GONE_STATUSES = (404, 410)
+
+
+def deliver_push(subscription_info: Dict, data: Dict, ttl: int = 3600) -> Dict:
     """
-    Envía una notificación push usando pywebpush.
-    
-    Args:
-        subscription_info: Diccionario con endpoint, keys.p256dh y keys.auth
-        data: Datos a enviar en la notificación (será convertido a JSON)
-        ttl: Tiempo de vida de la notificación en segundos (default: 1 hora)
-    
-    Returns:
-        bool: True si se envió exitosamente, False si hubo error
+    Envía una notificación push y devuelve el detalle del resultado:
+    {'ok': bool, 'status': int|None, 'reason': str}.
     """
     if not vapid_config.is_valid():
-        logger.error("Cannot send push notification: VAPID configuration is invalid")
-        return False
-    
+        return {'ok': False, 'status': None, 'reason': 'VAPID no configurado'}
+
     try:
-        # Preparar los datos de la notificación
-        notification_data = json.dumps(data)
-        
-        # Enviar la notificación
         response = webpush(
             subscription_info=subscription_info,
-            data=notification_data,
+            data=json.dumps(data),
             vapid_private_key=vapid_config.private_key,
-            vapid_claims={
-                "sub": vapid_config.subject
-            },
-            ttl=ttl
+            vapid_claims={"sub": vapid_config.subject},
+            ttl=ttl,
         )
-        
         logger.info(f"Push notification sent successfully. Status: {response.status_code}")
-        return True
-        
+        return {'ok': True, 'status': response.status_code, 'reason': ''}
+
     except WebPushException as e:
-        logger.error(f"WebPush error: {e}")
-        # Si es un error 410 (Gone), la suscripción ya no es válida
-        if e.response and e.response.status_code == 410:
-            logger.warning("Subscription is no longer valid (410 Gone)")
-        return False
-        
+        # [FIX] `if e.response and ...` nunca era verdadero: un Response con
+        # 4xx se evalúa como False. Hay que comparar con None.
+        resp = getattr(e, 'response', None)
+        status_code = resp.status_code if resp is not None else None
+        body = ''
+        if resp is not None:
+            try:
+                body = (resp.text or '')[:300]
+            except Exception:
+                body = ''
+        logger.error(f"WebPush error ({status_code}): {e} {body}")
+        return {'ok': False, 'status': status_code, 'reason': body or str(e)[:300]}
+
     except Exception as e:
         logger.error(f"Error sending push notification: {e}")
-        return False
+        return {'ok': False, 'status': None, 'reason': str(e)[:300]}
+
+
+def send_push_notification(subscription_info: Dict, data: Dict, ttl: int = 3600) -> bool:
+    """Compatibilidad: True si se envió."""
+    return deliver_push(subscription_info, data, ttl)['ok']
+
+
+def send_notification_to_user_detailed(user: 'User', notification_data: Dict) -> Dict:
+    """
+    Envía a todas las suscripciones activas del usuario.
+    Devuelve {'active': n, 'sent': n, 'failures': [{'status', 'reason'}]}.
+
+    [FIX] Antes CUALQUIER falla (un 500 momentáneo del servicio push, un
+    error de red, una clave VAPID mal configurada) desactivaba la suscripción
+    para siempre: después de eso "Enviar prueba" respondía 400 aunque el
+    navegador siguiera suscrito. Ahora solo se desactiva cuando el servicio
+    push dice que ya no existe (404/410).
+    """
+    from apps.notifications.models import PushSubscription
+
+    result = {'active': 0, 'sent': 0, 'failures': []}
+    if not vapid_config.is_valid():
+        logger.warning("VAPID not configured, skipping push notifications")
+        return result
+
+    subscriptions = list(PushSubscription.objects.filter(user=user, is_active=True))
+    result['active'] = len(subscriptions)
+    gone = []
+
+    for subscription in subscriptions:
+        outcome = deliver_push({
+            "endpoint": subscription.endpoint,
+            "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
+        }, notification_data)
+        if outcome['ok']:
+            result['sent'] += 1
+            continue
+        result['failures'].append({'status': outcome['status'], 'reason': outcome['reason']})
+        if outcome['status'] in GONE_STATUSES:
+            gone.append(subscription.id)
+
+    if gone:
+        PushSubscription.objects.filter(id__in=gone).update(is_active=False)
+        logger.info(f"Deactivated {len(gone)} expired subscriptions")
+
+    logger.info(f"Sent {result['sent']} push notifications to user {user.username}")
+    return result
 
 
 def send_notification_to_user(user: 'User', notification_data: Dict) -> int:
-    """
-    Envía una notificación push a todas las suscripciones activas de un usuario.
-    
-    Args:
-        user: Instancia del modelo User
-        notification_data: Datos de la notificación (title, body, icon, etc.)
-    
-    Returns:
-        int: Número de notificaciones enviadas exitosamente
-    """
-    from apps.notifications.models import PushSubscription
-    
-    if not vapid_config.is_valid():
-        logger.warning("VAPID not configured, skipping push notifications")
-        return 0
-    
-    # Obtener todas las suscripciones activas del usuario
-    subscriptions = PushSubscription.objects.filter(
-        user=user,
-        is_active=True
-    )
-    
-    sent_count = 0
-    invalid_subscriptions = []
-    
-    for subscription in subscriptions:
-        # Preparar la información de suscripción en el formato esperado por pywebpush
-        subscription_info = {
-            "endpoint": subscription.endpoint,
-            "keys": {
-                "p256dh": subscription.p256dh,
-                "auth": subscription.auth
-            }
-        }
-        
-        # Intentar enviar la notificación
-        success = send_push_notification(subscription_info, notification_data)
-        
-        if success:
-            sent_count += 1
-        else:
-            # Marcar suscripciones inválidas para desactivarlas
-            invalid_subscriptions.append(subscription.id)
-    
-    # Desactivar suscripciones inválidas
-    if invalid_subscriptions:
-        PushSubscription.objects.filter(
-            id__in=invalid_subscriptions
-        ).update(is_active=False)
-        logger.info(f"Deactivated {len(invalid_subscriptions)} invalid subscriptions")
-    
-    logger.info(f"Sent {sent_count} push notifications to user {user.username}")
-    return sent_count
+    """Número de notificaciones enviadas (compatibilidad)."""
+    return send_notification_to_user_detailed(user, notification_data)['sent']
 
 
 def send_notification_to_multiple_users(users: List['User'], notification_data: Dict) -> Dict:
