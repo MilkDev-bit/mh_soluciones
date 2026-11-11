@@ -32,6 +32,8 @@ const CalendarPage = () => {
   });
   const [projectUsers, setProjectUsers] = useState([]);
   const [availableColors, setAvailableColors] = useState([]);
+  // Rango que muestra FullCalendar (mes/semana/día). Se piden solo esos eventos.
+  const [visibleRange, setVisibleRange] = useState(null);
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -56,29 +58,33 @@ const CalendarPage = () => {
       setAvailableColors([]);
       return;
     }
+    if (!visibleRange) return; // FullCalendar aún no informa qué rango muestra
     try {
       setIsRefreshing(true);
-      const [eventData, colorsData] = await Promise.all([
-        getEventsByProject(selectedProject),
+      const [eventList, colorsData] = await Promise.all([
+        getEventsByProject(selectedProject, visibleRange),
         getAvailableColors(selectedProject)
       ]);
-      
-      const eventList = eventData.results || eventData || [];
-      
+
       const formattedEvents = eventList.map(event => ({
-        id: event.id,
+        id: String(event.id),
         title: event.title,
         start: event.start_time,
         end: event.end_time,
         color: event.color,
-        extendedProps: { 
+        // [FIX] Solo se pueden arrastrar/redimensionar los eventos que el
+        // usuario puede editar (antes el alumno los movía y el servidor lo
+        // rechazaba, o peor, lo permitía).
+        editable: event.can_edit !== false,
+        extendedProps: {
           description: event.description,
           color: event.color,
-          created_by: event.created_by
+          created_by: event.created_by,
+          can_edit: event.can_edit !== false,
         }
       }));
       setEvents(formattedEvents);
-      
+
       // Extract unique users from events
       const uniqueUsers = eventList
         .filter(e => e.created_by)
@@ -89,7 +95,7 @@ const CalendarPage = () => {
           return acc;
         }, []);
       setProjectUsers(uniqueUsers);
-      
+
       // Set available colors from backend
       const colors = colorsData.colors || [];
       setAvailableColors(colors);
@@ -98,7 +104,7 @@ const CalendarPage = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedProject]);
+  }, [selectedProject, visibleRange]);
 
   useEffect(() => {
     fetchInitialData();
@@ -108,8 +114,17 @@ const CalendarPage = () => {
     if (selectedProject) {
       fetchEvents();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject]);
+  }, [selectedProject, fetchEvents]);
+
+  // FullCalendar avisa cada vez que cambia el rango visible (navegar meses,
+  // cambiar a semana/día). Solo se actualiza si de verdad cambió.
+  const handleDatesSet = useCallback((info) => {
+    setVisibleRange((prev) => (
+      prev && prev.start.getTime() === info.start.getTime() && prev.end.getTime() === info.end.getTime()
+        ? prev
+        : { start: info.start, end: info.end }
+    ));
+  }, []);
 
   const handleEventSaved = () => {
     setIsModalOpen(false);
@@ -126,58 +141,75 @@ const CalendarPage = () => {
       end: event.end,
       description: event.extendedProps.description,
       color: event.extendedProps.color,
+      can_edit: event.extendedProps.can_edit,
+      created_by: event.extendedProps.created_by,
     });
     setIsModalOpen(true);
   };
 
   const handleDateSelect = (selectInfo) => {
-    setSelectedEvent({
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-    });
+    // [FIX] Se usaba selectInfo.startStr ("2026-11-12"), que JavaScript lee
+    // como medianoche UTC: en México el formulario mostraba el día ANTERIOR
+    // a las 18:00. Además el modal ignoraba la fecha y ponía "ahora + 1 h".
+    // Ahora se usan las fechas locales; en la vista de mes (días completos)
+    // se propone de 9:00 a 10:00.
+    let start = new Date(selectInfo.start);
+    let end = new Date(selectInfo.end);
+    if (selectInfo.allDay) {
+      const lastDay = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      start.setHours(9, 0, 0, 0);
+      end = new Date(lastDay);
+      end.setHours(10, 0, 0, 0);
+    }
+    selectInfo.view.calendar.unselect();
+    setSelectedEvent({ start, end });
     setIsModalOpen(true);
+  };
+
+  // Fin del evento tras moverlo: FullCalendar deja `end` en null cuando el
+  // evento cambia entre "todo el día" y con horario; se conserva la duración.
+  const resolveEnd = (event, oldEvent) => {
+    if (event.end) return event.end;
+    const duration = oldEvent?.end && oldEvent?.start
+      ? oldEvent.end.getTime() - oldEvent.start.getTime()
+      : 60 * 60 * 1000;
+    return new Date(event.start.getTime() + duration);
+  };
+
+  const apiErrorText = (error, fallback) => {
+    const data = error?.response?.data;
+    if (!data) return fallback;
+    if (typeof data.detail === 'string') return data.detail;
+    const first = Object.values(data).flat().find((v) => typeof v === 'string');
+    return first || fallback;
   };
 
   // Handle drag and drop for event rescheduling
   const handleEventDrop = async (dropInfo) => {
-    const { event } = dropInfo;
-    
+    const { event, oldEvent } = dropInfo;
     try {
-      const eventData = {
-        project: selectedProject,
-        title: event.title,
-        description: event.extendedProps.description,
+      await updateEvent(event.id, {
         start_time: event.start.toISOString(),
-        end_time: event.end.toISOString(),
-        color: event.extendedProps.color
-      };
-      
-      await updateEvent(event.id, eventData);
+        end_time: resolveEnd(event, oldEvent).toISOString(),
+      });
       toast.success('Evento actualizado correctamente');
     } catch (error) {
-      toast.error('Error al mover el evento');
+      toast.error(apiErrorText(error, 'Error al mover el evento'));
       dropInfo.revert(); // Revert the event to its original position
     }
   };
 
   // Handle event resize
   const handleEventResize = async (resizeInfo) => {
-    const { event } = resizeInfo;
-    
+    const { event, oldEvent } = resizeInfo;
     try {
-      const eventData = {
-        project: selectedProject,
-        title: event.title,
-        description: event.extendedProps.description,
+      await updateEvent(event.id, {
         start_time: event.start.toISOString(),
-        end_time: event.end.toISOString(),
-        color: event.extendedProps.color
-      };
-      
-      await updateEvent(event.id, eventData);
+        end_time: resolveEnd(event, oldEvent).toISOString(),
+      });
       toast.success('Duración del evento actualizada');
     } catch (error) {
-      toast.error('Error al redimensionar el evento');
+      toast.error(apiErrorText(error, 'Error al redimensionar el evento'));
       resizeInfo.revert();
     }
   };
@@ -325,6 +357,7 @@ const CalendarPage = () => {
               eventClick={handleEventClick}
               eventDrop={handleEventDrop}
               eventResize={handleEventResize}
+              datesSet={handleDatesSet}
               height="auto"
               eventTimeFormat={{
                 hour: '2-digit',

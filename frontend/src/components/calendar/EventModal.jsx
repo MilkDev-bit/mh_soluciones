@@ -26,8 +26,20 @@ const formatDateForInput = (date) => {
   }
 };
 
+// Mensaje real del servidor (p. ej. "La fecha de finalización debe ser
+// posterior...") en lugar de un genérico "No se pudo guardar".
+const apiErrorText = (error, fallback) => {
+  const data = error?.response?.data;
+  if (!data) return fallback;
+  if (typeof data.detail === 'string') return data.detail;
+  const first = Object.values(data).flat().find((v) => typeof v === 'string');
+  return first || fallback;
+};
+
 const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
   const isEditMode = Boolean(event?.id);
+  // Eventos de otros (para alumnos): se ven, pero no se pueden modificar.
+  const readOnly = isEditMode && event?.can_edit === false;
   const [selectedColor, setSelectedColor] = useState(event?.color || '#2C74B3');
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, reset, watch } = useForm({
@@ -59,9 +71,11 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
         setSelectedColor(event.color || '#2C74B3');
       } else {
         reset();
+        // [FIX] Si se eligió un día/horario en el calendario se usa ese; antes
+        // siempre se proponía "ahora + 1 hora" sin importar qué día se tocó.
         const now = new Date();
-        const defaultStart = new Date(now.getTime() + 60 * 60 * 1000);
-        const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
+        const defaultStart = event?.start ? new Date(event.start) : new Date(now.getTime() + 60 * 60 * 1000);
+        const defaultEnd = event?.end ? new Date(event.end) : new Date(defaultStart.getTime() + 60 * 60 * 1000);
         
         setValue('start_time', formatDateForInput(defaultStart));
         setValue('end_time', formatDateForInput(defaultEnd));
@@ -79,6 +93,11 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
       end_time: new Date(formData.end_time).toISOString()
     };
     
+    if (new Date(formData.end_time) <= new Date(formData.start_time)) {
+      toast.error('La fecha de fin debe ser posterior a la de inicio.');
+      return;
+    }
+
     try {
       if (isEditMode) {
         await updateEvent(event.id, eventData);
@@ -90,7 +109,7 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
       onEventSaved();
       onClose();
     } catch (error) {
-      toast.error('No se pudo guardar el evento.');
+      toast.error(apiErrorText(error, 'No se pudo guardar el evento.'));
     }
   };
 
@@ -102,7 +121,7 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
         onEventSaved();
         onClose();
       } catch (error) {
-        toast.error('No se pudo eliminar el evento.');
+        toast.error(apiErrorText(error, 'No se pudo eliminar el evento.'));
       }
     }
   };
@@ -121,7 +140,12 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
       <div className="event-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="event-modal-header">
           <div className="event-modal-title">
-            {isEditMode ? (
+            {readOnly ? (
+              <>
+                <FiCalendar />
+                <h2>Detalle del Evento</h2>
+              </>
+            ) : isEditMode ? (
               <>
                 <FiEdit2 />
                 <h2>Editar Evento</h2>
@@ -139,6 +163,12 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="event-form">
+          {readOnly && (
+            <p className="event-readonly-note">
+              Este evento lo creó {event?.created_by ? `${event.created_by.first_name || ''} ${event.created_by.last_name || ''}`.trim() || 'otra persona' : 'otra persona'}; solo quien lo creó o el personal del proyecto puede modificarlo.
+            </p>
+          )}
+          <fieldset disabled={readOnly} className="event-form-fieldset">
           <div className="event-form-grid">
             <div className="form-group full-width">
               <label htmlFor="title" className="form-label">
@@ -229,9 +259,11 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
             </div>
           </div>
 
+          </fieldset>
+
           <div className="event-modal-actions">
             <div className="actions-left">
-              {isEditMode && (
+              {isEditMode && !readOnly && (
                 <button 
                   type="button" 
                   className="btn btn-danger" 
@@ -251,8 +283,9 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
                 onClick={onClose}
                 disabled={isSubmitting}
               >
-                Cancelar
+                {readOnly ? 'Cerrar' : 'Cancelar'}
               </button>
+              {!readOnly && (
               <button 
                 type="submit" 
                 className="btn btn-primary" 
@@ -272,6 +305,7 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
                   </>
                 )}
               </button>
+              )}
             </div>
           </div>
         </form>

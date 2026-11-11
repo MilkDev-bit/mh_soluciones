@@ -11,6 +11,7 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     """
     created_by = UserSerializer(read_only=True)
     project_name = serializers.CharField(source='project.name', read_only=True)
+    can_edit = serializers.SerializerMethodField()
 
     class Meta:
         model = CalendarEvent
@@ -26,8 +27,16 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             'color',
             'created_at',
             'updated_at',
+            'can_edit',
         ]
-        read_only_fields = ('id', 'created_by', 'created_at', 'updated_at', 'project_name')
+        read_only_fields = ('id', 'created_by', 'created_at', 'updated_at', 'project_name', 'can_edit')
+
+    def get_can_edit(self, obj):
+        """Si el usuario actual puede mover/editar/borrar el evento."""
+        from .permissions import can_manage_event
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return bool(user and user.is_authenticated and can_manage_event(user, obj))
 
     def validate_title(self, value):
         """
@@ -60,8 +69,9 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         2. El evento no puede durar más de 365 días
         3. El evento no puede estar en el pasado distante (más de 5 años)
         """
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        # En PATCH puede llegar solo una de las dos fechas: comparar con la guardada.
+        start_time = data.get('start_time', getattr(self.instance, 'start_time', None))
+        end_time = data.get('end_time', getattr(self.instance, 'end_time', None))
         
         # Validación de fechas
         if start_time and end_time:
