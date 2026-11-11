@@ -30,6 +30,7 @@ from .views import (
     UserViewSet,
     current_user_view,
     ClientListView,
+    UserDirectoryView,
     GoogleAuthRedirectView,
     GoogleAuthCallbackView,
     GoogleConnectionStatusView,
@@ -63,6 +64,7 @@ urlpatterns = [
     path('2fa-verify/', TwoFactorVerifyAPIView.as_view(), name='auth_2fa_verify'),
     path('user-from-session/', current_user_view, name='current_user'),
     path('clients/', ClientListView.as_view(), name='client-list'),
+    path('directory/', UserDirectoryView.as_view(), name='user-directory'),
 
     path('google/auth/', GoogleAuthRedirectView.as_view(), name='google-auth-redirect'),
     path('google/callback/', google_callback_view, name='google-auth-callback'),
