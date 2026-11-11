@@ -9,7 +9,8 @@ Usa el mismo criterio que el reporte semanal de entregables
 - trend: % de cumplimiento de las últimas semanas (desde que inició el proyecto).
 - punctuality: de los entregables de esas semanas, cuántos se entregaron a
   tiempo, tarde (con prórroga) o no se entregaron.
-- safety: índice de frecuencia, actos y condiciones por semana (tabla de GRÁFICAS).
+- safety: índice de frecuencia, actos y condiciones por semana DEL PROYECTO
+  (tabla de GRÁFICAS: "SEMANA n" desde el inicio, no semana ISO).
 - review: entregas por revisar, devueltas con cambios y calificación promedio.
 - timeline: días transcurridos contra la duración planeada y última captura
   de gráficas.
@@ -23,7 +24,7 @@ from apps.projects.models import Project
 from apps.tasks.models import Task, TaskSubmission
 
 from .entregables import (
-    GRAFICAS, STANDARD_NAMES, collect_rows, graficas_safety_by_week, standard_key,
+    GRAFICAS, STANDARD_NAMES, collect_rows, graficas_safety_by_project_week, standard_key,
 )
 
 TREND_WEEKS = 10
@@ -44,6 +45,14 @@ def _iso_range_label(year, week):
     if lunes.month == domingo.month:
         return f'{lunes.day}–{domingo.day} {MESES[domingo.month - 1][:3].lower()}'
     return f'{lunes.day} {MESES[lunes.month - 1][:3].lower()} – {domingo.day} {MESES[domingo.month - 1][:3].lower()}'
+
+
+def _date_range_label(desde, hasta):
+    from .entregables import MESES
+    mes = lambda d: MESES[d.month - 1][:3].lower()
+    if desde.month == hasta.month:
+        return f'{desde.day}–{hasta.day} {mes(hasta)}'
+    return f'{desde.day} {mes(desde)} – {hasta.day} {mes(hasta)}'
 
 
 def _week_summary(project, year, week):
@@ -98,34 +107,36 @@ def build_project_status(project, today=None, weeks=TREND_WEEKS):
             else:
                 a_tiempo += 1
 
-    # Seguridad: tabla de GRÁFICAS del proyecto.
+    # Seguridad: tabla de GRÁFICAS del proyecto. Sus filas son semanas DEL
+    # PROYECTO ("SEMANA n" = n-ésima semana desde el inicio), no semanas ISO,
+    # así que esta gráfica se muestra por semana del proyecto.
     graficas = [t for t in Task.objects.filter(project=project).only('id', 'title', 'description')
                 if standard_key(t.title) == GRAFICAS]
-    safety_by_week = {}
+    por_semana = {}
     for t in graficas:
-        for key, vals in graficas_safety_by_week(t.description, project).items():
-            safety_by_week.setdefault(key, vals)
+        for n, vals in graficas_safety_by_project_week(t.description, project).items():
+            por_semana.setdefault(n, vals)
+    semana_actual = max(1, (today - start).days // 7 + 1) if start else None
+    capturadas = sorted(n for n, v in por_semana.items()
+                        if (v['ft'] or v['actos'] or v['condiciones']) and (not semana_actual or n <= semana_actual))
+    ultima = capturadas[-1] if capturadas else None
+    hasta_n = semana_actual or (ultima or 0)
+    desde_n = max(1, hasta_n - weeks + 1)
     safety = []
-    for y, w in week_list:
-        vals = safety_by_week.get((y, w))
+    for n in range(desde_n, hasta_n + 1):
+        vals = por_semana.get(n)
+        inicio_n = start + timedelta(weeks=n - 1) if start else None
         safety.append({
-            'label': f'SEM {w}',
-            'range': _iso_range_label(y, w),
+            'label': f'SEMANA {n}',
+            'range': _date_range_label(inicio_n, inicio_n + timedelta(days=6)) if inicio_n else '',
             'actos': vals['actos'] if vals else 0,
             'condiciones': vals['condiciones'] if vals else 0,
             'hh': vals['hh'] if vals else 0,
             'indice': vals['indice'] if vals else None,
+            'current': n == semana_actual,
         })
-    capturadas = sorted(k for k, v in safety_by_week.items()
-                        if v['ft'] or v['actos'] or v['condiciones'])
-    current_key = monday.isocalendar()[:2]
-    capturadas = [k for k in capturadas if k <= current_key]
-    ultima = capturadas[-1] if capturadas else None
-    semanas_sin_captura = None
-    if ultima:
-        lunes_ultima = date.fromisocalendar(ultima[0], ultima[1], 1)
-        semanas_sin_captura = max(0, (monday - lunes_ultima).days // 7)
-    hh_total = sum(v['hh'] for k, v in safety_by_week.items() if k <= current_key)
+    semanas_sin_captura = max(0, semana_actual - ultima) if (ultima and semana_actual) else None
+    hh_total = sum(v['hh'] for n, v in por_semana.items() if not semana_actual or n <= semana_actual)
 
     # Revisión: versiones vigentes (sin las reemplazadas).
     subs = TaskSubmission.objects.filter(task__project=project).exclude(status=TaskSubmission.SubmissionStatus.SUPERSEDED)
@@ -150,7 +161,8 @@ def build_project_status(project, today=None, weeks=TREND_WEEKS):
         'days_elapsed': max(0, (hasta - start).days) if start else None,
         'days_total': (end - start).days if (end and start and end > start) else None,
         'pct_time': None,
-        'last_capture': f'SEM {ultima[1]} · {ultima[0]}' if ultima else None,
+        'last_capture': f'SEMANA {ultima}' if ultima else None,
+        'project_week': semana_actual,
         'weeks_without_capture': semanas_sin_captura,
         'hh_total': hh_total,
     }

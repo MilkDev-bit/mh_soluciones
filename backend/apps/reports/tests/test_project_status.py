@@ -63,9 +63,14 @@ class ProjectStatusTests(TestCase):
         self.assertEqual(punt['on_time'] + punt['late'] + punt['missing'], 21)
         self.assertEqual(punt['on_time'], 7)                           # 1 gráfica (sem 44) + 6 de la 45
         # Seguridad: índice = (actos + condiciones) / (FT·50/1000).
-        sem45 = next(s for s in data['safety'] if s['label'] == 'SEM 45')
-        self.assertEqual(sem45['indice'], 1.0)                         # 2 / (40·50/1000)
-        self.assertEqual(data['timeline']['last_capture'], 'SEM 45 · 2026')
+        # La gráfica de seguridad va por semana DEL PROYECTO (SEMANA n), no ISO.
+        self.assertEqual([s['label'] for s in data['safety']], ['SEMANA 1', 'SEMANA 2', 'SEMANA 3', 'SEMANA 4'])
+        sem3 = data['safety'][2]
+        self.assertEqual(sem3['indice'], 1.0)                          # 2 / (40·50/1000)
+        self.assertEqual(sem3['range'], '2–8 nov')
+        self.assertTrue(data['safety'][3]['current'])
+        self.assertEqual(data['timeline']['project_week'], 4)
+        self.assertEqual(data['timeline']['last_capture'], 'SEMANA 3')
         self.assertEqual(data['timeline']['weeks_without_capture'], 1)
         self.assertEqual(data['timeline']['hh_total'], 3000)
         self.assertEqual(data['review']['changes_requested'], 1)

@@ -211,7 +211,10 @@ const ProjectProgressCharts = ({ projectId }) => {
       tooltip: {
         filter: (item) => item.datasetIndex === 0,
         callbacks: {
-          title: (items) => `${safety[items[0].dataIndex].label} · ${safety[items[0].dataIndex].range}`,
+          title: (items) => {
+            const s = safety[items[0].dataIndex];
+            return `${s.label} del proyecto · ${s.range}${s.current ? ' (en curso)' : ''}`;
+          },
           label: (ctx) => {
             const s = safety[ctx.dataIndex];
             return s.indice === null ? ' Sin FT capturado' : ` Índice de frecuencia: ${s.indice}`;
@@ -303,6 +306,9 @@ const ProjectProgressCharts = ({ projectId }) => {
                   {sinCaptura > 0 && <> (hace {sinCaptura} semana{sinCaptura > 1 ? 's' : ''})</>}</>
               : 'Sin captura de gráficas'}
           </p>
+          {timeline.project_week && (
+            <span className="kpi-sub">El proyecto va en la SEMANA {timeline.project_week}</span>
+          )}
           <span className="kpi-sub">{timeline.hh_total.toLocaleString('es-MX')} horas-hombre acumuladas</span>
         </div>
       </div>
@@ -318,7 +324,10 @@ const ProjectProgressCharts = ({ projectId }) => {
 
         <div className="chart-container">
           <h4><FiShield /> Índice de frecuencia por semana</h4>
-          <p className="chart-hint">(Actos + condiciones inseguras) / (HH / 1000), de la tabla de gráficas.</p>
+          <p className="chart-hint">
+            Por semana del proyecto (SEMANA n desde su inicio, como en la tabla de gráficas).
+            (Actos + condiciones) / (HH / 1000).
+          </p>
           <div className="chart-wrapper">
             {hayIndice ? (
               <Line data={ifData} options={ifOptions} />

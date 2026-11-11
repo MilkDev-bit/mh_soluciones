@@ -110,6 +110,14 @@ class EntregablesReportTests(TestCase):
         self.deliver(g, local(2026, 11, 4, 9, 0))
         self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 0)
 
+    def test_graficas_rows_are_project_weeks(self):
+        # Inicio en domingo 13/sep: la SEMANA 8 del proyecto va del 1 al 7 de nov
+        # y es la que corresponde a la semana ISO 45 (2-8 nov).
+        _, t = self.project('Axioma', date(2026, 9, 13))
+        self.graficas(t['GRAFICAS'], [{'semana': 'SEMANA 8', 'ft': 10}])
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 1)
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, 44)[0].done, 0)
+
     def test_task_of_the_week_delivered_late_counts(self):
         p, t = self.project('Axioma', date(2026, 9, 1))
         Task.objects.filter(pk=t['KPI'].pk).update(due_date=date(2026, 11, 6))        # tarea de la semana 45

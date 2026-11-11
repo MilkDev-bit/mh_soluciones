@@ -156,14 +156,26 @@ CAMPOS_CAPTURA = ('ft', 'actos', 'condiciones', 'incidencias_campo', 'accidentes
 
 def graficas_week_row(description, project, year, week):
     """
-    Fila de la tabla de GRÁFICAS que corresponde a la semana ISO (year, week).
-    Devuelve {'semana': texto, 'captured': bool} o None si no hay fila. Una fila
+    Fila de la tabla de GRÁFICAS que corresponde a la semana ISO (year, week)
+    del reporte (ver la equivalencia abajo). Devuelve {'semana': texto, 'captured': bool} o None si no hay fila. Una fila
     está capturada si tiene FT, actos, condiciones, incidencias o accidentes > 0.
     """
+    # Las filas "SEMANA n" son semanas DEL PROYECTO (desde su inicio), no ISO.
+    # A la semana ISO del reporte le corresponde la semana del proyecto que
+    # contiene su jueves (la que más días comparte con ella).
+    base = project.start_date or (timezone.localtime(project.created_at).date() if project.created_at else None)
+    jueves = date.fromisocalendar(year, week, 4)
+    n_objetivo = (jueves - base).days // 7 + 1 if base else None
     found = None
     for row in _graficas_rows(description):
-        if graficas_row_week(row, project) != (year, week):
-            continue
+        texto = str(row.get('semana') or '')
+        if ISO_WEEK_RE.search(texto):
+            if graficas_row_week(row, project) != (year, week):
+                continue
+        else:
+            n = re.search(r'\d+', texto)
+            if not n or n_objetivo is None or int(n.group()) != n_objetivo:
+                continue
         texto = str(row.get('semana') or '')
         if any(_num(row.get(c)) > 0 for c in CAMPOS_CAPTURA):
             return {'semana': texto, 'captured': True}
@@ -183,6 +195,48 @@ def graficas_safety_by_week(description, project):
         if not key:
             continue
         acc = out.setdefault(key, {'actos': 0.0, 'condiciones': 0.0, 'ft': 0.0})
+        acc['actos'] += _num(row.get('actos'))
+        acc['condiciones'] += _num(row.get('condiciones'))
+        acc['ft'] += _num(row.get('ft'))
+    for acc in out.values():
+        acc['hh'] = acc['ft'] * 50
+        acc['indice'] = round((acc['actos'] + acc['condiciones']) / (acc['hh'] / 1000), 2) if acc['hh'] else None
+    return out
+
+
+def graficas_project_week(row, project):
+    """
+    Número de semana DEL PROYECTO de una fila de GRÁFICAS ("SEMANA n" = n-ésima
+    semana desde el inicio del proyecto; no es la semana ISO). Si la fila trae
+    una semana ISO ("2026-W46") se convierte a semana del proyecto.
+    """
+    texto = str(row.get('semana') or '')
+    base = project.start_date or (timezone.localtime(project.created_at).date() if project.created_at else None)
+    iso = ISO_WEEK_RE.search(texto)
+    if iso:
+        if not base:
+            return None
+        try:
+            lunes = date.fromisocalendar(int(iso.group(1)), int(iso.group(2)), 1)
+        except ValueError:
+            return None
+        return (lunes - (base - timedelta(days=base.weekday()))).days // 7 + 1
+    n = re.search(r'\d+', texto)
+    return int(n.group()) if n else None
+
+
+def graficas_safety_by_project_week(description, project):
+    """
+    {n: {'actos', 'condiciones', 'ft', 'hh', 'indice'}} por semana del proyecto
+    (tabla 1 de GRÁFICAS). Índice de frecuencia = (actos + condiciones) /
+    (FT·50 / 1000), la misma fórmula de la tabla; None si no hay FT.
+    """
+    out = {}
+    for row in _graficas_table1(description):
+        n = graficas_project_week(row, project)
+        if not n:
+            continue
+        acc = out.setdefault(n, {'actos': 0.0, 'condiciones': 0.0, 'ft': 0.0})
         acc['actos'] += _num(row.get('actos'))
         acc['condiciones'] += _num(row.get('condiciones'))
         acc['ft'] += _num(row.get('ft'))
