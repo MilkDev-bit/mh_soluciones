@@ -6,7 +6,7 @@ import './Modal.scss';
 /**
  * Accessible Modal component with keyboard navigation and focus trap
  */
-const Modal = ({ title, children, onClose, size = 'medium', zIndex }) => {
+const Modal = ({ title, children, onClose, size = 'medium', zIndex, className = '' }) => {
   const modalRef = useRef(null);
   const previousActiveElement = useRef(null);
 
@@ -84,7 +84,7 @@ const Modal = ({ title, children, onClose, size = 'medium', zIndex }) => {
     >
       <div
         ref={modalRef}
-        className={`modal-content ${sizeClasses[size]}`}
+        className={`modal-content ${sizeClasses[size]} ${className}`.trim()}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
       >
