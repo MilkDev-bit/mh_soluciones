@@ -104,7 +104,10 @@ api.interceptors.response.use(
         const refreshStatus = refreshError.response?.status;
         const sessionInvalid = [400, 401, 403].includes(refreshStatus);
 
-        if (sessionInvalid && window.location.pathname !== '/login') {
+        // Páginas públicas: no se manda al login (p. ej. el Aviso de
+        // Privacidad se puede leer sin sesión).
+        const PUBLIC_PATHS = ['/login', '/aviso-de-privacidad'];
+        if (sessionInvalid && !PUBLIC_PATHS.includes(window.location.pathname)) {
           sessionStorage.setItem(SESSION_EXPIRED_KEY, 'true');
           window.location.href = '/login';
           return Promise.reject(refreshError);

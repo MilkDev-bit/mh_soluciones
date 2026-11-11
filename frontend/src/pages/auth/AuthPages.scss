@@ -502,6 +502,20 @@
     font-size: 0.75rem;
     margin: 0;
     font-weight: 500;
+
+    & + p {
+      margin-top: $spacing-2;
+    }
+  }
+
+  .privacy-link {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: #fff;
+    }
   }
 }
 
