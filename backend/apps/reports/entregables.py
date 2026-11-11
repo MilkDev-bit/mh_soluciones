@@ -15,10 +15,13 @@ Cómo se calcula cada fila (semana ISO 8601, lunes a domingo, hora local):
   "Obras activas por semana": En Progreso con inicio antes del fin de la
   semana, y Completados cuya fecha de fin cae en la semana o después.
 - CRI: miembros del proyecto con rol Alumno / Empleado (activos).
-- Cumplimiento: "X de N", donde N son las tareas estándar semanales que tiene
-  el proyecto (Matriz de cumplimiento SH, Pláticas de seguridad, Pirámide SH,
-  QR Weekly, Gráficas, Campañas y KPI) y X las que tienen al menos una entrega
-  hecha dentro de la semana.
+- Cumplimiento: "X de N". N son los entregables semanales que tiene el
+  proyecto (Matriz de cumplimiento SH, Pláticas de seguridad, Pirámide SH,
+  QR Weekly, Gráficas, Campañas y KPI; cada semana se crea otra tarea con el
+  mismo nombre) y X cuántos entregó esa semana:
+    * con archivo: la tarea de esa semana (fecha límite en la semana) tiene
+      entrega, o se subió alguna entrega de ese nombre durante la semana;
+    * Gráficas (no lleva archivo): su tabla ya tiene capturada esa semana.
 - Proyecto cerrado durante la semana: "Entregado".
 - Proyecto que inició durante la semana: comentario "Inicio".
 
@@ -27,10 +30,13 @@ Las fórmulas son las mismas del archivo original, pero compatibles con Excel
 valor ya calculado para que se vean bien en cualquier visor.
 """
 import io
+import json
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.projects.models import Project, ProjectMember
@@ -53,6 +59,68 @@ MESES = [
 ]
 
 FIRST_DATA_ROW = 11  # fila de Excel (1-based) del primer proyecto
+
+GRAFICAS = 'graficas'
+GRAFICAS_RE = re.compile(r'<!--\s*GRAFICAS_DATA:(.*?)\s*-->', re.S)
+ISO_WEEK_RE = re.compile(r'(\d{4})-?W(\d{1,2})', re.I)
+
+
+def _deadline_day(task):
+    """Día (hora local) de la fecha límite de la tarea, o None."""
+    if task.close_date:
+        return timezone.localtime(task.close_date).date()
+    return task.due_date
+
+
+def _num(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def graficas_week_captured(description, project, year, week):
+    """
+    ¿La tabla de GRÁFICAS tiene capturada la semana ISO (year, week)?
+    Las filas guardan "SEMANA n" relativa al inicio del proyecto (o "2026-W46");
+    se convierten igual que en las gráficas de Reportes: inicio + (n-1) semanas.
+    Una fila cuenta como capturada si tiene FT, actos, condiciones, incidencias
+    o accidentes mayores que cero.
+    """
+    match = GRAFICAS_RE.search(description or '')
+    if not match:
+        return False
+    try:
+        data = json.loads(match.group(1))
+    except (ValueError, TypeError):
+        return False
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        rows = (data.get('table1') or []) + (data.get('table2') or [])
+    else:
+        return False
+
+    base = project.start_date or (timezone.localtime(project.created_at).date() if project.created_at else None)
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        texto = str(row.get('semana') or '')
+        iso = ISO_WEEK_RE.search(texto)
+        if iso:
+            row_year, row_week = int(iso.group(1)), int(iso.group(2))
+        else:
+            n = re.search(r'\d+', texto)
+            if not n or not base:
+                continue
+            row_year, row_week, _ = (base + timedelta(weeks=int(n.group()) - 1)).isocalendar()
+        if (row_year, row_week) != (year, week):
+            continue
+        campos = ('ft', 'actos', 'condiciones', 'incidencias_campo', 'accidentes_incapacitantes')
+        if any(_num(row.get(c)) > 0 for c in campos):
+            return True
+    return False
+
 
 
 def normalize(text):
@@ -137,36 +205,71 @@ def collect_rows(projects_qs, year, week):
         nombre = m.user.get_full_name().strip() or m.user.username
         cri_by_project.setdefault(m.project_id, []).append(nombre)
 
-    # Tareas estándar de cada proyecto. Un proyecto puede tener varias tareas
-    # con el mismo nombre (una por semana): se agrupan por nombre y cuenta la
-    # entrega hecha en cualquiera de ellas.
-    std_tasks = {}       # project_id -> {nombre normalizado: [task ids]}
-    task_key = {}        # task_id -> (project_id, nombre normalizado)
-    for t in Task.objects.filter(project_id__in=project_ids).only('id', 'title', 'project_id'):
+    # Tareas estándar de cada proyecto. Cada semana se crea otra tarea con el
+    # mismo nombre (una "Matriz de cumplimiento SH" por semana): se agrupan por
+    # nombre. Solo cuentan las que ya existían al terminar la semana (GRÁFICAS
+    # es una sola tarea permanente con todas las semanas: cuenta siempre).
+    std_tasks = {}       # project_id -> {nombre normalizado: [Task]}
+    for t in (Task.objects
+              .filter(project_id__in=project_ids)
+              .filter(Q(created_at__lt=week_end) | Q(title__icontains='grafica'))
+              .only('id', 'title', 'project_id', 'due_date', 'close_date', 'is_continuous', 'created_at')):
         key = normalize(t.title)
         if key in STANDARD_TASKS:
-            std_tasks.setdefault(t.project_id, {}).setdefault(key, []).append(t.id)
-            task_key[t.id] = (t.project_id, key)
+            std_tasks.setdefault(t.project_id, {}).setdefault(key, []).append(t)
 
-    # Entregas hechas dentro de la semana: primer día de entrega por (proyecto, tarea).
-    delivered = {}
-    for sub in (TaskSubmission.objects
-                .filter(task_id__in=list(task_key), created_at__gte=week_start, created_at__lt=week_end)
-                .values('task_id', 'created_at')):
+    # Entregables con archivo (todos menos GRÁFICAS). Una tarea cuenta como
+    # entregada en la semana si:
+    #  a) la tarea de esa semana (fecha límite dentro de la semana) tiene
+    #     alguna entrega, aunque se haya subido tarde, o
+    #  b) alguna de las tareas con ese nombre recibió una entrega dentro de la
+    #     semana (por si la fecha límite no coincide con la semana).
+    file_tasks = {t.id: (pid, key) for pid, per in std_tasks.items()
+                  for key, ts in per.items() if key != GRAFICAS for t in ts}
+    due_in_week = set()
+    for per in std_tasks.values():
+        for key, ts in per.items():
+            if key == GRAFICAS:
+                continue
+            for t in ts:
+                dia = _deadline_day(t)
+                if dia and monday <= dia <= sunday:
+                    due_in_week.add(t.id)
+    delivered = {}       # (project_id, nombre) -> día de la entrega dentro de la semana (o None)
+    subs = (TaskSubmission.objects
+            .filter(task_id__in=list(file_tasks))
+            .filter(Q(task_id__in=list(due_in_week)) | Q(created_at__gte=week_start, created_at__lt=week_end))
+            .values('task_id', 'created_at'))
+    for sub in subs:
+        k = file_tasks[sub['task_id']]
         local_day = timezone.localtime(sub['created_at']).date()
-        k = task_key[sub['task_id']]
+        in_week = monday <= local_day <= sunday
+        if not in_week and sub['task_id'] not in due_in_week:
+            continue
         prev = delivered.get(k)
-        if prev is None or local_day < prev:
-            delivered[k] = local_day
+        day = local_day if in_week else None
+        if k not in delivered or (day and (prev is None or day < prev)):
+            delivered[k] = day
+
+    # GRÁFICAS no lleva archivo: cuenta como entregada si en su tabla ya se
+    # capturó la semana del reporte (la fila de esa semana tiene datos).
+    graficas_ids = [t.id for per in std_tasks.values() for t in per.get(GRAFICAS, [])]
+    graficas_desc = dict(Task.objects.filter(id__in=graficas_ids).values_list('id', 'description'))
+    projects_by_id = {p.id: p for p, _, _ in candidates}
+    for pid, per in std_tasks.items():
+        for t in per.get(GRAFICAS, []):
+            if graficas_week_captured(graficas_desc.get(t.id), projects_by_id[pid], year, week):
+                delivered[(pid, GRAFICAS)] = None
+                break
 
     rows = []
     for p, start, end in candidates:
         tasks = std_tasks.get(p.id, {})
         row = ProjectRow(name=p.name, cri=', '.join(cri_by_project.get(p.id, [])))
         row.total = len(tasks) or len(STANDARD_TASKS)
-        days = [delivered[(p.id, key)] for key in tasks if (p.id, key) in delivered]
-        row.done = len(days)
-        row.delivery_days = [(d - monday).days + 1 for d in days]
+        hechas = [key for key in tasks if (p.id, key) in delivered]
+        row.done = len(hechas)
+        row.delivery_days = [(delivered[(p.id, k)] - monday).days + 1 for k in hechas if delivered[(p.id, k)]]
         if p.status == Project.ProjectStatus.COMPLETED and end and monday <= end <= sunday:
             row.delivered_project = True
         if monday <= start <= sunday:
