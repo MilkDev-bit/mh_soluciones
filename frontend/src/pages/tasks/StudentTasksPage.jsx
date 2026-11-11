@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fi';
 import { taskDeadlineLabel, WINDOW_STATE, TONE_COLORS } from '../../utils/taskStatus';
 import './TasksPage.scss';
+import { visibleDescription } from '../../utils/taskDescription';
 
 // Pestañas = grupos que calcula el backend en /tasks/my-tasks/
 const TABS = [
@@ -102,7 +103,7 @@ const StudentTasksPage = () => {
         </div>
         
         <div className="task-card-body">
-          <p className="task-description">{task.description || 'Sin descripción'}</p>
+          <p className="task-description">{visibleDescription(task.description) || 'Sin descripción'}</p>
           
           <div className="task-meta">
             {taskDeadlineLabel(task) && (
