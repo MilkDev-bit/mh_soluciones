@@ -28,8 +28,8 @@ export const ROLE_GROUPS = {
   // Roles that can submit project deliverables
   SUBMITTERS: ['SUPERADMIN', 'ADMIN', 'CEO', 'PROFESSOR', 'DIRECTOR'],
   
-  // Roles that can manage users
-  USER_MANAGERS: ['SUPERADMIN', 'ADMIN', 'RH'],
+  // Roles that can manage users (panel de usuarios: solo SUPERADMIN)
+  USER_MANAGERS: ['SUPERADMIN'],
   
   // Roles that can create tasks
   TASK_CREATORS: ['SUPERADMIN', 'ADMIN', 'CEO', 'DIRECTOR', 'PROFESSOR'],

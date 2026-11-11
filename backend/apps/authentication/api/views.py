@@ -34,7 +34,7 @@ from django.utils.decorators import method_decorator
 from datetime import timedelta
 from requests.exceptions import Timeout as RequestsTimeout
 
-from apps.core.permissions import IsSuperAdmin, CanManageUsers
+from apps.core.permissions import IsSuperAdmin, CanManageUsers, MANAGEMENT_ROLES
 from apps.core.utils import (
     success_response, error_response, created_response,
     updated_response, deleted_response, validation_error_response,
@@ -84,12 +84,13 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'stats']:
-            # ADMIN can read, but only SUPERADMIN can write
-            self.permission_classes = [permissions.IsAuthenticated]
-        else:
-            # Only SUPERADMIN can create, update, delete users
-            self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+        # [FIX seguridad] Antes 'list' y 'retrieve' solo pedían sesión
+        # iniciada: cualquier usuario (incluidos alumnos y clientes) podía
+        # descargar nombres, correos, roles e IPs permitidas de todos.
+        # Ahora todo el panel de usuarios es exclusivo del SUPERADMIN.
+        # Quien necesita elegir personas (añadir miembros, RH) usa
+        # /auth/directory/ (UserDirectoryView), con datos mínimos.
+        self.permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
         return super().get_permissions()
     
     @action(detail=False, methods=['get'])
@@ -613,11 +614,58 @@ def current_user_from_session(request):
     return Response(serializer.data)
 
 class ClientListView(generics.ListAPIView):
+    """Clientes para el formulario de proyecto (solo quien gestiona proyectos)."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        # [FIX seguridad] Antes cualquier usuario veía los datos de los clientes.
+        if self.request.user.role not in MANAGEMENT_ROLES:
+            return CustomUser.objects.none()
         return CustomUser.objects.filter(is_active=True, role='CLIENT')
+
+
+class UserDirectoryView(APIView):
+    """
+    Lista mínima de personas para elegir (añadir miembros a un proyecto,
+    módulo de RH). No expone IPs permitidas, 2FA ni último acceso, y el
+    correo solo lo ven SUPERADMIN y RH.
+
+    Acceso: SUPERADMIN, ADMIN, CEO (pueden añadir miembros) y RH.
+    ?include_inactive=1 incluye usuarios desactivados (solo SUPERADMIN/RH).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    ALLOWED_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO', 'RH')
+    EMAIL_ROLES = ('SUPERADMIN', 'RH')
+
+    def get(self, request):
+        user = request.user
+        if user.role not in self.ALLOWED_ROLES:
+            return Response({'detail': 'No tienes permiso para ver el directorio de usuarios.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        qs = CustomUser.objects.all().order_by('first_name', 'last_name')
+        can_see_inactive = user.role in self.EMAIL_ROLES
+        if not (can_see_inactive and request.query_params.get('include_inactive') in ('1', 'true')):
+            qs = qs.filter(is_active=True)
+
+        show_email = user.role in self.EMAIL_ROLES
+        results = []
+        for u in qs:
+            item = {
+                'id': u.id,
+                'username': u.username,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'role': u.role,
+                'is_active': u.is_active,
+                'profile_picture': request.build_absolute_uri(u.profile_picture.url)
+                if getattr(u, 'profile_picture', None) and hasattr(u.profile_picture, 'url') else None,
+            }
+            if show_email:
+                item['email'] = u.email
+            results.append(item)
+        return Response({'count': len(results), 'results': results})
     
 
 class GoogleAuthRedirectView(APIView):

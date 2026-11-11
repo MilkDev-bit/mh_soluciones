@@ -1,5 +1,14 @@
 import api from './api';
 
+/**
+ * Directorio mínimo de usuarios para elegir personas (añadir miembros, RH).
+ * El panel completo (/auth/users/) es exclusivo del SUPERADMIN.
+ */
+export const getUserDirectory = async ({ includeInactive = false } = {}) => {
+  const { data } = await api.get(`auth/directory/${includeInactive ? '?include_inactive=1' : ''}`);
+  return data;
+};
+
 /** Totales de todos los usuarios: { total, active, inactive }. */
 export const getUserStats = async () => {
   const { data } = await api.get('auth/users/stats/');

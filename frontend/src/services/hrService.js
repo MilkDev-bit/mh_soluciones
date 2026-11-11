@@ -33,7 +33,10 @@ export const createEmployeeDocument = async (formData) => {
 
 export const getEmployees = async () => {
   try {
-    const { data } = await api.get('auth/users/');
+    // Directorio de RH (incluye inactivos y correo). Antes usaba el panel de
+    // usuarios, que ahora es solo del SUPERADMIN y además devolvía solo los
+    // primeros 20 empleados (paginado).
+    const { data } = await api.get('auth/directory/?include_inactive=1');
     return data;
   } catch (error) {
     throw error;
