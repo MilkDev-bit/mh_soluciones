@@ -34,7 +34,7 @@
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--border-color);
-      background: var(--bg-page);
+      background: var(--bg-input);
       color: var(--text-primary);
       font-size: 0.9rem;
       font-weight: 600;
@@ -43,6 +43,13 @@
       &:focus {
         outline: none;
         border-color: $primary-500;
+      }
+
+      // [FIX] En modo oscuro la lista desplegable salía con fondo blanco y
+      // texto claro (ilegible): las opciones toman los colores del tema.
+      option {
+        background-color: var(--bg-card);
+        color: var(--text-primary);
       }
     }
   }
@@ -71,7 +78,7 @@
     }
 
     .btn-secundario {
-      background: var(--bg-page);
+      background: var(--bg-input);
       color: var(--text-primary);
     }
 
