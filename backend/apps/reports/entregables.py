@@ -20,8 +20,9 @@ Cómo se calcula cada fila (semana ISO 8601, lunes a domingo, hora local):
   Campañas y KPI (cada semana se crea otra tarea con el mismo nombre; el
   título se reconoce por palabra clave). X es cuántos entregó esa semana:
     * con archivo: si hay una tarea que vence esa semana, cuenta si tiene
-      entrega (aunque sea tarde); si ninguna vence esa semana, cuenta una
-      entrega subida durante la semana;
+      entrega, aunque se haya subido después con prórroga (si se reabrió para
+      todos, cuenta en la semana de su fecha límite original); si ninguna
+      vence esa semana, cuenta una entrega subida durante la semana;
     * Gráficas (no lleva archivo): su tabla ya tiene capturada esa semana.
 - Proyectos completados: aparecen si trabajaron esa semana; si no, solo como
   "Entregado" cuando su fecha de fin cae en la semana.
@@ -39,11 +40,11 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.projects.models import Project, ProjectMember
-from apps.tasks.models import Task, TaskSubmission
+from apps.tasks.models import Task, TaskReopenLog, TaskSubmission
 
 # Los 7 entregables semanales: (clave, nombre para mostrar, patrón del título).
 # El título se compara sin acentos ni mayúsculas y por palabra clave, porque
@@ -80,6 +81,23 @@ def _deadline_day(task):
     if task.close_date:
         return timezone.localtime(task.close_date).date()
     return task.due_date
+
+
+def _original_deadline_day(task):
+    """
+    Fecha límite ORIGINAL de una tarea reabierta para todos. Al reabrir se
+    sobrescriben due_date y close_date con la prórroga, así que se reconstruye
+    igual que al duplicar la tarea semanal: el domingo siguiente a su apertura
+    (open_date, o su creación), a las 14:00.
+    """
+    base = task.open_date or task.created_at
+    if not base:
+        return _deadline_day(task)
+    base = timezone.localtime(base)
+    domingo = base.date() + timedelta(days=(6 - base.weekday()) % 7)
+    if domingo == base.date() and base.hour >= 14:
+        domingo += timedelta(days=7)
+    return domingo
 
 
 def _num(value):
@@ -239,14 +257,29 @@ def collect_rows(projects_qs, year, week):
     # el mismo nombre; cuentan las que ya existían al terminar la semana o las
     # que vencen en ella (aunque se hayan creado después). GRÁFICAS es una sola
     # tarea permanente con todas las semanas: cuenta siempre.
+    #
+    # La semana de cada tarea es la de su fecha límite ORIGINAL: si se reabrió
+    # para todos (prórroga general), su fecha límite cambió, pero sigue siendo
+    # la tarea de su semana y su entrega tardía cuenta en esa semana. Las
+    # prórrogas por alumno no cambian la fecha de la tarea.
+    reopened = set(TaskReopenLog.objects
+                   .filter(task__project_id__in=project_ids)
+                   .annotate(n_alumnos=Count('specific_students'))
+                   .filter(n_alumnos=0)
+                   .values_list('task_id', flat=True))
+
+    def week_day(task):
+        return _original_deadline_day(task) if task.id in reopened else _deadline_day(task)
+
     std_tasks = {}       # project_id -> {clave: [Task]}
     for t in (Task.objects
               .filter(project_id__in=project_ids)
-              .only('id', 'title', 'project_id', 'due_date', 'close_date', 'is_continuous', 'created_at')):
+              .only('id', 'title', 'project_id', 'due_date', 'close_date', 'open_date',
+                    'is_continuous', 'created_at')):
         key = standard_key(t.title)
         if not key:
             continue
-        dia = _deadline_day(t)
+        dia = week_day(t)
         if key == GRAFICAS or t.created_at < week_end or (dia and monday <= dia <= sunday):
             std_tasks.setdefault(t.project_id, {}).setdefault(key, []).append(t)
 
@@ -257,7 +290,7 @@ def collect_rows(projects_qs, year, week):
             if key == GRAFICAS:
                 continue
             for t in ts:
-                dia = _deadline_day(t)
+                dia = week_day(t)
                 if dia and monday <= dia <= sunday:
                     due_in_week.add(t.id)
 
@@ -305,11 +338,14 @@ def collect_rows(projects_qs, year, week):
                 if de_la_semana:
                     # La tarea de esta semana: cuenta si tiene entrega (aunque sea tarde).
                     activity = True
-                    tarea_txt = ', '.join(f'{t.title} (vence {fmt_day(_deadline_day(t))})' for t in de_la_semana)
+                    tarea_txt = ', '.join(
+                        f'{t.title} (vence {fmt_day(week_day(t))}'
+                        + (f', reabierta hasta {fmt_day(_deadline_day(t))})' if t.id in reopened else ')')
+                        for t in de_la_semana)
                     fechas = sorted(d for t in de_la_semana for d in subs_by_task.get(t.id, []))
                     if fechas:
                         entregado, entrega = True, fechas[0]
-                        motivo = 'Entregada' if fechas[0] <= sunday else 'Entregada tarde'
+                        motivo = 'Entregada' if fechas[0] <= sunday else f'Entregada tarde ({fmt_day(fechas[0])})'
                     else:
                         motivo = 'Sin entrega'
                 else:

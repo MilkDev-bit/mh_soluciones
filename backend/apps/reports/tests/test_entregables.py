@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 
 from apps.projects.models import Project, ProjectMember
 from apps.reports.entregables import build_workbook, collect_rows, week_filename
-from apps.tasks.models import Task, TaskSubmission
+from apps.tasks.models import Task, TaskReopenLog, TaskSubmission
 
 User = get_user_model()
 
@@ -128,6 +128,41 @@ class EntregablesReportTests(TestCase):
         row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
         kpi = next(d for d in row.detail if d['entregable'] == 'KPI')
         self.assertEqual(kpi['motivo'], 'El proyecto no tiene esta tarea')
+
+    def reopen_for_all(self, task, until):
+        TaskReopenLog.objects.create(task=task, reopened_by=self.admin, new_deadline=until)
+        Task.objects.filter(pk=task.pk).update(close_date=until, due_date=timezone.localtime(until).date(),
+                                               status='REOPENED')
+
+    def test_late_delivery_after_reopen_counts_in_original_week(self):
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        # KPI de la semana 45 (duplicada el lunes 2/nov: vence el domingo 8 a las 14:00).
+        kpi45 = t['KPI']
+        Task.objects.filter(pk=kpi45.pk).update(open_date=local(2026, 11, 2, 9, 0), close_date=local(2026, 11, 8, 14, 0),
+                                                due_date=date(2026, 11, 8))
+        # KPI de la semana 46, sin entregar.
+        kpi46 = Task.objects.create(title='KPI', project=p, created_by=self.admin, open_date=local(2026, 11, 9, 9, 0),
+                                    close_date=local(2026, 11, 15, 14, 0), due_date=date(2026, 11, 15))
+        # No se entregó a tiempo: se reabre para todos hasta el 13/nov y se entrega el 12/nov.
+        self.reopen_for_all(kpi45, local(2026, 11, 13, 23, 59))
+        self.deliver(kpi45, local(2026, 11, 12, 10, 0))
+
+        semana45 = collect_rows(Project.objects.all(), 2026, 45)[0]
+        self.assertEqual(semana45.done, 1)
+        kpi = next(d for d in semana45.detail if d['entregable'] == 'KPI')
+        self.assertTrue(kpi['motivo'].startswith('Entregada tarde'))
+        self.assertIn('reabierta hasta 13/11/2026', kpi['tareas'])
+        # En la semana 46 no cuenta: su KPI (la de la 46) no se entregó.
+        self.assertEqual(collect_rows(Project.objects.all(), 2026, 46)[0].done, 0)
+
+    def test_late_delivery_with_student_extension_counts(self):
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        Task.objects.filter(pk=t['QR WEEKLY'].pk).update(due_date=date(2026, 11, 8))
+        log = TaskReopenLog.objects.create(task=t['QR WEEKLY'], reopened_by=self.admin,
+                                           new_deadline=local(2026, 11, 12, 23, 59))
+        log.specific_students.set([self.cri])
+        self.deliver(t['QR WEEKLY'], local(2026, 11, 11, 10, 0))
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 1)
 
     def test_titles_matched_by_keyword(self):
         self.project('Axioma', date(2026, 9, 1), tasks=['MATRIZ SH', 'Plática de Seguridad', 'Pirámide', 'QR',
