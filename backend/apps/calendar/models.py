@@ -14,6 +14,10 @@ class CalendarEvent(TimeStampedModel):
         GREEN = '#198754', _('Verde (Hito)')
         YELLOW = '#ffc107', _('Amarillo (Advertencia)')
         RED = '#dc3545', _('Rojo (Urgente)')
+        # El formulario del calendario también ofrece estos dos; sin ellos el
+        # backend rechazaba el evento ("no es una elección válida").
+        PURPLE = '#6f42c1', _('Púrpura (Reunión)')
+        ORANGE = '#fd7e14', _('Naranja (Recordatorio)')
 
     project = models.ForeignKey(
         Project,
