@@ -11,9 +11,8 @@ Replica el formato del archivo que se llenaba a mano
   por proyecto.
 
 Cómo se calcula cada fila (semana ISO 8601, lunes a domingo, hora local):
-- Proyectos: los que estuvieron en obra esa semana, con el mismo criterio que
-  "Obras activas por semana": En Progreso con inicio antes del fin de la
-  semana, y Completados cuya fecha de fin cae en la semana o después.
+- Proyectos: solo los que están En Progreso y ya habían iniciado al terminar
+  la semana (Planificación, En Pausa, Completados y Cancelados no aparecen).
 - CRI: miembros del proyecto con rol Alumno / Empleado (activos).
 - Cumplimiento: "X de 7". Los 7 entregables semanales son Matriz de
   cumplimiento SH, Pláticas de seguridad, Pirámide SH, QR Weekly, Gráficas,
@@ -24,8 +23,6 @@ Cómo se calcula cada fila (semana ISO 8601, lunes a domingo, hora local):
       todos, cuenta en la semana de su fecha límite original); si ninguna
       vence esa semana, cuenta una entrega subida durante la semana;
     * Gráficas (no lleva archivo): su tabla ya tiene capturada esa semana.
-- Proyectos completados: aparecen si trabajaron esa semana; si no, solo como
-  "Entregado" cuando su fecha de fin cae en la semana.
 - Hoja "Detalle": el motivo de cada entregable, para revisar el reporte.
 - Proyecto que inició durante la semana: comentario "Inicio".
 
@@ -230,14 +227,11 @@ def collect_rows(projects_qs, year, week):
     week_start = timezone.make_aware(datetime.combine(monday, time.min), tz)
     week_end = timezone.make_aware(datetime.combine(sunday + timedelta(days=1), time.min), tz)
 
-    # Proyectos en obra durante la semana (mismo criterio que "Obras activas").
-    # Los completados se revisan más abajo: solo entran si trabajaron esa semana.
+    # Solo proyectos En Progreso que ya habían iniciado al terminar la semana.
     candidates = []
-    for p in projects_qs.filter(status__in=[Project.ProjectStatus.IN_PROGRESS, Project.ProjectStatus.COMPLETED]):
+    for p in projects_qs.filter(status=Project.ProjectStatus.IN_PROGRESS):
         start, end = _project_dates(p)
         if not start or start > sunday:
-            continue
-        if p.status == Project.ProjectStatus.COMPLETED and (not end or end < monday):
             continue
         candidates.append((p, start, end))
     candidates.sort(key=lambda c: (c[1], c[0].id))
@@ -313,7 +307,6 @@ def collect_rows(projects_qs, year, week):
         tasks = std_tasks.get(p.id, {})
         row = ProjectRow(name=p.name, cri=', '.join(cri_by_project.get(p.id, [])))
         row.total = ENTREGABLES_POR_SEMANA
-        activity = False
 
         for key, nombre, _ in STANDARD:
             instancias = tasks.get(key, [])
@@ -337,7 +330,6 @@ def collect_rows(projects_qs, year, week):
                 de_la_semana = [t for t in instancias if t.id in due_in_week]
                 if de_la_semana:
                     # La tarea de esta semana: cuenta si tiene entrega (aunque sea tarde).
-                    activity = True
                     tarea_txt = ', '.join(
                         f'{t.title} (vence {fmt_day(week_day(t))}'
                         + (f', reabierta hasta {fmt_day(_deadline_day(t))})' if t.id in reopened else ')')
@@ -362,7 +354,6 @@ def collect_rows(projects_qs, year, week):
                         motivo = 'Ninguna tarea vence esta semana y no hubo entregas'
             if entregado:
                 row.done += 1
-                activity = True
                 if entrega and monday <= entrega <= sunday:
                     row.delivery_days.append((entrega - monday).days + 1)
             row.detail.append({
@@ -370,13 +361,6 @@ def collect_rows(projects_qs, year, week):
                 'motivo': motivo, 'tareas': tarea_txt, 'entrega': fmt_day(entrega),
             })
 
-        if p.status == Project.ProjectStatus.COMPLETED and not activity:
-            # Proyecto ya cerrado: "Entregado" si cerró esa semana con fecha de
-            # fin capturada; si no trabajó esa semana, no aparece.
-            if p.end_date and monday <= p.end_date <= sunday:
-                row.delivered_project = True
-            else:
-                continue
         if monday <= start <= sunday:
             row.comment = 'Inicio'
         rows.append(row)

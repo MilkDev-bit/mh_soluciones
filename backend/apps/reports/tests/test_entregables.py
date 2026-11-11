@@ -91,12 +91,11 @@ class EntregablesReportTests(TestCase):
 
         rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
         by_name = {r.name: r for r in rows}
-        self.assertEqual([r.name for r in rows], ['Guram', 'Axioma', 'Seis', 'Mexicali'])
+        self.assertEqual([r.name for r in rows], ['Axioma', 'Seis', 'Mexicali'])   # solo En Progreso
         self.assertEqual(by_name['Axioma'].cumplimiento, '6 de 7')
         self.assertEqual(by_name['Axioma'].cri, 'Jose Juan Diaz')
         self.assertEqual(by_name['Mexicali'].cumplimiento, '0 de 7')
         self.assertEqual(by_name['Mexicali'].comment, 'Inicio')
-        self.assertEqual(by_name['Guram'].cumplimiento, 'Entregado')
         self.assertEqual(by_name['Seis'].cumplimiento, '0 de 7')       # siempre de 7
 
     def test_graficas_counts_only_when_week_captured(self):
@@ -183,14 +182,15 @@ class EntregablesReportTests(TestCase):
         row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
         self.assertEqual(row.done, 0)
 
-    def test_completed_projects(self):
-        # Cerrado esa semana pero con entregas: se cuentan sus entregables.
+    def test_only_projects_in_progress(self):
+        # Completado (aunque haya entregado esa semana), en pausa y cancelado no aparecen.
         _, t = self.project('Paseo', date(2026, 9, 1), status='COMPLETED', end=date(2026, 11, 6))
         self.deliver(t['KPI'], local(2026, 11, 4, 9, 0))
-        # Cerrado sin fecha de fin ni entregas: no aparece.
-        self.project('Constitucion', date(2026, 8, 1), status='COMPLETED')
+        self.project('Pausa', date(2026, 9, 1), status='ON_HOLD')
+        self.project('Cancelado', date(2026, 9, 1), status='CANCELLED')
+        self.project('Obra', date(2026, 9, 1))
         rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
-        self.assertEqual([(r.name, r.cumplimiento) for r in rows], [('Paseo', '1 de 7')])
+        self.assertEqual([r.name for r in rows], ['Obra'])
 
     def test_weekly_duplicate_tasks_count_by_name(self):
         # Cada semana se crea otra "Matriz de cumplimiento SH": cuenta la entrega
@@ -209,7 +209,7 @@ class EntregablesReportTests(TestCase):
         _, t1 = self.project('Axioma', date(2026, 9, 1))
         for title in FILES[:5]:
             self.deliver(t1[title], local(2026, 11, 6, 12, 0))
-        self.project('Guram', date(2026, 8, 1), status='COMPLETED', end=date(2026, 11, 5))
+        self.project('Mexicali', date(2026, 11, 4))                       # inició esa semana
         rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
         content = build_workbook(rows, self.YEAR, self.WEEK)
 
@@ -221,16 +221,17 @@ class EntregablesReportTests(TestCase):
                          ['Proyecto', 'CRI', 'Cumplimiento esta semana', 'Comentarios', '% Cumplimiento'])
         self.assertEqual(val('A1'), 'Metrica')
         self.assertEqual(val('D1'), 'Codigo color')
-        self.assertEqual(val('C11'), 'Entregado')
-        self.assertEqual(val('C12'), '5 de 7')
-        self.assertTrue(cells['E12'][1].startswith('IFERROR('))
+        self.assertEqual(val('C11'), '5 de 7')
+        self.assertEqual(val('C12'), '0 de 7')
+        self.assertEqual(val('D12'), 'Inicio')
+        self.assertTrue(cells['E11'][1].startswith('IFERROR('))
         # Valores ya calculados (se ven sin recalcular).
-        self.assertEqual(val('B2'), 7)
+        self.assertEqual(val('B2'), 14)
         self.assertEqual(val('B3'), 5)
-        self.assertEqual(val('B5'), 2)
+        self.assertEqual(val('B5'), 9)
         self.assertEqual(val('B6'), 5)            # entregas del viernes = día 5
-        self.assertAlmostEqual(val('E12'), 5 / 7)
-        self.assertEqual(val('E11'), 0)
+        self.assertAlmostEqual(val('E11'), 5 / 7)
+        self.assertEqual(val('E12'), 0)
 
     def test_filename(self):
         self.assertEqual(week_filename(2026, 45), 'Entregables-Semana-02_al_08_de_Noviembre.xlsx')
