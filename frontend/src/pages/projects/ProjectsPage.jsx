@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
@@ -34,56 +34,72 @@ const ProjectsPage = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [searchInput, setSearchInput] = useState('');
 
-  const page = parseInt(searchParams.get('page') || sessionStorage.getItem('projects_page') || '1', 10);
-  const searchTerm = searchParams.get('search') || sessionStorage.getItem('projects_search') || '';
-  const statusFilter = searchParams.get('status') || sessionStorage.getItem('projects_status') || '';
+  // [FIX] Filtros de Equipos que se perdían:
+  // - Si un filtro de estado no tenía resultados, un efecto lo BORRABA solo
+  //   (p. ej. "Cancelado", o "En Espera" + una búsqueda).
+  // - Se guardaban en sessionStorage (solo esa pestaña): en otra pestaña,
+  //   al volver a entrar o tras iniciar sesión se perdían.
+  // Ahora la URL es la única fuente de verdad y se recuerda en localStorage
+  // (por usuario); al entrar a /projects sin parámetros se restauran.
+  const storageKey = `projects_filters_${user?.id ?? 'anon'}`;
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const searchTerm = searchParams.get('search') || '';
+  const statusFilter = searchParams.get('status') || '';
+  const hasActiveFilters = Boolean(searchTerm || statusFilter);
+  const restoredRef = useRef(false);
+  const [filtersReady, setFiltersReady] = useState(false);
 
-  // Initialize URL from sessionStorage if navigating back from a detail page without params
+  // Restaurar filtros guardados al llegar sin parámetros (menú lateral, volver
+  // de un proyecto, nueva pestaña). Solo una vez por visita a la página.
   useEffect(() => {
-    if (!searchParams.has('page') && !searchParams.has('search') && !searchParams.has('status')) {
-      const savedPage = sessionStorage.getItem('projects_page');
-      const savedSearch = sessionStorage.getItem('projects_search');
-      const savedStatus = sessionStorage.getItem('projects_status');
-      
-      if (savedPage || savedSearch || savedStatus) {
-        const next = new URLSearchParams();
-        if (savedPage && savedPage !== '1') next.set('page', savedPage);
-        if (savedSearch) next.set('search', savedSearch);
-        if (savedStatus) next.set('status', savedStatus);
-        setSearchParams(next, { replace: true });
-      }
+    if (!user || restoredRef.current) return;
+    restoredRef.current = true;
+    setFiltersReady(true);
+    if (searchParams.has('page') || searchParams.has('search') || searchParams.has('status')) return;
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    } catch {
+      saved = null;
     }
-  }, [searchParams, setSearchParams]);
+    if (!saved) return;
+    const next = new URLSearchParams();
+    if (saved.page && saved.page > 1) next.set('page', String(saved.page));
+    if (saved.search) next.set('search', saved.search);
+    if (saved.status) next.set('status', saved.status);
+    if ([...next.keys()].length) setSearchParams(next, { replace: true });
+  }, [user, storageKey, searchParams, setSearchParams]);
 
-  // Sync state to sessionStorage whenever it changes
+  // Guardar cada cambio y reflejar la búsqueda en el input.
   useEffect(() => {
     setSearchInput(searchTerm);
-    sessionStorage.setItem('projects_page', page.toString());
-    sessionStorage.setItem('projects_search', searchTerm);
-    sessionStorage.setItem('projects_status', statusFilter);
-  }, [page, searchTerm, statusFilter]);
+    if (!user || !restoredRef.current) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ page, search: searchTerm, status: statusFilter }));
+    } catch {
+      /* sin storage: los filtros siguen en la URL */
+    }
+  }, [user, storageKey, page, searchTerm, statusFilter]);
 
-  const setPage = useCallback((newPage) => {
-    sessionStorage.setItem('projects_page', String(newPage));
+  const updateParams = useCallback((changes) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (newPage === 1) next.delete('page');
-      else next.set('page', String(newPage));
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === '' || value === null || value === undefined || (key === 'page' && Number(value) <= 1)) next.delete(key);
+        else next.set(key, String(value));
+      });
       return next;
     }, { replace: true });
   }, [setSearchParams]);
 
-  const setStatusFilter = useCallback((value) => {
-    sessionStorage.setItem('projects_status', value || '');
-    sessionStorage.setItem('projects_page', '1');
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (!value) next.delete('status');
-      else next.set('status', value);
-      next.delete('page');
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+  const setPage = useCallback((newPage) => updateParams({ page: newPage }), [updateParams]);
+
+  const setStatusFilter = useCallback((value) => updateParams({ status: value || '', page: 1 }), [updateParams]);
+
+  const clearFilters = useCallback(() => {
+    setSearchInput('');
+    updateParams({ status: '', search: '', page: 1 });
+  }, [updateParams]);
 
   const { 
     data: projectsResponse,
@@ -96,7 +112,7 @@ const ProjectsPage = () => {
     queryFn: () => getProjects(page, searchTerm, statusFilter),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    enabled: !!user,
+    enabled: !!user && filtersReady,
     placeholderData: keepPreviousData,
   });
 
@@ -108,18 +124,16 @@ const ProjectsPage = () => {
     }
   }, [isError]);
 
-  // Si la página actual no tiene resultados, volver a página 1 y limpiar filtros de estado
+  // Si la página actual quedó vacía (p. ej. se borraron proyectos), volver a
+  // la página 1. Los filtros NO se tocan: si no hay coincidencias se muestra
+  // un mensaje con la opción de quitarlos.
   useEffect(() => {
     if (!isLoading && !isFetching && !isError && projectsResponse) {
-      const isEmpty = projects.length === 0;
-      if (isEmpty && page > 1) {
+      if (projects.length === 0 && page > 1) {
         setPage(1);
-      } else if (isEmpty && statusFilter) {
-        // Si hay filtro de estado activo y no hay resultados, limpiar el filtro
-        setStatusFilter('');
       }
     }
-  }, [isLoading, isFetching, isError, projectsResponse, projects.length, page, statusFilter, setPage, setStatusFilter]);
+  }, [isLoading, isFetching, isError, projectsResponse, projects.length, page, setPage]);
 
   useEffect(() => {
     if (projectsUpdated) {
@@ -147,30 +161,15 @@ const ProjectsPage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    sessionStorage.setItem('projects_search', searchInput);
-    sessionStorage.setItem('projects_page', '1');
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (searchInput) next.set('search', searchInput);
-      else next.delete('search');
-      next.delete('page');
-      return next;
-    }, { replace: true });
+    updateParams({ search: searchInput.trim(), page: 1 });
   };
 
   const handleClearSearch = () => {
     setSearchInput('');
-    sessionStorage.setItem('projects_search', '');
-    sessionStorage.setItem('projects_page', '1');
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.delete('search');
-      next.delete('page');
-      return next;
-    }, { replace: true });
+    updateParams({ search: '', page: 1 });
   };
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !filtersReady) {
     return (
       <div className="page-container">
         <Helmet>
@@ -321,12 +320,24 @@ const ProjectsPage = () => {
         ) : (
           <div className="empty-state glass-card" role="status">
             <FiBriefcase className="empty-state-icon" />
-            <h2>No hay proyectos</h2>
-            <p>
-              {user && isAdmin(user.role) 
-                ? 'Comienza creando tu primer proyecto haciendo clic en "Nuevo Proyecto"' 
-                : 'Aún no eres miembro de ningún proyecto. Contacta a tu administrador.'}
-            </p>
+            {hasActiveFilters ? (
+              <>
+                <h2>Sin coincidencias</h2>
+                <p>No hay proyectos que coincidan con los filtros aplicados.</p>
+                <button type="button" className="btn btn-secondary" onClick={clearFilters}>
+                  Quitar filtros
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>No hay proyectos</h2>
+                <p>
+                  {user && isAdmin(user.role) 
+                    ? 'Comienza creando tu primer proyecto haciendo clic en "Nuevo Proyecto"' 
+                    : 'Aún no eres miembro de ningún proyecto. Contacta a tu administrador.'}
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>
