@@ -471,6 +471,15 @@
                   &.td-label {
                     text-align: left;
                     font-weight: 700;
+                    white-space: nowrap;
+
+                    // Rango de fechas de la semana ISO (lunes–domingo)
+                    .td-sublabel {
+                      display: block;
+                      font-size: 0.72rem;
+                      font-weight: 500;
+                      color: var(--text-secondary);
+                    }
                   }
 
                   .input-editable {

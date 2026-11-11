@@ -43,6 +43,7 @@ import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import logo from '../assets/img/logo.png';
 import GeneralGraficasReports from '../components/reports/GeneralGraficasReports';
 import './ReportesPage.scss';
+import { isoWeek, isoWeekStart, isoWeekEnd, isoWeeksInYear, isoWeekRangeLabel, parseLocalDate } from '../utils/isoWeek';
 
 ChartJS.register(
   ArcElement, 
@@ -83,6 +84,8 @@ const ReportesPage = () => {
 
   // --- Estados para tablas editables de reportes ---
   const [obrasSemana, setObrasSemana] = useState([]);
+  const [anioObras, setAnioObras] = useState(() => isoWeek(new Date()).year);
+  const claveObras = `reportes_obras_por_semana_iso_${anioObras}`;
   const [duracionesProyectos, setDuracionesProyectos] = useState([]);
   const [calificacionCRI, setCalificacionCRI] = useState([]);
   const [isDuracionExpanded, setIsDuracionExpanded] = useState(false);
@@ -113,38 +116,30 @@ const ReportesPage = () => {
     }
   };
 
-  const obtenerNumeroSemana = (dateString) => {
-    if (!dateString) return 1;
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 1;
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date - startOfYear) / 86400000;
-    return Math.max(1, Math.min(53, Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7)));
-  };
-
-  const calcularObrasPorSemanaBD = () => {
-    const semanas = Array.from({ length: 53 }, (_, i) => ({
-      semana: `SEM ${i + 1}`,
-      obras: 0
-    }));
+  // [CAMBIO] Semanas ISO 8601 (lunes a domingo) del año seleccionado. Antes
+  // se numeraban desde el 1 de enero con semanas de domingo a sábado, sin
+  // distinguir el año, y los proyectos sin terminar contaban hasta la
+  // semana 53 aunque fuera futuro.
+  const calcularObrasPorSemanaBD = (year = anioObras) => {
+    const totalSemanas = isoWeeksInYear(year);
     const proyectos = proyectosData?.results || estadisticas?.proyectosDetalle || [];
-    if (proyectos.length > 0) {
-      proyectos.forEach(p => {
-        if (p.status === 'IN_PROGRESS' || p.status === 'COMPLETED' || p.start_date || p.created_at) {
-          const startW = obtenerNumeroSemana(p.start_date || p.created_at);
-          const endW = p.status === 'COMPLETED' ? obtenerNumeroSemana(p.end_date || p.created_at) : 53;
-          for (let w = startW; w <= endW && w <= 53; w++) {
-            if (w >= 1) semanas[w - 1].obras += 1;
-          }
-        }
-      });
-    } else {
-      const ejemplos = [11, 11, 13, 12, 8, 11, 16, 20, 27, 29, 30, 35, 40, 50, 53, 54, 58, 63, 65, 66, 68, 63, 61, 61, 59];
-      ejemplos.forEach((val, idx) => {
-        if (semanas[idx]) semanas[idx].obras = val;
-      });
-    }
-    return semanas;
+    const hoy = new Date();
+    return Array.from({ length: totalSemanas }, (_, i) => {
+      const week = i + 1;
+      const inicioSemana = isoWeekStart(year, week);
+      const finSemana = isoWeekEnd(year, week);
+      let obras = 0;
+      if (inicioSemana <= hoy) {
+        proyectos.forEach(p => {
+          const inicio = parseLocalDate(p.start_date) || parseLocalDate(p.created_at);
+          if (!inicio) return;
+          const cerrado = p.status === 'COMPLETED' || p.status === 'CANCELLED';
+          const fin = cerrado ? (parseLocalDate(p.end_date) || parseLocalDate(p.updated_at) || hoy) : hoy;
+          if (inicio <= finSemana && fin >= inicioSemana) obras += 1;
+        });
+      }
+      return { semana: `SEM ${week}`, rango: isoWeekRangeLabel(year, week), obras };
+    });
   };
 
   const calcularDuracionesBD = () => {
@@ -203,7 +198,9 @@ const ReportesPage = () => {
   useEffect(() => {
     if (!proyectosData && !estadisticas) return;
     
-    const guardadoObras = localStorage.getItem('reportes_obras_por_semana');
+    // Los cambios guardados se recuerdan por año ISO (la clave anterior
+    // 'reportes_obras_por_semana' usaba otra numeración y se ignora).
+    const guardadoObras = localStorage.getItem(claveObras);
     if (guardadoObras) {
       try { setObrasSemana(JSON.parse(guardadoObras)); } catch (e) { setObrasSemana(calcularObrasPorSemanaBD()); }
     } else {
@@ -223,17 +220,17 @@ const ReportesPage = () => {
     } else {
       setCalificacionCRI(calcularCRIBD());
     }
-  }, [proyectosData, estadisticas]);
+  }, [proyectosData, estadisticas, claveObras]);
 
   const guardarObrasSemana = () => {
-    localStorage.setItem('reportes_obras_por_semana', JSON.stringify(obrasSemana));
+    localStorage.setItem(claveObras, JSON.stringify(obrasSemana));
     toast.success('Obras activas por semana guardadas correctamente');
   };
 
   const recargarObrasSemanaBD = () => {
     const nuevos = calcularObrasPorSemanaBD();
     setObrasSemana(nuevos);
-    localStorage.removeItem('reportes_obras_por_semana');
+    localStorage.removeItem(claveObras);
     toast.info('Tabla recargada desde la base de datos');
   };
 
@@ -434,7 +431,7 @@ const ReportesPage = () => {
               <div className="main-chart-area">
                 <Line 
                   data={{
-                    labels: ['S1', 'S2', 'S3', 'S4'],
+                    labels: estadisticas?.tendenciaSemanalEtiquetas || ['S1', 'S2', 'S3', 'S4'],
                     datasets: [{
                       label: 'Rendimiento',
                       data: estadisticas?.tendenciaSemanal || [10, 25, 15, 30],
@@ -561,9 +558,19 @@ const ReportesPage = () => {
           <div className="seccion-top-header">
             <div className="titulo-seccion">
               <h3><FiActivity /> HISTÓRICO - OBRAS ACTIVAS POR SEMANA</h3>
-              <span className="badge-subtitle">Tiempo Real / Editable</span>
+              <span className="badge-subtitle">Semanas ISO 8601 · Editable</span>
             </div>
             <div className="acciones-seccion">
+              <select
+                className="btn-opcion"
+                value={anioObras}
+                onChange={(e) => setAnioObras(Number(e.target.value))}
+                title="Año ISO"
+              >
+                {Array.from({ length: 4 }, (_, i) => isoWeek(new Date()).year - i).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
               <button className="btn-opcion" onClick={recargarObrasSemanaBD} title="Recargar desde los proyectos creados en BD">
                 <FiRefreshCw /> Cargar desde BD
               </button>
@@ -585,7 +592,10 @@ const ReportesPage = () => {
                 <tbody>
                   {obrasSemana.map((row, idx) => (
                     <tr key={idx}>
-                      <td className="td-label">{row.semana}</td>
+                      <td className="td-label" title={row.rango}>
+                        {row.semana}
+                        {row.rango && <small className="td-sublabel">{row.rango}</small>}
+                      </td>
                       <td>
                         <input
                           type="number"
