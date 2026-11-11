@@ -45,3 +45,11 @@ export const downloadEntregablesReport = async (year, week) => {
     filename: match ? match[1] : `Entregables-SEM-${week}-${year}.xlsx`,
   };
 };
+
+/**
+ * Estado general de las obras en proceso (Panel de Control de Admin / Superadmin).
+ */
+export const getGeneralStatus = async ({ refresh = false } = {}) => {
+  const { data } = await api.get('/reports/general-status/', { params: refresh ? { refresh: 1 } : {} });
+  return data;
+};

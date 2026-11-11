@@ -1,22 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
 import {
-  FiActivity, FiAlertTriangle, FiCalendar, FiCheckCircle, FiClipboard, FiClock, FiShield, FiXCircle,
+  FiActivity, FiCalendar, FiCheckCircle, FiClipboard, FiClock, FiShield,
 } from 'react-icons/fi';
 import { getProjectProgressStats } from '../../services/projectService';
+import { StatusBadge, buildIfChart, buildTrendChart } from './statusCharts';
 import './ProjectProgressCharts.scss';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
 /*
  * [CAMBIO] "Estado del Proyecto": métricas que muestran cómo va la obra AHORA,
@@ -24,34 +13,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
  *  - cumplimiento de la semana en curso y de la anterior (X de 7 + semáforo),
  *  - puntualidad, revisión pendiente y avance en el tiempo,
  *  - tendencia del cumplimiento semanal,
- *  - índice de frecuencia (tabla de GRÁFICAS) contra las metas.
+ *  - índice de frecuencia (tabla de GRÁFICAS, por semana del proyecto).
  * Antes: pastel de estados de tarea que ya no se usan y tareas por prioridad.
  */
-
-// Colores de estado (semáforo del reporte): siempre acompañados de icono + texto.
-const STATUS = {
-  green: { color: '#10b981', label: 'Al día', Icon: FiCheckCircle },
-  yellow: { color: '#f59e0b', label: 'Atención', Icon: FiAlertTriangle },
-  red: { color: '#ef4444', label: 'Crítico', Icon: FiXCircle },
-};
-const INK_MUTED = '#9ca3af';
-const GRID = 'rgba(148, 163, 184, 0.18)';
-const IF_LINE = '#f97316';
-const METAS = [
-  { value: 1.0, label: 'Bajo 1.0', color: '#f59e0b' },
-  { value: 2.0, label: 'Meta 2.0', color: '#10b981' },
-  { value: 3.5, label: 'Alto 3.5', color: '#ef4444' },
-];
-
-const StatusBadge = ({ color }) => {
-  const s = STATUS[color] || STATUS.red;
-  const { Icon } = s;
-  return (
-    <span className={`status-badge status-${color}`}>
-      <Icon aria-hidden="true" /> {s.label}
-    </span>
-  );
-};
 
 const WeekTile = ({ title, week, current }) => {
   if (!week) {
@@ -124,122 +88,12 @@ const ProjectProgressCharts = ({ projectId }) => {
   const puntTotal = punctuality.on_time + punctuality.late + punctuality.missing;
   const pct = (n) => (puntTotal ? Math.round((n / puntTotal) * 100) : 0);
 
-  // ---- Tendencia de cumplimiento semanal (barras con color de semáforo)
-  const lastIdx = trend.length - 1;
-  const trendData = {
-    labels: trend.map((t) => t.label),
-    datasets: [{
-      label: '% de cumplimiento',
-      data: trend.map((t) => t.pct),
-      backgroundColor: trend.map((t, i) => `${STATUS[t.color].color}${i === lastIdx ? '80' : 'E6'}`),
-      borderColor: trend.map((t) => STATUS[t.color].color),
-      borderWidth: trend.map((_, i) => (i === lastIdx ? 2 : 0)),
-      borderRadius: 4,
-      borderSkipped: 'bottom',
-      maxBarThickness: 44,
-    }],
-  };
-  const trendOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          title: (items) => {
-            const t = trend[items[0].dataIndex];
-            return `${t.label} · ${t.range}${items[0].dataIndex === lastIdx ? ' (en curso)' : ''}`;
-          },
-          label: (ctx) => {
-            const t = trend[ctx.dataIndex];
-            return ` ${t.done} de ${t.total} entregables (${t.pct}%) — ${STATUS[t.color].label}`;
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        min: 0, max: 100,
-        ticks: { stepSize: 25, color: INK_MUTED, callback: (v) => `${v}%` },
-        grid: { color: GRID },
-        border: { display: false },
-      },
-      x: { ticks: { color: INK_MUTED }, grid: { display: false } },
-    },
-  };
-
-  // ---- Índice de frecuencia (una sola escala) con las metas como referencia
-  const ifValues = safety.map((s) => s.indice);
-  const hayIndice = ifValues.some((v) => v !== null);
-  const maxIF = Math.max(4, ...ifValues.filter((v) => v !== null).map((v) => Math.ceil(v + 0.5)));
-  const ifData = {
-    labels: safety.map((s) => s.label),
-    datasets: [
-      {
-        label: 'Índice de frecuencia',
-        data: ifValues,
-        borderColor: IF_LINE,
-        backgroundColor: IF_LINE,
-        borderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        pointBorderColor: 'transparent',
-        tension: 0.25,
-        spanGaps: false,
-      },
-      ...METAS.map((m) => ({
-        label: m.label,
-        data: safety.map(() => m.value),
-        borderColor: m.color,
-        borderWidth: 1.5,
-        borderDash: [6, 4],
-        pointRadius: 0,
-        pointHoverRadius: 0,
-        fill: false,
-      })),
-    ],
-  };
-  const ifOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: { usePointStyle: true, pointStyle: 'line', color: INK_MUTED, boxWidth: 24, padding: 14 },
-      },
-      tooltip: {
-        filter: (item) => item.datasetIndex === 0,
-        callbacks: {
-          title: (items) => {
-            const s = safety[items[0].dataIndex];
-            return `${s.label} del proyecto · ${s.range}${s.current ? ' (en curso)' : ''}`;
-          },
-          label: (ctx) => {
-            const s = safety[ctx.dataIndex];
-            return s.indice === null ? ' Sin FT capturado' : ` Índice de frecuencia: ${s.indice}`;
-          },
-          afterLabel: (ctx) => {
-            const s = safety[ctx.dataIndex];
-            return [
-              `Actos inseguros: ${s.actos}`,
-              `Condiciones inseguras: ${s.condiciones}`,
-              `Horas-hombre: ${s.hh.toLocaleString('es-MX')}`,
-            ];
-          },
-        },
-      },
-    },
-    scales: {
-      y: {
-        min: 0, suggestedMax: maxIF,
-        ticks: { color: INK_MUTED },
-        grid: { color: GRID },
-        border: { display: false },
-      },
-      x: { ticks: { color: INK_MUTED }, grid: { display: false } },
-    },
-  };
+  // ---- Tendencia de cumplimiento semanal e índice de frecuencia
+  const trendChart = buildTrendChart(trend);
+  const ifChart = buildIfChart(
+    safety,
+    (s) => `${s.label} del proyecto · ${s.range}${s.current ? ' (en curso)' : ''}`,
+  );
 
   const sinCaptura = timeline.weeks_without_capture;
 
@@ -318,7 +172,7 @@ const ProjectProgressCharts = ({ projectId }) => {
           <h4><FiCheckCircle /> Cumplimiento semanal de entregables</h4>
           <p className="chart-hint">% de los 7 entregables por semana ISO. La última barra es la semana en curso.</p>
           <div className="chart-wrapper">
-            <Bar data={trendData} options={trendOptions} />
+            <Bar data={trendChart.data} options={trendChart.options} />
           </div>
         </div>
 
@@ -329,8 +183,8 @@ const ProjectProgressCharts = ({ projectId }) => {
             (Actos + condiciones) / (HH / 1000).
           </p>
           <div className="chart-wrapper">
-            {hayIndice ? (
-              <Line data={ifData} options={ifOptions} />
+            {ifChart.hasData ? (
+              <Line data={ifChart.data} options={ifChart.options} />
             ) : (
               <div className="chart-empty-msg">No hay FT capturado en la tabla de gráficas en estas semanas.</div>
             )}
@@ -341,4 +195,5 @@ const ProjectProgressCharts = ({ projectId }) => {
   );
 };
 
+export { WeekTile };
 export default ProjectProgressCharts;

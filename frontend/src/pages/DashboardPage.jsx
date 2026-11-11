@@ -9,6 +9,7 @@ import StatsCard from '../components/dashboard/StatsCard';
 import RecentProjects from '../components/dashboard/RecentProjects';
 import MyTasks from '../components/dashboard/MyTasks';
 import DraggableDashboard from '../components/dashboard/DraggableDashboard';
+import GeneralStatusWidget from '../components/dashboard/GeneralStatusWidget';
 import { FiFolder, FiCheckSquare, FiUsers, FiAlertTriangle, FiClock } from 'react-icons/fi';
 import './DashboardPage.scss';
 
@@ -82,6 +83,10 @@ const DashboardPage = () => {
             { id: 'tasks-month', type: 'stat', title: 'Tareas este Mes', value: kpis.completed_tasks_this_month, icon: 'check', color: 'green' },
             { id: 'projects-progress', type: 'stat', title: 'Proyectos en Progreso', value: kpis.projects_in_progress, icon: 'clock', color: 'purple' }
           );
+          // Estado general de las obras en proceso: solo Admin y Superadmin.
+          if (role === 'SUPERADMIN' || role === 'ADMIN') {
+            commonWidgets.push({ id: 'general-status', type: 'general-status', title: 'Estado general de las obras' });
+          }
           commonWidgets.push({ id: 'recent-projects', type: 'recent-projects', title: 'Proyectos Recientes' });
           break;
 
@@ -168,6 +173,8 @@ const DashboardPage = () => {
             color={item.color}
           />
         );
+      case 'general-status':
+        return <GeneralStatusWidget />;
       case 'recent-projects':
         return <RecentProjects projects={displayData.recent_activity?.projects || displayData.projects_summary} />;
       case 'my-tasks':

@@ -294,6 +294,7 @@ class ProjectRow:
     total: int = 0
     delivered_project: bool = False   # proyecto cerrado en la semana -> "Entregado"
     comment: str = ''
+    project_id: int = None
     delivery_days: list = field(default_factory=list)
     detail: list = field(default_factory=list)   # filas de la hoja "Detalle"
 
@@ -404,7 +405,7 @@ def collect_rows(projects_qs, year, week, only_in_progress=True):
     rows = []
     for p, start, end in candidates:
         tasks = std_tasks.get(p.id, {})
-        row = ProjectRow(name=p.name, cri=', '.join(cri_by_project.get(p.id, [])))
+        row = ProjectRow(name=p.name, cri=', '.join(cri_by_project.get(p.id, [])), project_id=p.id)
         row.total = ENTREGABLES_POR_SEMANA
 
         for key, nombre, _ in STANDARD:

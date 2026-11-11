@@ -520,3 +520,38 @@ class EntregablesReportAPIView(APIView):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         response['Access-Control-Expose-Headers'] = 'Content-Disposition'
         return response
+
+
+class GeneralStatusAPIView(APIView):
+    """
+    Estado general de las obras en proceso para el Panel de Control
+    (SUPERADMIN y ADMIN; un ADMIN solo ve sus proyectos). Mismas métricas que
+    "Estado del Proyecto", sumadas para todos los proyectos En Progreso.
+    Se guarda 5 minutos en caché.
+    """
+    permission_classes = [IsAuthenticated]
+    CACHE_SECONDS = 300
+
+    def get(self, request, *args, **kwargs):
+        from django.core.cache import cache
+        from apps.reports.general_status import build_general_status
+
+        user = request.user
+        if user.role not in ('SUPERADMIN', 'ADMIN'):
+            return Response({'detail': 'No tienes permiso para ver este panel.'}, status=403)
+
+        hoy = timezone.localdate()
+        scope = 'all' if user.role == 'SUPERADMIN' else f'admin-{user.id}'
+        cache_key = f'general_status:v1:{scope}:{hoy.isoformat()}'
+        if request.query_params.get('refresh') != '1':
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return Response(cached)
+
+        projects_qs = Project.objects.filter(es_archivado=False)
+        if user.role == 'ADMIN':
+            projects_qs = projects_qs.filter(id__in=get_admin_accessible_projects(user).values('id'))
+        data = build_general_status(projects_qs, today=hoy)
+        data['generated_at'] = timezone.now().isoformat()
+        cache.set(cache_key, data, self.CACHE_SECONDS)
+        return Response(data)
