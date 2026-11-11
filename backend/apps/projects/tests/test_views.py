@@ -74,10 +74,8 @@ class ProgressStatsPermissionTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
         # Verify response has expected structure
-        self.assertIn('task_stats', response.data)
-        self.assertIn('priority_stats', response.data)
-        self.assertIn('total_tasks', response.data)
-        self.assertIn('progress_percentage', response.data)
+        for key in ('current', 'previous', 'trend', 'punctuality', 'safety', 'review', 'timeline', 'total_tasks'):
+            self.assertIn(key, response.data)
     
     def test_non_member_cannot_access_progress_stats(self):
         """Test that a student who is not a project member cannot access progress-stats"""
