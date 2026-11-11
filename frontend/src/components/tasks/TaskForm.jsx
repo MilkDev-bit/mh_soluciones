@@ -6,8 +6,9 @@ import { todayLocalISO } from '../../utils/taskStatus';
 import { FiPlus, FiTrash2, FiAward, FiAlertCircle } from 'react-icons/fi';
 import '../../assets/styles/_buttons.scss';
 import './TaskForm.scss';
+import { visibleDescription, graficasDataBlock, withGraficasData } from '../../utils/taskDescription';
 
-const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] }) => {
+const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [], formId }) => {
   const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -16,6 +17,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const graficasBlockRef = useRef('');
   const isEditMode = Boolean(task);
 
   // Convierte una ISO UTC string del backend al formato que acepta datetime-local ("YYYY-MM-DDTHH:MM")
@@ -52,7 +54,10 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   useEffect(() => {
     if (isEditMode && task) {
       setValue('title', task.title);
-      setValue('description', task.description);
+      // Solo el texto visible; los datos de GRAFICAS se guardan aparte y se
+      // vuelven a agregar al guardar (no cuentan para el límite de 1000).
+      graficasBlockRef.current = graficasDataBlock(task.description);
+      setValue('description', visibleDescription(task.description));
       setValue('due_date', task.due_date);
       setValue('assigned_to', task.assigned_to?.id || '');
       setValue('status', task.status);
@@ -183,6 +188,8 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
                      fileInput.files.length > 0 && 
                      fileInput.files[0] instanceof File;
       
+      const fullDescription = withGraficasData(data.description, isEditMode ? graficasBlockRef.current : '');
+
       // assigned_to is kept for backend compatibility; the full list is sent via assigned_students
       const assignedUserId = selectedMembers.length > 0 ? selectedMembers[0].id : null;
       const assignedStudentsList = selectedMembers.map(m => m.id);
@@ -190,7 +197,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       if (hasFile) {
         const formData = new FormData();
         formData.append('title', data.title);
-        formData.append('description', data.description || '');
+        formData.append('description', fullDescription);
         formData.append('project', project.id);
         formData.append('assigned_to', assignedUserId || '');
         formData.append('due_date', data.due_date || '');
@@ -214,6 +221,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
       } else {
         taskData = {
           ...data,
+          description: fullDescription,
           project: project.id,
           assigned_to: assignedUserId,
           due_date: data.due_date || null,
@@ -273,7 +281,7 @@ const TaskForm = ({ project, task, onTaskSaved, onCancel, projectMembers = [] })
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="task-form">
+    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="task-form">
       <div className="form-section">
         <h3 className="form-section-title">Información Básica</h3>
         

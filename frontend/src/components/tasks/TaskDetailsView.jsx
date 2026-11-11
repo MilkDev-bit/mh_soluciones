@@ -34,6 +34,7 @@ import Modal from '../common/Modal';
 import ExtendDeadlineModal from './ExtendDeadlineModal';
 import { invalidateTaskQueries } from '../../utils/taskCache';
 import './TaskDetailsView.scss';
+import { visibleDescription } from '../../utils/taskDescription';
 
 // File icon mapping for different file types
 const FILE_ICON_MAP = {
@@ -75,6 +76,8 @@ const FILE_ICON_MAP = {
   default: FiFile
 };
 
+const EDIT_FORM_ID = 'task-details-edit-form';
+
 const TaskDetailsView = ({
   task, user, project, projectMembers, onClose,
   onTaskUpdated: onTaskUpdatedProp, onTaskDeleted: onTaskDeletedProp, onDocumentUpload,
@@ -96,9 +99,7 @@ const TaskDetailsView = ({
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [editedTask, setEditedTask] = useState({});
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -123,6 +124,14 @@ const TaskDetailsView = ({
   const canCompleteTask = userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'PROFESSOR' || userRole === 'DIRECTOR';
   const isStudent = userRole === 'STUDENT';
   
+  // Desde la página de Tareas no llega `project`: se arma con los datos de la
+  // tarea. Sin esto, editar desde Tareas fallaba con "proyecto no seleccionado".
+  const formProject = project?.id
+    ? project
+    : (task?.project && typeof task.project === 'object'
+      ? task.project
+      : (task?.project ? { id: task.project, name: task.project_name } : null));
+
   const isInAssignedStudents = Array.isArray(task?.assigned_students_data) &&
                                task.assigned_students_data.some(s => s.id === user?.id);
   const canSubmit = (user?.id && task?.assigned_to?.id && user.id === task.assigned_to.id) || isInAssignedStudents || isAdmin;
@@ -134,14 +143,6 @@ const TaskDetailsView = ({
 
   useEffect(() => {
     if (task && task.id) {
-      setEditedTask({
-        title: task.title || '',
-        description: task.description || '',
-        due_date: task.due_date ? format(parseISO(task.due_date), 'yyyy-MM-dd') : '',
-        status: task.status || 'PENDING',
-        priority: task.priority || 'MEDIUM',
-        assigned_to: task.assigned_to?.id || ''
-      });
       loadTaskComments();
       fetchSubmissions();
       loadDocuments();
@@ -277,31 +278,6 @@ const TaskDetailsView = ({
     }
   };
 
-  const handleEditTask = async () => {
-    if (!task || !task.id) return;
-    if (!editedTask.title.trim()) {
-      toast.error('El título es obligatorio');
-      return;
-    }
-    setEditLoading(true);
-    try {
-      const taskData = { ...editedTask };
-      const updatedTask = await updateTask(task.id, taskData);
-      toast.success('✅ Tarea actualizada correctamente');
-      
-      if (typeof onTaskUpdated === 'function') {
-        onTaskUpdated(updatedTask);
-      }
-      
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error al actualizar tarea:', error);
-      toast.error(error.response?.data?.message || '❌ Error al actualizar la tarea');
-    } finally {
-      setEditLoading(false);
-    }
-  };
-
   const handleDeleteTask = async () => {
     if (!task || !task.id) return;
     if (!window.confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
@@ -323,10 +299,6 @@ const TaskDetailsView = ({
     } finally {
       setDeleteLoading(false);
     }
-  };
-
-  const handleInputChange = (field, value) => {
-    setEditedTask(prev => ({ ...prev, [field]: value }));
   };
 
   const onCommentSubmit = async (data) => {
@@ -662,8 +634,13 @@ const TaskDetailsView = ({
               <div className="action-group">
                 {isEditing ? (
                   <>
-                    <button className="btn btn-icon btn-success" onClick={handleEditTask} disabled={editLoading}><FiSave size={18} />{editLoading ? 'Guardando...' : 'Guardar'}</button>
-                    <button className="btn btn-icon btn-secondary" onClick={() => setIsEditing(false)} disabled={editLoading}><FiX size={18} />Cancelar</button>
+                    {/* [FIX] Antes este botón guardaba una copia de la tarea tomada al
+                        abrirla (handleEditTask/editedTask), no lo escrito en el
+                        formulario: los cambios se perdían, y en tareas sin
+                        fecha (GRAFICAS) daba error 400. Ahora envía el
+                        formulario de edición, igual que "Guardar Cambios". */}
+                    <button type="submit" form={EDIT_FORM_ID} className="btn btn-icon btn-success"><FiSave size={18} />Guardar</button>
+                    <button className="btn btn-icon btn-secondary" onClick={() => setIsEditing(false)}><FiX size={18} />Cancelar</button>
                   </>
                 ) : (
                   <>
@@ -704,7 +681,8 @@ const TaskDetailsView = ({
         {isEditing ? (
           <div className="edit-task-container">
             <TaskForm 
-              project={project}
+              formId={EDIT_FORM_ID}
+              project={formProject}
               task={task}
               projectMembers={projectMembers}
               onCancel={() => setIsEditing(false)}
@@ -727,7 +705,7 @@ const TaskDetailsView = ({
             )}
             {(() => {
               if (!task?.description) return null;
-              const cleanDesc = task.description.replace(/<!--\s*GRAFICAS_DATA:.*?-->/s, '').trim();
+              const cleanDesc = visibleDescription(task.description);
               if (!cleanDesc) return null;
               return (<div className="task-description"><h4>Descripción</h4><p>{cleanDesc}</p></div>);
             })()}

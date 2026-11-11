@@ -32,6 +32,7 @@ import {
   WINDOW_STATE, TONE_COLORS,
 } from '../../utils/taskStatus';
 import './TasksPage.scss';
+import { visibleDescription } from '../../utils/taskDescription';
 
 const TASKS_PAGE_SIZE = 20;
 
@@ -59,8 +60,8 @@ const TaskCard = ({ task, taskDocuments, setSelectedTask }) => {
       </div>
 
       <div className="task-card-body">
-        {task.description && (
-          <p className="task-description">{task.description}</p>
+        {visibleDescription(task.description) && (
+          <p className="task-description">{visibleDescription(task.description)}</p>
         )}
 
         <div className="task-meta">
@@ -685,8 +686,8 @@ const TasksPage = () => {
                           )}
                         </div>
                         
-                        {task.description && (
-                          <p className="task-description">{task.description}</p>
+                        {visibleDescription(task.description) && (
+                          <p className="task-description">{visibleDescription(task.description)}</p>
                         )}
                         
                         <div className="task-list-meta">
