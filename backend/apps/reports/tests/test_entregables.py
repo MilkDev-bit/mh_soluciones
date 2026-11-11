@@ -1,5 +1,6 @@
 """Reporte semanal de entregables en Excel (semana ISO 8601)."""
 import io
+import json
 import re
 import zipfile
 from datetime import date, datetime
@@ -17,6 +18,7 @@ User = get_user_model()
 
 STD = ['Matriz de cumplimiento SH', 'Pláticas de seguridad', 'PIRAMIDE SH', 'QR WEEKLY',
        'GRAFICAS', 'Campañas', 'KPI']
+FILES = [t for t in STD if t != 'GRAFICAS']   # entregables con archivo
 
 
 NS = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
@@ -62,18 +64,25 @@ class EntregablesReportTests(TestCase):
                                    start_date=start, end_date=end)
         ProjectMember.objects.create(project=p, user=self.cri, role='MEMBER')
         created = {t: Task.objects.create(title=t, project=p, created_by=self.admin) for t in tasks}
+        # Las tareas ya existían en la semana del reporte.
+        Task.objects.filter(project=p).update(created_at=local(2026, 10, 1, 9, 0))
         return p, created
 
     def deliver(self, task, when):
         s = TaskSubmission.objects.create(task=task, submitted_by=self.cri, notes='ok')
         TaskSubmission.objects.filter(pk=s.pk).update(created_at=when)
 
+    def graficas(self, task, rows):
+        task.description = 'Tabla <!-- GRAFICAS_DATA:%s -->' % json.dumps({'table1': rows, 'table2': []})
+        task.save(update_fields=['description'])
+
     def test_rows(self):
         _, t1 = self.project('Axioma', date(2026, 9, 1))
-        for title in STD[:6]:
-            self.deliver(t1[title], local(2026, 11, 7, 18, 0))          # sábado: 6 de 7
+        for title in FILES[:5]:
+            self.deliver(t1[title], local(2026, 11, 7, 18, 0))          # sábado: 5 con archivo
         self.deliver(t1['KPI'], local(2026, 11, 9, 0, 30))              # lunes sig.: no cuenta
-        self.deliver(t1['GRAFICAS'], local(2026, 11, 1, 23, 0))          # domingo anterior: no cuenta
+        # Inicio 1/sep (semana ISO 36): "SEMANA 10" es la semana 45.
+        self.graficas(t1['GRAFICAS'], [{'semana': 'SEMANA 10', 'actos': 0, 'condiciones': 1, 'ft': 12}])
         _, t2 = self.project('Mexicali', date(2026, 11, 4))              # inició esa semana
         self.project('Guram', date(2026, 8, 1), status='COMPLETED', end=date(2026, 11, 5))
         self.project('Viejo', date(2026, 1, 1), status='COMPLETED', end=date(2026, 10, 30))  # ya cerrado
@@ -90,9 +99,50 @@ class EntregablesReportTests(TestCase):
         self.assertEqual(by_name['Guram'].cumplimiento, 'Entregado')
         self.assertEqual(by_name['Seis'].cumplimiento, '0 de 6')
 
+    def test_graficas_counts_only_when_week_captured(self):
+        _, t = self.project('Axioma', date(2026, 9, 1))
+        g = t['GRAFICAS']
+        self.graficas(g, [{'semana': 'SEMANA 9', 'ft': 10}, {'semana': 'SEMANA 10', 'ft': 0, 'actos': 0}])
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 0)
+        self.graficas(g, [{'semana': '2026-W45', 'ft': 8}])                # formato ISO también vale
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 1)
+        # Una entrega de archivo en GRÁFICAS no cuenta: solo la tabla.
+        self.graficas(g, [])
+        self.deliver(g, local(2026, 11, 4, 9, 0))
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].done, 0)
+
+    def test_task_of_the_week_delivered_late_counts(self):
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        Task.objects.filter(pk=t['KPI'].pk).update(due_date=date(2026, 11, 6))        # tarea de la semana 45
+        self.deliver(t['KPI'], local(2026, 11, 10, 9, 0))                              # subida tarde (semana 46)
+        Task.objects.filter(pk=t['QR WEEKLY'].pk).update(due_date=date(2026, 10, 30))  # tarea de la semana 44
+        self.deliver(t['QR WEEKLY'], local(2026, 11, 10, 9, 0))                        # no es de la 45
+        rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
+        self.assertEqual(rows[0].cumplimiento, '1 de 7')
+        self.assertEqual(rows[0].delivery_days, [])     # no se entregó dentro de la semana
+
+    def test_tasks_created_after_the_week_dont_count(self):
+        p, _ = self.project('Axioma', date(2026, 9, 1), tasks=FILES[:3])
+        nueva = Task.objects.create(title='KPI', project=p, created_by=self.admin)
+        Task.objects.filter(pk=nueva.pk).update(created_at=local(2026, 11, 12, 9, 0))
+        self.assertEqual(collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0].total, 3)
+
+    def test_weekly_duplicate_tasks_count_by_name(self):
+        # Cada semana se crea otra "Matriz de cumplimiento SH": cuenta la entrega
+        # hecha en cualquiera de ellas, una sola vez por nombre.
+        p, t = self.project('Axioma', date(2026, 9, 1))
+        nueva = Task.objects.create(title='Matriz de cumplimiento SH', project=p, created_by=self.admin)
+        Task.objects.filter(pk=nueva.pk).update(created_at=local(2026, 11, 2, 8, 0))
+        self.deliver(t['Matriz de cumplimiento SH'], local(2026, 11, 2, 9, 0))
+        self.deliver(nueva, local(2026, 11, 3, 9, 0))
+        self.deliver(t['KPI'], local(2026, 11, 4, 9, 0))
+        row = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)[0]
+        self.assertEqual(row.cumplimiento, '2 de 7')
+        self.assertEqual(sorted(row.delivery_days), [1, 3])
+
     def test_workbook_layout_and_values(self):
         _, t1 = self.project('Axioma', date(2026, 9, 1))
-        for title in STD[:5]:
+        for title in FILES[:5]:
             self.deliver(t1[title], local(2026, 11, 6, 12, 0))
         self.project('Guram', date(2026, 8, 1), status='COMPLETED', end=date(2026, 11, 5))
         rows = collect_rows(Project.objects.all(), self.YEAR, self.WEEK)
