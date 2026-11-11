@@ -85,7 +85,8 @@ const ReportesPage = () => {
   // --- Estados para tablas editables de reportes ---
   const [obrasSemana, setObrasSemana] = useState([]);
   const [anioObras, setAnioObras] = useState(() => isoWeek(new Date()).year);
-  const claveObras = `reportes_obras_por_semana_iso_${anioObras}`;
+  // v2: cambió el criterio (solo obras en proceso); se ignoran capturas viejas.
+  const claveObras = `reportes_obras_en_proceso_iso_${anioObras}`;
   const [duracionesProyectos, setDuracionesProyectos] = useState([]);
   const [calificacionCRI, setCalificacionCRI] = useState([]);
   const [isDuracionExpanded, setIsDuracionExpanded] = useState(false);
@@ -124,18 +125,30 @@ const ReportesPage = () => {
     const totalSemanas = isoWeeksInYear(year);
     const proyectos = proyectosData?.results || estadisticas?.proyectosDetalle || [];
     const hoy = new Date();
+    const actual = isoWeek(hoy);
+    // [CAMBIO] "Obras activas" = obras EN PROCESO, con el mismo criterio que
+    // el Panel de Control ("Proyectos en progreso" = estado En Progreso):
+    //  - En Progreso: cuenta desde su fecha de inicio hasta hoy.
+    //  - Completado: cuenta desde su inicio hasta su fecha de fin (histórico).
+    //  - Planificación, En Pausa y Cancelado no cuentan (no están en obra).
+    // La semana en curso es la foto de hoy: solo las obras En Progreso, así
+    // coincide con el número del Panel de Control.
     return Array.from({ length: totalSemanas }, (_, i) => {
       const week = i + 1;
       const inicioSemana = isoWeekStart(year, week);
       const finSemana = isoWeekEnd(year, week);
+      const esSemanaActual = year === actual.year && week === actual.week;
       let obras = 0;
       if (inicioSemana <= hoy) {
         proyectos.forEach(p => {
           const inicio = parseLocalDate(p.start_date) || parseLocalDate(p.created_at);
-          if (!inicio) return;
-          const cerrado = p.status === 'COMPLETED' || p.status === 'CANCELLED';
-          const fin = cerrado ? (parseLocalDate(p.end_date) || parseLocalDate(p.updated_at) || hoy) : hoy;
-          if (inicio <= finSemana && fin >= inicioSemana) obras += 1;
+          if (!inicio || inicio > finSemana) return;
+          if (p.status === 'IN_PROGRESS') {
+            obras += 1;
+          } else if (p.status === 'COMPLETED' && !esSemanaActual) {
+            const fin = parseLocalDate(p.end_date) || parseLocalDate(p.updated_at);
+            if (fin && fin >= inicioSemana) obras += 1;
+          }
         });
       }
       return { semana: `SEM ${week}`, rango: isoWeekRangeLabel(year, week), obras };
