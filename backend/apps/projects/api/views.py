@@ -4,6 +4,7 @@ from datetime import datetime, date
 from django.db import IntegrityError
 from django.db.models import Q, Count, Case, When, IntegerField, F
 from rest_framework import viewsets, permissions, status, filters
+from apps.core.search import AccentInsensitiveSearchFilter
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
@@ -40,7 +41,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     - Others: Based on project membership
     """
     permission_classes = [permissions.IsAuthenticated, IsProjectMemberOrAdmin]
-    filter_backends = [filters.SearchFilter]
+    # [FIX] SearchFilter de DRF distingue acentos ("region" no encontraba
+    # "REGIÓN", "bajio" no encontraba "BAJÍO"). Ver apps/core/search.py.
+    filter_backends = [AccentInsensitiveSearchFilter]
     search_fields = ['name', 'description']
 
     def _validate_client_access(self, user, project):
