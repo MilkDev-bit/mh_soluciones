@@ -690,3 +690,109 @@
     }
   }
 }
+
+// ============================================================================
+// Modal "Recuperar Contraseña": colores del tema (claro y oscuro).
+// [FIX] En modo oscuro la etiqueta salía casi invisible y el campo y la barra
+// de botones se quedaban en blanco (heredaban estilos globales de formularios).
+// ============================================================================
+.modal-content .forgot-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-5;
+  padding: $spacing-6;
+
+  .forgot-password-description {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-2;
+    margin: 0;
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      margin: 0;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text-secondary);
+
+      svg {
+        color: $primary-500;
+        flex-shrink: 0;
+      }
+    }
+
+    input {
+      width: 100%;
+      padding: $spacing-3 $spacing-4;
+      border: 2px solid var(--border-color);
+      border-radius: $border-radius;
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-size: 1rem;
+      box-shadow: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+
+      &::placeholder {
+        color: var(--text-muted);
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.15);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-3;
+    margin: 0;
+    padding: $spacing-5 0 0;
+    border-top: 1px solid var(--border-color);
+    background: transparent;
+
+    .btn {
+      min-width: 120px;
+      font-weight: 600;
+    }
+
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+
+      &:hover:not(:disabled) {
+        border-color: $primary-500;
+        color: var(--text-primary);
+      }
+    }
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    .modal-actions {
+      flex-direction: column-reverse;
+
+      .btn {
+        width: 100%;
+      }
+    }
+  }
+}
