@@ -66,6 +66,31 @@
         }
       }
 
+      // Botón del reporte semanal de entregables (Excel)
+      .btn-entregables {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        // Mismo fondo que los selectores del encabezado (el encabezado es naranja).
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+
+        svg { color: $primary-500; }
+
+        &:hover {
+          border-color: $primary-500;
+          transform: translateY(-1px);
+        }
+      }
+
       .btn-group {
         display: flex;
         gap: $spacing-2;

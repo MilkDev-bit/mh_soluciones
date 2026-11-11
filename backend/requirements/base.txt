@@ -60,3 +60,6 @@ pywebpush==1.14.0
 # Security: File Validation and Malware Scanning
 python-magic==0.4.27
 pyclamd==0.4.0
+
+# Reporte de entregables en Excel (apps/reports/entregables.py)
+XlsxWriter==3.2.0
