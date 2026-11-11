@@ -1,0 +1,182 @@
+@import '../../assets/styles/variables';
+
+// Estado general de las obras (Panel de Control). Reutiliza las fichas y
+// gráficas de ProjectProgressCharts.scss; aquí solo lo propio del panel.
+.general-status-widget {
+  margin-bottom: 0;
+  height: 100%;
+
+  .general-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-3;
+    flex-wrap: wrap;
+    margin-bottom: $spacing-5;
+
+    h3 { margin: 0; }
+  }
+
+  .general-header-meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    font-size: 0.85rem;
+    color: $neutral-500;
+  }
+
+  .btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid $neutral-200;
+    background: transparent;
+    color: $neutral-600;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover:not(:disabled) { border-color: $primary-500; color: $primary-600; }
+    &:disabled { opacity: 0.6; cursor: wait; }
+    .spinning { animation: spin 1s linear infinite; }
+  }
+
+  .obras-color {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: 0.8rem;
+    color: $neutral-600;
+
+    li {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+
+      strong { color: $neutral-900; font-variant-numeric: tabular-nums; }
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+  }
+
+  .link-toggle {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: $primary-600;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mini-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 140px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+
+    li { padding: 2px 0; }
+    a { color: $neutral-700; text-decoration: none; &:hover { color: $primary-600; } }
+  }
+
+  .attention-block {
+    margin-top: $spacing-6;
+    background: $neutral-50;
+    border: 1px solid $neutral-200;
+    border-radius: $border-radius-md;
+    padding: $spacing-4;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      flex-wrap: wrap;
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: $neutral-800;
+
+      svg { color: $primary-500; }
+    }
+
+    .attention-week {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: $neutral-500;
+    }
+  }
+
+  .attention-table-wrap { overflow-x: auto; }
+
+  .attention-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: $neutral-500;
+      border-bottom: 1px solid $neutral-200;
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid $neutral-100;
+      color: $neutral-800;
+      vertical-align: middle;
+
+      a { color: $neutral-900; font-weight: 600; text-decoration: none; &:hover { color: $primary-600; } }
+      &.muted { color: $neutral-500; }
+      &.nowrap { white-space: nowrap; }
+      .status-badge { margin-left: 6px; }
+    }
+
+    tr:last-child td { border-bottom: none; }
+  }
+}
+
+[data-theme="dark"] .general-status-widget {
+  .general-header-meta { color: $neutral-400; }
+  .btn-refresh { border-color: $neutral-700; color: $neutral-300; }
+  .obras-color { color: $neutral-300; li strong { color: $neutral-100; } }
+  .mini-list a { color: $neutral-300; }
+  .attention-block {
+    background: $neutral-800;
+    border-color: $neutral-700;
+    h4 { color: $neutral-200; }
+    .attention-week { color: $neutral-400; }
+  }
+  .attention-table {
+    th { color: $neutral-400; border-color: $neutral-700; }
+    td {
+      color: $neutral-200;
+      border-color: rgba($neutral-700, 0.6);
+      &.muted { color: $neutral-400; }
+      a { color: $neutral-100; &:hover { color: $primary-400; } }
+    }
+  }
+}

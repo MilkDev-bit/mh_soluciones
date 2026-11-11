@@ -32,7 +32,7 @@
     grid-column: span 2;
   }
 
-  &.recent-projects, &.my-tasks {
+  &.recent-projects, &.my-tasks, &.general-status {
     width: 100%; /* Asegura que el contenido interno se estire */
     
     @media (min-width: 768px) {
