@@ -568,3 +568,10 @@
   0% { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
 }
+
+// [FIX] Listas desplegables legibles en modo oscuro (selectores de proyecto,
+// rango, año y filtros de las gráficas): las opciones toman los colores del tema.
+.reportes-page select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
