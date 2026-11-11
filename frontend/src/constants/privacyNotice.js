@@ -13,8 +13,8 @@ export const PRIVACY_NOTICE_VERSION = '2026-11-11';
 
 export const PRIVACY_CONTACT = {
   company: 'MH Soluciones Empresariales',
-  // TODO: domicilio completo del responsable (calle, número, colonia, C.P., ciudad, estado).
-  address: '[DOMICILIO DE MH SOLUCIONES EMPRESARIALES]',
+  // Recomendado por la LFPDPPP: domicilio completo (calle, número, colonia, C.P.).
+  address: 'León, Guanajuato',
   // TODO: correo del área que atiende solicitudes de privacidad.
   email: '[CORREO DE PRIVACIDAD]',
 };
@@ -27,7 +27,7 @@ export const PRIVACY_NOTICE_SECTIONS = [
   {
     title: '1. Responsable de sus datos personales',
     paragraphs: [
-      `${company}, con domicilio en ${address}, es responsable del uso y protección de los datos personales que usted proporciona al utilizar esta plataforma (en adelante, "la Plataforma").`,
+      `${company}, con domicilio en ${address}, es responsable del uso y protección de los datos personales que usted proporciona al utilizar esta plataforma (en adelante, "Matrix").`,
     ],
   },
   {
@@ -36,7 +36,7 @@ export const PRIVACY_NOTICE_SECTIONS = [
     items: [
       'Identificación y contacto: nombre, apellidos, nombre de usuario, correo electrónico y fotografía de perfil.',
       'Datos laborales o académicos: rol dentro de la organización, proyectos y equipos a los que pertenece, tareas asignadas, entregas, calificaciones, comentarios y evaluaciones de desempeño.',
-      'Archivos y documentos que usted sube a la Plataforma, incluidos los que se almacenan en Google Drive o en nuestros servidores.',
+      'Archivos y documentos que usted sube a Matrix, incluidos los que se almacenan en Google Drive o en nuestros servidores.',
       'Datos de uso y seguridad: dirección IP, tipo de navegador y dispositivo, fechas y horas de inicio de sesión, bitácora de actividad y configuración de verificación en dos pasos.',
       'En el caso del personal, la documentación laboral que el área de Recursos Humanos requiera conforme a la relación de trabajo.',
     ],
@@ -44,7 +44,7 @@ export const PRIVACY_NOTICE_SECTIONS = [
   {
     title: '3. Datos personales sensibles',
     paragraphs: [
-      'La Plataforma no tiene como finalidad recabar datos personales sensibles. Si por alguna obligación laboral o legal fuera necesario tratarlos (por ejemplo, información de salud en documentos de Recursos Humanos), se le solicitará su consentimiento expreso y por escrito y se tratarán con medidas de seguridad reforzadas.',
+      'Matrix no tiene como finalidad recabar datos personales sensibles. Si por alguna obligación laboral o legal fuera necesario tratarlos (por ejemplo, información de salud en documentos de Recursos Humanos), se le solicitará su consentimiento expreso y por escrito y se tratarán con medidas de seguridad reforzadas.',
     ],
   },
   {
@@ -54,13 +54,13 @@ export const PRIVACY_NOTICE_SECTIONS = [
       'Crear y administrar su cuenta, autenticar su identidad y controlar el acceso.',
       'Gestionar proyectos, equipos, tareas, entregas, revisiones, calificaciones y calendario de actividades.',
       'Almacenar y organizar los archivos y documentos relacionados con su trabajo.',
-      'Enviarle notificaciones dentro de la Plataforma, por correo electrónico o mediante notificaciones push sobre tareas, eventos y cambios relevantes.',
+      'Enviarle notificaciones dentro de Matrix, por correo electrónico o mediante notificaciones push sobre tareas, eventos y cambios relevantes.',
       'Generar reportes de avance y desempeño para la supervisión de los proyectos.',
-      'Proteger la seguridad de la Plataforma: detectar accesos indebidos, bloquear intentos fraudulentos y conservar bitácoras de actividad.',
+      'Proteger la seguridad de Matrix: detectar accesos indebidos, bloquear intentos fraudulentos y conservar bitácoras de actividad.',
       'Cumplir obligaciones legales y requerimientos de autoridades competentes.',
     ],
     after: [
-      'Finalidades secundarias: elaborar estadísticas internas y mejorar la Plataforma. Si no desea que sus datos se usen para estas finalidades, puede indicarlo en cualquier momento al correo señalado en la sección 7; esto no afectará el uso de la Plataforma.',
+      'Finalidades secundarias: elaborar estadísticas internas y mejorar Matrix. Si no desea que sus datos se usen para estas finalidades, puede indicarlo en cualquier momento al correo señalado en la sección 7; esto no afectará el uso de Matrix.',
     ],
   },
   {
@@ -73,7 +73,7 @@ export const PRIVACY_NOTICE_SECTIONS = [
   {
     title: '6. Uso de cookies y tecnologías similares',
     paragraphs: [
-      'La Plataforma utiliza cookies de sesión estrictamente necesarias para mantener su sesión iniciada de forma segura, así como el almacenamiento local de su navegador para recordar preferencias (por ejemplo, tema claro u oscuro, filtros y estado del menú). No utilizamos cookies de publicidad ni de rastreo de terceros. Si las deshabilita, la Plataforma no podrá funcionar correctamente.',
+      'Matrix utiliza cookies de sesión estrictamente necesarias para mantener su sesión iniciada de forma segura, así como el almacenamiento local de su navegador para recordar preferencias (por ejemplo, tema claro u oscuro, filtros y estado del menú). No utilizamos cookies de publicidad ni de rastreo de terceros. Si las deshabilita, Matrix no podrá funcionar correctamente.',
     ],
   },
   {
@@ -93,7 +93,7 @@ export const PRIVACY_NOTICE_SECTIONS = [
   {
     title: '9. Cambios al aviso de privacidad',
     paragraphs: [
-      'Este aviso puede actualizarse por cambios legales, en nuestros servicios o en nuestras prácticas de privacidad. Cuando eso ocurra, la Plataforma le mostrará la nueva versión al iniciar sesión y le pedirá aceptarla nuevamente.',
+      'Este aviso puede actualizarse por cambios legales, en nuestros servicios o en nuestras prácticas de privacidad. Cuando eso ocurra, Matrix le mostrará la nueva versión al iniciar sesión y le pedirá aceptarla nuevamente.',
     ],
   },
   {
