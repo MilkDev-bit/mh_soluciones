@@ -33,10 +33,10 @@ const WS_BASE_URL = getWebSocketBaseURL();
  * @param {Function} apiCall - The API call function to execute
  * @param {number} timeout - Timeout in milliseconds
  * @param {*} defaultValue - Default value to return on error
- * @param {Function} onAuthError - Optional callback for 401 errors
+ * @param {Function} _onAuthError - Ya no se usa: un 401 aquí no cierra la sesión (ver abajo)
  * @returns {Promise<*>} - The API response or default value
  */
-async function apiCallWithTimeout(apiCall, timeout, defaultValue, onAuthError = null) {
+async function apiCallWithTimeout(apiCall, timeout, defaultValue, _onAuthError = null) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -55,9 +55,11 @@ async function apiCallWithTimeout(apiCall, timeout, defaultValue, onAuthError = 
     }
     
     if (error.response?.status === 401) {
-      if (onAuthError && typeof onAuthError === 'function') {
-        onAuthError();
-      }
+      // [FIX] Ya NO se cierra la sesión desde aquí. El interceptor de api.js
+      // renueva el token y, si la sesión de verdad terminó, manda al login.
+      // Un 401 que llegaba aquí podía ser solo un refresh que falló por un
+      // momento (p. ej. 429 por muchas peticiones al borrar varias tareas) y
+      // se cerraba la sesión de un usuario que seguía activo.
       if (import.meta.env.DEV) {
         console.error('[NotificationService] Authentication error - token may be expired');
       }

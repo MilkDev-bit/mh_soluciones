@@ -10,6 +10,7 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from ipware import get_client_ip
 from rest_framework import status, viewsets, generics, permissions, exceptions
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -240,6 +241,9 @@ class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = LoginSerializer
+    # Límite propio por IP contra fuerza bruta (no comparte cupo con el refresh).
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
         client_ip, _ = get_client_ip(request)
@@ -453,6 +457,13 @@ class CookieTokenRefreshView(TokenRefreshView):
     Ahora también se guarda la cookie del refresh nuevo (sesión deslizante:
     vence tras 24 h SIN uso, no 24 h después del login).
     """
+
+    # [FIX] El refresh no va autenticado, así que caía en el límite 'anon'
+    # (compartido con el login por IP) y con varias pestañas o usuarios en la
+    # misma red respondía 429: el frontend lo tomaba como sesión inválida y la
+    # cerraba. Ahora tiene su propio límite, más amplio.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'token_refresh'
 
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])

@@ -321,9 +321,18 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ),
+    # [FIX] Límites de peticiones. Con 'user': '120/min' bastaba con borrar,
+    # duplicar o crear varias tareas seguidas (cada acción recarga listas,
+    # documentos y notificaciones) para recibir 429 "demasiadas peticiones".
+    # Y el refresh del token, que no va autenticado, compartía 'anon': '10/min'
+    # por IP con el login (en una oficina todos salen por la misma IP): el
+    # refresh fallaba con 429 y la sesión se cerraba. El refresh tiene ahora su
+    # propio límite ('token_refresh') y el login el suyo ('login').
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/min',
-        'user': '120/min',
+        'anon': '60/min',
+        'user': '600/min',
+        'login': '20/min',
+        'token_refresh': '120/min',
     },
 
     'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.StandardPageNumberPagination',
