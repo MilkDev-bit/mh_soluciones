@@ -240,7 +240,7 @@ const AuditLogPage = () => {
                           <div className="user-avatar">
                             {actor.charAt(0).toUpperCase()}
                           </div>
-                          <div>
+                          <div className="user-info">
                             <span className="user-name">{actor}</span>
                             {log.usuario && (
                               <span className="user-role badge badge--role">
