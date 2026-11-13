@@ -308,10 +308,13 @@ class LoginAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if user.force_password_change or user.is_password_expired():
+        # [CAMBIO] Ya no hay caducidad de contraseña cada 90 días: se pedía
+        # en el login, pero el frontend no tenía cómo cambiarla y el usuario
+        # se quedaba fuera. Solo queda el cambio forzado manual.
+        if user.force_password_change:
             return Response(
                 {
-                    'error': 'Su contraseña ha expirado. Debe cambiarla antes de continuar.',
+                    'error': 'Debe cambiar su contraseña antes de continuar.',
                     'requires_password_change': True,
                     'user_pk': user.pk
                 },
@@ -398,7 +401,10 @@ class TwoFactorVerifyAPIView(APIView):
         client_ip = get_client_ip(request)
         user.last_login = timezone.now()
         user.last_login_ip = client_ip
-        user.save(update_fields=['last_login', 'last_login_ip'])
+        # Sin esto, tras el 2FA la sesión podía nacer "inactiva" (última
+        # actividad de hace días) y el cierre por inactividad la rechazaba.
+        user.last_activity = user.last_login
+        user.save(update_fields=['last_login', 'last_login_ip', 'last_activity'])
         LoginActivity.objects.create(
             user=user, 
             ip_address=client_ip, 
@@ -437,7 +443,9 @@ class TwoFactorVerifyAPIView(APIView):
         return response
 
 class LogoutAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # Siempre debe poder borrar las cookies, aunque la sesión ya se haya
+    # vencido por inactividad (antes respondía 401 y no las borraba).
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         response = Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
@@ -470,6 +478,18 @@ class CookieTokenRefreshView(TokenRefreshView):
 
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH'])
+
+        # Cierre por inactividad: sin peticiones en SESSION_INACTIVITY_MINUTES
+        # (navegador cerrado, equipo suspendido) no se renueva la sesión.
+        if refresh_token and self._session_inactive(refresh_token):
+            response = Response(
+                {'detail': 'Sesión cerrada por inactividad.', 'code': 'session_inactive'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+            cookie_settings = settings.SIMPLE_JWT
+            response.delete_cookie(cookie_settings['AUTH_COOKIE'], path=cookie_settings['AUTH_COOKIE_PATH'])
+            response.delete_cookie(cookie_settings['AUTH_COOKIE_REFRESH'], path=cookie_settings['AUTH_COOKIE_PATH'])
+            return response
 
         if refresh_token:
             data = request.data.copy()
@@ -504,6 +524,30 @@ class CookieTokenRefreshView(TokenRefreshView):
                 )
 
         return response
+
+    @staticmethod
+    def _session_inactive(raw_refresh):
+        from ..session_activity import is_inactive
+        try:
+            user_id = RefreshToken(raw_refresh).get(settings.SIMPLE_JWT.get('USER_ID_CLAIM', 'user_id'))
+            user = CustomUser.objects.only('id', 'last_activity').get(pk=user_id)
+        except Exception:
+            return False  # token inválido: que SimpleJWT responda como siempre
+        return is_inactive(user)
+
+
+class SessionPingView(APIView):
+    """
+    El frontend lo llama cada pocos minutos mientras el usuario está activo
+    (mueve el mouse, escribe...) para que leer o llenar un formulario largo
+    sin hacer peticiones no cuente como inactividad. La autenticación ya
+    registra la actividad; aquí no hay nada más que hacer.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class PasswordChangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -553,7 +597,7 @@ class ForcePasswordChangeAPIView(APIView):
             return Response({'error': 'La contraseña actual es incorrecta.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Solo permitir si realmente requiere cambio de contraseña
-        if not user.force_password_change and not user.is_password_expired():
+        if not user.force_password_change:
             return Response(
                 {'error': 'Este endpoint solo está disponible cuando se requiere cambio de contraseña.'},
                 status=status.HTTP_403_FORBIDDEN

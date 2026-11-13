@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
 from cryptography.fernet import Fernet
 import base64
-from .constants import PASSWORD_EXPIRY_DAYS, MAX_FAILED_LOGIN_ATTEMPTS, ACCOUNT_LOCKOUT_MINUTES
+from .constants import MAX_FAILED_LOGIN_ATTEMPTS, ACCOUNT_LOCKOUT_MINUTES
 
 
 def get_encryption_key():
@@ -134,17 +134,6 @@ class CustomUser(AbstractUser):
         default=False,
         verbose_name=_("Forzar Cambio de Contraseña")
     )
-    
-    def is_password_expired(self):
-        """Verifica si la contraseña ha expirado"""
-        from django.utils import timezone
-        from datetime import timedelta
-        
-        if not self.password_changed_at:
-            return False
-        
-        expiry_date = self.password_changed_at + timedelta(days=PASSWORD_EXPIRY_DAYS)
-        return timezone.now() > expiry_date
     
     def is_account_locked(self):
         """Verifica si la cuenta está bloqueada"""

@@ -1,11 +1,18 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 
-// 15 minutos sin actividad en NINGUNA pestaña de la app.
-const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
-const WARNING_BEFORE = 60 * 1000; // aviso 1 minuto antes
+// 40 minutos sin actividad en NINGUNA pestaña de la app. Debe coincidir con
+// SESSION_INACTIVITY_MINUTES del backend (authentication/constants.py), que
+// además rechaza la sesión si el navegador estuvo cerrado ese tiempo.
+const INACTIVITY_TIMEOUT = 40 * 60 * 1000;
+const WARNING_BEFORE = 2 * 60 * 1000; // aviso 2 minutos antes
 const CHECK_EVERY = 15 * 1000;
+// Mientras el usuario esté activo se avisa al servidor cada 5 min, para que
+// leer o llenar un formulario largo sin hacer peticiones no cuente como
+// inactividad en el backend.
+const PING_EVERY = 5 * 60 * 1000;
 const STORAGE_KEY = 'mh_last_activity';
 const WARNING_TOAST_ID = 'inactivity-warning';
 
@@ -26,7 +33,7 @@ const writeLastActivity = (ts) => {
 };
 
 /**
- * Cierra la sesión tras 15 min de inactividad.
+ * Cierra la sesión tras 40 min de inactividad.
  *
  * [FIX] Antes cada pestaña llevaba su propio contador con los eventos de esa
  * pestaña. Si tenías la app abierta en dos pestañas y trabajabas en una, la
@@ -42,6 +49,7 @@ const useInactivityLogout = () => {
   const lastWriteRef = useRef(0);
   const warnedRef = useRef(false);
   const loggingOutRef = useRef(false);
+  const lastPingRef = useRef(Date.now());
 
   const markActivity = useCallback(() => {
     const now = Date.now();
@@ -60,6 +68,7 @@ const useInactivityLogout = () => {
   useEffect(() => {
     if (!user) return undefined;
     loggingOutRef.current = false;
+    lastPingRef.current = Date.now();
     markActivity();
 
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click', 'wheel'];
@@ -92,10 +101,17 @@ const useInactivityLogout = () => {
         logout();
       } else if (idle >= INACTIVITY_TIMEOUT - WARNING_BEFORE && !warnedRef.current) {
         warnedRef.current = true;
-        toast.error('Tu sesión se cerrará en 1 minuto por inactividad. Mueve el mouse para continuar.', {
+        toast.error('Tu sesión se cerrará en 2 minutos por inactividad. Mueve el mouse para continuar.', {
           id: WARNING_TOAST_ID,
           duration: WARNING_BEFORE,
         });
+      }
+
+      // Hubo actividad en ESTA pestaña desde el último aviso al servidor.
+      const now = Date.now();
+      if (lastActivityRef.current > lastPingRef.current && now - lastPingRef.current >= PING_EVERY) {
+        lastPingRef.current = now;
+        api.post('auth/session/ping/').catch(() => { /* sin red: se reintenta en el siguiente ciclo */ });
       }
     }, CHECK_EVERY);
 

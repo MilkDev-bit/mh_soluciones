@@ -7,7 +7,6 @@ from django.utils.translation import gettext as _
 from .constants import (
     SPECIAL_CHARS_PATTERN, 
     PASSWORD_MIN_LENGTH,
-    PASSWORD_EXPIRY_DAYS
 )
 
 
@@ -57,20 +56,6 @@ class StrongPasswordValidator:
             f"Tu contraseña debe tener al menos {PASSWORD_MIN_LENGTH} caracteres, incluyendo "
             "mayúsculas, minúsculas, números y caracteres especiales."
         )
-
-
-class PasswordExpiryValidator:
-    """
-    Validator que verifica si la contraseña ha expirado (90 días).
-    """
-    
-    def validate(self, password, user=None):
-        # Esta validación se maneja en el modelo y middleware
-        # Este validator está aquí para completar la suite de validaciones
-        pass
-    
-    def get_help_text(self):
-        return _(f"Las contraseñas deben cambiarse cada {PASSWORD_EXPIRY_DAYS} días por seguridad.")
 
 
 class CompromisedPasswordValidator:

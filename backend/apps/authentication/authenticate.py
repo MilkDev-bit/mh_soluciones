@@ -23,7 +23,16 @@ class CookieJWTAuthentication(JWTAuthentication):
             return None
 
         user = self.get_user(validated_token)
-        
+
+        # Cierre por inactividad: si el servidor no ha recibido peticiones de
+        # este usuario en SESSION_INACTIVITY_MINUTES (p. ej. cerró el
+        # navegador), el token deja de valer. Se trata como anónimo: las
+        # vistas protegidas responden 401 y el refresh también se rechaza.
+        from .session_activity import is_inactive, touch
+        if is_inactive(user):
+            return None
+        touch(user)
+
         # Enforce CSRF validation for cookie-based authentication
         if header is None:
             self.enforce_csrf(request, user)

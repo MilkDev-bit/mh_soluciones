@@ -8,15 +8,15 @@ SPECIAL_CHARS_PATTERN = r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;~`]'
 
 # Password validation requirements
 PASSWORD_MIN_LENGTH = 12
-PASSWORD_EXPIRY_DAYS = 90
+# Sin caducidad de contraseña: se decidió no forzar el cambio periódico.
 
 # Account lockout settings
 MAX_FAILED_LOGIN_ATTEMPTS = 5
 ACCOUNT_LOCKOUT_MINUTES = 30
 
 # Session security
-SESSION_INACTIVITY_MINUTES = 15
-SESSION_WARNING_MINUTES = 14
+# Debe coincidir con INACTIVITY_TIMEOUT de frontend/src/hooks/useInactivityLogout.js
+SESSION_INACTIVITY_MINUTES = 40
 
 # Rate limiting
 RATE_LIMIT_LOGIN_ATTEMPTS = 5  # per minute

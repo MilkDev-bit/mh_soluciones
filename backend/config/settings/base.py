@@ -125,8 +125,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
     'django_otp.middleware.OTPMiddleware',
-    'apps.authentication.security_middleware.SessionSecurityMiddleware',
-    'apps.authentication.security_middleware.PasswordExpiryMiddleware',
     'apps.core.middleware.AuditUserMiddleware',
 ]
 
@@ -320,8 +318,10 @@ CLIENT_IP_META_KEY = (
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        # CookieJWTAuthentication también acepta el encabezado Authorization.
+        # Se quitó JWTAuthentication de la lista: autenticaba de nuevo los
+        # tokens que la cookie rechazaba por inactividad.
         'apps.authentication.authenticate.CookieJWTAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_THROTTLE_CLASSES': (
