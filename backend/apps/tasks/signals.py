@@ -5,7 +5,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from apps.notifications.models import Notification
 from apps.notifications.api.serializers import NotificationSerializer
-from apps.core.middleware import get_current_audit_user
+from apps.core.audit import actor_label, current_actor, log_activity
 from .models import Task, TaskSubmission
 import logging
 
@@ -14,22 +14,6 @@ logger = logging.getLogger(__name__)
 
 # Estados que se consideran "completados"
 _ESTADOS_COMPLETADOS = {'COMPLETED', 'CLOSED'}
-
-
-def _log_actividad(accion, descripcion, usuario, tarea_id=None, proyecto_id=None, metadata=None):
-    """Helper para registrar actividad de forma segura sin interrumpir el flujo principal."""
-    try:
-        from apps.core.models import RegistroActividad
-        RegistroActividad.objects.create(
-            usuario=usuario,
-            accion=accion,
-            descripcion=descripcion,
-            tarea_id=tarea_id,
-            proyecto_id=proyecto_id,
-            metadata=metadata or {},
-        )
-    except Exception as exc:
-        logger.error("Error al registrar actividad de auditoría [%s]: %s", accion, exc)
 
 
 @receiver(pre_save, sender=Task)
@@ -50,38 +34,26 @@ def capture_task_previous_status(sender, instance, **kwargs):
 @receiver(post_save, sender=Task)
 def audit_task_save(sender, instance, created, **kwargs):
     """Registra creación, completado y edición de tareas en el log de auditoría."""
-    actor = get_current_audit_user() or instance.created_by
-    if actor is None:
-        return
-
+    actor = current_actor()
     previous_status = getattr(instance, '_previous_status', None)
 
     if created:
-        accion = 'TAREA_CREADA'
-        descripcion = (
-            f"{actor.username} creó la tarea '{instance.title}' "
-            f"en el proyecto '{instance.project.name}'."
-        )
+        accion, verbo = 'TAREA_CREADA', 'creó la tarea'
     elif (
         instance.status in _ESTADOS_COMPLETADOS
         and previous_status not in _ESTADOS_COMPLETADOS
     ):
-        accion = 'TAREA_COMPLETADA'
-        descripcion = (
-            f"{actor.username} marcó como completada la tarea '{instance.title}' "
-            f"en el proyecto '{instance.project.name}'."
-        )
+        accion, verbo = 'TAREA_COMPLETADA', 'marcó como completada la tarea'
     else:
-        accion = 'TAREA_ACTUALIZADA'
-        descripcion = (
-            f"{actor.username} editó la tarea '{instance.title}' "
-            f"en el proyecto '{instance.project.name}'."
-        )
+        accion, verbo = 'TAREA_ACTUALIZADA', 'editó la tarea'
 
-    _log_actividad(
+    log_activity(
         accion=accion,
-        descripcion=descripcion,
-        usuario=actor,
+        descripcion=(
+            f"{actor_label(actor)} {verbo} '{instance.title}' "
+            f"en el proyecto '{instance.project.name}'."
+        ),
+        actor=actor,
         tarea_id=instance.pk,
         proyecto_id=instance.project_id,
         metadata={
@@ -96,20 +68,39 @@ def audit_task_save(sender, instance, created, **kwargs):
 @receiver(pre_delete, sender=Task)
 def audit_task_delete(sender, instance, **kwargs):
     """Registra la eliminación de una tarea en el log de auditoría."""
-    actor = get_current_audit_user() or instance.created_by
-    if actor is None:
-        return
-
-    _log_actividad(
+    actor = current_actor()
+    log_activity(
         accion='TAREA_ELIMINADA',
         descripcion=(
-            f"{actor.username} eliminó la tarea '{instance.title}' "
+            f"{actor_label(actor)} eliminó la tarea '{instance.title}' "
             f"del proyecto '{instance.project.name}'."
         ),
-        usuario=actor,
+        actor=actor,
         tarea_id=instance.pk,
         proyecto_id=instance.project_id,
         metadata={'tarea_titulo': instance.title, 'proyecto_id': instance.project_id},
+    )
+
+
+@receiver(post_save, sender=TaskSubmission)
+def audit_submission_created(sender, instance, created, **kwargs):
+    """Registra cada entrega que sube un alumno / empleado."""
+    if not created:
+        return
+    actor = current_actor() or instance.submitted_by
+    task = instance.task
+    log_activity(
+        accion='ENTREGA_REALIZADA',
+        descripcion=(
+            f"{actor_label(actor)} entregó la tarea '{task.title}' "
+            f"del proyecto '{task.project.name}'"
+            + (f" (versión {instance.version})." if getattr(instance, 'version', None) else ".")
+        ),
+        actor=actor,
+        tarea_id=task.pk,
+        proyecto_id=task.project_id,
+        metadata={'tarea_titulo': task.title, 'entrega_id': instance.pk,
+                  'version': getattr(instance, 'version', None)},
     )
 
 

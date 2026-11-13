@@ -5,45 +5,24 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from apps.notifications.models import Notification
 from apps.notifications.api.serializers import NotificationSerializer
-from apps.core.middleware import get_current_audit_user
+from apps.core.audit import actor_label, current_actor, log_activity
 from .models import Project, ProjectMember
 
 logger = logging.getLogger(__name__)
 
 
-def _log_actividad(accion, descripcion, usuario, proyecto_id=None, metadata=None):
-    """Helper para registrar actividad de forma segura sin interrumpir el flujo principal."""
-    try:
-        from apps.core.models import RegistroActividad
-        RegistroActividad.objects.create(
-            usuario=usuario,
-            accion=accion,
-            descripcion=descripcion,
-            proyecto_id=proyecto_id,
-            metadata=metadata or {},
-        )
-    except Exception as exc:
-        logger.error("Error al registrar actividad de auditoría [%s]: %s", accion, exc)
-
-
 @receiver(post_save, sender=Project)
 def audit_project_save(sender, instance, created, **kwargs):
     """Registra creación y edición de proyectos en el log de auditoría."""
-    actor = get_current_audit_user() or instance.created_by
-    if actor is None:
-        return
-
+    actor = current_actor()
     if created:
-        accion = 'PROYECTO_CREADO'
-        descripcion = f"{actor.username} creó el proyecto '{instance.name}'."
+        accion, verbo = 'PROYECTO_CREADO', 'creó'
     else:
-        accion = 'PROYECTO_ACTUALIZADO'
-        descripcion = f"{actor.username} editó el proyecto '{instance.name}'."
-
-    _log_actividad(
+        accion, verbo = 'PROYECTO_ACTUALIZADO', 'editó'
+    log_activity(
         accion=accion,
-        descripcion=descripcion,
-        usuario=actor,
+        descripcion=f"{actor_label(actor)} {verbo} el proyecto '{instance.name}'.",
+        actor=actor,
         proyecto_id=instance.pk,
         metadata={'proyecto_nombre': instance.name},
     )
@@ -52,33 +31,49 @@ def audit_project_save(sender, instance, created, **kwargs):
 @receiver(pre_delete, sender=Project)
 def audit_project_delete(sender, instance, **kwargs):
     """Registra la eliminación de un proyecto en el log de auditoría."""
-    actor = get_current_audit_user() or instance.created_by
-    if actor is None:
-        return
-
-    _log_actividad(
+    actor = current_actor()
+    log_activity(
         accion='PROYECTO_ELIMINADO',
-        descripcion=f"{actor.username} eliminó el proyecto '{instance.name}'.",
-        usuario=actor,
+        descripcion=f"{actor_label(actor)} eliminó el proyecto '{instance.name}'.",
+        actor=actor,
         proyecto_id=instance.pk,
         metadata={'proyecto_nombre': instance.name},
+    )
+
+
+@receiver(post_save, sender=ProjectMember)
+def audit_member_add(sender, instance, created, **kwargs):
+    """Registra cuando se agrega un miembro a un proyecto."""
+    if not created:
+        return
+    actor = current_actor()
+    log_activity(
+        accion='MIEMBRO_AGREGADO',
+        descripcion=(
+            f"{actor_label(actor)} agregó a '{actor_label(instance.user)}' "
+            f"al proyecto '{instance.project.name}'."
+        ),
+        actor=actor,
+        proyecto_id=instance.project_id,
+        metadata={
+            'miembro_username': instance.user.username,
+            'miembro_id': instance.user_id,
+            'proyecto_nombre': instance.project.name,
+        },
     )
 
 
 @receiver(pre_delete, sender=ProjectMember)
 def audit_member_remove(sender, instance, **kwargs):
     """Registra la remoción de un miembro de proyecto en el log de auditoría."""
-    actor = get_current_audit_user()
-    if actor is None:
-        return
-
-    _log_actividad(
+    actor = current_actor()
+    log_activity(
         accion='MIEMBRO_REMOVIDO',
         descripcion=(
-            f"{actor.username} removió a '{instance.user.username}' "
+            f"{actor_label(actor)} removió a '{actor_label(instance.user)}' "
             f"del proyecto '{instance.project.name}'."
         ),
-        usuario=actor,
+        actor=actor,
         proyecto_id=instance.project_id,
         metadata={
             'miembro_username': instance.user.username,
