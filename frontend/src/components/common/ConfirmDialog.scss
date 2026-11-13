@@ -3,7 +3,9 @@
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 3000; // por encima de los demás modales
+  // Por encima de todos los modales (Modal 10000, modales anidados 10050) y
+  // debajo solo del aviso de privacidad (10200).
+  z-index: 10100;
   display: flex;
   align-items: center;
   justify-content: center;
