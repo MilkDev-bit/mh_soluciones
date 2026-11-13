@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
-from ipware import get_client_ip
+from apps.core.client_ip import get_client_ip
 from rest_framework import status, viewsets, generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -54,7 +54,7 @@ class LoginAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         
         user = serializer.validated_data['user']
-        client_ip, _ = get_client_ip(request)
+        client_ip = get_client_ip(request)
 
         if user.allowed_ips:
             allowed_ips_list = [ip.strip() for ip in user.allowed_ips.split(',')]

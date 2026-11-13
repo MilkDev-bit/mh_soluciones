@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from datetime import timedelta
 from cryptography.fernet import Fernet
 import base64
 from .constants import PASSWORD_EXPIRY_DAYS, MAX_FAILED_LOGIN_ATTEMPTS, ACCOUNT_LOCKOUT_MINUTES
@@ -36,11 +38,13 @@ class EncryptedCharField(models.TextField):
             encrypted_value = fernet.encrypt(value.encode())
             return encrypted_value.decode()
         except Exception as e:
-            # En caso de error, loggear pero no fallar la operación
+            # SEGURIDAD: antes se devolvía el valor en texto plano y se guardaba
+            # así (p. ej. tokens de Google). Ahora la operación falla: es mejor
+            # no guardar que guardar un secreto sin cifrar.
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error encrypting field: {e}")
-            return value
+            raise ValueError("No se pudo cifrar un campo sensible; no se guardó.") from e
     
     def from_db_value(self, value, expression, connection):
         if value is None or value == '':
@@ -250,6 +254,11 @@ class BlockedIP(models.Model):
     reason = models.CharField(max_length=255, blank=True, verbose_name=_('Motivo del bloqueo'))
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True, verbose_name=_('Bloqueo Activo'))
+    # Los bloqueos automáticos por fuerza bruta caducan; antes eran permanentes
+    # y, con muchos usuarios saliendo por la misma IP (oficina), un atacante o
+    # alguien que se equivocara 10 veces dejaba a todos sin acceso.
+    # Null = bloqueo manual permanente.
+    expires_at = models.DateTimeField(null=True, blank=True, verbose_name=_('Vence'))
 
     class Meta:
         verbose_name = _('IP Bloqueada')
@@ -257,6 +266,29 @@ class BlockedIP(models.Model):
 
     def __str__(self):
         return f"{self.ip_address} - {self.reason}"
+
+    @classmethod
+    def active_q(cls):
+        now = timezone.now()
+        return models.Q(is_active=True) & (models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))
+
+    @classmethod
+    def is_blocked(cls, ip):
+        return bool(ip) and cls.objects.filter(cls.active_q(), ip_address=ip).exists()
+
+    @classmethod
+    def block_temporarily(cls, ip, reason, minutes):
+        """Crea o reactiva un bloqueo automático con vencimiento."""
+        obj, created = cls.objects.get_or_create(
+            ip_address=ip,
+            defaults={'reason': reason, 'expires_at': timezone.now() + timedelta(minutes=minutes)},
+        )
+        if not created and not cls.is_blocked(ip):
+            obj.reason = reason
+            obj.is_active = True
+            obj.expires_at = timezone.now() + timedelta(minutes=minutes)
+            obj.save(update_fields=['reason', 'is_active', 'expires_at'])
+        return obj
 
         # Escudo de seguridad de IPs activado
 

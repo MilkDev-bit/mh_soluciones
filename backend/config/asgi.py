@@ -10,14 +10,23 @@ django_asgi_app = get_asgi_application()
 # IMPORTANTE: Estos imports deben ir DESPUÉS de get_asgi_application()
 # porque dependen de que la AppRegistry de Django esté lista.
 from channels.routing import ProtocolTypeRouter, URLRouter
-from apps.authentication.ws_middleware import JWTAuthCookieMiddleware
+from apps.authentication.ws_middleware import (
+    JWTAuthCookieMiddleware, SameOriginOrAllowedValidator, websocket_allowed_origins,
+)
 from apps.notifications.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": JWTAuthCookieMiddleware(
-        URLRouter(
-            websocket_urlpatterns
-        )
+    # [FIX seguridad] Validación de Origin: solo el propio sitio (frontend vía
+    # nginx o backend) y los orígenes configurados pueden abrir el WebSocket.
+    # Sin esto, cualquier página podía abrirlo desde el navegador de un
+    # usuario y la cookie lo autenticaba (CSWSH).
+    "websocket": SameOriginOrAllowedValidator(
+        JWTAuthCookieMiddleware(
+            URLRouter(
+                websocket_urlpatterns
+            )
+        ),
+        websocket_allowed_origins(),
     ),
 })

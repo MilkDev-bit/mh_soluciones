@@ -74,6 +74,16 @@ cat > /etc/nginx/conf.d/default.conf << NGINX_EOF
 # Upstream configuration would go here if we were using variables,
 # but we're using hardcoded backend.railway.internal:8080 for Railway private networking
 
+# [SEGURIDAD] IP real del cliente para el backend. \$remote_addr aquí es la IP
+# interna del borde de Railway (100.64.x.x), no la del usuario. El borde de
+# Railway ya escribe X-Real-IP con la IP real (y descarta la que mande el
+# cliente), así que se reenvía esa. El backend la usa para límites de
+# peticiones y bloqueo de fuerza bruta.
+map \$http_x_real_ip \$mh_client_ip {
+    ""      \$remote_addr;
+    default \$http_x_real_ip;
+}
+
 server {
     # Listen on all interfaces (IPv4 and IPv6)
     listen $PORT;
@@ -123,7 +133,7 @@ server {
         # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
         # Note: Headers are duplicated between /api/ and /media/ for clarity and independence
         proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-IP \$mh_client_ip;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
@@ -146,7 +156,7 @@ server {
         
         # Forward original request headers
         proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-IP \$mh_client_ip;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         
@@ -168,7 +178,7 @@ server {
         
         # Forward original request headers - preserve frontend Host for Django ALLOWED_HOSTS
         proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-IP \$mh_client_ip;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;

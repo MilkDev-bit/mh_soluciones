@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import re
 
 from django.conf import settings
 from django.utils.text import slugify
@@ -14,6 +15,16 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from apps.authentication.models import GoogleApiCredentials
 
 logger = logging.getLogger(__name__)
+
+# Los IDs de Drive solo usan letras, números, '-' y '_'. Validarlos evita que
+# un ID manipulado inyecte condiciones en las consultas `q` de la API.
+DRIVE_ID_RE = re.compile(r'^[A-Za-z0-9_-]{10,200}$')
+# Profundidad máxima que se recorre hacia arriba buscando la raíz del proyecto.
+MAX_FOLDER_DEPTH = 15
+
+
+def is_valid_drive_id(value):
+    return bool(value) and isinstance(value, str) and bool(DRIVE_ID_RE.match(value))
 
 
 
@@ -124,7 +135,10 @@ class GoogleDriveService:
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
 
-        query = f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}' and trashed=false"
+        # Escapar comillas/backslash del nombre (p. ej. "Casa D'Angelo") para no
+        # romper ni alterar la consulta de Drive.
+        safe_name = str(folder_name).replace('\\', '\\\\').replace("'", "\\'")
+        query = f"mimeType='application/vnd.google-apps.folder' and name='{safe_name}' and trashed=false"
         if parent_id:
             query += f" and '{parent_id}' in parents"
 
@@ -506,6 +520,59 @@ class GoogleDriveService:
 
         return existing_ids
 
+    def folder_belongs_to_project(self, folder_id, project):
+        """
+        Indica si `folder_id` es la carpeta del proyecto o una subcarpeta suya.
+
+        La estructura en Drive es RAÍZ / <año> / <nombre del proyecto> / ...
+        Se recorren los padres de la carpeta hasta llegar a la raíz configurada;
+        la carpeta que queda dos niveles debajo de la raíz debe llamarse como el
+        proyecto. Cualquier otra ubicación (otro proyecto, fuera de la raíz, un
+        archivo en lugar de carpeta, papelera) se rechaza.
+        """
+        if not self.service:
+            raise ConnectionError("Servicio de Google Drive no inicializado.")
+        root_id = settings.GOOGLE_DRIVE_ROOT_FOLDER_ID
+        if not is_valid_drive_id(folder_id) or not root_id:
+            return False
+
+        # Al subir varios archivos a la misma carpeta se repite la consulta;
+        # el resultado positivo se guarda unos minutos.
+        from django.core.cache import cache
+        cache_key = f'drive_folder_ok:{project.pk}:{folder_id}'
+        if project.pk and cache.get(cache_key):
+            return True
+        ok = self._folder_chain_matches(folder_id, project, root_id)
+        if ok and project.pk:
+            cache.set(cache_key, True, 600)
+        return ok
+
+    def _folder_chain_matches(self, folder_id, project, root_id):
+        chain = []  # [(id, name)] desde la carpeta destino hacia arriba
+        current = folder_id
+        for _ in range(MAX_FOLDER_DEPTH):
+            if current == root_id:
+                break
+            meta = self.service.files().get(
+                fileId=current,
+                fields='id, name, mimeType, parents, trashed',
+                supportsAllDrives=True,
+            ).execute()
+            if meta.get('trashed') or meta.get('mimeType') != 'application/vnd.google-apps.folder':
+                return False
+            chain.append((meta.get('id'), meta.get('name')))
+            parents = meta.get('parents') or []
+            if not parents:
+                return False  # llegó a "Mi unidad" sin pasar por la raíz
+            current = parents[0]
+        else:
+            return False
+
+        # chain[-1] es la carpeta del año y chain[-2] la del proyecto
+        if current != root_id or len(chain) < 2:
+            return False
+        return chain[-2][1] == project.name
+
     def list_direct_subfolders(self, parent_folder_id):
         """
         Lista los hijos directos (1 nivel) de una carpeta de Drive.
@@ -518,6 +585,8 @@ class GoogleDriveService:
         """
         if not self.service:
             raise ConnectionError("Servicio de Google Drive no inicializado.")
+        if not is_valid_drive_id(parent_folder_id):
+            raise ValueError("ID de carpeta de Drive inválido.")
 
         query = (
             f"mimeType='application/vnd.google-apps.folder' "

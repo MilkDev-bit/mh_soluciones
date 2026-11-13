@@ -5,7 +5,7 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework import status
 from google.auth.exceptions import RefreshError
@@ -19,7 +19,7 @@ from apps.core.utils import (
 from apps.projects.models import Project, ProjectMember
 from ..models import Document
 from ..tasks import upload_document_to_drive
-from ..services import GoogleDriveService
+from ..services import GoogleDriveService, is_valid_drive_id
 from .permissions import IsOwnerOrAdminReadOnly
 from .serializers import DocumentSerializer
 from .. import browser
@@ -79,6 +79,23 @@ def _run_upload_sync(document, target_folder_id=None):
     t = threading.Thread(target=_do_upload, daemon=True)
     t.start()
     logger.info(f"🧵 Hilo de subida iniciado para documento ID={doc_id}")
+
+class ServiceUnavailable(APIException):
+    status_code = 503
+    default_detail = 'Servicio no disponible temporalmente.'
+    default_code = 'service_unavailable'
+
+
+def _user_can_upload_to_project(user, project):
+    """Admins, miembros del proyecto o asignados a alguna tarea del proyecto."""
+    if user.role in ADMIN_ROLES:
+        return True
+    if ProjectMember.objects.filter(project=project, user=user).exists():
+        return True
+    from apps.tasks.models import Task as TaskModel
+    return TaskModel.objects.filter(project=project).filter(
+        Q(assigned_to=user) | Q(assigned_students=user)
+    ).exists()
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -219,47 +236,65 @@ class DocumentViewSet(viewsets.ModelViewSet):
         Valida que el usuario pertenezca al proyecto antes de permitir la subida.
         """
         user = self.request.user
-        project_id = self.request.data.get('project')
-        target_folder_id = self.request.data.get('target_folder_id')
-        
+        data = serializer.validated_data
+        project = data.get('project')
+        task = data.get('task')
+        target_folder_id = (data.get('target_folder_id') or '').strip() or None
+
         # Clients cannot upload documents
         if user.role == 'CLIENT':
             raise ValidationError({
                 'detail': 'Los clientes no tienen permisos para subir archivos.'
             })
 
-        # Validate project membership if project is specified
-        if project_id:
-            is_admin = user.role in ADMIN_ROLES
-            is_member = ProjectMember.objects.filter(
-                project_id=project_id,
-                user=user
-            ).exists()
+        # SEGURIDAD: la tarea y el proyecto deben coincidir. Antes se validaba
+        # solo `project` y después se reemplazaba por `task.project`, así que
+        # bastaba con enviar un proyecto propio y una tarea ajena para subir
+        # archivos a un proyecto sin acceso.
+        if task and project and task.project_id != project.id:
+            raise ValidationError({'task': 'La tarea no pertenece al proyecto indicado.'})
+        effective_project = task.project if task and task.project_id else project
 
-            # También permitir si el usuario está asignado directamente a alguna
-            # tarea del proyecto (assigned_to o assigned_students)
-            if not is_admin and not is_member:
-                from apps.tasks.models import Task as TaskModel
-                is_task_assignee = TaskModel.objects.filter(
-                    project_id=project_id
-                ).filter(
-                    Q(assigned_to=user) | Q(assigned_students=user)
-                ).exists()
-                if not is_task_assignee:
-                    raise ValidationError({
-                        'project': 'No tienes permisos para subir archivos a este proyecto'
-                    })
-        
-        # Validate folder access if target_folder_id is provided
-        if target_folder_id and project_id:
-            # For now, we trust that if the user has access to the project,
-            # they can upload to any folder within it
-            # More granular folder-level permissions could be added here in the future
-            logger.info(
-                f"[UPLOAD] Usuario {user.username} (rol: {user.role}) subiendo a carpeta específica "
-                f"folder_id={target_folder_id} en proyecto ID={project_id}"
-            )
-        
+        if effective_project and not _user_can_upload_to_project(user, effective_project):
+            raise ValidationError({
+                'project': 'No tienes permisos para subir archivos a este proyecto'
+            })
+
+        # SEGURIDAD: la carpeta destino viene del cliente; se verifica en Drive
+        # que sea la carpeta del proyecto o una subcarpeta suya. Sin esto se
+        # podía escribir en cualquier carpeta visible para la cuenta de servicio.
+        if target_folder_id:
+            if not effective_project:
+                raise ValidationError({'target_folder_id': 'Indica el proyecto de la carpeta destino.'})
+            if not is_valid_drive_id(target_folder_id):
+                raise ValidationError({'target_folder_id': 'ID de carpeta inválido.'})
+            try:
+                belongs = GoogleDriveService(use_institutional=True).folder_belongs_to_project(
+                    target_folder_id, effective_project
+                )
+            except HttpError as e:
+                status_code = getattr(getattr(e, 'resp', None), 'status', None)
+                if status_code in (403, 404):
+                    belongs = False
+                else:
+                    logger.error("[UPLOAD] No se pudo verificar la carpeta %s: %s", target_folder_id, e)
+                    raise ServiceUnavailable('No se pudo verificar la carpeta destino en Google Drive.')
+            except Exception as e:
+                logger.error("[UPLOAD] No se pudo verificar la carpeta %s: %s", target_folder_id, e)
+                raise ServiceUnavailable('No se pudo verificar la carpeta destino en Google Drive.')
+            if not belongs:
+                logger.warning(
+                    "[UPLOAD] %s intentó subir a la carpeta %s fuera del proyecto ID=%s",
+                    user.username, target_folder_id, effective_project.id,
+                )
+                raise ValidationError({'target_folder_id': 'La carpeta destino no pertenece a este proyecto.'})
+
+        project_id = effective_project.id if effective_project else None
+        logger.info(
+            f"[UPLOAD] Usuario {user.username} (rol: {user.role}) subiendo a "
+            f"folder_id={target_folder_id or 'auto'} en proyecto ID={project_id}"
+        )
+
         # Save the document (target_folder_id is write_only and won't be saved to DB)
         document = serializer.save(uploaded_by=user)
         
@@ -353,6 +388,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
             # Si se provee parent_folder_id, listar hijos de esa carpeta directamente
             if parent_folder_id:
+                # SEGURIDAD: solo se navega dentro de la carpeta del proyecto;
+                # antes cualquier ID de Drive devolvía sus subcarpetas.
+                if not drive_service.folder_belongs_to_project(parent_folder_id, project):
+                    logger.warning(
+                        f"[ACCESS] {user.username} pidió la carpeta {parent_folder_id} fuera del proyecto ID={project_id}"
+                    )
+                    return Response(
+                        {'error': 'La carpeta no pertenece a este proyecto.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
                 logger.info(f"[ACCESS] Usuario {user.username} consultando hijos de carpeta Drive ID={parent_folder_id}")
                 folders = drive_service.list_direct_subfolders(parent_folder_id)
             else:

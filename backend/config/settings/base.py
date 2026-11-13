@@ -311,6 +311,13 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'Lax' 
 CSRF_COOKIE_SAMESITE = 'Lax'  
 
+# Encabezado con la IP real del cliente que escribe el proxy de confianza
+# (Railway sobrescribe X-Real-IP). Vacío = usar solo REMOTE_ADDR.
+CLIENT_IP_HEADER = config('CLIENT_IP_HEADER', default='X-Real-IP')
+CLIENT_IP_META_KEY = (
+    'HTTP_' + CLIENT_IP_HEADER.strip().upper().replace('-', '_') if CLIENT_IP_HEADER.strip() else ''
+)
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'apps.authentication.authenticate.CookieJWTAuthentication',
@@ -318,8 +325,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+        # Variantes que identifican al anónimo por la IP de confianza
+        # (CLIENT_IP_HEADER) y no por X-Forwarded-For, que el cliente controla.
+        'apps.core.client_ip.AnonRateThrottle',
+        'apps.core.client_ip.UserRateThrottle',
     ),
     # [FIX] Límites de peticiones. Con 'user': '120/min' bastaba con borrar,
     # duplicar o crear varias tareas seguidas (cada acción recarga listas,
@@ -512,6 +521,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Rate Limiting Configuration
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
+# django-ratelimit usa REMOTE_ADDR por defecto; detrás del proxy de Railway esa
+# es la IP del proxy y todos los usuarios compartían el mismo cupo.
+RATELIMIT_IP_META_KEY = 'apps.core.client_ip.ratelimit_ip'
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 943718400  # 900MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 943718400
