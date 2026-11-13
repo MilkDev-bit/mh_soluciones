@@ -213,84 +213,85 @@ const AuditLogPage = () => {
               <p>No se encontraron registros con los filtros aplicados.</p>
             </div>
           ) : (
-            <table className="audit-table">
-              <thead>
-                <tr>
-                  <th>Fecha y Hora</th>
-                  <th>Usuario</th>
-                  <th>Acción</th>
-                  <th>Descripción</th>
-                  <th>Proyecto ID</th>
-                  <th>Tarea ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map(log => {
-                  const actor = log.usuario
-                    ? (log.usuario.first_name && log.usuario.last_name
-                        ? `${log.usuario.first_name} ${log.usuario.last_name}`
-                        : log.usuario.username)
-                    : log.actor_username || 'Usuario eliminado';
+            <div className="audit-table-scroll">
+              <table className="audit-table">
+                <thead>
+                  <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Descripción</th>
+                    <th>Proyecto ID</th>
+                    <th>Tarea ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map(log => {
+                    const actor = log.usuario
+                      ? (log.usuario.first_name && log.usuario.last_name
+                          ? `${log.usuario.first_name} ${log.usuario.last_name}`
+                          : log.usuario.username)
+                      : log.actor_username || 'Usuario eliminado';
 
-                  return (
-                    <tr key={log.id}>
-                      <td className="col-date">{formatDate(log.created_at)}</td>
-                      <td className="col-user">
-                        <div className="user-cell">
-                          <div className="user-avatar">
-                            {actor.charAt(0).toUpperCase()}
+                    return (
+                      <tr key={log.id}>
+                        <td className="col-date">{formatDate(log.created_at)}</td>
+                        <td className="col-user">
+                          <div className="user-cell">
+                            <div className="user-avatar">
+                              {actor.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="user-info">
+                              <span className="user-name">{actor}</span>
+                              {log.usuario && (
+                                <span className="user-role badge badge--role">
+                                  {log.usuario.role}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="user-info">
-                            <span className="user-name">{actor}</span>
-                            {log.usuario && (
-                              <span className="user-role badge badge--role">
-                                {log.usuario.role}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="col-action">
-                        <span className={`badge ${ACCION_COLORES[log.accion] || 'badge--gray'}`}>
-                          {log.accion_display || ACCIONES_LABELS[log.accion] || log.accion}
-                        </span>
-                      </td>
-                      <td className="col-desc">{log.descripcion}</td>
-                      <td className="col-id">{log.proyecto_id ?? '—'}</td>
-                      <td className="col-id">{log.tarea_id ?? '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="col-action">
+                          <span className={`badge ${ACCION_COLORES[log.accion] || 'badge--gray'}`}>
+                            {log.accion_display || ACCIONES_LABELS[log.accion] || log.accion}
+                          </span>
+                        </td>
+                        <td className="col-desc">{log.descripcion}</td>
+                        <td className="col-id">{log.proyecto_id ?? '—'}</td>
+                        <td className="col-id">{log.tarea_id ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {/* Paginación: pie de la tabla (dentro de la tarjeta) */}
+          {total > PAGE_SIZE && (
+            <div className="audit-pagination">
+              <span className="pagination-info">
+                {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} de {total} registros
+              </span>
+              <div className="pagination-controls">
+                <button
+                  disabled={offset === 0}
+                  onClick={() => setOffset(prev => Math.max(0, prev - PAGE_SIZE))}
+                  aria-label="Página anterior"
+                >
+                  <FiChevronLeft />
+                </button>
+                <span>{currentPage} / {totalPages}</span>
+                <button
+                  disabled={offset + PAGE_SIZE >= total}
+                  onClick={() => setOffset(prev => prev + PAGE_SIZE)}
+                  aria-label="Página siguiente"
+                >
+                  <FiChevronRight />
+                </button>
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Paginación */}
-        {total > PAGE_SIZE && (
-          <div className="audit-pagination">
-            <span className="pagination-info">
-              {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} de {total} registros
-            </span>
-            <div className="pagination-controls">
-              <button
-                disabled={offset === 0}
-                onClick={() => setOffset(prev => Math.max(0, prev - PAGE_SIZE))}
-                aria-label="Página anterior"
-              >
-                <FiChevronLeft />
-              </button>
-              <span>{currentPage} / {totalPages}</span>
-              <button
-                disabled={offset + PAGE_SIZE >= total}
-                onClick={() => setOffset(prev => prev + PAGE_SIZE)}
-                aria-label="Página siguiente"
-              >
-                <FiChevronRight />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

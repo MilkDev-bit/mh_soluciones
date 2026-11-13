@@ -250,11 +250,17 @@
   }
 
   // ── Tabla ───────────────────────────────────────────────────
+  // Tarjeta de la tabla: la tabla se desplaza a lo ancho dentro de
+  // .audit-table-scroll y la paginación queda como pie de la tarjeta.
   .audit-table-wrapper {
     background: var(--bg-card, #fff);
     border: 1px solid var(--border-color, #e5e7eb);
     border-radius: 12px;
     box-shadow: $shadow-sm;
+    overflow: hidden;
+  }
+
+  .audit-table-scroll {
     overflow-x: auto;
   }
 
@@ -409,31 +415,48 @@
     animation: spin 0.8s linear infinite;
   }
 
-  // ── Paginación ──────────────────────────────────────────────
+  // ── Paginación (pie de la tarjeta de la tabla) ──────────────
   .audit-pagination {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.75rem;
-    padding: 1rem 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    background: var(--bg-secondary, #f9fafb);
     color: var(--text-muted, #6b7280);
-    font-size: 0.875rem;
+    font-size: 0.85rem;
+
+    .pagination-info { margin: 0; }
 
     .pagination-controls {
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
 
-      span { font-weight: 500; }
+      span {
+        font-weight: 600;
+        color: var(--text-primary, #374151);
+        font-variant-numeric: tabular-nums;
+      }
 
       button {
         width: 34px;
         height: 34px;
+        padding: 0;
         border-radius: 8px;
         border: 1px solid var(--border-color, #e5e7eb);
         background: var(--bg-card, #fff);
         color: var(--text-primary, #374151);
+        box-shadow: none;
         cursor: pointer;
         display: flex;
         align-items: center;
