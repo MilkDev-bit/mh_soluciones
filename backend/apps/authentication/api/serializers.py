@@ -244,6 +244,7 @@ class BlockedIPSerializer(serializers.ModelSerializer):
             'reason', 
             'created_at',
             'is_active',
+            'expires_at',
             'time_since_blocked'
         ]
         read_only_fields = ['created_at']

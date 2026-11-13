@@ -58,9 +58,12 @@ class DocumentUploadWithTargetFolderTest(TestCase):
             content_type="text/plain"
         )
     
+    @patch('apps.documents.api.views._is_celery_worker_available', return_value=True)
+    @patch('apps.documents.api.views.GoogleDriveService')
     @patch('apps.documents.tasks.upload_document_to_drive.delay')
-    def test_upload_with_target_folder_id(self, mock_upload_task):
+    def test_upload_with_target_folder_id(self, mock_upload_task, mock_drive, _worker):
         """Test that target_folder_id is passed correctly when uploading"""
+        mock_drive.return_value.folder_belongs_to_project.return_value = True
         self.client.force_authenticate(user=self.student)
         
         target_folder_id = 'test-folder-id-12345'
@@ -97,8 +100,9 @@ class DocumentUploadWithTargetFolderTest(TestCase):
         self.assertEqual(document.project, self.project)
         self.assertEqual(document.uploaded_by, self.student)
     
+    @patch('apps.documents.api.views._is_celery_worker_available', return_value=True)
     @patch('apps.documents.tasks.upload_document_to_drive.delay')
-    def test_upload_without_target_folder_id(self, mock_upload_task):
+    def test_upload_without_target_folder_id(self, mock_upload_task, _worker):
         """Test that upload works without target_folder_id (uses auto-generated structure)"""
         self.client.force_authenticate(user=self.student)
         

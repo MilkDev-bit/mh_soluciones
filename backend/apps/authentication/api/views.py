@@ -7,10 +7,9 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
-from ipware import get_client_ip
+from apps.core.client_ip import get_client_ip, ScopedRateThrottle
 from rest_framework import status, viewsets, generics, permissions, exceptions
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -235,6 +234,9 @@ class UserProfileAPIView(generics.RetrieveUpdateAPIView):
 
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+# Duración del bloqueo automático de IP tras 10 intentos fallidos en 15 min.
+IP_BLOCK_MINUTES = 30
+
 @method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginAPIView(APIView):
@@ -246,9 +248,9 @@ class LoginAPIView(APIView):
     throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
-        client_ip, _ = get_client_ip(request)
+        client_ip = get_client_ip(request)
         
-        if client_ip and BlockedIP.objects.filter(ip_address=client_ip, is_active=True).exists():
+        if BlockedIP.is_blocked(client_ip):
             return Response(
                 {'error': 'Tu dirección IP ha sido bloqueada por actividad sospechosa.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -263,12 +265,13 @@ class LoginAPIView(APIView):
             ).count()
 
             if failed_attempts >= 10:
-                BlockedIP.objects.get_or_create(
-                    ip_address=client_ip,
-                    defaults={'reason': 'Múltiples intentos de login fallidos (Fuerza bruta)'}
+                BlockedIP.block_temporarily(
+                    client_ip,
+                    'Múltiples intentos de login fallidos (Fuerza bruta)',
+                    minutes=IP_BLOCK_MINUTES,
                 )
                 return Response(
-                    {'error': 'Tu dirección IP ha sido bloqueada temporal o permanentemente por múltiples intentos fallidos.'},
+                    {'error': f'Demasiados intentos fallidos desde tu red. Intenta de nuevo en {IP_BLOCK_MINUTES} minutos.'},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
@@ -392,7 +395,7 @@ class TwoFactorVerifyAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         
-        client_ip, _ = get_client_ip(request)
+        client_ip = get_client_ip(request)
         user.last_login = timezone.now()
         user.last_login_ip = client_ip
         user.save(update_fields=['last_login', 'last_login_ip'])
@@ -654,8 +657,7 @@ class PrivacyNoticeView(APIView):
                 'version': version,
             }, status=status.HTTP_409_CONFLICT)
 
-        forwarded = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
-        ip = forwarded or request.META.get('REMOTE_ADDR') or None
+        ip = get_client_ip(request)
         PrivacyConsent.objects.get_or_create(
             user=request.user, version=version,
             defaults={'ip_address': ip, 'user_agent': (request.META.get('HTTP_USER_AGENT') or '')[:300]},
