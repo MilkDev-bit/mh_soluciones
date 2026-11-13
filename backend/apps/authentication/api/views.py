@@ -237,7 +237,11 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 # Duración del bloqueo automático de IP tras 10 intentos fallidos en 15 min.
 IP_BLOCK_MINUTES = 30
 
-@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='dispatch')
+# Intentos de login por IP. Una oficina comparte la misma IP pública: con
+# 5/min, si 6 personas entraban en el mismo minuto alguna recibía error.
+# La fuerza bruta la siguen frenando el bloqueo de cuenta (5 fallos) y el de
+# IP (10 fallos en 15 min).
+@method_decorator(ratelimit(key='ip', rate='20/m', method='POST'), name='dispatch')
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginAPIView(APIView):
     authentication_classes = []
