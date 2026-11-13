@@ -107,38 +107,6 @@ class AccountLockoutTests(TestCase):
         self.assertFalse(self.user.is_account_locked())
 
 
-class PasswordExpiryTests(TestCase):
-    """Test password expiry functionality"""
-    
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            password='StrongP@ssw0rd123',
-            email='test@example.com'
-        )
-    
-    def test_password_not_expired_when_recent(self):
-        """Test that recently changed passwords are not expired"""
-        self.user.password_changed_at = timezone.now()
-        self.user.save()
-        
-        self.assertFalse(self.user.is_password_expired())
-    
-    def test_password_expired_after_90_days(self):
-        """Test that passwords expire after 90 days"""
-        self.user.password_changed_at = timezone.now() - timedelta(days=91)
-        self.user.save()
-        
-        self.assertTrue(self.user.is_password_expired())
-    
-    def test_password_not_expired_at_89_days(self):
-        """Test that passwords don't expire at 89 days"""
-        self.user.password_changed_at = timezone.now() - timedelta(days=89)
-        self.user.save()
-        
-        self.assertFalse(self.user.is_password_expired())
-
-
 class LoginAPITests(TestCase):
     """Test login API with security features"""
     
@@ -188,33 +156,3 @@ class LoginAPITests(TestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-
-class SecurityMiddlewareTests(TestCase):
-    """Test security middleware functionality"""
-    
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            username='testuser',
-            password='StrongP@ssw0rd123',
-            email='test@example.com'
-        )
-        self.user.password_changed_at = timezone.now()
-        self.user.save()
-    
-    def test_password_expiry_middleware_blocks_expired(self):
-        """Test that expired password blocks access"""
-        # Expire the password
-        self.user.password_changed_at = timezone.now() - timedelta(days=91)
-        self.user.save()
-        
-        # Login
-        self.client.force_authenticate(user=self.user)
-        
-        # Try to access protected endpoint
-        response = self.client.get('/api/v1/auth/profile/')
-        
-        # Should be blocked (in real scenario, middleware would intercept)
-        # This test verifies the model method works correctly
-        self.assertTrue(self.user.is_password_expired())

@@ -146,7 +146,9 @@ api.interceptors.response.use(
         // Privacidad se puede leer sin sesión).
         const PUBLIC_PATHS = ['/login', '/aviso-de-privacidad'];
         if (sessionInvalid && !PUBLIC_PATHS.includes(window.location.pathname)) {
-          sessionStorage.setItem(SESSION_EXPIRED_KEY, 'true');
+          // 'inactive': el servidor cerró la sesión por 40 min sin actividad.
+          const inactive = refreshError.response?.data?.code === 'session_inactive';
+          sessionStorage.setItem(SESSION_EXPIRED_KEY, inactive ? 'inactive' : 'true');
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }

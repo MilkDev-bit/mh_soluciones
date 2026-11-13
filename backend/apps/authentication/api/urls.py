@@ -40,6 +40,7 @@ from .views import (
     BlockedIPViewSet,
     LogoutAPIView,
     CookieTokenRefreshView,
+    SessionPingView,
     LoginActivityListView
 )
 
@@ -56,6 +57,7 @@ urlpatterns = [
     path('login/', LoginAPIView.as_view(), name='auth_login'),
     path('logout/', LogoutAPIView.as_view(), name='auth_logout'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+    path('session/ping/', SessionPingView.as_view(), name='session_ping'),
     path('forgot-password/', forgot_password, name='forgot-password'),
     path('profile/', UserProfileAPIView.as_view(), name='auth_profile'),
     path('profile/change-password/', PasswordChangeAPIView.as_view(), name='auth_change_password'),

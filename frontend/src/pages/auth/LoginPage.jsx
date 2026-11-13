@@ -20,8 +20,11 @@ const LoginPage = () => {
   const [sendingRequest, setSendingRequest] = React.useState(false);
 
   React.useEffect(() => {
-    if (sessionStorage.getItem(SESSION_EXPIRED_KEY)) {
-      toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
+    const reason = sessionStorage.getItem(SESSION_EXPIRED_KEY);
+    if (reason) {
+      toast.error(reason === 'inactive'
+        ? 'Tu sesión se cerró por inactividad. Inicia sesión nuevamente.'
+        : 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
       sessionStorage.removeItem(SESSION_EXPIRED_KEY);
     }
   }, []);
