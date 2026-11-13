@@ -25,6 +25,36 @@ const api = axios.create({
 let isRefreshing = false;
 let refreshSubscribers = [];
 
+// [FIX] 429 "demasiadas peticiones": al borrar, duplicar o crear varias tareas
+// seguidas se lanzan muchas peticiones (cada acción recarga listas, documentos
+// y notificaciones). Antes el 429 llegaba como error y, si caía en el refresh
+// del token, la sesión se cerraba. Ahora se espera lo que indica el servidor
+// (Retry-After) y se reintenta.
+const MAX_RATE_LIMIT_RETRIES = 3;
+const MAX_RATE_LIMIT_WAIT_MS = 20000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const retryAfterMs = (error, attempt) => {
+  const header = Number(error?.response?.headers?.['retry-after']);
+  const ms = Number.isFinite(header) && header > 0 ? header * 1000 : 1000 * 2 ** attempt;
+  return Math.min(ms + Math.random() * 300, MAX_RATE_LIMIT_WAIT_MS);
+};
+
+// Refresh del token con reintento si el servidor responde 429.
+const refreshAccessToken = async () => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, { withCredentials: true });
+    } catch (err) {
+      if (err.response?.status === 429 && attempt < MAX_RATE_LIMIT_RETRIES) {
+        await sleep(retryAfterMs(err, attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+};
+
 const subscribeTokenRefresh = (resolve, reject) => {
   refreshSubscribers.push({ resolve, reject });
 };
@@ -67,7 +97,17 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 429 && originalRequest) {
+      // El servidor rechazó la petición antes de procesarla: se puede repetir.
+      originalRequest._rateLimitRetries = (originalRequest._rateLimitRetries || 0) + 1;
+      if (originalRequest._rateLimitRetries <= MAX_RATE_LIMIT_RETRIES) {
+        await sleep(retryAfterMs(error, originalRequest._rateLimitRetries - 1));
+        return api(originalRequest);
+      }
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -82,9 +122,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, {
-          withCredentials: true
-        });
+        await refreshAccessToken();
 
         isRefreshing = false;
         onRefreshed();
