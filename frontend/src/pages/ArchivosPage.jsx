@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { FILTER_TYPES } from '../constants/folderTypes';
 import PdfThumbnail from '../components/common/PdfThumbnail';
 import './ArchivosPage.scss';
+import { confirmDialog } from '../components/common/ConfirmDialog';
 
 /**
  * Centro de Archivos.
@@ -235,7 +236,11 @@ const ArchivosPage = () => {
       toast.error('Entra a un proyecto para descargarlo.');
       return;
     }
-    if (total > 300 && !window.confirm(`Vas a descargar ${total} archivos en un ZIP. ¿Continuar?`)) return;
+    if (total > 300 && !(await confirmDialog({
+      title: 'Descargar ZIP',
+      message: `Vas a descargar ${total} archivos en un ZIP. ¿Continuar?`,
+      confirmText: 'Descargar',
+    }))) return;
     setDescargando(true);
     try {
       // Petición ligera antes de descargar: si la sesión expiró, el
@@ -301,7 +306,12 @@ const ArchivosPage = () => {
   });
 
   const eliminar = async (archivo) => {
-    if (!window.confirm(`¿Eliminar "${archivo.name}"?`)) return;
+    if (!(await confirmDialog({
+      title: 'Eliminar archivo',
+      message: `¿Eliminar "${archivo.name}"?`,
+      confirmText: 'Eliminar',
+      danger: true,
+    }))) return;
     try {
       await deleteDocument(archivo.id);
       toast.success('Archivo eliminado');

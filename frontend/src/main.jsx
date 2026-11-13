@@ -11,6 +11,7 @@ import { AuthProvider } from './contexts/AuthContext.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import { LayoutProvider } from './contexts/LayoutContext.jsx';
+import { ConfirmDialogHost } from './components/common/ConfirmDialog.jsx';
 import './assets/styles/main.scss';
 
 const queryClient = new QueryClient({
@@ -44,6 +45,7 @@ const app = (
             <LayoutProvider>
               <ProjectProvider> 
                 <App />
+                <ConfirmDialogHost />
                 <Toaster 
                   position="top-right" 
                   toastOptions={{ 

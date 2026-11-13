@@ -35,6 +35,7 @@ import ExtendDeadlineModal from './ExtendDeadlineModal';
 import { invalidateTaskQueries } from '../../utils/taskCache';
 import './TaskDetailsView.scss';
 import { visibleDescription } from '../../utils/taskDescription';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 // File icon mapping for different file types
 const FILE_ICON_MAP = {
@@ -280,9 +281,13 @@ const TaskDetailsView = ({
 
   const handleDeleteTask = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: 'Eliminar tarea',
+      message: '¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     setDeleteLoading(true);
     try {
       await deleteTask(task.id);
@@ -389,9 +394,12 @@ const TaskDetailsView = ({
 
   const handleMarkAsCompleted = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Cerrar esta tarea para TODOS los alumnos?\n\nYa no se aceptarán entregas. Para aprobar o devolver la entrega de un alumno usa "Revisar entregas".')) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: '¿Cerrar esta tarea para TODOS los alumnos?',
+      message: 'Ya no se aceptarán entregas. Para aprobar o devolver la entrega de un alumno usa "Revisar entregas".',
+      confirmText: 'Cerrar tarea',
+    });
+    if (!ok) return;
     setIsCompleting(true);
     try {
       const updatedTaskData = await updateTask(task.id, { status: 'COMPLETED' });
@@ -412,9 +420,12 @@ const TaskDetailsView = ({
 
   const handleDuplicateTask = async () => {
     if (!task || !task.id) return;
-    if (!window.confirm('¿Duplicar esta tarea? Se creará una nueva tarea con el mismo nombre y los estudiantes asignados. La fecha de apertura será hoy y la de cierre el próximo domingo a las 2:00 PM.')) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: 'Duplicar tarea',
+      message: 'Se creará una nueva tarea con el mismo nombre y los estudiantes asignados. La fecha de apertura será hoy y la de cierre el próximo domingo a las 2:00 PM.',
+      confirmText: 'Duplicar',
+    });
+    if (!ok) return;
     setIsDuplicating(true);
     try {
       await duplicateTask(task.id);

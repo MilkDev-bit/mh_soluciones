@@ -3,6 +3,7 @@ import { FiDownload, FiTrash2, FiFile } from 'react-icons/fi';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { handleViewFile } from '../../utils/fileUtils';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 const DocumentList = ({ documents, onDeleteDocument, canDelete = false }) => {
   const handleDownload = async (document) => {
@@ -14,8 +15,13 @@ const DocumentList = ({ documents, onDeleteDocument, canDelete = false }) => {
   };
 
   
-  const handleDelete = (documentId) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+  const handleDelete = async (documentId) => {
+    if (await confirmDialog({
+      title: 'Eliminar documento',
+      message: '¿Estás seguro de que deseas eliminar este documento?',
+      confirmText: 'Eliminar',
+      danger: true,
+    })) {
       onDeleteDocument(documentId);
     }
   };

@@ -12,6 +12,7 @@ import { FiPlus, FiEdit, FiTrash2, FiSearch, FiKey, FiGrid, FiList, FiUsers, FiC
 import { FaCrown, FaWrench, FaUserGraduate, FaChalkboardTeacher, FaUser } from 'react-icons/fa';
 import './UsersPage.scss';
 import '../../assets/styles/_buttons.scss';
+import { confirmDialog } from '../../components/common/ConfirmDialog';
 
 const UsersPage = () => {
   const queryClient = useQueryClient();
@@ -95,7 +96,12 @@ const UsersPage = () => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm('¿Seguro que deseas desactivar este usuario?')) return;
+    if (!(await confirmDialog({
+      title: 'Desactivar usuario',
+      message: '¿Seguro que deseas desactivar este usuario? Ya no podrá iniciar sesión.',
+      confirmText: 'Desactivar',
+      danger: true,
+    }))) return;
     try {
       await deleteUser(userId);
       queryClient.invalidateQueries(['users']);

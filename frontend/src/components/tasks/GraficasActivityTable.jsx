@@ -3,6 +3,7 @@ import { FiPlus, FiTrash2, FiSave, FiRefreshCw, FiCheckCircle, FiClock, FiAlertC
 import toast from 'react-hot-toast';
 import { updateTask } from '../../services/taskService';
 import './GraficasActivityTable.scss';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 const defaultRows = [
   { id: 1, semana: 'SEMANA 1', actos: 0, condiciones: 0, accidentes_incapacitantes: 0, ft: 10, total_hh: 500, meta: 2.0, bajo: 1.0, alto: 3.5 },
@@ -238,8 +239,14 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
     persistLocally(newRows, table2Rows);
   };
 
-  const handleResetDefault1 = () => {
-    if (!window.confirm('¿Deseas restablecer la tabla de rendimiento a las 6 semanas iniciales?')) return;
+  const handleResetDefault1 = async () => {
+    const ok = await confirmDialog({
+      title: 'Restablecer tabla de rendimiento',
+      message: '¿Deseas restablecer la tabla de rendimiento a las 6 semanas iniciales? Se perderán los datos capturados.',
+      confirmText: 'Restablecer',
+      danger: true,
+    });
+    if (!ok) return;
     setTable1Rows(defaultRows);
     setSaveStatus('saving');
     persistLocally(defaultRows, table2Rows);
@@ -292,8 +299,14 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
     persistLocally(table1Rows, newRows);
   };
 
-  const handleResetDefault2 = () => {
-    if (!window.confirm('¿Deseas restablecer la tabla de incidencias a las 6 semanas iniciales?')) return;
+  const handleResetDefault2 = async () => {
+    const ok = await confirmDialog({
+      title: 'Restablecer tabla de incidencias',
+      message: '¿Deseas restablecer la tabla de incidencias a las 6 semanas iniciales? Se perderán los datos capturados.',
+      confirmText: 'Restablecer',
+      danger: true,
+    });
+    if (!ok) return;
     setTable2Rows(defaultRows);
     setSaveStatus('saving');
     persistLocally(table1Rows, defaultRows);
