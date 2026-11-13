@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { createEvent, updateEvent, deleteEvent } from '../../services/calendarService';
 import { FiX, FiTrash2, FiCalendar, FiClock, FiEdit2, FiPlus } from 'react-icons/fi';
 import './EventModal.scss';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 const eventColorOptions = [
   { value: '#2C74B3', label: 'Azul (Información)' },
@@ -114,7 +115,12 @@ const EventModal = ({ isOpen, onClose, event, projectId, onEventSaved }) => {
   };
 
   const handleDelete = async () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este evento?')) {
+    if (await confirmDialog({
+      title: 'Eliminar evento',
+      message: '¿Estás seguro de que quieres eliminar este evento?',
+      confirmText: 'Eliminar',
+      danger: true,
+    })) {
       try {
         await deleteEvent(event.id);
         toast.success('Evento eliminado correctamente.');

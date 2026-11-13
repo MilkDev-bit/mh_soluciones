@@ -35,6 +35,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './HRPage.scss';
+import { confirmDialog } from '../../components/common/ConfirmDialog';
 
 const HRPage = () => {
   const [documents, setDocuments] = useState([]);
@@ -198,13 +199,18 @@ const HRPage = () => {
       
     } catch (fallbackError) {
       console.error('Error en fallback:', fallbackError);
-      alert('No se pudo descargar el documento. Contacte al administrador.');
+      toast.error('No se pudo descargar el documento. Contacte al administrador.');
     }
   }
 };
 
   const handleDeleteDocument = async (documentId) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+    if (!(await confirmDialog({
+      title: 'Eliminar documento',
+      message: '¿Estás seguro de que deseas eliminar este documento?',
+      confirmText: 'Eliminar',
+      danger: true,
+    }))) {
       return;
     }
     
@@ -234,7 +240,12 @@ const HRPage = () => {
   };
 
   const handleDeleteAttendance = async (attendanceId) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+    if (!(await confirmDialog({
+      title: 'Eliminar registro',
+      message: '¿Estás seguro de que deseas eliminar este registro de asistencia?',
+      confirmText: 'Eliminar',
+      danger: true,
+    }))) {
       return;
     }
     

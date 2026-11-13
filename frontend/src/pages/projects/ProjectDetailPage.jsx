@@ -55,6 +55,7 @@ import './ProjectDetailPage.scss';
 import ProjectForm from '../../components/projects/ProjectForm';
 import { translateStatus } from '../../utils/projectUtils';
 import { handleViewFile } from '../../utils/fileUtils';
+import { confirmDialog } from '../../components/common/ConfirmDialog';
 
 // Highlights @username mentions in comment text
 const renderCommentText = (text) => {
@@ -92,8 +93,13 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete, onReply,
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este comentario?')) {
+  const handleDelete = async () => {
+    if (await confirmDialog({
+      title: 'Eliminar comentario',
+      message: '¿Estás seguro de que deseas eliminar este comentario?',
+      confirmText: 'Eliminar',
+      danger: true,
+    })) {
       onDelete(comment.id);
     }
   };
@@ -224,7 +230,15 @@ const ProjectCommentItem = ({ comment, currentUser, onUpdate, onDelete, onReply,
                     {canDeleteReply && (
                       <button
                         className="btn-delete-reply"
-                        onClick={() => window.confirm('¿Eliminar esta respuesta?') && onDelete(reply.id)}
+                        onClick={async () => {
+                          const ok = await confirmDialog({
+                            title: 'Eliminar respuesta',
+                            message: '¿Eliminar esta respuesta?',
+                            confirmText: 'Eliminar',
+                            danger: true,
+                          });
+                          if (ok) onDelete(reply.id);
+                        }}
                         title="Eliminar respuesta"
                       >
                         <FiTrash2 size={12} />
@@ -286,8 +300,13 @@ const ProjectSubmissionItem = ({ submission, currentUser, onUpdate, onDelete }) 
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar esta entrega?')) {
+  const handleDelete = async () => {
+    if (await confirmDialog({
+      title: 'Eliminar entrega',
+      message: '¿Estás seguro de que deseas eliminar esta entrega?',
+      confirmText: 'Eliminar',
+      danger: true,
+    })) {
       onDelete(submission.id);
     }
   };
@@ -628,7 +647,12 @@ const ProjectDetailPage = () => {
   }, [refetchProject, refetchTasks, projectId]);
 
   const handleDeleteProject = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.')) {
+    if (!(await confirmDialog({
+      title: 'Eliminar proyecto',
+      message: '¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar proyecto',
+      danger: true,
+    }))) {
       return;
     }
 

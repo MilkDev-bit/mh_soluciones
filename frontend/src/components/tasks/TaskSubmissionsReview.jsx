@@ -16,6 +16,7 @@ import {
   BOARD_STATE, submissionStatusLabel, submissionStatusClass, formatDateTime, apiErrorMessage,
 } from '../../utils/taskStatus';
 import './TaskSubmissionsReview.scss';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 /**
  * Tablero de revisión por alumno.
@@ -344,7 +345,14 @@ const TaskSubmissionsReview = ({ task, user }) => {
                     {row.state === 'IN_REVIEW' && !reviewedByMe && isAdmin && (
                       <button
                         className="btn btn-warning btn-sm"
-                        onClick={() => window.confirm(`${reviewer?.full_name || 'Otro revisor'} está revisando esta entrega. ¿Reasignártela?`) && handleClaim(row, true)}
+                        onClick={async () => {
+                          const ok = await confirmDialog({
+                            title: 'Reasignar revisión',
+                            message: `${reviewer?.full_name || 'Otro revisor'} está revisando esta entrega. ¿Reasignártela?`,
+                            confirmText: 'Reasignarme',
+                          });
+                          if (ok) handleClaim(row, true);
+                        }}
                       >
                         <FiLock /> Reasignarme
                       </button>
