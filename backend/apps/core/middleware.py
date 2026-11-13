@@ -10,10 +10,23 @@ def get_current_audit_user():
     return getattr(_audit_thread_locals, 'user', None)
 
 
+def set_current_audit_user(user):
+    """
+    Fija el actor del request actual. La API autentica con JWT dentro de DRF,
+    DESPUÉS de los middlewares, así que AuditUserMiddleware solo ve al usuario
+    cuando hay sesión de Django (p. ej. quien entró al admin). La autenticación
+    JWT llama a esta función para que los signals de auditoría sepan quién hizo
+    cada acción.
+    """
+    _audit_thread_locals.user = user
+
+
 class AuditUserMiddleware:
     """
     Middleware que almacena el usuario del request en thread-local
     para que los signals puedan identificar al actor de cada acción.
+    Con JWT el usuario lo fija CookieJWTAuthentication (ver
+    set_current_audit_user); aquí se limpia al terminar cada request.
     """
     def __init__(self, get_response):
         self.get_response = get_response

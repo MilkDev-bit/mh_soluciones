@@ -27,6 +27,12 @@ class CookieJWTAuthentication(JWTAuthentication):
         # Enforce CSRF validation for cookie-based authentication
         if header is None:
             self.enforce_csrf(request, user)
+
+        # [FIX] Auditoría: el middleware corre antes de que DRF autentique el
+        # JWT, así que no veía al usuario y las acciones se atribuían al
+        # creador del proyecto/tarea. Se fija aquí el actor del request.
+        from apps.core.middleware import set_current_audit_user
+        set_current_audit_user(user)
             
         return user, validated_token
 
