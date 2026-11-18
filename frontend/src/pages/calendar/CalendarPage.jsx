@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { getProjects } from '../../services/projectService';
+import { useAuth } from '../../contexts/AuthContext';
+import { isAdmin } from '../../constants/roles';
 import { getEventsByProject, updateEvent, getAvailableColors } from '../../services/calendarService';
 import Loading from '../../components/common/Loading';
 import Skeleton, { SkeletonList } from '../../components/common/Skeleton';
@@ -18,6 +20,10 @@ import './CalendarPage.scss';
 import '../../assets/styles/_buttons.scss';
 
 const CalendarPage = () => {
+  const { user } = useAuth();
+  // Los administradores ven todos los proyectos; en el calendario solo
+  // interesan los que están en proceso.
+  const onlyActive = isAdmin(user?.role);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [events, setEvents] = useState([]);
@@ -38,7 +44,7 @@ const CalendarPage = () => {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const projectData = await getProjects();
+      const projectData = await getProjects(null, '', onlyActive ? 'IN_PROGRESS' : '');
       const projectList = projectData.results || projectData || [];
       setProjects(projectList);
       if (projectList.length > 0) {
@@ -49,7 +55,7 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onlyActive]);
 
   const fetchEvents = useCallback(async () => {
     if (!selectedProject) {
