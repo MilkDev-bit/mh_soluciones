@@ -128,7 +128,10 @@
   }
 }
 
-.filter-group {
+// [FIX] Antes era `.filter-group` global: como este CSS queda cargado al
+// visitar Tareas, pintaba de blanco los selects de otros filtros (Calendario)
+// también en modo oscuro. Se limita a la barra de filtros de Tareas.
+.filters-bar .filter-group {
   display: flex;
   align-items: center;
   gap: $spacing-3;
