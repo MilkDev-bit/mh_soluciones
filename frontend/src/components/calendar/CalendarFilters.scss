@@ -72,3 +72,27 @@
     }
   }
 }
+
+// Modo oscuro: fondo oscuro y flecha visible en los selects de filtros
+// (algunas reglas globales usan `background:` y borraban la flecha).
+[data-theme="dark"] .calendar-filters {
+  .form-input,
+  .form-select {
+    background-color: #262626;
+    border-color: rgba(82, 82, 82, 0.6);
+    color: #f5f5f5;
+  }
+
+  .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right $spacing-2 center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: $spacing-10;
+
+    option {
+      background-color: #262626;
+      color: #f5f5f5;
+    }
+  }
+}
