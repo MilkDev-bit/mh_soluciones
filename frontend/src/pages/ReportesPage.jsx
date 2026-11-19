@@ -883,6 +883,7 @@ const ReportesPage = () => {
                 <thead>
                   <tr>
                     <th>PROYECTO COMPLETADO</th>
+                    <th>CRI DE LA OBRA</th>
                     <th>ENTREGAS ASIGNADAS</th>
                     <th>ENTREGAS TERMINADAS</th>
                     <th>ENTREGAS VENCIDAS</th>
@@ -893,7 +894,7 @@ const ReportesPage = () => {
                 <tbody>
                   {calificacionCRI.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="td-label" style={{ textAlign: 'center', opacity: 0.7 }}>
+                      <td colSpan={7} className="td-label" style={{ textAlign: 'center', opacity: 0.7 }}>
                         {criData ? 'No hay proyectos completados.' : 'Cargando…'}
                       </td>
                     </tr>
@@ -912,6 +913,17 @@ const ReportesPage = () => {
                             >
                               ✎ editado
                             </span>
+                          )}
+                        </td>
+                        <td className="td-cris">
+                          {row.cris?.length ? (
+                            <div className="cri-personas">
+                              {row.cris.map((nombre) => (
+                                <span key={nombre} className="cri-persona">{nombre}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="cri-sin-personas">Sin asignar</span>
                           )}
                         </td>
                         <td>
