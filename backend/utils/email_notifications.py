@@ -11,36 +11,71 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def send_email_notification(subject, recipient_list, template_name, context, html_template_name=None):
-    """
-    Send an email notification using Django's email backend
-    
-    Args:
-        subject: Email subject
-        recipient_list: List of recipient email addresses
-        template_name: Plain text template name
-        context: Context dictionary for template rendering
-        html_template_name: Optional HTML template name
-    """
+def deliver_email(subject, message, recipient_list, html_message=None):
+    """Envía el correo por SMTP. Devuelve True si salió."""
     try:
-        # Render plain text message
-        message = render_to_string(template_name, context)
-        
-        # Render HTML message if template provided
-        html_message = None
-        if html_template_name:
-            html_message = render_to_string(html_template_name, context)
-        
         send_mail(
             subject=subject,
             message=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=recipient_list,
             html_message=html_message,
-            fail_silently=True,  # Don't crash the application if email fails
+            # Antes fail_silently=True: un fallo SMTP se registraba como
+            # "Email sent successfully". Ahora se registra el error real.
+            fail_silently=False,
         )
         logger.info(f"Email sent successfully to {', '.join(recipient_list)}: {subject}")
         return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {', '.join(recipient_list)}: {str(e)}")
+        return False
+
+
+def dispatch_email(subject, message, recipient_list, html_message=None):
+    """
+    Envía el correo SIN bloquear la petición.
+
+    [RENDIMIENTO] Antes el correo (p. ej. "Nueva entrega" a 6 personas) se
+    mandaba dentro de la petición del usuario: la entrega no respondía hasta
+    que Gmail aceptaba el mensaje. Ahora va a Celery si hay worker (con
+    reintentos) y, si no, a un hilo del servidor.
+    """
+    from apps.core.background import celery_worker_available, is_worker_process, run_in_thread
+
+    recipient_list = list(recipient_list)
+    if is_worker_process():
+        return deliver_email(subject, message, recipient_list, html_message)
+    if celery_worker_available():
+        try:
+            from apps.core.tasks import send_rendered_email
+            send_rendered_email.delay(subject, message, recipient_list, html_message)
+            return True
+        except Exception as e:
+            logger.warning(f"No se pudo encolar el correo en Celery ({e}); se envía en un hilo.")
+    run_in_thread(deliver_email, subject, message, recipient_list, html_message)
+    return True
+
+
+def send_email_notification(subject, recipient_list, template_name, context, html_template_name=None):
+    """
+    Send an email notification using Django's email backend
+
+    Args:
+        subject: Email subject
+        recipient_list: List of recipient email addresses
+        template_name: Plain text template name
+        context: Context dictionary for template rendering
+        html_template_name: Optional HTML template name
+
+    Las plantillas se renderizan aquí (pueden consultar la BD); el envío se
+    hace en segundo plano con dispatch_email.
+    """
+    try:
+        message = render_to_string(template_name, context)
+        html_message = None
+        if html_template_name:
+            html_message = render_to_string(html_template_name, context)
+        return dispatch_email(subject, message, recipient_list, html_message)
     except Exception as e:
         logger.error(f"Failed to send email to {', '.join(recipient_list)}: {str(e)}")
         return False

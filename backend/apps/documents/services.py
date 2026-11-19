@@ -86,7 +86,19 @@ class GoogleDriveService:
         try:
             stored_credentials = GoogleApiCredentials.objects.get(user=self.user)
             client_id, client_secret = oauth_client_for(stored_credentials)
+            # [RENDIMIENTO] El vencimiento del token no se guardaba: cada vez se
+            # usaba el token viejo, Google respondía 401, se renovaba y el
+            # nuevo se perdía ("Refreshing credentials due to a 401" en cada
+            # subida). Ahora el vencimiento se guarda en la caché y el token
+            # renovado en la base de datos.
+            from django.core.cache import cache
+            expiry_key = f'gdrive_token_expiry:{stored_credentials.pk}'
+            cached = cache.get(expiry_key)
+            expiry = None
+            if cached and cached.get('token_tail') == (stored_credentials.access_token or '')[-12:]:
+                expiry = cached.get('expiry')
             self.credentials = Credentials(
+                expiry=expiry,
                 token=stored_credentials.access_token,
                 refresh_token=stored_credentials.refresh_token,
                 token_uri=stored_credentials.token_uri or "https://oauth2.googleapis.com/token",
@@ -97,12 +109,19 @@ class GoogleDriveService:
                 ]
             )
             
-            if self.credentials.expired and self.credentials.refresh_token:
+            # Sin vencimiento conocido no se sabe si el token sirve: se renueva
+            # una vez y desde ahí se reutiliza hasta que venza (~1 h).
+            if self.credentials.refresh_token and (expiry is None or self.credentials.expired):
                 try:
-                    logger.info(f"Refrescando credenciales expiradas para usuario {self.user.username}")
+                    logger.info(f"Refrescando credenciales de Google para usuario {self.user.username}")
                     self.credentials.refresh(Request())
                     stored_credentials.access_token = self.credentials.token
-                    stored_credentials.save()
+                    stored_credentials.save(update_fields=['access_token'])
+                    if self.credentials.expiry:
+                        cache.set(expiry_key, {
+                            'expiry': self.credentials.expiry,
+                            'token_tail': (self.credentials.token or '')[-12:],
+                        }, 3600)
                     logger.info(f"Credenciales refrescadas exitosamente para {self.user.username}")
                 except RefreshError as e:
                     logger.exception(
@@ -111,7 +130,9 @@ class GoogleDriveService:
                     # Re-raise the original exception for proper error handling
                     raise
             
-            self.service = build('drive', 'v3', credentials=self.credentials)
+            # cache_discovery=False: evita el aviso "file_cache is only supported
+            # with oauth2client<4.0.0" (la caché de descubrimiento no aplica).
+            self.service = build('drive', 'v3', credentials=self.credentials, cache_discovery=False)
             logger.info(f"Servicio de Google Drive inicializado para {self.user.username}")
             
         except GoogleApiCredentials.DoesNotExist:
@@ -126,53 +147,95 @@ class GoogleDriveService:
             )
             raise
 
-    def _get_or_create_folder(self, folder_name, parent_id=None):
-        """
-        Busca una carpeta por nombre dentro de una carpeta padre.
-        Si no existe, la crea. Devuelve el ID de la carpeta.
-        Si existen múltiples carpetas con el mismo nombre, retorna la más antigua (determinista).
-        """
-        if not self.service:
-            raise ConnectionError("Servicio de Google Drive no inicializado.")
-
+    def _find_folder(self, folder_name, parent_id=None):
+        """ID de la carpeta con ese nombre (la más antigua si hay varias) o None."""
         # Escapar comillas/backslash del nombre (p. ej. "Casa D'Angelo") para no
         # romper ni alterar la consulta de Drive.
         safe_name = str(folder_name).replace('\\', '\\\\').replace("'", "\\'")
         query = f"mimeType='application/vnd.google-apps.folder' and name='{safe_name}' and trashed=false"
         if parent_id:
             query += f" and '{parent_id}' in parents"
+        response = self.service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name, createdTime)',
+            orderBy='createdTime'
+        ).execute()
+        files = response.get('files', [])
+        if not files:
+            return None
+        if len(files) > 1:
+            logger.warning(
+                f"Se encontraron {len(files)} carpetas duplicadas con nombre '{folder_name}' "
+                f"(parent_id={parent_id}). Usando la más antigua: {files[0].get('id')}"
+            )
+        return files[0].get('id')
+
+    def _get_or_create_folder(self, folder_name, parent_id=None):
+        """
+        Busca una carpeta por nombre dentro de una carpeta padre.
+        Si no existe, la crea. Devuelve el ID de la carpeta.
+        Si existen múltiples carpetas con el mismo nombre, retorna la más antigua (determinista).
+
+        [FIX duplicados] Al subir varios archivos a la vez la primera vez, cada
+        subida buscaba la carpeta, no la encontraba y la creaba: quedaban
+        carpetas repetidas (p. ej. dos "BAE PALOMAS DOCTOR JIMENEZ"). Ahora la
+        creación se hace con un candado en la caché (Redis, compartido entre
+        procesos y con Celery) y se vuelve a buscar dentro del candado.
+        """
+        if not self.service:
+            raise ConnectionError("Servicio de Google Drive no inicializado.")
 
         try:
-            response = self.service.files().list(
-                q=query,
-                spaces='drive',
-                fields='files(id, name, createdTime)',
-                orderBy='createdTime'
-            ).execute()
-            files = response.get('files', [])
-            if files:
-                if len(files) > 1:
-                    logger.warning(
-                        f"Se encontraron {len(files)} carpetas duplicadas con nombre '{folder_name}' "
-                        f"(parent_id={parent_id}). Usando la más antigua: {files[0].get('id')}"
-                    )
-                logger.debug(f"Carpeta encontrada: {folder_name} (ID: {files[0].get('id')})")
-                return files[0].get('id')
-            else:
+            found = self._find_folder(folder_name, parent_id)
+            if found:
+                return found
+
+            import hashlib
+            import time
+            from django.core.cache import cache
+
+            digest = hashlib.sha1(f'{parent_id}|{folder_name}'.encode('utf-8')).hexdigest()
+            lock_key = f'drive_folder_lock:{digest}'
+            created_key = f'drive_folder_created:{digest}'
+
+            acquired = cache.add(lock_key, 1, 30)
+            deadline = time.monotonic() + 20
+            while not acquired and time.monotonic() < deadline:
+                time.sleep(0.5)
+                created = cache.get(created_key)
+                if created:
+                    return created
+                acquired = cache.add(lock_key, 1, 30)
+            try:
+                # Otro proceso pudo crearla mientras esperábamos el candado.
+                created = cache.get(created_key)
+                if created:
+                    return created
+                found = self._find_folder(folder_name, parent_id)
+                if found:
+                    return found
+
                 file_metadata = {
-                    'name': folder_name, 
+                    'name': folder_name,
                     'mimeType': 'application/vnd.google-apps.folder'
                 }
                 if parent_id:
                     file_metadata['parents'] = [parent_id]
-                
                 folder = self.service.files().create(
-                    body=file_metadata, 
+                    body=file_metadata,
                     fields='id, name'
                 ).execute()
-                logger.debug(f"Carpeta creada: {folder_name} (ID: {folder.get('id')})")
-                return folder.get('id')
-                
+                folder_id = folder.get('id')
+                # La búsqueda de Drive puede tardar unos segundos en "ver" la
+                # carpeta nueva; mientras tanto se usa este ID.
+                cache.set(created_key, folder_id, 120)
+                logger.debug(f"Carpeta creada: {folder_name} (ID: {folder_id})")
+                return folder_id
+            finally:
+                if acquired:
+                    cache.delete(lock_key)
+
         except HttpError as error:
             logger.error(f"Error al buscar/crear carpeta '{folder_name}': {error}")
             raise

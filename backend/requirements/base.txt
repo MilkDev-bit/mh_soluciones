@@ -24,6 +24,9 @@ bcrypt==4.1.2
 drf-yasg==1.21.7
 
 celery==5.3.6
+# kombu fijo: sin esto pip instala kombu 5.7, que exige redis-py>=6.1 y con
+# redis==5.0.1 falla todo envío a Celery (VersionMismatch).
+kombu==5.3.7
 redis==5.0.1
 django-redis==5.4.0
 hiredis==2.3.2
