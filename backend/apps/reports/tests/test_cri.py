@@ -73,3 +73,25 @@ class CRIReportTests(TestCase):
             {'project_id': self.done.id, 'asignadas': 4, 'terminadas': 3, 'vencidas': 1, 'cri': 150},
         ]}, format='json')
         self.assertEqual(resp.status_code, 400)
+
+    def test_asignadas_igual_a_terminadas_mas_vencidas(self):
+        # En un proyecto completado, lo que no se entregó cuenta como vencida
+        # aunque su fecha límite sea posterior al cierre.
+        Task.objects.create(title='G', project=self.done, created_by=self.admin, status='OPEN',
+                            due_date=timezone.localdate() + timedelta(days=10))
+        r = self.client.get('/api/v1/reports/cri/').json()['rows'][0]
+        self.assertEqual((r['asignadas'], r['terminadas'], r['vencidas'], r['cri']), (5, 3, 2, 60))
+        self.assertEqual(r['asignadas'], r['terminadas'] + r['vencidas'])
+
+    def test_ajuste_manual_recalcula_vencidas(self):
+        resp = self.client.put('/api/v1/reports/cri/', {'rows': [
+            {'project_id': self.done.id, 'asignadas': 70, 'terminadas': 53, 'vencidas': 11, 'cri': 76},
+        ]}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(ProjectCRIOverride.objects.get().vencidas, 17)
+        r = resp.json()['rows'][0]
+        self.assertEqual((r['asignadas'], r['terminadas'], r['vencidas']), (70, 53, 17))
+        resp = self.client.put('/api/v1/reports/cri/', {'rows': [
+            {'project_id': self.done.id, 'asignadas': 5, 'terminadas': 6, 'vencidas': 0, 'cri': 100},
+        ]}, format='json')
+        self.assertEqual(resp.status_code, 400)

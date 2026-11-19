@@ -254,6 +254,10 @@ const ReportesPage = () => {
       if (i !== idx) return item;
       const next = { ...item, [campo]: valor };
       if (campo === 'asignadas' || campo === 'terminadas') {
+        // Las terminadas no pueden pasar de las asignadas, y las vencidas son lo
+        // que falta: asignadas = terminadas + vencidas.
+        next.terminadas = Math.min(next.terminadas, next.asignadas);
+        next.vencidas = next.asignadas - next.terminadas;
         next.cri = next.asignadas > 0
           ? Math.max(0, Math.min(100, Math.round((next.terminadas * 100) / next.asignadas)))
           : 0;
@@ -907,9 +911,9 @@ const ReportesPage = () => {
                             type="number"
                             className="input-editable"
                             value={row.vencidas}
-                            min={0}
-                            disabled={!puedeEditarCRI}
-                            onChange={(e) => editarCRI(idx, 'vencidas', Math.max(0, Number(e.target.value) || 0))}
+                            readOnly
+                            disabled
+                            title="Se calcula sola: asignadas − terminadas"
                           />
                         </td>
                         <td>

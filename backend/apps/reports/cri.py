@@ -6,13 +6,15 @@ CRI (%) = entregas terminadas / entregas asignadas × 100
 - Asignadas: tareas del proyecto (sin borradores ni tareas continuas).
 - Terminadas: tareas con al menos una entrega del alumno, o marcadas como
   completadas. Una entrega pendiente de revisión ya cuenta como terminada.
-- Vencidas: tareas sin entrega cuya fecha límite (o de cierre) ya pasó.
+- Vencidas: tareas que se quedaron sin entregar. Como el proyecto ya está
+  completado, ya no se pueden entregar, así que son vencidas aunque no tengan
+  fecha límite o la tengan después del cierre. Por eso siempre
+  asignadas = terminadas + vencidas.
 
 Los valores corregidos a mano se guardan en ProjectCRIOverride y tienen
 prioridad sobre los calculados.
 """
 from django.db.models import Count, Exists, OuterRef, Q
-from django.utils import timezone
 
 from apps.projects.models import Project
 from apps.tasks.models import Task, TaskSubmission
@@ -28,8 +30,6 @@ def cri_percent(asignadas, terminadas):
 
 def calculate(projects_qs):
     """{project_id: {'asignadas', 'terminadas', 'vencidas', 'cri'}} desde la BD."""
-    today = timezone.localdate()
-    now = timezone.now()
     delivered = Q(has_submission=True) | Q(status=Task.TaskStatus.COMPLETED)
     rows = (
         Task.objects.filter(project__in=projects_qs, is_continuous=False)
@@ -39,7 +39,6 @@ def calculate(projects_qs):
         .annotate(
             asignadas=Count('id'),
             terminadas=Count('id', filter=delivered),
-            vencidas=Count('id', filter=~delivered & (Q(due_date__lt=today) | Q(close_date__lt=now))),
         )
     )
     result = {}
@@ -47,7 +46,7 @@ def calculate(projects_qs):
         result[r['project_id']] = {
             'asignadas': r['asignadas'],
             'terminadas': r['terminadas'],
-            'vencidas': r['vencidas'],
+            'vencidas': r['asignadas'] - r['terminadas'],
             'cri': cri_percent(r['asignadas'], r['terminadas']),
         }
     return result
@@ -67,7 +66,9 @@ def report_rows(projects_qs):
         calc = calculated.get(p.id, empty)
         o = overrides.get(p.id)
         values = (
-            {'asignadas': o.asignadas, 'terminadas': o.terminadas, 'vencidas': o.vencidas, 'cri': o.cri}
+            # Las vencidas siempre son lo que falta para llegar a las asignadas.
+            {'asignadas': o.asignadas, 'terminadas': o.terminadas,
+             'vencidas': max(0, o.asignadas - o.terminadas), 'cri': o.cri}
             if o else dict(calc)
         )
         rows.append({
