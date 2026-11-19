@@ -1,3 +1,7 @@
+// normalize.css va PRIMERO: iguala los estilos por defecto de los navegadores
+// y el reset y los estilos de la app se aplican encima. Se importa aquí (y no
+// en main.jsx) para que quede al inicio del CSS final.
+@import 'normalize.css/normalize';
 @import 'variables';
 @import 'reset';
 @import 'forms';

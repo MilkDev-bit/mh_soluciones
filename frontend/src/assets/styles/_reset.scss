@@ -42,6 +42,9 @@ body.light-mode {
 }
 
 h1, h2, h3, h4, h5, h6 {
+  // normalize.css le pone margen a h1 (y su selector gana al `*` de arriba);
+  // se mantiene el diseño actual sin márgenes por defecto.
+  margin: 0;
   line-height: 1.3;
   font-weight: 600;
   color: var(--text-primary);
@@ -80,6 +83,11 @@ button,
 textarea,
 select {
   font: inherit;
+}
+
+// normalize.css añade relleno a fieldset; la app ya lo define por clase.
+fieldset {
+  padding: 0;
 }
 
 button {
