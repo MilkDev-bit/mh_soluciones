@@ -118,6 +118,35 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# ============================================================================
+# SERVICIO DE CELERY (worker + beat)
+# El mismo Dockerfile se usa para el servicio "Celery" de Railway. Se activa con
+# SERVICE_ROLE=worker o si el servicio se llama "Celery"/"worker". No aplica
+# migraciones (eso lo hace el servicio web) ni abre puerto HTTP.
+#   worker: tareas en segundo plano (correos, etc.)
+#   -B (beat): tareas programadas de CELERY_BEAT_SCHEDULE (recordatorios).
+#   Debe haber UN solo servicio con -B para no duplicar las programadas.
+# ============================================================================
+ROLE="${SERVICE_ROLE:-}"
+if [ -z "$ROLE" ]; then
+    case "$(echo "${RAILWAY_SERVICE_NAME:-}" | tr '[:upper:]' '[:lower:]')" in
+        *celery*|*worker*) ROLE="worker" ;;
+    esac
+fi
+if [ "$ROLE" = "worker" ] || [ "$1" = "worker" ] || [ "${2:-}" = "worker" ]; then
+    if [ -z "$REDIS_URL" ]; then
+        echo "❌ REDIS_URL no definido: Celery necesita Redis como broker"
+        exit 1
+    fi
+    export CELERY_WORKER_PROCESS=1
+    echo "🥬 Iniciando Celery worker + beat (concurrencia ${CELERY_WORKER_CONCURRENCY:-2})..."
+    exec celery -A config worker -B \
+        --loglevel=INFO \
+        --concurrency "${CELERY_WORKER_CONCURRENCY:-2}" \
+        --schedule /tmp/celerybeat-schedule \
+        --without-gossip --without-mingle
+fi
+
 echo "📊 Aplicando migraciones de base de datos..."
 python manage.py migrate --noinput
 

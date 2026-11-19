@@ -117,10 +117,16 @@ def verificar_tareas_vencidas():
     ahora = timezone.now()
     ct = ContentType.objects.get_for_model(Task)
 
+    # Solo tareas vencidas en los últimos 7 días: esta tarea nunca había
+    # corrido en producción y, sin este límite, la primera vez avisaría de
+    # todas las tareas vencidas de la historia.
+    hoy = timezone.localdate()
     candidatas = Task.objects.filter(
         status__in=ESTADOS_ABIERTOS, is_continuous=False,
     ).filter(
-        Q(due_date__lt=timezone.localdate()) | Q(close_date__lt=ahora)
+        Q(due_date__lt=hoy) | Q(close_date__lt=ahora)
+    ).filter(
+        Q(due_date__gte=hoy - timedelta(days=7)) | Q(close_date__gte=ahora - timedelta(days=7))
     ).select_related('assigned_to', 'project').prefetch_related(
         'assigned_students', 'reopen_logs__specific_students'
     )
@@ -189,8 +195,11 @@ def verificar_recordatorios_eventos_calendario():
             tiempo_recordatorio = evento.start_time - timedelta(minutes=minutos_antes)
             
             # Si el recordatorio debe enviarse ahora (con margen de 5 minutos)
-            margen = timedelta(minutes=5)
-            if tiempo_recordatorio <= ahora <= tiempo_recordatorio + margen:
+            # [FIX] La tarea corre cada 15 min y el margen era de 5 min: la
+            # mayoría de los recordatorios nunca caían en la ventana. Ventana
+            # semiabierta de 15 min = cada recordatorio se envía una sola vez.
+            margen = timedelta(minutes=15)
+            if tiempo_recordatorio <= ahora < tiempo_recordatorio + margen:
                 if tipo == 'email':
                     participantes_emails = [p.email for p in evento.participantes.all() if p.email]
                     if participantes_emails:

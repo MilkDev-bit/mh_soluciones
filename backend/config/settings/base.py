@@ -371,6 +371,9 @@ SIMPLE_JWT = {
 
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+# Tiempo máximo (s) de espera al servidor SMTP. Sin esto, si Gmail no
+# respondía, el envío (y antes la petición del usuario) se quedaba colgado.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=20, cast=int)
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
@@ -462,7 +465,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     'verificar-recordatorios-eventos-calendario': {
         'task': 'verificar_recordatorios_eventos_calendario',
-        'schedule': crontab(minute='*/30'),  # Ejecutar cada 30 minutos
+        'schedule': crontab(minute='*/15'),  # Cada 15 minutos (ventana de envío de 15 min)
     },
     'generar-resumen-actividad-diario': {
         'task': 'generar_resumen_actividad_diario',
@@ -476,15 +479,21 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'limpiar_notificaciones_antiguas',
         'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Ejecutar los domingos a las 2:00 AM
     },
-    'sync-deleted-drive-files': {
-        'task': 'sync_deleted_drive_files_task',
-        'schedule': crontab(hour='*/6', minute=0),  # Cada 6 horas
-    },
-    'assign-tasks-to-students-weekly': {
-        'task': 'apps.tasks.tasks.assign_tasks_to_students_weekly',
-        'schedule': crontab(hour=0, minute=0, day_of_week=0),  # Domingos a medianoche
-    },
+    # Desactivadas al poner en marcha el worker (nunca se habían ejecutado):
+    # - sync_deleted_drive_files_task borra documentos de la BD si no los
+    #   encuentra en Drive; su consulta por ID no es válida en la API de Drive
+    #   y gastaría ~100 llamadas cada 6 h. Revisar antes de activarla.
+    # - assign_tasks_to_students_weekly agrega alumnos a las 7 tareas
+    #   estándar de cada proyecto cada domingo; cambia datos y el reporte de
+    #   entregables. Activarla solo si se quiere ese comportamiento.
+    # Ambas se pueden correr a mano: manage.py sync_deleted_drive_files /
+    # manage.py assign_students_to_tasks.
 }
+
+# Subidas a Drive por Celery: solo si el worker puede leer los archivos
+# (almacenamiento compartido como S3). Con el volumen local de Railway el
+# worker no ve los archivos del servicio web, así que se suben en un hilo.
+DRIVE_UPLOADS_VIA_CELERY = config('DRIVE_UPLOADS_VIA_CELERY', default=False, cast=bool)
 
 CELERY_WORKER_CONCURRENCY = config('CELERY_WORKER_CONCURRENCY', default=2, cast=int)
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 100

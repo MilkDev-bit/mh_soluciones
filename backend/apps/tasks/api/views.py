@@ -738,7 +738,7 @@ class TaskSubmissionViewSet(viewsets.ModelViewSet):
                         logger.warning(f"⚠️ Error al encolar tarea Celery: {drive_error}. Ejecutando síncronamente...")
                         _run_upload_sync(document)
                 else:
-                    logger.info(f"⚡ Sin worker Celery disponible, subida síncrona para documento ID={document.id}")
+                    logger.info(f"⚡ Subida a Drive en hilo de fondo para documento ID={document.id}")
                     _run_upload_sync(document)
 
                 uploaded_count += 1

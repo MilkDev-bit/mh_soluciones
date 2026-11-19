@@ -1,5 +1,6 @@
 import logging
 import threading
+from django.conf import settings
 
 from django.db.models import Q
 from rest_framework import viewsets
@@ -27,33 +28,19 @@ from .. import browser
 logger = logging.getLogger(__name__)
 
 
-_CELERY_CHECK = {'value': None, 'checked_at': 0.0}
-_CELERY_CHECK_TTL = 60  # segundos
-
-
 def _is_celery_worker_available():
     """
-    Verifica si hay al menos un Celery worker activo consultando Redis.
-    Retorna False si no hay workers o si hay cualquier error.
+    ¿Mandar la subida a Drive al worker de Celery?
 
-    [FIX] Importaba `config.celery_app`, que no existe: siempre devolvía False y
-    TODAS las subidas a Drive se hacían en un hilo del servidor web aunque
-    hubiera worker de Celery.
-    [RENDIMIENTO] Cada consulta esperaba hasta 0.5 s y se hacía POR ARCHIVO
-    (5 archivos = 2.5 s extra por entrega). Ahora el resultado se guarda 60 s.
+    Solo si DRIVE_UPLOADS_VIA_CELERY está activo. En Railway los archivos se
+    guardan en el volumen del servicio web, que el servicio de Celery no puede
+    leer: allí la subida sigue en un hilo del servidor web (que ya no bloquea
+    la respuesta). Con almacenamiento compartido (S3) se puede activar.
     """
-    import time
-    now = time.monotonic()
-    if _CELERY_CHECK['value'] is not None and now - _CELERY_CHECK['checked_at'] < _CELERY_CHECK_TTL:
-        return _CELERY_CHECK['value']
-    try:
-        from config.celery import app as celery_app
-        inspector = celery_app.control.inspect(timeout=0.5)
-        available = bool(inspector.ping())
-    except Exception:
-        available = False
-    _CELERY_CHECK.update(value=available, checked_at=now)
-    return available
+    if not getattr(settings, 'DRIVE_UPLOADS_VIA_CELERY', False):
+        return False
+    from apps.core.background import celery_worker_available
+    return celery_worker_available()
 
 
 def _run_upload_sync(document, target_folder_id=None):
@@ -318,7 +305,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 logger.warning(f"⚠️ Error al encolar tarea Celery para doc {document.id}: {e}. Ejecutando síncronamente...")
                 _run_upload_sync(document, target_folder_id)
         else:
-            logger.info(f"⚡ Sin worker Celery disponible, subida síncrona para documento ID={document.id}")
+            logger.info(f"⚡ Subida a Drive en hilo de fondo para documento ID={document.id}")
             _run_upload_sync(document, target_folder_id)
 
     @action(detail=False, methods=['get'], url_path='folders')
