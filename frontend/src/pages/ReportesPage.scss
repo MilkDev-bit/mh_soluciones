@@ -423,6 +423,65 @@
         }
       }
 
+      // Resumen de obras por estado de cumplimiento (encima de la tabla del CRI)
+      .cri-resumen {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: $spacing-4;
+        margin-bottom: $spacing-6;
+
+        @media (max-width: 700px) {
+          grid-template-columns: 1fr;
+        }
+
+        .cri-resumen-item {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 18px;
+          border: 1px solid var(--border-color);
+          border-top: 4px solid;
+          border-radius: 16px;
+          background: var(--bg-page);
+        }
+
+        .cri-resumen-numero {
+          font-size: 2rem;
+          font-weight: 800;
+          line-height: 1;
+          color: var(--text-primary);
+          font-variant-numeric: tabular-nums;
+        }
+
+        .cri-resumen-texto {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .cri-resumen-estado {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: 0.4px;
+        }
+
+        .cri-resumen-punto {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .cri-resumen-rango {
+          font-size: 0.78rem;
+          color: var(--text-secondary);
+        }
+      }
+
       .seccion-grid-content {
         display: grid;
         grid-template-columns: 360px 1fr;
