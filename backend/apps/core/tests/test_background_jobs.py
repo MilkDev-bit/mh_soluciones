@@ -201,3 +201,52 @@ class ScheduledTasksRunTests(TestCase):
         verificar_tareas_vencidas()
         titulos = set(Notification.objects.filter(user=alumno).values_list('title', flat=True))
         self.assertNotIn('Tarea vencida: Vieja', titulos)
+
+
+class StaleUploadTaskTests(TestCase):
+    """Tareas de subida viejas en Redis no deben dañar documentos ya subidos."""
+
+    def make_doc(self, **kw):
+        from django.core.files.base import ContentFile
+        from apps.authentication.models import CustomUser
+        from apps.documents.models import Document
+        user = CustomUser.objects.create_user(username=f'u{Document.objects.count()}', password='x')
+        doc = Document(uploaded_by=user, folder_type='DOCUMENTOS', **kw)
+        doc.file.save('a.txt', ContentFile(b'x'), save=False)
+        doc.save()
+        return doc
+
+    @override_settings(DRIVE_UPLOADS_VIA_CELERY=False)
+    def test_worker_ignora_subidas_si_no_estan_activadas(self):
+        from apps.documents.models import Document
+        from apps.documents.tasks import upload_document_to_drive
+        doc = self.make_doc(upload_status=Document.UploadStatus.COMPLETE, drive_file_id='abc123')
+        with mock.patch.dict('os.environ', {'CELERY_WORKER_PROCESS': '1'}), \
+                mock.patch('apps.documents.tasks.GoogleDriveService') as drive:
+            upload_document_to_drive.apply(args=[doc.id]).get()
+        drive.assert_not_called()
+        doc.refresh_from_db()
+        self.assertEqual(doc.upload_status, Document.UploadStatus.COMPLETE)
+
+    def test_documento_ya_subido_no_se_toca(self):
+        from apps.documents.models import Document
+        from apps.documents.tasks import upload_document_to_drive
+        doc = self.make_doc(upload_status=Document.UploadStatus.COMPLETE, drive_file_id='abc123')
+        with mock.patch('apps.documents.tasks.GoogleDriveService') as drive:
+            upload_document_to_drive(doc.id)
+        drive.assert_not_called()
+        doc.refresh_from_db()
+        self.assertEqual(doc.upload_status, Document.UploadStatus.COMPLETE)
+
+    @override_settings(DRIVE_UPLOADS_VIA_CELERY=True)
+    def test_archivo_ausente_en_worker_no_cambia_estado(self):
+        from apps.documents.models import Document
+        from apps.documents.tasks import upload_document_to_drive
+        doc = self.make_doc(upload_status=Document.UploadStatus.PENDING)
+        doc.file.storage.delete(doc.file.name)
+        with mock.patch.dict('os.environ', {'CELERY_WORKER_PROCESS': '1'}), \
+                mock.patch('apps.documents.tasks.GoogleDriveService') as drive:
+            upload_document_to_drive.apply(args=[doc.id]).get()
+        drive.assert_not_called()
+        doc.refresh_from_db()
+        self.assertEqual(doc.upload_status, Document.UploadStatus.PENDING)
