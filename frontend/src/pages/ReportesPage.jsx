@@ -866,10 +866,11 @@ const ReportesPage = () => {
                     const criVal = Number(row.cri) || 0;
                     let badgeColor = '#10b981';
                     let badgeText = 'ÓPTIMO';
-                    if (criVal < 85) {
+                    // Rangos: ≥90 % óptimo, 70–89 % aceptable, <70 % riesgo.
+                    if (criVal < 70) {
                       badgeColor = '#ef4444';
                       badgeText = 'RIESGO';
-                    } else if (criVal < 95) {
+                    } else if (criVal < 90) {
                       badgeColor = '#f59e0b';
                       badgeText = 'ACEPTABLE';
                     }
