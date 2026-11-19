@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { ROLE_GROUPS } from './constants/roles';
 
 import AuthLayout from './layouts/AuthLayout';
@@ -26,6 +26,13 @@ const ReportesPage = lazy(() => import('./pages/ReportesPage'));
 const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
 const PrivacyNoticePage = lazy(() => import('./pages/PrivacyNoticePage'));
 
+// Los correos enlazan a /projects/:id/tasks/:taskId, ruta que no existía (404).
+// Se redirige al proyecto con ?taskId=, que ya abre la tarea.
+const TaskLinkRedirect = () => {
+  const { projectId, taskId } = useParams();
+  return <Navigate to={`/projects/${projectId}?taskId=${taskId}`} replace />;
+};
+
 const AppRoutes = () => {
   console.log("AppRoutes -> Renderizando el mapa de rutas.");
 
@@ -47,6 +54,7 @@ const AppRoutes = () => {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/projects/:projectId/tasks/:taskId" element={<TaskLinkRedirect />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/profile" element={<ProfilePage />} />
