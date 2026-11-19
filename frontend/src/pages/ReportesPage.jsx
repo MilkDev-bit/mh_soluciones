@@ -47,6 +47,18 @@ import EntregablesReportModal from '../components/reports/EntregablesReportModal
 import './ReportesPage.scss';
 import { isoWeek, isoWeekStart, isoWeekEnd, isoWeeksInYear, isoWeekRangeLabel, parseLocalDate } from '../utils/isoWeek';
 
+// Estado de cumplimiento del CRI: ≥90 % óptimo, 70–89 % aceptable, <70 % riesgo.
+const ESTADOS_CRI = [
+  { key: 'optimo', text: 'ÓPTIMO', color: '#10b981', rango: '90 % o más' },
+  { key: 'aceptable', text: 'ACEPTABLE', color: '#f59e0b', rango: '70 – 89 %' },
+  { key: 'riesgo', text: 'RIESGO', color: '#ef4444', rango: 'menos de 70 %' },
+];
+const estadoCRI = (cri) => {
+  if (cri >= 90) return ESTADOS_CRI[0];
+  if (cri >= 70) return ESTADOS_CRI[1];
+  return ESTADOS_CRI[2];
+};
+
 ChartJS.register(
   ArcElement, 
   Tooltip, 
@@ -841,6 +853,30 @@ const ReportesPage = () => {
             </div>
           </div>
 
+          {calificacionCRI.length > 0 && (
+            <div className="cri-resumen">
+              {ESTADOS_CRI.map((estado) => {
+                const total = calificacionCRI.filter(
+                  (row) => estadoCRI(Number(row.cri) || 0).key === estado.key
+                ).length;
+                return (
+                  <div key={estado.key} className="cri-resumen-item" style={{ borderTopColor: estado.color }}>
+                    <span className="cri-resumen-numero">{total}</span>
+                    <span className="cri-resumen-texto">
+                      <span className="cri-resumen-estado">
+                        <span className="cri-resumen-punto" style={{ background: estado.color }} />
+                        {estado.text}
+                      </span>
+                      <span className="cri-resumen-rango">
+                        {total === 1 ? 'obra' : 'obras'} · {estado.rango}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="seccion-grid-content full-width">
             <div className="tabla-contenedor" style={{ maxHeight: 'none' }}>
               <table className="tabla-editable">
@@ -864,16 +900,7 @@ const ReportesPage = () => {
                   )}
                   {calificacionCRI.map((row, idx) => {
                     const criVal = Number(row.cri) || 0;
-                    let badgeColor = '#10b981';
-                    let badgeText = 'ÓPTIMO';
-                    // Rangos: ≥90 % óptimo, 70–89 % aceptable, <70 % riesgo.
-                    if (criVal < 70) {
-                      badgeColor = '#ef4444';
-                      badgeText = 'RIESGO';
-                    } else if (criVal < 90) {
-                      badgeColor = '#f59e0b';
-                      badgeText = 'ACEPTABLE';
-                    }
+                    const { color: badgeColor, text: badgeText } = estadoCRI(criVal);
                     return (
                       <tr key={row.project_id}>
                         <td className="td-label" style={{ fontWeight: 800 }}>
