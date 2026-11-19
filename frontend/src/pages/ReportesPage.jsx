@@ -490,7 +490,7 @@ const ReportesPage = () => {
                   data={{
                     labels: estadisticas?.tendenciaSemanalEtiquetas || ['S1', 'S2', 'S3', 'S4'],
                     datasets: [{
-                      label: 'Tareas cerradas (por fecha límite)',
+                      label: 'Tareas completadas (por fecha límite)',
                       data: estadisticas?.tendenciaSemanal || [10, 25, 15, 30],
                       borderColor: '#6366f1',
                       backgroundColor: 'rgba(99, 102, 241, 0.1)',
