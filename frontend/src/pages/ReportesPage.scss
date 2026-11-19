@@ -566,6 +566,36 @@
                     }
                   }
 
+                  // CRI (empleados) que trabajaron en la obra
+                  &.td-cris {
+                    text-align: left;
+                    min-width: 180px;
+                    max-width: 320px;
+                  }
+
+                  .cri-personas {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 4px;
+                  }
+
+                  .cri-persona {
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    border: 1px solid var(--border-color);
+                    background: var(--bg-page);
+                    color: var(--text-primary);
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    white-space: nowrap;
+                  }
+
+                  .cri-sin-personas {
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    color: var(--text-secondary);
+                  }
+
                   .input-editable {
                     width: 75px;
                     padding: 6px 8px;

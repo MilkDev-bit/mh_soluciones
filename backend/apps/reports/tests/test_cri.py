@@ -95,3 +95,23 @@ class CRIReportTests(TestCase):
             {'project_id': self.done.id, 'asignadas': 5, 'terminadas': 6, 'vencidas': 0, 'cri': 100},
         ]}, format='json')
         self.assertEqual(resp.status_code, 400)
+
+    def test_cris_de_la_obra(self):
+        from apps.projects.models import ProjectMember
+        otro = User.objects.create_user(username='b', password='x', role='STUDENT',
+                                        first_name='Beto', last_name='Ruiz')
+        a = Task.objects.get(project=self.done, title='A')
+        a.assigned_students.add(self.alumno)
+        Task.objects.filter(project=self.done, title='D').update(assigned_to=otro)
+        Task.objects.filter(project=self.done, title='C').update(assigned_to=self.admin)  # admin: no es CRI
+        Task.objects.get(project=self.done, title='F').assigned_students.add(
+            User.objects.create_user(username='z', password='x', role='STUDENT'))  # borrador: no cuenta
+        r = self.client.get('/api/v1/reports/cri/').json()['rows'][0]
+        self.assertEqual(r['cris'], ['al', 'Beto Ruiz'])
+
+        # Sin asignados en las tareas, se usan los miembros del proyecto.
+        solo = Project.objects.create(name='Solo', status='COMPLETED', created_by=self.admin,
+                                      end_date=timezone.localdate())
+        ProjectMember.objects.create(project=solo, user=otro)
+        rows = {x['name']: x for x in self.client.get('/api/v1/reports/cri/').json()['rows']}
+        self.assertEqual(rows['Solo']['cris'], ['Beto Ruiz'])
