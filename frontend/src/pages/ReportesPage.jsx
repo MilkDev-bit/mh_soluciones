@@ -33,8 +33,7 @@ import {
   Filler
 } from 'chart.js';
 import { Pie, Bar, Line } from 'react-chartjs-2';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generarReporteEjecutivoPDF } from '../utils/reporteEjecutivoPdf';
 import { AuthContext } from '../contexts/AuthContext';
 import { getStatistics, getCRIReport, saveCRIReport, resetCRIReport } from '../services/reportService';
 import { confirmDialog } from '../components/common/ConfirmDialog';
@@ -382,34 +381,29 @@ const ReportesPage = () => {
 
   const exportarPDF = async () => {
     if (!estadisticas) return toast.error('No hay datos disponibles');
+    const aviso = toast.loading('Generando PDF…');
     try {
-      toast.loading('Generando PDF profesional...');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      
-      pdf.setFontSize(22);
-      pdf.text('Reporte Ejecutivo de Analytics', pageWidth / 2, 40, { align: 'center' });
-      pdf.setFontSize(12);
-      pdf.text(`Generado por: ${user?.first_name || 'Admin'}`, pageWidth / 2, 50, { align: 'center' });
-      pdf.text(`Periodo: ${obtenerTextoRango(rangoFecha)}`, pageWidth / 2, 58, { align: 'center' });
-
-      const proyectos = estadisticas?.tareasPorProyecto || [];
-      const tableData = proyectos.map((p, i) => [i + 1, p.project_name, p.task_count, 'Activo']);
-      
-      autoTable(pdf, {
-        startY: 70,
-        head: [['#', 'Proyecto', 'Tareas', 'Estado']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [99, 102, 241] }
+      const proyecto = proyectoFiltro
+        ? proyectosData?.results?.find(p => String(p.id) === String(proyectoFiltro))?.name
+        : '';
+      const nombre = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username;
+      await generarReporteEjecutivoPDF({
+        estadisticas,
+        usuario: nombre,
+        periodo: obtenerTextoRango(rangoFecha),
+        proyecto,
+        calificacionCRI,
+        estadosCRI: ESTADOS_CRI,
+        estadoCRI,
+        obrasSemana,
+        anioObras,
+        duracionesProyectos,
+        logo,
       });
-
-      pdf.save(`Reporte_Sistemas_${new Date().getTime()}.pdf`);
-      toast.dismiss();
-      toast.success('PDF generado');
+      toast.success('PDF generado', { id: aviso });
     } catch (err) {
-      toast.dismiss();
-      toast.error('Error al generar PDF');
+      console.error('Error al generar el PDF:', err);
+      toast.error('Error al generar PDF', { id: aviso });
     }
   };
 
