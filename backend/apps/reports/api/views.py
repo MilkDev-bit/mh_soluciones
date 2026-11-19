@@ -648,6 +648,10 @@ class CRIReportAPIView(APIView):
                 continue
             if any(v < 0 for v in values.values()) or values['cri'] > 100:
                 return Response({'detail': 'Los valores no pueden ser negativos y el CRI va de 0 a 100.'}, status=400)
+            if values['terminadas'] > values['asignadas']:
+                return Response({'detail': 'Las entregas terminadas no pueden ser más que las asignadas.'}, status=400)
+            # Vencidas = asignadas − terminadas: se calcula aquí para que siempre cuadre.
+            values['vencidas'] = values['asignadas'] - values['terminadas']
             calc = calculated.get(pid, {'asignadas': 0, 'terminadas': 0, 'vencidas': 0, 'cri': 0})
             if values == calc:
                 # Igual a lo calculado: no hace falta guardar un ajuste.
