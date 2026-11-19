@@ -1,7 +1,7 @@
 // Reporte Ejecutivo de Analytics en PDF (A4 vertical).
 //
 // Reúne lo que se ve en la página de Reportes: indicadores del periodo,
-// tareas cerradas por semana, ranking por empleado, carga operativa, CRI por
+// tareas completadas por semana, ranking por empleado, carga operativa, CRI por
 // obra completada, obras activas por semana y duración de proyectos. Usa los
 // valores tal como están en pantalla (incluidos los ajustes manuales).
 import { jsPDF } from 'jspdf';
@@ -232,14 +232,14 @@ export async function generarReporteEjecutivoPDF({
   // ------------------------------------------------------------- Indicadores
   const e = estadisticas || {};
   tituloSeccion('Indicadores del periodo',
-    'Tareas con fecha límite dentro del periodo. Cerradas: cerradas por un administrador o revisor. '
-    + 'Vencidas: sin cerrar, con la fecha límite pasada y sin ninguna entrega. En progreso: el resto.');
+    'Tareas con fecha límite dentro del periodo. Completadas: las que un administrador o revisor dio por terminadas. '
+    + 'Vencidas: sin completar, con la fecha límite pasada y sin ninguna entrega. En progreso: el resto.');
   const kpis = [
     { t: 'Total de tareas', v: e.tareasTotales ?? 0, c: [59, 130, 246] },
-    { t: 'Cerradas', v: e.tareasCompletadas ?? 0, c: ESTADO_COLOR.optimo },
+    { t: 'Completadas', v: e.tareasCompletadas ?? 0, c: ESTADO_COLOR.optimo },
     { t: 'En progreso', v: e.tareasEnProgreso ?? 0, c: ESTADO_COLOR.aceptable },
     { t: 'Vencidas', v: e.tareasVencidas ?? 0, c: ESTADO_COLOR.riesgo },
-    { t: 'Salud del periodo', v: `${e.porcentajeCompletado ?? 0}%`, c: PRIMARIO, s: 'cerradas / total' },
+    { t: 'Salud del periodo', v: `${e.porcentajeCompletado ?? 0}%`, c: PRIMARIO, s: 'completadas / total' },
     { t: 'Proyectos en proceso', v: e.proyectosActivos ?? 0, c: [139, 92, 246] },
   ];
   const kCols = 3;
@@ -273,10 +273,10 @@ export async function generarReporteEjecutivoPDF({
   });
   y += kH * 2 + kGap + 2;
 
-  // ------------------------------------------------- Tareas cerradas por semana
+  // ------------------------------------------------- Tareas completadas por semana
   const etiquetasSemana = e.tendenciaSemanalEtiquetas || [];
   const valoresSemana = e.tendenciaSemanal || [];
-  tituloSeccion('Tareas cerradas por semana',
+  tituloSeccion('Tareas completadas por semana',
     'Semanas ISO (lunes a domingo) según la fecha límite de la tarea. La barra clara es la semana en curso.', 66);
   if (valoresSemana.length > 1) {
     graficaBarras({
@@ -288,7 +288,7 @@ export async function generarReporteEjecutivoPDF({
     });
   } else if (valoresSemana.length === 1) {
     tabla({
-      head: [['Semana', 'Tareas cerradas']],
+      head: [['Semana', 'Tareas completadas']],
       body: [[etiquetasSemana[0], valoresSemana[0]]],
       columnStyles: { 1: { halign: 'right', cellWidth: 40 } },
     });
@@ -298,15 +298,15 @@ export async function generarReporteEjecutivoPDF({
 
   // ------------------------------------------------------- Ranking por empleado
   const ranking = e.topPerformers || [];
-  tituloSeccion('Ranking de tareas cerradas por empleado');
+  tituloSeccion('Ranking de tareas completadas por empleado');
   if (ranking.length) {
     tabla({
-      head: [['#', 'Empleado', 'Tareas cerradas']],
+      head: [['#', 'Empleado', 'Tareas completadas']],
       body: ranking.map((r, i) => [i + 1, r.name, r.count]),
       columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 2: { halign: 'right', cellWidth: 36 } },
     });
   } else {
-    sinDatos('Ningún empleado cerró tareas en el periodo.');
+    sinDatos('Ningún empleado completó tareas en el periodo.');
   }
 
   // ---------------------------------------------------------- Carga operativa
