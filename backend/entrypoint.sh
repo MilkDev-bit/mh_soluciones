@@ -150,20 +150,27 @@ fi
 echo "📊 Aplicando migraciones de base de datos..."
 python manage.py migrate --noinput
 
+# [SEGURIDAD] Antes, si faltaban las variables DJANGO_SUPERUSER_*, se creaba
+# un superusuario "admin" con la contraseña fija "changeme123". Ahora solo se
+# crea si las tres variables están definidas.
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
 echo "👤 Creando superusuario si no existe..."
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
 import os
 User = get_user_model()
-username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
-email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
-password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'changeme123')
+username = os.environ['DJANGO_SUPERUSER_USERNAME']
+email = os.environ['DJANGO_SUPERUSER_EMAIL']
+password = os.environ['DJANGO_SUPERUSER_PASSWORD']
 if not User.objects.filter(username=username).exists():
     User.objects.create_superuser(username, email, password)
     print('✅ Superusuario creado exitosamente')
 else:
     print('ℹ️ Superusuario ya existe')
 "
+else
+    echo "ℹ️ DJANGO_SUPERUSER_* no definidas: no se crea superusuario"
+fi
 
 # [RENDIMIENTO] Antes esto bloqueaba el arranque hasta 60 s en cada deploy o
 # reinicio (la app no respondía mientras tanto). Ahora corre en segundo plano.
