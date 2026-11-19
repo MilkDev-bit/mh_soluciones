@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    DashboardDataAPIView, EntregablesReportAPIView, GeneralStatusAPIView, GlobalSearchAPIView, StatisticsAPIView,
+    CRIReportAPIView, DashboardDataAPIView, EntregablesReportAPIView, GeneralStatusAPIView, GlobalSearchAPIView, StatisticsAPIView,
 )
 
 urlpatterns = [
@@ -9,4 +9,5 @@ urlpatterns = [
     path('statistics/', StatisticsAPIView.as_view(), name='statistics'),
     path('entregables/', EntregablesReportAPIView.as_view(), name='entregables-xlsx'),
     path('general-status/', GeneralStatusAPIView.as_view(), name='general-status'),
+    path('cri/', CRIReportAPIView.as_view(), name='cri-report'),
 ]
