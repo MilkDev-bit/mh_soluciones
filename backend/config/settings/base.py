@@ -374,6 +374,9 @@ EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 # Tiempo máximo (s) de espera al servidor SMTP. Sin esto, si Gmail no
 # respondía, el envío (y antes la petición del usuario) se quedaba colgado.
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=20, cast=int)
+# Enviar los correos por Celery. Apagado por defecto: desde el servicio Celery
+# de Railway el SMTP falló (19-nov); el servicio web los envía en un hilo.
+EMAIL_VIA_CELERY = config('EMAIL_VIA_CELERY', default=False, cast=bool)
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')

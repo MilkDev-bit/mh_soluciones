@@ -45,7 +45,10 @@ def dispatch_email(subject, message, recipient_list, html_message=None):
     recipient_list = list(recipient_list)
     if is_worker_process():
         return deliver_email(subject, message, recipient_list, html_message)
-    if celery_worker_available():
+    # EMAIL_VIA_CELERY apagado (por defecto): el correo sale del servicio web en
+    # un hilo, como antes. Desde el servicio Celery el SMTP fallaba con
+    # "Connection unexpectedly closed" y los correos se perdían.
+    if getattr(settings, 'EMAIL_VIA_CELERY', False) and celery_worker_available():
         try:
             from apps.core.tasks import send_rendered_email
             send_rendered_email.delay(subject, message, recipient_list, html_message)

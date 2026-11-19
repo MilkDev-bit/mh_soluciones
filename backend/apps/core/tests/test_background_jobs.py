@@ -38,6 +38,16 @@ class DispatchEmailTests(TestCase):
             self.assertTrue(started.wait(2))
             release.set()
 
+    def test_por_defecto_el_correo_sale_del_servicio_web(self):
+        from utils.email_notifications import dispatch_email
+        with mock.patch('apps.core.background.celery_worker_available', return_value=True), \
+                mock.patch('apps.core.tasks.send_rendered_email.delay') as delay, \
+                mock.patch('apps.core.background.run_in_thread') as thread:
+            dispatch_email('Asunto', 'Cuerpo', ['a@x.com'])
+        delay.assert_not_called()
+        thread.assert_called_once()
+
+    @override_settings(EMAIL_VIA_CELERY=True)
     def test_con_worker_se_encola_en_celery(self):
         from utils.email_notifications import dispatch_email
         with mock.patch('apps.core.background.celery_worker_available', return_value=True), \
