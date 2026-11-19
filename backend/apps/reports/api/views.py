@@ -1,5 +1,5 @@
 from datetime import date, datetime, time, timedelta
-from django.db.models import Count, Q, Avg, F, ExpressionWrapper, fields
+from django.db.models import Count, Exists, OuterRef, Q, Avg, F, ExpressionWrapper, fields
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.authentication.models import CustomUser
 from apps.projects.models import Project, ProjectMember
-from apps.tasks.models import Task
+from apps.tasks.models import Task, TaskSubmission
 from .serializers import (
     with_project_stats,
     SearchResultSerializer, 
@@ -32,23 +32,27 @@ def get_admin_accessible_projects(user):
 
 def iso_week_trend(tasks_qs, today, count=4):
     """
-    Tareas completadas por semana ISO 8601 (lunes a domingo en hora local)
-    para las últimas `count` semanas, incluida la actual.
+    Tareas CERRADAS por semana ISO 8601 según su fecha límite, para las
+    últimas `count` semanas, incluida la actual (marcada "en curso").
     Devuelve (valores, etiquetas) en orden cronológico; etiqueta "SEM 46 · 2026".
+
+    [CAMBIO] Antes contaba por la fecha de última modificación: editar una
+    tarea vieja la movía a la semana actual.
     """
-    tz = timezone.get_current_timezone()
     monday = today - timedelta(days=today.weekday())
     aggregates, labels = {}, []
+    closed = Q(status__in=['COMPLETED', 'CLOSED'])
     for i in range(count - 1, -1, -1):
         start_day = monday - timedelta(weeks=i)
-        start = timezone.make_aware(datetime.combine(start_day, time.min), tz)
-        end = start + timedelta(weeks=1)
+        end_day = start_day + timedelta(days=7)
         iso_year, iso_week, _ = start_day.isocalendar()
         key = f'w{i}'
-        aggregates[key] = Count('id', filter=Q(status='COMPLETED', updated_at__gte=start, updated_at__lt=end))
-        labels.append((key, f'SEM {iso_week} · {iso_year}'))
+        aggregates[key] = Count('id', filter=closed & Q(due_date__gte=start_day, due_date__lt=end_day))
+        label = f'SEM {iso_week} · {iso_year}'
+        labels.append((key, label + (' (en curso)' if i == 0 else '')))
     stats = tasks_qs.aggregate(**aggregates)
     return [stats[k] for k, _ in labels], [label for _, label in labels]
+
 
 class DashboardDataAPIView(APIView):
     """
@@ -281,21 +285,41 @@ class StatisticsAPIView(APIView):
             tasks_qs = tasks_qs.filter(project_id=proyecto_id)
             projects_qs = projects_qs.filter(id=proyecto_id)
         if usuario_id:
-            tasks_qs = tasks_qs.filter(assigned_to_id=usuario_id)
-        
-        tasks_in_range = tasks_qs.filter(created_at__gte=start_date)
-        
+            tasks_qs = tasks_qs.filter(
+                id__in=Task.objects.filter(
+                    Q(assigned_to_id=usuario_id) | Q(assigned_students__id=usuario_id)
+                ).values('id')
+            )
+
+        # [CAMBIO] Criterios de los indicadores:
+        # - Periodo: tareas cuya FECHA LÍMITE cae entre el inicio del rango y hoy
+        #   (antes: fecha de creación). Sin borradores ni tareas continuas.
+        # - Completadas: tareas CERRADAS por un administrador o revisor
+        #   (estado COMPLETED o CLOSED).
+        # - Vencidas: no cerradas, con la fecha ya pasada y SIN ninguna entrega
+        #   del alumno (antes contaba también tareas ya entregadas).
+        # - En progreso: el resto (sin cerrar y no vencidas).
+        closed_q = Q(status__in=[Task.TaskStatus.COMPLETED, Task.TaskStatus.CLOSED])
+        tasks_in_range = tasks_qs.filter(
+            is_continuous=False,
+            due_date__gte=timezone.localtime(start_date).date(),
+            due_date__lte=today,
+        ).exclude(status=Task.TaskStatus.DRAFT).annotate(
+            has_submission=Exists(TaskSubmission.objects.filter(task=OuterRef('pk')))
+        )
+        overdue_q = ~closed_q & Q(has_submission=False) & Q(due_date__lt=today)
+
         task_stats = tasks_in_range.aggregate(
             totales=Count('id'),
-            completadas=Count('id', filter=Q(status='COMPLETED')),
-            en_progreso=Count('id', filter=Q(status='PENDING')),
-            vencidas=Count('id', filter=Q(due_date__lt=today, is_continuous=False,
-                                          status__in=['PENDING', 'IN_PROGRESS', 'OPEN', 'REOPENED', 'IN_REVIEW', 'FOR_REVIEW'])),
+            completadas=Count('id', filter=closed_q),
+            vencidas=Count('id', filter=overdue_q),
             tiempo_promedio=Avg(
                 ExpressionWrapper(F('updated_at') - F('created_at'), output_field=fields.DurationField()),
-                filter=Q(status='COMPLETED')
+                filter=closed_q
             )
         )
+        task_stats['en_progreso'] = (task_stats['totales'] or 0) - (task_stats['completadas'] or 0) \
+            - (task_stats['vencidas'] or 0)
 
         total_tasks = task_stats['totales'] or 0
         completed_tasks = task_stats['completadas'] or 0
@@ -311,26 +335,32 @@ class StatisticsAPIView(APIView):
         
         top_performers = []
         if user.role in ADMIN_ROLES or user.role in ['DIRECTOR', 'PROFESSOR']:
-            top_users_qs = tasks_in_range.filter(
-                status='COMPLETED', 
-                assigned_to__isnull=False
-            ).values(
-                'assigned_to__username', 
-                'assigned_to__first_name', 
-                'assigned_to__last_name'
-            ).annotate(count=Count('id')).order_by('-count')
-            
-            for u in top_users_qs:
-                nombre = f"{u['assigned_to__first_name']} {u['assigned_to__last_name']}".strip()
-                top_performers.append({
-                    'name': nombre if nombre else u['assigned_to__username'],
-                    'count': u['count']
-                })
+            # Tareas cerradas del periodo por persona asignada (alumnos asignados
+            # y "asignado a"); antes solo se veía el campo "asignado a".
+            closed_ids = tasks_in_range.filter(closed_q).values('id')
+            per_user = {}
+            pairs = list(Task.assigned_students.through.objects.filter(task_id__in=closed_ids)
+                         .values_list('task_id', 'customuser_id'))
+            pairs += list(Task.objects.filter(id__in=closed_ids, assigned_to__isnull=False)
+                          .values_list('id', 'assigned_to_id'))
+            for task_id, uid in set(pairs):
+                per_user[uid] = per_user.get(uid, 0) + 1
+            users = CustomUser.objects.in_bulk(list(per_user))
+            for uid, count in sorted(per_user.items(), key=lambda kv: -kv[1]):
+                u = users.get(uid)
+                if not u:
+                    continue
+                nombre = f"{u.first_name} {u.last_name}".strip()
+                top_performers.append({'name': nombre or u.username, 'count': count})
 
         project_task_counts = []
         proyectos_detalle = []
         if not proyecto_id:
-            proyectos_data = tasks_qs.values('project__name').annotate(task_count=Count('id')).filter(task_count__gt=0).order_by('-task_count')
+            # Carga operativa: tareas del periodo de los proyectos EN PROCESO
+            # (antes: todas las tareas de la historia de todos los proyectos).
+            proyectos_data = (tasks_in_range.filter(project__status='IN_PROGRESS')
+                              .values('project__name').annotate(task_count=Count('id'))
+                              .filter(task_count__gt=0).order_by('-task_count'))
             project_task_counts = [{'project_name': p['project__name'], 'task_count': p['task_count']} for p in proyectos_data]
             
             tasks_by_project = {}
@@ -394,7 +424,8 @@ class StatisticsAPIView(APIView):
         # [CAMBIO] Tendencia por semanas ISO 8601 (lunes a domingo, hora
         # local): las últimas 4 semanas incluyendo la actual. Antes eran
         # ventanas de 7 días contadas hacia atrás desde "ahora".
-        weekly_data, weekly_labels = iso_week_trend(tasks_qs, today, count=4)
+        weekly_data, weekly_labels = iso_week_trend(
+            tasks_qs.filter(is_continuous=False).exclude(status=Task.TaskStatus.DRAFT), today, count=4)
 
         return Response({
             'tareasTotales': total_tasks,
