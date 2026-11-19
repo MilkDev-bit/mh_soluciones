@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
   FiCheckSquare, 
@@ -36,7 +36,8 @@ import { Pie, Bar, Line } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AuthContext } from '../contexts/AuthContext';
-import { getStatistics } from '../services/reportService';
+import { getStatistics, getCRIReport, saveCRIReport, resetCRIReport } from '../services/reportService';
+import { confirmDialog } from '../components/common/ConfirmDialog';
 import { getProjects } from '../services/projectService';
 import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
@@ -93,6 +94,17 @@ const ReportesPage = () => {
   const claveObras = `reportes_obras_en_proceso_iso_${anioObras}`;
   const [duracionesProyectos, setDuracionesProyectos] = useState([]);
   const [calificacionCRI, setCalificacionCRI] = useState([]);
+  const [guardandoCRI, setGuardandoCRI] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: criData } = useQuery({
+    queryKey: ['criReport'],
+    queryFn: getCRIReport,
+    staleTime: 60000,
+  });
+  const puedeEditarCRI = !!criData?.can_edit;
+  useEffect(() => {
+    if (criData?.rows) setCalificacionCRI(criData.rows);
+  }, [criData]);
   const [isDuracionExpanded, setIsDuracionExpanded] = useState(false);
   const [isWorkloadExpanded, setIsWorkloadExpanded] = useState(false);
 
@@ -190,28 +202,6 @@ const ReportesPage = () => {
     }
   };
 
-  const calcularCRIBD = () => {
-    const proyectos = estadisticas?.proyectosDetalle || proyectosData?.results || [];
-    const completados = proyectos.filter(p => p.status === 'COMPLETED' || p.total_entregas > 0 || p.calificacion_cri !== undefined);
-    if (completados.length > 0) {
-      return completados.map(p => ({
-        id: p.id || Math.random(),
-        name: p.name || 'Proyecto',
-        asignadas: p.total_entregas || 10,
-        terminadas: p.terminadas || 8,
-        vencidas: p.vencidas || 1,
-        cri: p.calificacion_cri !== undefined ? p.calificacion_cri : 85
-      }));
-    } else {
-      return [
-        { id: 1, name: 'BAE JESUS TLATEMPA', asignadas: 15, terminadas: 15, vencidas: 0, cri: 100 },
-        { id: 2, name: 'BAE LAGO NAUR', asignadas: 20, terminadas: 18, vencidas: 2, cri: 90 },
-        { id: 3, name: 'BA COSOLEACAQUE', asignadas: 12, terminadas: 10, vencidas: 1, cri: 83 },
-        { id: 4, name: 'SM CD OBREGON', asignadas: 8, terminadas: 8, vencidas: 0, cri: 100 }
-      ];
-    }
-  };
-
   useEffect(() => {
     if (!proyectosData && !estadisticas) return;
     
@@ -229,13 +219,6 @@ const ReportesPage = () => {
       try { setDuracionesProyectos(JSON.parse(guardadoDuracion)); } catch (e) { setDuracionesProyectos(calcularDuracionesBD()); }
     } else {
       setDuracionesProyectos(calcularDuracionesBD());
-    }
-
-    const guardadoCRI = localStorage.getItem('reportes_calificacion_cri');
-    if (guardadoCRI) {
-      try { setCalificacionCRI(JSON.parse(guardadoCRI)); } catch (e) { setCalificacionCRI(calcularCRIBD()); }
-    } else {
-      setCalificacionCRI(calcularCRIBD());
     }
   }, [proyectosData, estadisticas, claveObras]);
 
@@ -263,16 +246,52 @@ const ReportesPage = () => {
     toast.info('Duraciones recargadas desde la base de datos');
   };
 
-  const guardarCRI = () => {
-    localStorage.setItem('reportes_calificacion_cri', JSON.stringify(calificacionCRI));
-    toast.success('Calificaciones CRI guardadas correctamente');
+  // CRI = entregas terminadas / entregas asignadas × 100 (calculado en el
+  // servidor). Los ajustes manuales se guardan en la base de datos y los ven
+  // todos; antes se guardaban solo en el navegador de cada persona.
+  const editarCRI = (idx, campo, valor) => {
+    setCalificacionCRI(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const next = { ...item, [campo]: valor };
+      if (campo === 'asignadas' || campo === 'terminadas') {
+        next.cri = next.asignadas > 0
+          ? Math.max(0, Math.min(100, Math.round((next.terminadas * 100) / next.asignadas)))
+          : 0;
+      }
+      return next;
+    }));
   };
 
-  const recargarCRIBD = () => {
-    const nuevos = calcularCRIBD();
-    setCalificacionCRI(nuevos);
-    localStorage.removeItem('reportes_calificacion_cri');
-    toast.info('Calificaciones recargadas desde la base de datos');
+  const guardarCRI = async () => {
+    setGuardandoCRI(true);
+    try {
+      const data = await saveCRIReport(calificacionCRI.map(({ project_id, asignadas, terminadas, vencidas, cri }) => (
+        { project_id, asignadas, terminadas, vencidas, cri }
+      )));
+      queryClient.setQueryData(['criReport'], data);
+      toast.success('Calificaciones CRI guardadas');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'No se pudieron guardar las calificaciones CRI');
+    } finally {
+      setGuardandoCRI(false);
+    }
+  };
+
+  const recargarCRIBD = async () => {
+    const ok = await confirmDialog({
+      title: 'Cargar desde BD',
+      message: 'Se borrarán los ajustes manuales del CRI y se mostrarán los valores calculados desde las tareas. ¿Continuar?',
+      confirmText: 'Cargar desde BD',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const data = await resetCRIReport();
+      queryClient.setQueryData(['criReport'], data);
+      toast.success('Calificaciones recalculadas desde la base de datos');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'No se pudieron recalcular las calificaciones');
+    }
   };
 
   const handleDragStart = (e, cardId) => {
@@ -805,12 +824,16 @@ const ReportesPage = () => {
               <span className="badge-subtitle">Promedio de Cumplimiento</span>
             </div>
             <div className="acciones-seccion">
-              <button className="btn-opcion" onClick={recargarCRIBD}>
-                <FiRefreshCw /> Cargar desde BD
-              </button>
-              <button className="btn-opcion primary" onClick={guardarCRI}>
-                <FiSave /> Guardar Cambios
-              </button>
+              {puedeEditarCRI && (
+                <>
+                  <button className="btn-opcion" onClick={recargarCRIBD}>
+                    <FiRefreshCw /> Cargar desde BD
+                  </button>
+                  <button className="btn-opcion primary" onClick={guardarCRI} disabled={guardandoCRI}>
+                    <FiSave /> {guardandoCRI ? 'Guardando…' : 'Guardar Cambios'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -828,6 +851,13 @@ const ReportesPage = () => {
                   </tr>
                 </thead>
                 <tbody>
+                  {calificacionCRI.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="td-label" style={{ textAlign: 'center', opacity: 0.7 }}>
+                        {criData ? 'No hay proyectos completados.' : 'Cargando…'}
+                      </td>
+                    </tr>
+                  )}
                   {calificacionCRI.map((row, idx) => {
                     const criVal = Number(row.cri) || 0;
                     let badgeColor = '#10b981';
@@ -840,17 +870,26 @@ const ReportesPage = () => {
                       badgeText = 'ACEPTABLE';
                     }
                     return (
-                      <tr key={row.id || idx}>
-                        <td className="td-label" style={{ fontWeight: 800 }}>{row.name}</td>
+                      <tr key={row.project_id}>
+                        <td className="td-label" style={{ fontWeight: 800 }}>
+                          {row.name}
+                          {row.editado && (
+                            <span
+                              title={`Ajustado a mano${row.editado_por ? ` por ${row.editado_por}` : ''}. Calculado: ${row.calculado?.terminadas ?? 0} de ${row.calculado?.asignadas ?? 0} (${row.calculado?.cri ?? 0}%)`}
+                              style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b' }}
+                            >
+                              ✎ editado
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <input
                             type="number"
                             className="input-editable"
                             value={row.asignadas}
-                            onChange={(e) => {
-                              const val = Number(e.target.value) || 0;
-                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, asignadas: val } : item));
-                            }}
+                            min={0}
+                            disabled={!puedeEditarCRI}
+                            onChange={(e) => editarCRI(idx, 'asignadas', Math.max(0, Number(e.target.value) || 0))}
                           />
                         </td>
                         <td>
@@ -858,10 +897,9 @@ const ReportesPage = () => {
                             type="number"
                             className="input-editable"
                             value={row.terminadas}
-                            onChange={(e) => {
-                              const val = Number(e.target.value) || 0;
-                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, terminadas: val } : item));
-                            }}
+                            min={0}
+                            disabled={!puedeEditarCRI}
+                            onChange={(e) => editarCRI(idx, 'terminadas', Math.max(0, Number(e.target.value) || 0))}
                           />
                         </td>
                         <td>
@@ -869,10 +907,9 @@ const ReportesPage = () => {
                             type="number"
                             className="input-editable"
                             value={row.vencidas}
-                            onChange={(e) => {
-                              const val = Number(e.target.value) || 0;
-                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, vencidas: val } : item));
-                            }}
+                            min={0}
+                            disabled={!puedeEditarCRI}
+                            onChange={(e) => editarCRI(idx, 'vencidas', Math.max(0, Number(e.target.value) || 0))}
                           />
                         </td>
                         <td>
@@ -881,10 +918,9 @@ const ReportesPage = () => {
                             className="input-editable"
                             style={{ fontWeight: 900, color: badgeColor }}
                             value={row.cri}
-                            onChange={(e) => {
-                              const val = Number(e.target.value) || 0;
-                              setCalificacionCRI(prev => prev.map((item, i) => i === idx ? { ...item, cri: val } : item));
-                            }}
+                            min={0} max={100}
+                            disabled={!puedeEditarCRI}
+                            onChange={(e) => editarCRI(idx, 'cri', Math.max(0, Number(e.target.value) || 0))}
                           />
                         </td>
                         <td>

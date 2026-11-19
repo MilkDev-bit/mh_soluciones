@@ -555,3 +555,92 @@ class GeneralStatusAPIView(APIView):
         data['generated_at'] = timezone.now().isoformat()
         cache.set(cache_key, data, self.CACHE_SECONDS)
         return Response(data)
+
+
+CRI_EDIT_ROLES = ('SUPERADMIN', 'ADMIN', 'CEO')
+
+
+def scoped_projects(user):
+    """Proyectos que el usuario puede ver en reportes (mismo criterio que estadísticas)."""
+    if user.role == 'ADMIN':
+        return get_admin_accessible_projects(user)
+    if user.role in FULL_ACCESS_ROLES:
+        return Project.objects.all()
+    if user.role == 'CLIENT':
+        ids = ProjectMember.objects.filter(user=user).values_list('project_id', flat=True)
+        return Project.objects.filter(Q(client=user) | Q(id__in=ids)).distinct()
+    return user.projects.all()
+
+
+class CRIReportAPIView(APIView):
+    """
+    GET    /api/v1/reports/cri/  -> filas del CRI de proyectos completados
+    PUT    /api/v1/reports/cri/  -> guarda ajustes manuales {"rows": [...]}
+    DELETE /api/v1/reports/cri/  -> borra los ajustes (vuelve a lo calculado);
+                                    ?project=<id> para uno solo.
+    Editar: SUPERADMIN, ADMIN y CEO (ADMIN solo en sus proyectos).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.reports.cri import report_rows
+        rows = report_rows(scoped_projects(request.user))
+        return Response({'rows': rows, 'can_edit': request.user.role in CRI_EDIT_ROLES})
+
+    def _check_edit(self, request):
+        if request.user.role not in CRI_EDIT_ROLES:
+            return Response({'detail': 'No tienes permiso para editar el CRI.'}, status=403)
+        return None
+
+    def put(self, request):
+        from apps.projects.models import Project as P
+        from apps.reports.cri import calculate, report_rows
+        from apps.reports.models import ProjectCRIOverride
+        denied = self._check_edit(request)
+        if denied:
+            return denied
+        rows = request.data.get('rows')
+        if not isinstance(rows, list):
+            return Response({'detail': 'Se esperaba una lista "rows".'}, status=400)
+
+        allowed = scoped_projects(request.user).filter(status=P.ProjectStatus.COMPLETED)
+        allowed_ids = set(allowed.values_list('id', flat=True))
+        calculated = calculate(allowed)
+        saved = 0
+        for row in rows:
+            try:
+                pid = int(row.get('project_id'))
+                values = {k: int(row.get(k)) for k in ('asignadas', 'terminadas', 'vencidas', 'cri')}
+            except (TypeError, ValueError):
+                return Response({'detail': 'Valores inválidos: deben ser números enteros.'}, status=400)
+            if pid not in allowed_ids:
+                continue
+            if any(v < 0 for v in values.values()) or values['cri'] > 100:
+                return Response({'detail': 'Los valores no pueden ser negativos y el CRI va de 0 a 100.'}, status=400)
+            calc = calculated.get(pid, {'asignadas': 0, 'terminadas': 0, 'vencidas': 0, 'cri': 0})
+            if values == calc:
+                # Igual a lo calculado: no hace falta guardar un ajuste.
+                ProjectCRIOverride.objects.filter(project_id=pid).delete()
+                continue
+            ProjectCRIOverride.objects.update_or_create(
+                project_id=pid, defaults={**values, 'updated_by': request.user},
+            )
+            saved += 1
+        return Response({'saved': saved, 'rows': report_rows(scoped_projects(request.user)),
+                         'can_edit': True})
+
+    def delete(self, request):
+        from apps.projects.models import Project as P
+        from apps.reports.cri import report_rows
+        from apps.reports.models import ProjectCRIOverride
+        denied = self._check_edit(request)
+        if denied:
+            return denied
+        allowed = scoped_projects(request.user).filter(status=P.ProjectStatus.COMPLETED)
+        qs = ProjectCRIOverride.objects.filter(project__in=allowed)
+        project = request.query_params.get('project')
+        if project:
+            qs = qs.filter(project_id=project)
+        deleted, _ = qs.delete()
+        return Response({'deleted': deleted, 'rows': report_rows(scoped_projects(request.user)),
+                         'can_edit': True})

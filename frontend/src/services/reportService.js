@@ -53,3 +53,22 @@ export const getGeneralStatus = async ({ refresh = false } = {}) => {
   const { data } = await api.get('/reports/general-status/', { params: refresh ? { refresh: 1 } : {} });
   return data;
 };
+
+/**
+ * Calificación final del CRI por proyecto completado (con ajustes manuales
+ * guardados en la base de datos, compartidos para todos).
+ */
+export const getCRIReport = async () => {
+  const { data } = await api.get('/reports/cri/');
+  return data;
+};
+
+export const saveCRIReport = async (rows) => {
+  const { data } = await api.put('/reports/cri/', { rows });
+  return data;
+};
+
+export const resetCRIReport = async () => {
+  const { data } = await api.delete('/reports/cri/');
+  return data;
+};
