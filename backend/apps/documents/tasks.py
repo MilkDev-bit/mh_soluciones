@@ -13,8 +13,31 @@ def upload_document_to_drive(self, document_id, target_folder_id=None):
     Tarea de Celery para subir un archivo a Google Drive institucional.
     También puede llamarse directamente (sin Celery) para subida síncrona.
     """
+    from django.conf import settings
+    from apps.core.background import is_worker_process
+
+    # [FIX] En Redis había tareas de subida encoladas hace meses que nunca se
+    # procesaron. Al encender el worker las tomó, no encontró los archivos
+    # (están en el volumen del servicio web) y marcó como FALLIDOS documentos
+    # que ya estaban en Drive. Ahora:
+    #  - el worker no procesa subidas si DRIVE_UPLOADS_VIA_CELERY está apagado,
+    #  - un documento ya subido no se vuelve a tocar,
+    #  - si el archivo no está en este servidor, no se cambia su estado.
+    if is_worker_process() and not getattr(settings, 'DRIVE_UPLOADS_VIA_CELERY', False):
+        logger.warning(f"Tarea de subida del documento {document_id} ignorada en el worker "
+                       "(DRIVE_UPLOADS_VIA_CELERY desactivado; la sube el servicio web).")
+        return f"Ignorada: documento {document_id}"
+
     try:
         document = Document.objects.get(pk=document_id)
+
+        if document.upload_status == Document.UploadStatus.COMPLETE and document.drive_file_id:
+            logger.info(f"Documento {document_id} ya está en Drive; no se vuelve a subir.")
+            return f"Documento {document_id} ya subido."
+
+        if is_worker_process() and document.file and not document.file.storage.exists(document.file.name):
+            logger.warning(f"El archivo del documento {document_id} no está en este servidor; no se cambia su estado.")
+            return f"Archivo de {document_id} no disponible aquí."
 
         document.upload_status = Document.UploadStatus.UPLOADING
         document.save(update_fields=['upload_status'])
@@ -56,12 +79,10 @@ def upload_document_to_drive(self, document_id, target_folder_id=None):
         return f"Error: Documento con id {document_id} no encontrado. No se puede subir."
     except Exception as exc:
         logger.error(f"Error al subir el archivo {document_id}: {exc}")
-        try:
-            failed_doc = Document.objects.get(pk=document_id)
-            failed_doc.upload_status = Document.UploadStatus.FAILED
-            failed_doc.save(update_fields=['upload_status'])
-        except Document.DoesNotExist:
-            pass
+        # No marcar como fallido un documento que ya está en Drive.
+        Document.objects.filter(pk=document_id).exclude(
+            upload_status=Document.UploadStatus.COMPLETE, drive_file_id__isnull=False,
+        ).update(upload_status=Document.UploadStatus.FAILED)
 
         # Solo reintentar si se está ejecutando como tarea Celery (self.request.id no es None)
         if self.request.id is not None:
