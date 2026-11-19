@@ -108,7 +108,6 @@ class TaskViewSet(viewsets.ModelViewSet):
                 base_queryset = Task.objects.filter(
                     Q(project__client=user) | Q(project_id__in=member_project_ids)
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
-                logger.info(f"Client {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
             else:
                 # Students see only tasks assigned to them or their project tasks
                 # Using multiple conditions to ensure tasks are visible:
@@ -119,12 +118,20 @@ class TaskViewSet(viewsets.ModelViewSet):
                 base_queryset = Task.objects.filter(
                     student_visible_tasks_q(user)
                 ).exclude(status='DRAFT').distinct().select_related('project', 'assigned_to').prefetch_related('assigned_students')
-                
-                logger.info(f"Student {user.username} (ID: {user.id}) queryset count: {base_queryset.count()}")
+                # [RENDIMIENTO] Aquí se hacía base_queryset.count() solo para un
+                # log: era la consulta más pesada de la base de datos (un COUNT
+                # DISTINCT con varios JOIN en cada petición, hasta 1 s).
 
         base_queryset = self._with_review_data(base_queryset, user)
 
-        project_id = getattr(self.request, 'query_params', self.request.GET).get('project', None)
+        params = getattr(self.request, 'query_params', self.request.GET)
+        # ?title_contains=GRAFICAS: los reportes generales solo necesitan las
+        # tareas de gráficas, no todas las tareas de todos los proyectos.
+        title_contains = (params.get('title_contains') or '').strip()
+        if title_contains:
+            base_queryset = base_queryset.filter(title__icontains=title_contains)
+
+        project_id = params.get('project', None)
         if project_id:
             return base_queryset.filter(project_id=project_id).order_by('-created_at')
 

@@ -82,15 +82,19 @@ const GeneralGraficasReports = ({ projects }) => {
     queryKey: ['allTasksForGeneralReports', refreshIndex],
     queryFn: async () => {
       try {
-        const res = await api.get('/tasks/?page_size=1000');
+        // Solo las tareas de GRÁFICAS (antes: todas las tareas de todos los
+        // proyectos cada 4 s, la petición más pesada del panel).
+        const res = await api.get('/tasks/?title_contains=GRAFICAS&page_size=1000');
         return res.data?.results || res.data || [];
       } catch (err) {
         console.error('Error fetching tasks for general reports:', err);
         return [];
       }
     },
-    staleTime: 2000,
-    refetchInterval: 4000,
+    staleTime: 30000,
+    // Los cambios hechos en esta app ya avisan con 'graficasDataUpdated';
+    // el sondeo solo trae lo que capturan otras personas.
+    refetchInterval: 60000,
     refetchOnWindowFocus: true,
   });
 

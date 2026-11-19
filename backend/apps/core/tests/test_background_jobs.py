@@ -260,3 +260,19 @@ class StaleUploadTaskTests(TestCase):
         drive.assert_not_called()
         doc.refresh_from_db()
         self.assertEqual(doc.upload_status, Document.UploadStatus.PENDING)
+
+
+class TaskTitleFilterTests(TestCase):
+    def test_title_contains_filtra_tareas(self):
+        from rest_framework.test import APIClient
+        from apps.authentication.models import CustomUser
+        from apps.projects.models import Project
+        from apps.tasks.models import Task
+        admin = CustomUser.objects.create_user(username='adm2', password='x', role='ADMIN')
+        p = Project.objects.create(name='P', status='IN_PROGRESS', created_by=admin)
+        Task.objects.create(title='GRAFICAS', project=p, created_by=admin)
+        Task.objects.create(title='KPI', project=p, created_by=admin)
+        client = APIClient(); client.force_authenticate(admin)
+        data = client.get('/api/v1/tasks/?title_contains=GRAFICAS&page_size=1000').json()
+        items = data.get('results', data)
+        self.assertEqual([t['title'] for t in items], ['GRAFICAS'])
