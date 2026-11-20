@@ -670,7 +670,7 @@ const GeneralGraficasReports = ({ projects }) => {
                     <td className="cell-readonly">{row.actos || 0}</td>
                     <td className="cell-readonly">{row.condiciones || 0}</td>
                     <td className="cell-readonly">{row.ft || 0}</td>
-                    <td className="cell-readonly" style={{ fontWeight: 'bold', color: isDarkMode ? '#34d399' : '#059669' }}>{calc.total_hh}</td>
+                    <td className="cell-readonly cell-total-hh">{calc.total_hh}</td>
                     <td className="cell-readonly">{calc.hh_corregidas}</td>
                     <td className={`cell-readonly ${calc.resultado === '#DIV/0!' ? 'cell-error' : ''}`} style={{ fontWeight: 'bold' }}>
                       {calc.resultado}
@@ -701,7 +701,7 @@ const GeneralGraficasReports = ({ projects }) => {
                 <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
                 <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
                 <th className="col-total-inc">TOTAL INCIDENCIAS</th>
-                <th className="col-acc-inc" style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>ACCIDENTES INCAPACITANTES</th>
+                <th className="col-acc-inc">ACCIDENTES INCAPACITANTES</th>
               </tr>
             </thead>
             <tbody>
@@ -712,10 +712,10 @@ const GeneralGraficasReports = ({ projects }) => {
                     <td className="cell-readonly" style={{ fontWeight: 'bold' }}>{row.semana}</td>
                     <td className="cell-readonly">{row.actos || 0}</td>
                     <td className="cell-readonly">{row.condiciones || 0}</td>
-                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', color: '#c2410c' }}>{calc.incidencias_kpi}</td>
+                    <td className="cell-readonly cell-kpi">{calc.incidencias_kpi}</td>
                     <td className="cell-readonly">{row.incidencias_campo !== undefined && row.incidencias_campo !== '' ? row.incidencias_campo : calc.incidencias_campo}</td>
-                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>{calc.incidencias_total}</td>
-                    <td className="cell-readonly" style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>{row.accidentes_incapacitantes || 0}</td>
+                    <td className="cell-readonly cell-total-inc">{calc.incidencias_total}</td>
+                    <td className="cell-readonly cell-accidentes" style={{ fontSize: '15px' }}>{row.accidentes_incapacitantes || 0}</td>
                   </tr>
                 );
               })}

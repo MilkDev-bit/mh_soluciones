@@ -423,7 +423,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
         </table>
       </div>
 
-      <div className="table-footer-actions" style={{ borderBottom: '1px solid #cbd5e1', marginBottom: '28px', backgroundColor: '#f8fafc' }}>
+      <div className="table-footer-actions table-footer-actions--separador">
         <div className="footer-left">
           <button type="button" className="btn-add-row" onClick={handleAddRow1}>
             <FiPlus /> Añadir Semana (Rendimiento)
@@ -448,7 +448,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
               <th className="col-kpi">INCIDENCIAS REGISTRADAS EN KPI (20%)</th>
               <th className="col-campo">INCIDENCIAS SOLVENTADAS EN CAMPO (80%)</th>
               <th className="col-total-inc">TOTAL</th>
-              <th className="col-acc-inc" style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>ACCIDENTES INCAPACITANTES</th>
+              <th className="col-acc-inc">ACCIDENTES INCAPACITANTES</th>
               <th className="col-actions"></th>
             </tr>
           </thead>
@@ -481,7 +481,7 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       onChange={(e) => handleCellChange2(idx, 'condiciones', e.target.value)}
                     />
                   </td>
-                  <td className="cell-readonly" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', color: '#c2410c' }}>
+                  <td className="cell-readonly cell-kpi">
                     {calc.incidencias_kpi}
                   </td>
                   <td className="cell-input">
@@ -492,16 +492,15 @@ const GraficasActivityTable = ({ task, project, onDataSaved }) => {
                       onChange={(e) => handleCellChange2(idx, 'incidencias_campo', e.target.value)}
                     />
                   </td>
-                  <td className="cell-readonly" style={{ backgroundColor: 'rgba(245, 158, 11, 0.18)', color: '#b45309', fontWeight: 'bold' }}>
+                  <td className="cell-readonly cell-total-inc">
                     {calc.incidencias_total}
                   </td>
-                  <td className="cell-input" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+                  <td className="cell-input cell-accidentes">
                     <input
                       type="number"
                       step="any"
                       value={row.accidentes_incapacitantes !== undefined && row.accidentes_incapacitantes !== '' ? row.accidentes_incapacitantes : 0}
                       onChange={(e) => handleCellChange2(idx, 'accidentes_incapacitantes', e.target.value)}
-                      style={{ fontWeight: 'bold', color: '#dc2626' }}
                     />
                   </td>
                   <td className="cell-actions">
