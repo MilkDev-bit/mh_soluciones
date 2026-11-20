@@ -18,6 +18,7 @@ import { getGraficasData, calculateRowValues } from '../tasks/GraficasActivityTa
 import { ThemeContext } from '../../contexts/ThemeContext';
 import '../tasks/GraficasActivityChart.scss';
 import '../tasks/GraficasActivityTable.scss';
+import './GeneralGraficasReports.scss';
 
 ChartJS.register(
   CategoryScale,
@@ -29,9 +30,54 @@ ChartJS.register(
   Legend
 );
 
-const calcIF = (accidentes, hh) => {
+// Estándar con el que se calcula la tasa de accidentes incapacitantes.
+// - OIT: Índice de Frecuencia = accidentes × 1,000,000 ÷ HH.
+// - OSHA: tasa de casos con tiempo perdido (LTIR) = casos × 200,000 ÷ HH
+//   (200,000 h = 100 trabajadores × 40 h × 50 semanas).
+// Las líneas de referencia son las mismas en los dos, convertidas a la base
+// de cada estándar (200,000 / 1,000,000 = 0.2), para que el semáforo no cambie.
+export const ESTANDARES_SEGURIDAD = {
+  OIT: {
+    clave: 'OIT',
+    nombre: 'OIT',
+    descripcion: 'Organización Internacional del Trabajo',
+    base: 1000000,
+    baseTexto: '1,000,000',
+    porBase: 'por 1M de HH',
+    indice: 'Índice de Frecuencia (IF)',
+    sigla: 'IF',
+    bajo: 5,
+    meta: 10,
+    alto: 25,
+  },
+  OSHA: {
+    clave: 'OSHA',
+    nombre: 'OSHA',
+    descripcion: 'Occupational Safety and Health Administration (EE. UU.)',
+    base: 200000,
+    baseTexto: '200,000',
+    porBase: 'por 200,000 HH',
+    indice: 'Tasa de casos con tiempo perdido (LTIR)',
+    sigla: 'LTIR',
+    bajo: 1,
+    meta: 2,
+    alto: 5,
+  },
+};
+const CLAVE_ESTANDAR = 'reportes_estandar_seguridad';
+
+const leerEstandarGuardado = () => {
+  try {
+    const guardado = window.localStorage.getItem(CLAVE_ESTANDAR);
+    return ESTANDARES_SEGURIDAD[guardado] ? guardado : 'OIT';
+  } catch {
+    return 'OIT';
+  }
+};
+
+const calcIF = (accidentes, hh, base = ESTANDARES_SEGURIDAD.OIT.base) => {
   if (!hh || hh <= 0 || isNaN(hh)) return 0;
-  const val = (accidentes * 1000000) / hh;
+  const val = (accidentes * base) / hh;
   return isNaN(val) || !isFinite(val) ? 0 : Number(val.toFixed(2));
 };
 
@@ -77,6 +123,17 @@ const GeneralGraficasReports = ({ projects }) => {
   const [selectedYear2, setSelectedYear2] = useState(String(currentIsoYear));
   const [selectedYear3, setSelectedYear3] = useState(String(currentIsoYear));
   const [refreshIndex, setRefreshIndex] = useState(0);
+  const [estandarClave, setEstandarClave] = useState(leerEstandarGuardado);
+  const estandar = ESTANDARES_SEGURIDAD[estandarClave];
+
+  const cambiarEstandar = (clave) => {
+    setEstandarClave(clave);
+    try {
+      window.localStorage.setItem(CLAVE_ESTANDAR, clave);
+    } catch {
+      // Sin almacenamiento: el estándar se mantiene solo mientras la página esté abierta.
+    }
+  };
 
   const { data: allTasksData } = useQuery({
     queryKey: ['allTasksForGeneralReports', refreshIndex],
@@ -370,16 +427,16 @@ const GeneralGraficasReports = ({ projects }) => {
     return parseFloat(t1Row.total_hh) || 0;
   };
 
-  const ifAccData3 = rowsToUse3.map((r, idx) => {
-    const hh = getHHForIndexGen(r.semana, idx);
-    return calcIF(r.accidentes_incapacitantes || 0, hh);
+  const ifAccData3 = rowsToUse3.map((r) => {
+    const hh = getHHForIndexGen(r.semana);
+    return calcIF(r.accidentes_incapacitantes || 0, hh, estandar.base);
   });
 
   const data3 = {
     labels: labels3,
     datasets: [
       {
-        label: 'Tasa IF (por 1M de HH)',
+        label: `${estandar.sigla} (${estandar.porBase})`,
         data: ifAccData3,
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -392,24 +449,24 @@ const GeneralGraficasReports = ({ projects }) => {
         tension: 0.1,
       },
       {
-        label: 'META IF (Tasa 10.0)',
-        data: rowsToUse3.map(() => 10.0),
+        label: `META ${estandar.sigla} (Tasa ${estandar.meta.toFixed(1)})`,
+        data: rowsToUse3.map(() => estandar.meta),
         borderColor: '#10b981',
         borderDash: [5, 5],
         borderWidth: 2,
         pointRadius: 0,
       },
       {
-        label: 'BAJO IF (Tasa 5.0)',
-        data: rowsToUse3.map(() => 5.0),
+        label: `BAJO ${estandar.sigla} (Tasa ${estandar.bajo.toFixed(1)})`,
+        data: rowsToUse3.map(() => estandar.bajo),
         borderColor: '#f59e0b',
         borderDash: [5, 5],
         borderWidth: 2,
         pointRadius: 0,
       },
       {
-        label: 'ALTO IF (Tasa 25.0)',
-        data: rowsToUse3.map(() => 25.0),
+        label: `ALTO ${estandar.sigla} (Tasa ${estandar.alto.toFixed(1)})`,
+        data: rowsToUse3.map(() => estandar.alto),
         borderColor: '#ef4444',
         borderDash: [5, 5],
         borderWidth: 2,
@@ -418,7 +475,9 @@ const GeneralGraficasReports = ({ projects }) => {
     ],
   };
 
-  const options = {
+  // Opciones de las gráficas. `etiquetaSerie` arma el texto del tooltip de las
+  // series de datos de cada gráfica (antes las tres mostraban el de accidentes).
+  const crearOpciones = (etiquetaSerie, stepSize) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -458,15 +517,7 @@ const GeneralGraficasReports = ({ projects }) => {
                 `Significado: ${desc} (NO es conteo de accidentes)`
               ];
             }
-            const idx = context.dataIndex;
-            const row = rowsToUse3[idx] || {};
-            const acc = calculateRowValues(row).accidentes_incapacitantes || 0;
-            const hh = getHHForIndexGen(row.semana, idx);
-            return [
-              `Tasa IF: ${context.parsed.y} (por 1M de HH)`,
-              `Accidentes Reales: ${acc} ${acc === 1 ? 'accidente' : 'accidentes'}`,
-              `Horas-Hombre: ${hh.toLocaleString()} HH`
-            ];
+            return etiquetaSerie(context);
           }
         }
       }
@@ -490,7 +541,7 @@ const GeneralGraficasReports = ({ projects }) => {
         ticks: {
           color: isDarkMode ? '#94a3b8' : '#475569',
           font: { weight: '500' },
-          stepSize: 5
+          ...(stepSize ? { stepSize } : {}),
         },
         beginAtZero: true
       }
@@ -499,7 +550,19 @@ const GeneralGraficasReports = ({ projects }) => {
       mode: 'index',
       intersect: false,
     },
-  };
+  });
+
+  const opcionesGeneral = crearOpciones((context) => `${context.dataset.label}: ${context.parsed.y}`);
+  const opcionesAccidentes = crearOpciones((context) => {
+    const row = rowsToUse3[context.dataIndex] || {};
+    const acc = calculateRowValues(row).accidentes_incapacitantes || 0;
+    const hh = getHHForIndexGen(row.semana);
+    return [
+      `${estandar.sigla} (${estandar.nombre}): ${context.parsed.y} ${estandar.porBase}`,
+      `Accidentes Reales: ${acc} ${acc === 1 ? 'accidente' : 'accidentes'}`,
+      `Horas-Hombre: ${hh.toLocaleString()} HH`
+    ];
+  }, estandarClave === 'OIT' ? 5 : 1);
 
 
   return (
@@ -538,6 +601,24 @@ const GeneralGraficasReports = ({ projects }) => {
               Los datos de todos los proyectos se suman por semana del calendario (lunes a domingo; la semana 1 es la que
               contiene el primer jueves del año). La semana de cada registro se calcula a partir de la fecha de inicio del proyecto. Cada gráfica se filtra por año: del año en curso se muestran de la semana 1 a la actual.
             </p>
+          </div>
+        </div>
+
+        <div className="selector-estandar" role="group" aria-label="Estándar de métricas de seguridad">
+          <span className="selector-estandar-label">Estándar de métricas</span>
+          <div className="selector-estandar-opciones">
+            {Object.values(ESTANDARES_SEGURIDAD).map((e) => (
+              <button
+                key={e.clave}
+                type="button"
+                className={estandarClave === e.clave ? 'activo' : ''}
+                aria-pressed={estandarClave === e.clave}
+                title={`${e.descripcion}: tasa por cada ${e.baseTexto} horas-hombre`}
+                onClick={() => cambiarEstandar(e.clave)}
+              >
+                {e.nombre}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -758,7 +839,7 @@ const GeneralGraficasReports = ({ projects }) => {
         </div>
 
         <div className="chart-container-box">
-          <Line data={data1} options={options} />
+          <Line data={data1} options={opcionesGeneral} />
         </div>
       </div>
 
@@ -837,7 +918,7 @@ const GeneralGraficasReports = ({ projects }) => {
         })()}
 
         <div className="chart-container-box">
-          <Line data={data2} options={options} />
+          <Line data={data2} options={opcionesGeneral} />
         </div>
       </div>
 
@@ -847,10 +928,10 @@ const GeneralGraficasReports = ({ projects }) => {
           <div>
             <h3 className="chart-title">
               <FiActivity className="title-icon" style={{ color: '#10b981' }} />
-              Tasa de Frecuencia de Accidentes (IF) General
+              {estandar.indice} General · {estandar.nombre}
             </h3>
             <span className="chart-subtitle" style={{ display: 'block', marginTop: '4px', color: isDarkMode ? '#cbd5e1' : '#475569' }}>
-              <strong>Nota:</strong> Muestra el <em>Índice de Frecuencia (Tasa por cada 1,000,000 HH)</em>, NO la cantidad de accidentes reales. Fórmula: (No. de Accidentes × 1,000,000) ÷ HH.
+              <strong>Nota:</strong> Muestra la <em>tasa por cada {estandar.baseTexto} HH</em> según el estándar {estandar.nombre}, NO la cantidad de accidentes reales. Fórmula: (No. de Accidentes incapacitantes × {estandar.baseTexto}) ÷ HH.
             </span>
           </div>
           
@@ -879,8 +960,8 @@ const GeneralGraficasReports = ({ projects }) => {
 
         {selectedYear3 !== 'ALL' && rowsToUse3.length > 0 && (() => {
           const accumAcc = rowsToUse3.reduce((sum, r) => sum + (calculateRowValues(r).accidentes_incapacitantes || 0), 0);
-          const accumHH = rowsToUse3.reduce((sum, r, idx) => sum + getHHForIndexGen(r.semana, idx), 0);
-          const ifAccAcum = calcIF(accumAcc, accumHH);
+          const accumHH = rowsToUse3.reduce((sum, r) => sum + getHHForIndexGen(r.semana), 0);
+          const ifAccAcum = calcIF(accumAcc, accumHH, estandar.base);
 
           return (
             <div className="week-status-kpi-panel" style={{
@@ -900,7 +981,7 @@ const GeneralGraficasReports = ({ projects }) => {
                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: isDarkMode ? '#fbbf24' : '#d97706', marginTop: '4px' }}>{accumAcc}</div>
               </div>
               <div className="kpi-item">
-                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>Tasa IF Acumulada (por 1M HH)</span>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>{estandar.sigla} acumulada ({estandar.porBase})</span>
                 <div style={{ fontSize: '22px', fontWeight: 'bold', color: isDarkMode ? '#ef4444' : '#dc2626', marginTop: '2px' }}>{ifAccAcum}</div>
               </div>
             </div>
@@ -921,28 +1002,28 @@ const GeneralGraficasReports = ({ projects }) => {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#f59e0b', marginTop: '2px', flexShrink: 0 }}></span>
             <div>
-              <strong style={{ color: isDarkMode ? '#fde68a' : '#b45309' }}>BAJO IF (Tasa 5.0):</strong>
-              <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Nivel de excelencia en seguridad. Refleja un índice óptimo con mínima accidentabilidad por cada millón de horas.</div>
+              <strong style={{ color: isDarkMode ? '#fde68a' : '#b45309' }}>BAJO {estandar.sigla} (Tasa {estandar.bajo.toFixed(1)}):</strong>
+              <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Nivel de excelencia en seguridad. Refleja un índice óptimo con mínima accidentabilidad por cada {estandar.baseTexto} horas.</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#10b981', marginTop: '2px', flexShrink: 0 }}></span>
             <div>
-              <strong style={{ color: isDarkMode ? '#a7f3d0' : '#047857' }}>META IF (Tasa 10.0):</strong>
-              <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Promedio industrial objetivo por millón de horas trabajadas. Representa un índice de accidentabilidad controlado.</div>
+              <strong style={{ color: isDarkMode ? '#a7f3d0' : '#047857' }}>META {estandar.sigla} (Tasa {estandar.meta.toFixed(1)}):</strong>
+              <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Promedio industrial objetivo por cada {estandar.baseTexto} horas trabajadas. Representa un índice de accidentabilidad controlado.</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#ef4444', marginTop: '2px', flexShrink: 0 }}></span>
             <div>
-              <strong style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>ALTO IF (Tasa 25.0):</strong>
+              <strong style={{ color: isDarkMode ? '#fecaca' : '#b91c1c' }}>ALTO {estandar.sigla} (Tasa {estandar.alto.toFixed(1)}):</strong>
               <div style={{ color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '11px', marginTop: '2px' }}>Límite crítico superior de alerta roja. Superar esta tasa exige investigación e intervención prioritaria.</div>
             </div>
           </div>
         </div>
 
         <div className="chart-container-box">
-          <Line data={data3} options={options} />
+          <Line data={data3} options={opcionesAccidentes} />
         </div>
       </div>
     </div>
