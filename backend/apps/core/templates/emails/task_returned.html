@@ -15,7 +15,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Tarea Devuelta para Revisión</h1>
+            <h1>Tarea devuelta para revisión</h1>
         </div>
         <div class="content">
             <h2>{{ task.title }}</h2>
@@ -27,7 +27,7 @@
             
             {% if submission.teacher_feedback %}
             <div class="feedback">
-                <h3>Retroalimentación del Profesor:</h3>
+                <h3>Retroalimentación del coordinador:</h3>
                 <p>{{ submission.teacher_feedback }}</p>
             </div>
             {% endif %}
@@ -37,7 +37,7 @@
             <a href="{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}" class="button">Ver Tarea y Hacer Nueva Entrega</a>
         </div>
         <div class="footer">
-            <p>MH Soluciones - Sistema de Gestión de Proyectos</p>
+            <p>MH Soluciones Empresariales - Sistema de gestión de proyectos</p>
             <p><a href="{{ frontend_url }}">{{ frontend_url }}</a></p>
         </div>
     </div>
