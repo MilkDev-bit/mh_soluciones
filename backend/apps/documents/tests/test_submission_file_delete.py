@@ -5,6 +5,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.core.models import RegistroActividad
@@ -139,3 +140,93 @@ class TrashFileTests(TestCase):
         svc.service.files.return_value.update.return_value.execute.side_effect = HttpError(resp, b'{}')
         with self.assertRaises(HttpError):
             svc.trash_file(DRIVE_ID)
+
+
+@override_settings(MEDIA_ROOT=MEDIA, DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage')
+class EmptySubmissionTests(TestCase):
+    """Si la entrega se queda sin archivos, se elimina para que el alumno ya no la vea."""
+
+    def setUp(self):
+        self.superadmin = User.objects.create_user(username='sa', email='sa@x.com', password='x', role='SUPERADMIN')
+        self.alumno = User.objects.create_user(username='al', email='al@x.com', password='x', role='STUDENT')
+        self.project = Project.objects.create(name='Obra', description='d', status='IN_PROGRESS',
+                                              created_by=self.superadmin)
+        self.task = Task.objects.create(title='Matriz', project=self.project, created_by=self.superadmin,
+                                        status='OPEN')
+
+    def submission(self, **kw):
+        return TaskSubmission.objects.create(task=self.task, submitted_by=self.alumno, notes='x', **kw)
+
+    def document(self, sub, name='m.pdf'):
+        return Document.objects.create(
+            name=name, file=SimpleUploadedFile(name, b'PDF'), uploaded_by=self.alumno,
+            project=self.project, task=self.task, task_submission=sub,
+            folder_type='TASK_SUBMISSION', upload_status='COMPLETE', drive_file_id=DRIVE_ID,
+        )
+
+    def delete(self, doc):
+        c = APIClient()
+        c.force_authenticate(self.superadmin)
+        with mock.patch(SERVICE) as drive:
+            drive.return_value.trash_file.return_value = True
+            return c.delete(f'/api/v1/documents/{doc.pk}/')
+
+    def test_entrega_sin_archivos_se_elimina(self):
+        sub = self.submission()
+        resp = self.delete(self.document(sub))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['submission_deleted'])
+        self.assertFalse(TaskSubmission.objects.filter(pk=sub.pk).exists())
+        log = RegistroActividad.objects.get(accion='ARCHIVO_ELIMINADO')
+        self.assertEqual(log.metadata['entrega_id'], sub.pk)
+        self.assertTrue(log.metadata['entrega_eliminada'])
+        self.assertIsNotNone(log.metadata['documento_id'])
+
+    def test_si_quedan_archivos_o_enlace_se_conserva(self):
+        sub = self.submission()
+        doc = self.document(sub)
+        self.document(sub, 'otro.pdf')
+        self.assertFalse(self.delete(doc).json()['submission_deleted'])
+        self.assertTrue(TaskSubmission.objects.filter(pk=sub.pk).exists())
+
+        con_enlace = self.submission(link='https://ejemplo.com/evidencia')
+        resp = self.delete(self.document(con_enlace))
+        self.assertFalse(resp.json()['submission_deleted'])
+        self.assertTrue(TaskSubmission.objects.filter(pk=con_enlace.pk).exists())
+
+    def test_vuelve_la_version_anterior_devuelta(self):
+        v1 = self.submission(status='SUPERSEDED', graded_at=timezone.now(), teacher_feedback='corrige')
+        v2 = self.submission()
+        self.assertEqual(v2.version, 2)
+        self.delete(self.document(v2))
+        self.assertFalse(TaskSubmission.objects.filter(pk=v2.pk).exists())
+        v1.refresh_from_db()
+        self.assertEqual(v1.status, 'CHANGES_REQUESTED')
+
+    def test_vuelve_la_version_anterior_sin_revisar(self):
+        v1 = self.submission(status='SUPERSEDED')
+        v2 = self.submission()
+        self.delete(self.document(v2))
+        v1.refresh_from_db()
+        self.assertEqual(v1.status, 'SUBMITTED')
+
+    def test_comando_limpia_entregas_que_ya_quedaron_vacias(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from apps.core.audit import log_activity
+        vacia = self.submission()
+        con_archivo = self.submission()
+        self.document(con_archivo)
+        sin_registro = TaskSubmission.objects.create(task=self.task, submitted_by=self.superadmin, notes='solo nota')
+        for sub in (vacia, con_archivo):
+            log_activity('ARCHIVO_ELIMINADO', 'x', self.superadmin, metadata={'entrega_id': sub.pk})
+
+        out = StringIO()
+        call_command('eliminar_entregas_vaciadas', stdout=out)
+        self.assertIn(f'Entrega {vacia.pk}', out.getvalue())
+        self.assertTrue(TaskSubmission.objects.filter(pk=vacia.pk).exists())  # sin --apply no borra
+
+        call_command('eliminar_entregas_vaciadas', '--apply', stdout=StringIO())
+        self.assertFalse(TaskSubmission.objects.filter(pk=vacia.pk).exists())
+        self.assertTrue(TaskSubmission.objects.filter(pk=con_archivo.pk).exists())
+        self.assertTrue(TaskSubmission.objects.filter(pk=sin_registro.pk).exists())

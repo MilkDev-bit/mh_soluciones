@@ -313,12 +313,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if instance.task_submission_id:
             # Archivo de una entrega: solo el SUPERADMIN, y se borra también en Drive.
             from ..submission_files import delete_submission_document
-            in_drive = delete_submission_document(instance, request.user)
-            return Response({
-                'message': 'Archivo eliminado de la entrega y de Google Drive.'
-                if in_drive else 'Archivo eliminado de la entrega.',
-                'deleted_in_drive': in_drive,
-            }, status=status.HTTP_200_OK)
+            result = delete_submission_document(instance, request.user)
+            message = ('Archivo eliminado de la entrega y de Google Drive.'
+                       if result['deleted_in_drive'] else 'Archivo eliminado de la entrega.')
+            if result['submission_deleted']:
+                message += ' La entrega quedó vacía y se eliminó; el alumno puede volver a entregar.'
+            return Response({'message': message, **result}, status=status.HTTP_200_OK)
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'], url_path='folders')

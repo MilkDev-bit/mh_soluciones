@@ -233,7 +233,8 @@ const TaskSubmissionsReview = ({ task, user }) => {
   const handleDeleteFile = async (doc) => {
     const ok = await confirmDialog({
       title: 'Eliminar archivo',
-      message: `Se eliminará "${doc.name}" de la entrega y de Google Drive (queda en la papelera de Drive 30 días). ¿Continuar?`,
+      message: `Se eliminará "${doc.name}" de la entrega y de Google Drive (queda en la papelera de Drive 30 días). `
+        + 'Si es el único archivo de la entrega, se elimina la entrega completa y el alumno podrá volver a entregar. ¿Continuar?',
       confirmText: 'Eliminar',
       danger: true,
     });
