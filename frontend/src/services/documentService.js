@@ -144,6 +144,14 @@ export const getFileUrl = (filePath) => {
   return filePath;
 };
 
+// Borra un archivo de una entrega de tarea (solo SUPERADMIN). El backend lo
+// manda también a la papelera de Google Drive. Se deja pasar el error tal cual
+// para mostrar el mensaje del servidor.
+export const deleteSubmissionFile = async (documentId) => {
+  const response = await api.delete(`/documents/${documentId}/`);
+  return response.data;
+};
+
 export const deleteDocument = async (documentId) => {
   try {
     await api.delete(`/documents/${documentId}/`);

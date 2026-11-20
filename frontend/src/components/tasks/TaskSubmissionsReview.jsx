@@ -6,12 +6,13 @@ import {
 } from '../../services/taskService';
 import {
   FiUser, FiCalendar, FiAward, FiMessageSquare, FiFile, FiDownload, FiClock, FiLink,
-  FiRefreshCw, FiLock, FiUnlock, FiCheckCircle, FiAlertTriangle, FiCalendar as FiExtend,
+  FiRefreshCw, FiLock, FiUnlock, FiCheckCircle, FiAlertTriangle, FiCalendar as FiExtend, FiTrash2,
 } from 'react-icons/fi';
 import GradeSubmissionForm from './GradeSubmissionForm';
 import Modal from '../common/Modal';
 import Loading from '../common/Loading';
 import { invalidateTaskQueries } from '../../utils/taskCache';
+import { deleteSubmissionFile } from '../../services/documentService';
 import {
   BOARD_STATE, submissionStatusLabel, submissionStatusClass, formatDateTime, apiErrorMessage,
 } from '../../utils/taskStatus';
@@ -40,7 +41,8 @@ const FILTERS = [
   { key: 'ALL', label: 'Todas' },
 ];
 
-const SubmissionFiles = ({ submission }) => {
+// `fileActions` solo llega para el SUPERADMIN: { onDelete(doc), deletingId }.
+const SubmissionFiles = ({ submission, fileActions }) => {
   const docs = submission.documents || [];
   const meta = submission.files_metadata || [];
   const hasDocs = docs.length > 0;
@@ -71,6 +73,18 @@ const SubmissionFiles = ({ submission }) => {
                 <a href={doc.file_url} download className="file-download"><FiDownload /> Descargar</a>
               ) : (
                 <span className="file-pending">⏳ Subiendo a Drive...</span>
+              )}
+              {fileActions && (
+                <button
+                  type="button"
+                  className="file-delete"
+                  onClick={() => fileActions.onDelete(doc)}
+                  disabled={fileActions.deletingId === doc.id}
+                  title="Eliminar de la entrega y de Google Drive"
+                  aria-label={`Eliminar ${doc.name}`}
+                >
+                  {fileActions.deletingId === doc.id ? <FiRefreshCw className="spinning" /> : <FiTrash2 />}
+                </button>
               )}
             </div>
           </div>
@@ -109,7 +123,7 @@ const SubmissionFiles = ({ submission }) => {
   );
 };
 
-const SubmissionBody = ({ submission, maxScore }) => (
+const SubmissionBody = ({ submission, maxScore, fileActions }) => (
   <>
     {submission.notes && (
       <div className="submission-notes"><FiMessageSquare /><p>{submission.notes}</p></div>
@@ -120,7 +134,7 @@ const SubmissionBody = ({ submission, maxScore }) => (
         <a href={submission.link} target="_blank" rel="noopener noreferrer">{submission.link}</a>
       </div>
     )}
-    <SubmissionFiles submission={submission} />
+    <SubmissionFiles submission={submission} fileActions={fileActions} />
     {submission.graded_at && (
       <div className="grading-info">
         <div className="grade-header">
@@ -160,6 +174,7 @@ const TaskSubmissionsReview = ({ task, user }) => {
   const [extendDays, setExtendDays] = useState(2);
 
   const isAdmin = ['SUPERADMIN', 'ADMIN', 'CEO'].includes(user?.role);
+  const [deletingFileId, setDeletingFileId] = useState(null);
 
   const fetchBoard = useCallback(async () => {
     try {
@@ -214,6 +229,35 @@ const TaskSubmissionsReview = ({ task, user }) => {
       setBusy(null);
     }
   };
+  // Solo el SUPERADMIN puede borrar archivos entregados (también se borran en Drive).
+  const handleDeleteFile = async (doc) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar archivo',
+      message: `Se eliminará "${doc.name}" de la entrega y de Google Drive (queda en la papelera de Drive 30 días). ¿Continuar?`,
+      confirmText: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
+    setDeletingFileId(doc.id);
+    try {
+      const res = await deleteSubmissionFile(doc.id);
+      toast.success(res?.message || 'Archivo eliminado');
+      invalidateTaskQueries(queryClient);
+      // Listas de archivos (Archivos, documentos del proyecto/tarea).
+      queryClient.invalidateQueries({
+        predicate: (q) => String(q.queryKey?.[0] ?? '').toLowerCase().includes('document'),
+      });
+      await fetchBoard();
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'No se pudo eliminar el archivo'));
+    } finally {
+      setDeletingFileId(null);
+    }
+  };
+  const fileActions = user?.role === 'SUPERADMIN'
+    ? { onDelete: handleDeleteFile, deletingId: deletingFileId }
+    : undefined;
+
 
   const handleClaim = async (row, force = false) => {
     const sub = row.latest_submission;
@@ -395,7 +439,7 @@ const TaskSubmissionsReview = ({ task, user }) => {
                             <button className="btn btn-primary btn-sm" onClick={() => setGrading(sub)}><FiAward /> Decidir</button>
                           )}
                         </div>
-                        <SubmissionBody submission={sub} maxScore={maxScore} />
+                        <SubmissionBody submission={sub} maxScore={maxScore} fileActions={fileActions} />
                       </div>
                     )}
 
@@ -411,7 +455,7 @@ const TaskSubmissionsReview = ({ task, user }) => {
                                 <span className={`submission-status ${submissionStatusClass(old)}`}>{submissionStatusLabel(old)}</span>
                               </div>
                             </div>
-                            <SubmissionBody submission={old} maxScore={maxScore} />
+                            <SubmissionBody submission={old} maxScore={maxScore} fileActions={fileActions} />
                           </div>
                         ))}
                       </>
