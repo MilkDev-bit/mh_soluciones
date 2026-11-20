@@ -66,6 +66,7 @@
           &.col-campo { background-color: #ea580c; color: #ffffff; width: 20%; min-width: 140px; }
           &.col-total-inc { background-color: #f59e0b; color: #111827; width: 12%; min-width: 90px; }
           &.col-actions { background-color: #e2e8f0; width: 45px; min-width: 45px; }
+          &.col-acc-inc { background-color: #dc2626; color: #ffffff; }
         }
       }
 
@@ -127,6 +128,18 @@
             font-size: 0.88rem;
           }
 
+          // Columnas de la tabla 2 (antes con estilos en línea)
+          &.cell-kpi { background-color: rgba(249, 115, 22, 0.15); color: #c2410c; }
+          &.cell-total-inc { background-color: rgba(245, 158, 11, 0.18); color: #b45309; font-weight: 700; }
+          &.cell-accidentes {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            font-weight: 700;
+
+            input { color: #dc2626; font-weight: 700; }
+          }
+          &.cell-total-hh { color: #059669; font-weight: 700; }
+
           &.cell-error {
             color: #dc2626;
             font-weight: 700;
@@ -156,6 +169,11 @@
   }
 
   .table-footer-actions {
+    &.table-footer-actions--separador {
+      border-bottom: 1px solid #cbd5e1;
+      margin-bottom: 28px;
+    }
+
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -267,6 +285,126 @@
         animation: spin 1s linear infinite;
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------- Modo oscuro
+// Mismos colores de encabezado que la hoja de cálculo, más oscuros, y el
+// cuerpo con los colores del tema.
+[data-theme="dark"] .graficas-activity-table-wrapper {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+
+  .table-header-banner {
+    background: linear-gradient(135deg, #2f5fae 0%, #1f4a91 100%);
+    border-bottom-color: #1b3f7a;
+  }
+
+  .table-responsive table {
+    th, td {
+      border-color: #3a3a3a;
+    }
+
+    thead {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+
+      th {
+        color: #f5f5f5;
+
+        &.col-semana,
+        &.col-corregidas,
+        &.col-resultado,
+        &.col-meta,
+        &.col-bajo,
+        &.col-alto { background-color: #7a4a1c; color: #fde7cf; }
+        &.col-actos { background-color: #6e5814; color: #fef3c7; }
+        &.col-condiciones { background-color: #66640f; color: #fefce8; }
+        &.col-ft,
+        &.col-total { background-color: #3d5c30; color: #dcfce7; }
+        &.col-kpi { background-color: #9a3f0c; color: #ffffff; }
+        &.col-campo { background-color: #7c2d0b; color: #ffffff; }
+        &.col-total-inc { background-color: #8a5a07; color: #ffffff; }
+        &.col-acc-inc { background-color: #991b1b; color: #ffffff; }
+        &.col-actions { background-color: #2e2e2e; }
+      }
+    }
+
+    tbody {
+      tr {
+        background-color: #1f1f1f;
+
+        &:nth-child(even) { background-color: #242424; }
+        &:hover { background-color: #2e2e2e; }
+      }
+
+      td {
+        color: var(--text-primary);
+
+        input {
+          color: var(--text-primary);
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: #4a4a4a;
+          }
+
+          &:focus {
+            background-color: rgba(59, 130, 246, 0.15);
+            border-color: #60a5fa;
+          }
+        }
+
+        &.cell-readonly {
+          background-color: rgba(246, 178, 107, 0.07);
+          color: #e5e5e5;
+        }
+
+        &.cell-error {
+          color: #f87171;
+          background-color: rgba(239, 68, 68, 0.14);
+        }
+
+        &.cell-kpi { background-color: rgba(249, 115, 22, 0.14); color: #fdba74; }
+        &.cell-total-inc { background-color: rgba(245, 158, 11, 0.14); color: #fcd34d; }
+        &.cell-accidentes {
+          background-color: rgba(239, 68, 68, 0.14);
+          color: #f87171;
+
+          input { color: #f87171; }
+        }
+        &.cell-total-hh { color: #34d399; }
+
+        .btn-delete-row {
+          color: #8a8a8a;
+
+          &:hover {
+            color: #f87171;
+            background-color: rgba(239, 68, 68, 0.15);
+          }
+        }
+      }
+    }
+  }
+
+  .table-footer-actions {
+    background-color: #1c1c1c;
+    border-top-color: var(--border-color);
+
+    &.table-footer-actions--separador { border-bottom-color: var(--border-color); }
+
+    .btn-reset-table {
+      background-color: #333333;
+      color: #d4d4d4;
+
+      &:hover {
+        background-color: #404040;
+        color: #ffffff;
+      }
+    }
+
+    .save-status { color: var(--text-secondary); }
   }
 }
 
