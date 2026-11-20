@@ -7,6 +7,10 @@ desde ahí durante 30 días) y el documento se quita de la entrega.
 
 Si Drive falla, no se borra nada en el sistema para que no queden archivos
 huérfanos en Drive; se puede volver a intentar.
+
+Si la entrega se queda sin archivos ni enlace, se elimina la entrega completa
+para que el alumno ya no la vea y pueda volver a entregar. Si tenía una versión
+anterior reemplazada, esa vuelve a ser la vigente.
 """
 import logging
 from datetime import timedelta
@@ -50,8 +54,37 @@ def _upload_in_progress(document):
     return False
 
 
+def _submission_is_empty(submission):
+    """La entrega ya no tiene nada entregado (archivos, enlaces ni archivo directo)."""
+    return not (
+        submission.documents.exists()
+        or submission.link
+        or submission.file
+        or submission.files_metadata
+        or submission.google_drive_file_id
+    )
+
+
+def _restore_previous_version(submission):
+    """Vuelve vigente la versión anterior que esta entrega había reemplazado."""
+    S = submission.SubmissionStatus
+    previous = (submission.__class__.objects
+                .filter(task=submission.task, submitted_by=submission.submitted_by,
+                        version__lt=submission.version)
+                .order_by('-version').first())
+    if previous is None or previous.status != S.SUPERSEDED:
+        return previous
+    # Si ya la había revisado alguien y no se aprobó, se había devuelto con cambios.
+    previous.status = S.CHANGES_REQUESTED if previous.graded_at else S.SUBMITTED
+    previous.save(update_fields=['status'])
+    return previous
+
+
 def delete_submission_document(document, user):
-    """Borra el archivo de la entrega y de Google Drive. Devuelve si se borró en Drive."""
+    """Borra el archivo de la entrega y de Google Drive.
+
+    Devuelve {'deleted_in_drive': bool, 'submission_deleted': bool}.
+    """
     if not can_delete_submission_files(user):
         raise PermissionDenied('Solo el superadministrador puede eliminar archivos de una entrega.')
     if _upload_in_progress(document):
@@ -74,6 +107,9 @@ def delete_submission_document(document, user):
     submission = document.task_submission
     task = submission.task if submission else document.task
     name = document.name or 'archivo'
+    document_id = document.pk
+    submission_id = submission.pk if submission else None
+    submission_deleted = False
 
     with transaction.atomic():
         if submission is not None and drive_id:
@@ -94,6 +130,12 @@ def delete_submission_document(document, user):
         stored_file = document.file
         document.delete()
 
+        # Sin nada entregado, la entrega ya no existe para el alumno.
+        if submission is not None and _submission_is_empty(submission):
+            _restore_previous_version(submission)
+            submission.delete()
+            submission_deleted = True
+
     if stored_file:
         try:
             stored_file.delete(save=False)
@@ -105,15 +147,17 @@ def delete_submission_document(document, user):
         'ARCHIVO_ELIMINADO',
         f"{actor_label(user)} eliminó el archivo '{name}' de la entrega"
         + (f" de {actor_label(student)}" if student else '')
-        + (f" en la tarea '{task.title}'" if task else ''),
+        + (f" en la tarea '{task.title}'" if task else '')
+        + (' (la entrega quedó vacía y se eliminó)' if submission_deleted else ''),
         user,
         tarea_id=task.id if task else None,
         proyecto_id=task.project_id if task else None,
         metadata={
-            'documento_id': document.pk,
-            'entrega_id': submission.pk if submission else None,
+            'documento_id': document_id,
+            'entrega_id': submission_id,
+            'entrega_eliminada': submission_deleted,
             'drive_file_id': drive_id,
             'borrado_en_drive': trashed_in_drive,
         },
     )
-    return trashed_in_drive
+    return {'deleted_in_drive': trashed_in_drive, 'submission_deleted': submission_deleted}
