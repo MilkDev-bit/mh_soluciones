@@ -20,14 +20,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 style="margin: 0; font-size: 24px;">Nueva Entrega de Tarea</h1>
+            <h1 style="margin: 0; font-size: 24px;">Nueva entrega de tarea</h1>
         </div>
         <div class="content">
             <p>Hola,</p>
             <p><strong>{{ student.get_full_name }}</strong> ha entregado la tarea <strong>"{{ task.title }}"</strong> en el proyecto {{ project.name }}.</p>
             
             <div class="task-details">
-                <h3>Detalles de la Entrega</h3>
+                <h3>Detalles de la entrega</h3>
                 <div class="detail-row">
                     <span class="label">Estudiante:</span> {{ student.get_full_name }} ({{ student.username }})
                 </div>
@@ -50,12 +50,12 @@
             
             <p style="text-align: center;">
                 <a href="{{ frontend_url }}/projects/{{ project.id }}/tasks/{{ task.id }}" class="button">
-                    Revisar Entrega
+                    Revisar entrega
                 </a>
             </p>
         </div>
         <div class="footer">
-            <p>MH Soluciones - Sistema de Gestión de Proyectos</p>
+            <p>MH Soluciones Empresariales - Sistema de gestión de proyectos</p>
             <p><a href="{{ frontend_url }}" style="color: #f97316;">{{ frontend_url }}</a></p>
         </div>
     </div>
