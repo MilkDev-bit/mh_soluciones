@@ -450,6 +450,31 @@ class GoogleDriveService:
             logger.exception(f"Error al subir el archivo a Google Drive: {e}")
             return None
 
+    def trash_file(self, file_id):
+        """Manda un archivo a la papelera de Drive (se puede recuperar 30 días).
+
+        Devuelve True si quedó en la papelera y False si el archivo ya no
+        existía. Cualquier otro error de Drive se propaga.
+        """
+        if not self.service:
+            raise ConnectionError("Servicio de Google Drive no inicializado.")
+        if not is_valid_drive_id(file_id):
+            raise ValueError(f"ID de Drive no válido: {file_id!r}")
+        try:
+            self.service.files().update(
+                fileId=file_id,
+                body={'trashed': True},
+                fields='id, trashed',
+                supportsAllDrives=True,
+            ).execute()
+            logger.info("Archivo %s enviado a la papelera de Drive", file_id)
+            return True
+        except HttpError as e:
+            if getattr(e, 'resp', None) is not None and e.resp.status == 404:
+                logger.info("El archivo %s ya no existe en Drive", file_id)
+                return False
+            raise
+
     def copy_file(self, source_file_id, new_name, folder_id):
         """
         Crea una copia congelada de un archivo/Google Doc en la carpeta especificada.

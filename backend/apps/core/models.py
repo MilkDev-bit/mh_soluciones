@@ -71,6 +71,7 @@ class RegistroActividad(TimeStampedModel):
         PROYECTO_ACTUALIZADO = 'PROYECTO_ACTUALIZADO', _('Proyecto Actualizado')
         PROYECTO_ELIMINADO = 'PROYECTO_ELIMINADO', _('Proyecto Eliminado')
         ARCHIVO_SUBIDO = 'ARCHIVO_SUBIDO', _('Archivo Subido')
+        ARCHIVO_ELIMINADO = 'ARCHIVO_ELIMINADO', _('Archivo Eliminado')
         EVENTO_CREADO = 'EVENTO_CREADO', _('Evento de Calendario Creado')
         COMENTARIO_AGREGADO = 'COMENTARIO_AGREGADO', _('Comentario Agregado')
         MIEMBRO_AGREGADO = 'MIEMBRO_AGREGADO', _('Miembro Agregado al Proyecto')

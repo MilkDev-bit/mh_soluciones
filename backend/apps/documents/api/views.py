@@ -308,6 +308,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
             logger.info(f"⚡ Subida a Drive en hilo de fondo para documento ID={document.id}")
             _run_upload_sync(document, target_folder_id)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.task_submission_id:
+            # Archivo de una entrega: solo el SUPERADMIN, y se borra también en Drive.
+            from ..submission_files import delete_submission_document
+            in_drive = delete_submission_document(instance, request.user)
+            return Response({
+                'message': 'Archivo eliminado de la entrega y de Google Drive.'
+                if in_drive else 'Archivo eliminado de la entrega.',
+                'deleted_in_drive': in_drive,
+            }, status=status.HTTP_200_OK)
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['get'], url_path='folders')
     def list_folders(self, request):
         """
